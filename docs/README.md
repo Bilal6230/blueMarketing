@@ -11,7 +11,7 @@
 |---|---|---|
 | **01** | Full-page loader removal; global voucher-tinted skeletons | **COMPLETED — owner terminal/browser PASS**. 8 methods, 71 assertions (2026-11-18). |
 | **02** | Per-voucher, per-action permissions and modern Roles management | **ACTIVE — backend tests PASS; Roles UI migration, tests and visual layout owner PASS; CR Edit browser behavior still unresolved, permission inventory upload pending.** |
-| **03** | Atomic voucher create/edit/delete, FK and soft-delete / is_active audit | **PENDING, start after 02 accepted.** |
+| **03** | Atomic voucher create/edit/delete, FK and soft-delete / is_active audit | **ACTIVE — FK/orphan audit and preflight migration committed; legacy JV/CV linked ledger CRUD fixes committed; full schema/local integration and other voucher workflows pending.** |
 | **04** | Cheque/Online cleared-record edit/delete and linked-voucher cascade | **PENDING, after 03.** |
 | **05** | Reversal ON/OFF setting, approved/posted reversal and end-to-end tests | **PENDING, after 04.** |
 
@@ -87,6 +87,36 @@ Owner executed commit `2b2325ed` on local DB `bluenew_clean_final`. **Local conf
 ## 2026-11-18 — Owner browser verification: CR Edit visible
 
 Owner screenshot confirms **CR-834 Edit Voucher** is now present in the shared Actions floating menu for project 5, after previous granular permission fixes. Role grant and listing eligibility had already passed local diagnostics. **CR Edit action visibility: BROWSER PASS.** Editing form opening, successful safe save, and negative authorization/revocation test are still unverified. Do not mark all Milestone 02 complete; continue remaining action-permission/browser acceptance. No code changes required for this confirmation.
+
+## 2026-11-18 — Milestone 03 implementation batch (CURRENT)
+
+**Owner instruction:** proceed to Milestone 03. Milestone 02 has locally passing granular permission tests and owner browser **CR Edit action visibility PASS**, but the complete multi-role authorization acceptance for all modules is not recorded; do not invent it.
+
+**Delivered on branch `upgrade/laravel-framework`:**
+1. **Actual schema inspection:** The baseline migrations show `journal_vouchers`, `journal_voucher_details`, `commision_vouchers`, `commision_voucher_details` already have `deleted_at`; `ledgers` uses `is_active` and `journal_voucher_detail_id` + `customer_ledger_id` are real single-target columns. Detail parent columns have indexes in baseline DDL but not explicit FK constraints there. `ledgers.type/type_id` remains polymorphic and must NOT receive a single FK.
+2. **Read-only complete database inventory:** `app/Console/Commands/AuditVoucherSchema.php` command `finance:audit-voucher-schema` queries the configured database's INFORMATION_SCHEMA to enumerate **all tables with neither `deleted_at` nor `is_active`**, actual FK constraints, and orphan counts for 5 core relations. It changes nothing. **The precise missing-column list remains UNKNOWN until owner runs this against `bluenew_clean_final`**. Technical audit/event/history tables do not necessarily need business soft-delete columns; decide case by case.
+3. **Idempotent FK migration (NOT YET APPLIED):** `2026_11_18_150000_enforce_voucher_source_foreign_keys.php` adds/reuses exact FK relationships `journal_voucher_details.journal_voucher_id -> journal_vouchers.id`, `commision_voucher_details.commision_voucher_id -> commision_vouchers.id`, `ledgers.journal_voucher_detail_id -> journal_voucher_details.id`, `ledgers.customer_ledger_id -> customer_ledger.id`. It checks all relevant historical orphan counts first and fails clearly on any orphan/mismatched existing constraint; FK delete/update policy is **RESTRICT**, never CASCADE, to prevent hard deletes. **Do not run it until schema audit shows zero orphans and expected column types.** No unrelated databases are touched.
+4. **Atomic legacy JV/CV linked-lifecycle repairs:** `app/Services/Finance/LinkedVoucherLedgerRetirement.php` locks the source header, active details and explicitly source-linked ledger legs; verifies selected project and exact debit/credit/account multiset, including duplicate-value legs, then sets **only exact linked active ledger rows** `is_active=0` and keeps original ledger rows. Throws/rolls back on orphaned/missing/foreign-project or mismatched rows. The original legacy JV and CV **Delete** controller transactions now retire these linked ledgers, soft-delete matching detail rows and voucher header, no new reversal ledger rows for those legacy branches. Legacy **Edit** transactions retire old matching linked legs and soft-delete old details, then create corrected details/active ledgers under **the same source voucher ID**. This avoids the prior legacy pattern of accumulating active compensating reversal legs. This explicitly does **NOT** silently rewrite typed-posting source claims or unrelated journal/commission records.
+5. **Tests committed:** `tests/Unit/Finance/VoucherRelationshipSafetyMilestoneTest.php` checks audit/migration/legacy code contracts. `tests/Feature/Finance/LinkedVoucherLedgerRetirementTest.php` exercises real transactional linked ledger retirement, foreign-project refusal and mismatch rollback in isolated in-memory SQLite (not MySQL database). **No local PHP/unit/browser tests have been executed by the assistant.**
+
+**Remaining before Milestone 03 can be honestly called COMPLETE:**
+- Owner run the read-only audit, review its **actual** missing lifecycle columns and orphan counts (including potential existing incompatible FKs); only then apply FK migration or repair orphan evidence. Add `is_active`/soft-delete migrations to any **operational business tables** identified as missing both, not to every immutable history/metadata table blindly.
+- Verify all original routes (CR/DR/CCR/CDR/BOR/BOP/JV/SV/CV/Bank Deposit/Withdrawal/Plot Receipt/Plot Purchase/Extra Charges/Draft) against create/edit/logical delete, project-scoped related rows, permissions, printed reports and balances. LedgerController's customer-ledger deletion currently deactivates linked source and ledgers in a DB transaction; SameSourceCashVoucherEdit updates source and ledger via transactional snapshots; those existing flows need **runtime regression** to be accepted.
+- Typed / approval/posting branches for JV/CV can still demand an audited reversal or draft-only edits; those rules have **not been altered** in this batch pending actual source/approval mapping. The owner requested independent ordinary edit/delete across modes; **therefore Milestone 03 remains INCOMPLETE** until those branches are safely supported, rather than falsely claiming completed.
+- Browser verification of linked accounting totals and local PostgreSQL/MySQL migrations has not occurred. Do not run this new FK migration on production or staging without a separate approval.
+
+**Owner local commands** (safe order):
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=VoucherRelationshipSafetyMilestoneTest
+php artisan test --filter=LinkedVoucherLedgerRetirementTest
+php artisan finance:audit-voucher-schema
+php artisan finance:audit-voucher-schema --json | Set-Content -Path .\storage\app\voucher-schema-audit.json -Encoding UTF8
+```
+**Do not automatically run the new FK migration yet.** Upload the JSON report / relevant orphan output first. If all relationships have `orphan_count=0` and no incompatible FK, the named migration can be evaluated for local-only execution. Test CRUD against disposable records before any real voucher changes.
 
 ## Next actions — Milestone 02 acceptance
 
