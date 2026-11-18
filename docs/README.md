@@ -19,7 +19,7 @@
 
 - Central action matrix: `app/Support/Finance/FinanceActionPermission.php`. Voucher/module names: CR, DR, CP, CCR, CDR, BOR, BOP, JV, SV, CV, Bank Deposit/Withdrawal, Plot Receipt/Purchase, Draft Voucher, Extra Charges, Cheque Management, Online Management and applicable directory/source types.
 - Each module has **independent** `finance <module> <action>` permissions: View, Create, Edit, Delete, Approve, Reject, Reverse, Print, History, Details, Confirm, Clear, Return, Withdraw, Release and Resubmit. Only actions that exist on a module need to be granted; a permission definition does **not** implement a missing CRUD feature.
-- `app/Http/Middleware/AuthorizeFinanceAction.php`, registered in `app/Http/Kernel.php`, enforces the matching ability on the authenticated admin routes. Existing voucher CRUD, printing, approvals, bank transfer, plot receipt/purchase, JV/CV, cheque and online routes were mapped to separate actions. Persisted voucher/source ID and selected project determine authorization for edits, deletes, approvals and prints; client-supplied voucher type alone cannot choose an unrelated source's permission.
+- `app/Http/Middleware/AuthorizeFinanceAction.php`, registered in `app/Http/Kernel.php`, enforces the matching ability on the authenticated admin routes. Existing voucher CRUD, printing, approvals, bank transfer, plot receipt/purchase, JV/CV, cheque and online routes were mapped to separate actions. Persisted voucher/source ID and selected project determine authorization for edits, deletes, approvals and prints; client-supplied voucher type alone cannot choose an unrelated source's permission. Unknown persisted voucher types now fail closed instead of inheriting a generic directory permission.
 - Extra Charge create uses `app/Http/Middleware/AuthorizeBookingDeposit.php` so regular booking deposits preserve their original `create plot` right, while Extra Charges use their own grant.
 - `database/migrations/2026_11_18_130000_register_finance_action_permissions.php` registers permissions idempotently and copies **existing** active role/direct grants into the new per-module permissions (including cheque processing/online confirming). The migration does **not** remove old permissions or business rows. Roles can independently grant/revoke each new permission after migration.
 - Role Create/Edit `resources/views/admin/role.blade.php` now shows a separate collapsible action group for each voucher/module, retaining generic permissions and existing role save endpoints.
@@ -36,7 +36,9 @@ git pull --ff-only origin upgrade/laravel-framework
 php artisan optimize:clear
 php artisan db:show
 # Confirm this is the intended local database before applying migrations
-php artisan migrate
+php artisan migrate:status
+# Apply only the new action-permission migration; do not run unrelated pending migrations
+php artisan migrate --path=database/migrations/2026_11_18_130000_register_finance_action_permissions.php
 php artisan permission:cache-reset
 php artisan view:cache
 php artisan test --filter=FinanceActionPermissionMatrixTest
