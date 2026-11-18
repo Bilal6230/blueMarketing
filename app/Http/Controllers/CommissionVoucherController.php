@@ -339,21 +339,9 @@ class CommissionVoucherController extends Controller
             DB::transaction(function () use ($id, $projectId, $data): void {
                 $voucher = CommisionVoucher::whereKey((int) $id)->where('project_id', $projectId)
                     ->lockForUpdate()->firstOrFail();
-                $ledgers = Ledger::query()->withoutGlobalScopes()->where('type', 'CV')
-                    ->where('type_id', $voucher->id)->where('is_active', 1)
-                    ->whereIn('project_head_subheads_id', ProjectHeadSubhead::where('project_id', $projectId)->select('id'))
-                    ->lockForUpdate()->get();
-                abort_if($ledgers->isEmpty(), 409, 'CV ledger entries are missing; reversal stopped.');
-                $date = $data['effective_date'] ?? now()->toDateString();
-                foreach ($ledgers as $old) {
-                    Ledger::create([
-                        'voucher_number' => $voucher->voucher_number, 'type' => 'CV', 'type_id' => $voucher->id,
-                        'project_head_subheads_id' => $old->project_head_subheads_id,
-                        'reference' => $voucher->reference, 'amount_in' => $old->amount_out,
-                        'amount_out' => $old->amount_in, 'date' => $date, 'is_active' => 1, 'status' => '0',
-                        'create_by' => Auth::id(), 'detail' => 'Voucher reversal: '.($data['reason'] ?? $old->detail),
-                    ]);
-                }
+                // All source-linked ledger legs are retired by exact voucher identity.
+                app(\App\Services\Finance\LinkedVoucherLedgerRetirement::class)
+                    ->retire($projectId, 'CV', (int)$voucher->id);
                 CommisionVoucherDetail::where('commision_voucher_id', $voucher->id)->get()->each->delete();
                 $voucher->delete();
             });
