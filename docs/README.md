@@ -108,7 +108,7 @@ php -l app/Services/Finance/PlotVoucherNarrationEditor.php
 php -l database/migrations/2026_11_18_180000_consolidate_plot_narration_audit.php
 php artisan test --filter=PlotNarrationEditContractTest
 php artisan test --filter=PlotEntryWriterTest
-php artisan db:show
+php artisan tinker --execute="dump(DB::connection()->getDatabaseName());"
 php artisan migrate --path=database/migrations/2026_11_18_180000_consolidate_plot_narration_audit.php
 php artisan finance:audit-voucher-schema --require-fks
 ```
