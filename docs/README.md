@@ -12,7 +12,7 @@
 |---|---|---|
 | 01 | Nonblocking loading and voucher-tinted skeletons | **COMPLETE** — owner browser + PHP tests PASS |
 | 02 | Action-specific permissions, Roles page and backend enforcement | **PARTIAL ACCEPTANCE** — implemented, tests PASS, owner confirmed CR Edit visibly works; complete cross-module browser permission matrix not yet accepted |
-| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. MySQL FK + Plot lifecycle migrations PASS, major CRUD workflows pending; Plot fixture repair and 28 tests **owner PASS**; archived-source reversal guard added, **new local rerun pending** |
+| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. MySQL FK + Plot lifecycle migrations PASS, major CRUD workflows pending; Archived-source guard owner PASS; audited narration-only Edit committed; local tests, new migration and browser acceptance pending |
 | 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **NOT STARTED under new rules** |
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 
@@ -56,6 +56,36 @@ php artisan finance:audit-voucher-schema --require-fks
 **Owner verified on local `bluenew_clean_final`:** `PlotEntryWriterTest` **25 PASS / 127 assertions**, `PlotLegacyMigrationCompatibilityTest` **2 PASS / 24 assertions**; total **27 PASS / 151 assertions**. `PlotEntryLifecycleService.php` PHP lint PASS. `finance:audit-voucher-schema --require-fks` remains PASS (**8/8 FKs**, zero orphans, zero cross-project JV/CV detail links). This validates both recently added **archived Plot Receipt and Plot Purchase reversal refusal** integration tests. No browser pass has been reported for these flows.
 
 **Owner instruction:** proactively flag browser-testing gates when they actually arise; specify URL/page, role/project, exact Create/Edit/Delete/reversal action, expected result, and whether disposable local test data is necessary. **No browser testing is required for this strictly backend archived-source regression batch.** A browser gate becomes mandatory once actual user-facing Plot Edit/Delete and linked posting/inventory workflow is implemented. Do not mark complete on unit tests alone. Maintain this single README after each implementation batch and keep future handoffs up to date.
+
+## 2026-11-18 — Milestone 03: Audited Plot Receipt/Purchase narration Edit (LATEST)
+
+**Owner verified preceding batch:** PlotEntryWriterTest **25 PASS / 127 assertions**, PlotLegacyMigrationCompatibilityTest **2 PASS / 24 assertions**; total **27 PASS, 151 assertions**. FK audit **8/8 present**, zero orphan references, zero cross-project JV/CV detail links. This does not verify the following new code.
+
+**Implemented and committed (NOT yet tested locally):**
+- New append-only audit table via `database/migrations/2026_11_18_170000_create_plot_voucher_edit_audits_table.php`, storing project, source family/id, before/after narration, editor and timestamps; no destructive down migration.
+- `PlotVoucherNarrationEditor` makes a real **transactional narration-only Edit** for Plot Receipt and Plot Purchase, locks active same-project source, validates exact same-project posting link, disallows previously reversed source, updates source narration, writes an audit record atomically, and preserves original finance posting lines, amounts, allocation records and purchased plot inventory untouched.
+- `VoucherController` PATCH handlers and `routes/web.php` PATCH routes enforce **independent granular Edit** permissions and workflow-selected project authorization, with JSON status and 409 conflict for actual business constraints.
+- Both Plot workspaces now offer **Edit narration** inside the shared row Actions control, protected by their module's own Edit permission (not by Reverse permission), compact Bootstrap modal and jQuery AJAX PATCH with inline popup error, success notification and history refresh. No page navigation/reload required for this edit.
+- Added `PlotNarrationEditContractTest` for route/permission/UI/source contract and extended `PlotEntryWriterTest` with isolated SQLite integration cases for same-project receipt edit/audit/unchanged financial lines and reversed Plot Purchase edit rejection.
+
+**Known scope / still pending:** This is **narration-only** editing, not full amount/date/customer/allocation/inventory Edit. Full transactional Edit/Delete of posted Plot vouchers and remaining voucher modules still need the accounting-balance lifecycle design and implementation; do not mark Milestone 03 COMPLETE. Existing reversal remains a separate action, not a substitute for ordinary Delete. The new audit migration **must be applied to the intended local DB before browser testing**. Do not run `migrate:fresh` or previous one-off FK/Plot migrations again.
+
+**Owner local gate (code tests first, then migration):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Services/Finance/PlotVoucherNarrationEditor.php
+php -l tests/Unit/Finance/PlotNarrationEditContractTest.php
+php artisan test --filter=PlotNarrationEditContractTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan db:show
+php artisan migrate --path=database/migrations/2026_11_18_170000_create_plot_voucher_edit_audits_table.php
+php artisan finance:audit-voucher-schema --require-fks
+```
+
+**BROWSER TEST REQUIRED AFTER LOCAL TESTS/MIGRATION PASS:** Open `/admin/finance/voucher/plot-receipt` and `/admin/finance/voucher/plot-purchase` with selected local test project. Login as user granted **Plot Receipt Edit** or **Plot Purchase Edit**, without requiring Reverse; open an active unreversed disposable voucher's floating Actions menu -> **Edit narration** -> change note -> Save; expect modal close, success toast, same-row narration updated via AJAX and no full-page refresh. Reload and confirm note persists. Revoke that specific Edit permission (leave Reverse as desired) and verify Edit action disappears and direct PATCH is forbidden (403). If source was reversed, editing must return 409 with visible popup error. Verify original monetary amount, allocation list, posting balance and plot inventory unchanged. **Browser acceptance unverified until owner explicitly confirms.**
 
 ## Remaining Milestone 03 work — do not mark complete yet
 
