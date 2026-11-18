@@ -101,6 +101,7 @@
         $(document).ready(function() {
             $(document).on("click", '#btn-tambah', function() {
                 $('input:checkbox').prop('checked', false);
+                $('#modal-tambah input:checkbox').prop('disabled',false);
                 $('#modal-tambah').modal({backdrop: 'static', keyboard: false, show: true});
             });
             $(document).on("click", '.btn-edit', function() {
@@ -154,11 +155,11 @@
             });
 
             $("#checkAll").click(function(){
-                $('input:checkbox').not(this).prop('checked', this.checked);
+                $('#modal-tambah input:checkbox.permission:not(:disabled)').prop('checked', this.checked);
             });
 
             $("#checkAllu").click(function(){
-                $('input:checkbox').not(this).prop('checked', this.checked);
+                $('#modal-edit input:checkbox.permission:not(:disabled)').prop('checked', this.checked);
             });
         });
     </script>
@@ -208,12 +209,36 @@
                                 <label class="form-check-label" for="checkAll">Check All</label>
                             </div>
                         </div>
-                        <div class="input-group">
-                            @foreach ($permission as $p)
-                                <div class="icheck-primary col-md-3">
-                                    <input class="form-check-input permission" type="checkbox" name="permissions[]" id="{{ $p->id }}" value="{{ $p->name }}">
-                                    <label class="form-check-label {{ strtok($p->name, ' ') == 'delete' ? 'text-danger':'' }}" for="{{ $p->id }}">{{ $p->name }}</label>
+                        <div class="w-100">
+                            <details class="mb-2 border rounded p-2" open>
+                                <summary class="font-weight-bold">General permissions</summary>
+                                <div class="row mt-2">
+                                    @foreach ($permission->reject(fn($p) => str_starts_with($p->name, 'finance ')) as $p)
+                                        <div class="icheck-primary col-md-4 mb-1">
+                                            <input class="form-check-input permission" type="checkbox" name="permissions[]" id="{{ $p->id }}" value="{{ $p->name }}">
+                                            <label class="form-check-label" for="{{ $p->id }}">{{ $p->name }}</label>
+                                        </div>
+                                    @endforeach
                                 </div>
+                            </details>
+                            @foreach (\App\Support\Finance\FinanceActionPermission::MODULES as $financeModule)
+                                @php($financePermissions = $permission->filter(fn($p) => str_starts_with($p->name, 'finance '.$financeModule.' ')))
+                                @if ($financePermissions->isNotEmpty())
+                                    <details class="mb-2 border rounded p-2">
+                                        <summary class="font-weight-bold text-capitalize">{{ str_replace('-', ' ', $financeModule) }} — Daily Entries actions</summary>
+                                        <div class="row mt-2">
+                                            @foreach (\App\Support\Finance\FinanceActionPermission::ACTIONS as $financeAction)
+                                                @php($p = $financePermissions->firstWhere('name', 'finance '.$financeModule.' '.$financeAction))
+                                                @if ($p)
+                                                    <div class="icheck-primary col-md-3 mb-1">
+                                                        <input class="form-check-input permission" type="checkbox" name="permissions[]" id="{{ $p->id }}" value="{{ $p->name }}">
+                                                        <label class="form-check-label {{ in_array($financeAction,['delete','reverse','reject'],true) ? 'text-danger' : '' }}" for="{{ $p->id }}">{{ ucfirst($financeAction) }}</label>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    </details>
+                                @endif
                             @endforeach
                         </div>
                 </div>
@@ -271,12 +296,36 @@
                                 <label class="form-check-label" for="checkAllu">Check All</label>
                             </div>
                         </div>
-                        <div class="input-group">
-                            @foreach ($permission as $p)
-                                <div class="icheck-primary col-md-3">
-                                    <input class="form-check-input permission" type="checkbox" name="permissions[]" id="{{ $p->id }}u" value="{{ $p->name }}">
-                                    <label class="form-check-label {{ strtok($p->name, ' ') == 'delete' ? 'text-danger':'' }}" for="{{ $p->id }}u">{{ $p->name }}</label>
+                        <div class="w-100">
+                            <details class="mb-2 border rounded p-2" open>
+                                <summary class="font-weight-bold">General permissions</summary>
+                                <div class="row mt-2">
+                                    @foreach ($permission->reject(fn($p) => str_starts_with($p->name, 'finance ')) as $p)
+                                        <div class="icheck-primary col-md-4 mb-1">
+                                            <input class="form-check-input permission" type="checkbox" name="permissions[]" id="{{ $p->id }}u" value="{{ $p->name }}">
+                                            <label class="form-check-label" for="{{ $p->id }}u">{{ $p->name }}</label>
+                                        </div>
+                                    @endforeach
                                 </div>
+                            </details>
+                            @foreach (\App\Support\Finance\FinanceActionPermission::MODULES as $financeModule)
+                                @php($financePermissions = $permission->filter(fn($p) => str_starts_with($p->name, 'finance '.$financeModule.' ')))
+                                @if ($financePermissions->isNotEmpty())
+                                    <details class="mb-2 border rounded p-2">
+                                        <summary class="font-weight-bold text-capitalize">{{ str_replace('-', ' ', $financeModule) }} — Daily Entries actions</summary>
+                                        <div class="row mt-2">
+                                            @foreach (\App\Support\Finance\FinanceActionPermission::ACTIONS as $financeAction)
+                                                @php($p = $financePermissions->firstWhere('name', 'finance '.$financeModule.' '.$financeAction))
+                                                @if ($p)
+                                                    <div class="icheck-primary col-md-3 mb-1">
+                                                        <input class="form-check-input permission" type="checkbox" name="permissions[]" id="{{ $p->id }}u" value="{{ $p->name }}">
+                                                        <label class="form-check-label {{ in_array($financeAction,['delete','reverse','reject'],true) ? 'text-danger' : '' }}" for="{{ $p->id }}u">{{ ucfirst($financeAction) }}</label>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    </details>
+                                @endif
                             @endforeach
                         </div>
                 </div>
