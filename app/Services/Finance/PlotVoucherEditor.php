@@ -204,69 +204,122 @@ final class PlotVoucherEditor
         if ($project<1 || $id<1 || $actor<1) throw new \DomainException('Invalid source.');
         return DB::transaction(function()use($project,$id,$data,$actor){
             [$source,$batch,$lines]=$this->locked($project,'plot_purchase',$id);
-            $old=DB::table('finance_plot_purchase_items')->where('purchase_id',$id)
-                ->orderBy('id')->lockForUpdate()->get();
-            if ($old->count()!==count($data['items']) || $lines->count()!==$old->count()+1)
-                throw new \DomainException('Purchased plot count cannot change in this edit.');
+            $itemQuery=DB::table('finance_plot_purchase_items')->where('purchase_id',$id);
+            if (Schema::hasColumn('finance_plot_purchase_items','is_active')) $itemQuery->where('is_active',1);
+            $old=$itemQuery->orderBy('id')->lockForUpdate()->get();
+            if ($lines->count()!==$old->count()+1) {
+                throw new \DomainException('Purchase posting does not match active purchased plots.');
+            }
+            if ($old->count()!==count($data['items'])
+                && !Schema::hasColumn('finance_plot_purchase_items','is_active')) {
+                throw new \DomainException('Apply Plot line lifecycle migration before adding/removing purchased plots.');
+            }
             $seller=(int)$data['seller_account_id'];$this->account($project,$seller);
             $number=trim((string)$data['purchase_number']);
             if (DB::table('finance_plot_purchases')->where('project_id',$project)
-                ->where('purchase_number',$number)->where('id','!=',$id)->exists())
+                ->where('purchase_number',$number)->where('id','!=',$id)->exists()) {
                 throw new \DomainException('Voucher number already exists.');
-            $plots=[];$total=0;$newLines=[];$used=[];
-            foreach ($data['items'] as $i=>$item) {
-                $row=$old[$i];$plot=DB::table('plots')->where('id',$row->legacy_plot_id)
-                    ->where('project_id',$project)->lockForUpdate()->first();
-                if (!$plot || (int)$plot->sold!==0 || (int)$plot->is_active!==1
-                    || DB::table('bookings')->where('plot_id',$plot->id)->exists())
+            }
+            $byPlot=$old->keyBy('legacy_plot_id');
+            $plots=[];$total=0;$newLines=[];$usedCodes=[];$usedIds=[];
+            foreach ($data['items'] as $item) {
+                $legacyId=(int)($item['legacy_plot_id']??0);
+                if ($legacyId && (isset($usedIds[$legacyId]) || !$byPlot->has($legacyId))) {
+                    throw new \DomainException('Purchased plot is not linked to this source.');
+                }
+                if ($legacyId) $usedIds[$legacyId]=true;
+                $row=$legacyId?$byPlot[$legacyId]:null;
+                $plot=$row ? DB::table('plots')->where('id',$legacyId)
+                    ->where('project_id',$project)->lockForUpdate()->first() : null;
+                if ($row && (!$plot || (int)$plot->sold!==0 || (int)$plot->is_active!==1
+                    || DB::table('bookings')->where('plot_id',$plot->id)->exists())) {
                     throw new \DomainException('Purchased plot has bookings or unavailable inventory.');
+                }
                 $code=trim((string)$item['plot_code']);
-                if ($code==='' || isset($used[strtolower($code)])
+                if ($code==='' || isset($usedCodes[strtolower($code)])
                     || DB::table('plots')->where('project_id',$project)->where('name',$code)
-                        ->where('id','!=',$plot->id)->exists())
+                        ->when($plot,fn($q)=>$q->where('id','!=',$plot->id))->exists()) {
                     throw new \DomainException('Plot code already exists.');
-                $used[strtolower($code)]=true;
+                }
+                $usedCodes[strtolower($code)]=true;
                 if (!DB::table('roads')->where('id',$item['road_id'])->where('is_active',1)->exists()
-                    || !DB::table('facings')->where('id',$item['facing_id'])->where('is_active',1)->exists())
+                    || !DB::table('facings')->where('id',$item['facing_id'])->where('is_active',1)->exists()) {
                     throw new \DomainException('Invalid road or facing.');
+                }
                 $account=(int)$item['inventory_account_id'];$this->account($project,$account);
                 $area=$this->cents($item['area'],4);$rate=$this->cents($item['unit_rate']);
-                if ($area<1 || $rate<1 || $area>intdiv(PHP_INT_MAX,$rate)) throw new \DomainException('Invalid plot area or rate.');
+                if ($area<1 || $rate<1 || $area>intdiv(PHP_INT_MAX,$rate)) {
+                    throw new \DomainException('Invalid plot area or rate.');
+                }
                 $amount=(int)round($area*$rate/10000,0,PHP_ROUND_HALF_UP);
-                if ($amount<1 || $total>PHP_INT_MAX-$amount) throw new \DomainException('Invalid plot purchase amount.');
+                if ($amount<1 || $total>PHP_INT_MAX-$amount) {
+                    throw new \DomainException('Invalid plot purchase amount.');
+                }
                 $total+=$amount;
                 $plots[]=['row'=>$row,'plot'=>$plot,'input'=>$item,'amount'=>$this->money($amount)];
                 $newLines[]=['account'=>$account,'debit'=>$this->money($amount),'credit'=>'0.00',
                     'description'=>'Plot purchase '.$code.' · '.$item['description']];
             }
+            $removed=$old->filter(fn($item)=>!isset($usedIds[(int)$item->legacy_plot_id]))->values();
+            foreach ($removed as $row) {
+                $plot=DB::table('plots')->where('id',$row->legacy_plot_id)
+                    ->where('project_id',$project)->lockForUpdate()->first();
+                if (!$plot || (int)$plot->sold!==0 || (int)$plot->is_active!==1
+                    || DB::table('bookings')->where('plot_id',$plot->id)->exists()) {
+                    throw new \DomainException('Cannot remove booked/sold purchased plot.');
+                }
+            }
             $newLines[]=['account'=>$seller,'debit'=>'0.00','credit'=>$this->money($total),
                 'description'=>$data['narration']];
+            $priorPlots=DB::table('plots')->whereIn('id',$old->pluck('legacy_plot_id')->all())
+                ->where('project_id',$project)->get()->map(fn($r)=>(array)$r)->all();
             $before=['voucher'=>(array)$source,'items'=>$old->map(fn($r)=>(array)$r)->all(),
-                'posting_lines'=>$lines->map(fn($r)=>(array)$r)->all(),
-                'plots'=>array_map(fn($p)=>(array)$p['plot'],$plots)];
+                'posting_lines'=>$lines->map(fn($r)=>(array)$r)->all(),'plots'=>$priorPlots];
             $this->replaceLines($project,(int)$batch->id,$lines,$newLines);
             foreach ($plots as $p) {
-                $v=$p['input'];$idPlot=(int)$p['plot']->id;
-                $changed=['name'=>trim($v['plot_code']),'description'=>$v['description'],
-                    'size'=>$v['area'],'unit'=>$v['unit'],'type'=>(string)$v['type'],
-                    'road_id'=>$v['road_id'],'facing_id'=>$v['facing_id'],
-                    'is_corner'=>($v['is_corner']??0)?1:0];
-                foreach (['category','type','size','unit'] as $type) {
-                    $field='plot_'.$type.'_definition_id';
-                    if (!Schema::hasColumn('plots',$field)) continue;
-                    $definition=(int)($v[$field]??0);
-                    if ($definition && (!Schema::hasTable('plot_definitions') || !DB::table('plot_definitions')
-                        ->where('id',$definition)->where('project_id',$project)
-                        ->where('kind',$type)->where('is_active',1)->exists()))
-                        throw new \DomainException('Invalid plot definition.');
-                    $changed[$field]=$definition?:null;
+                $v=$p['input'];$existing=$p['plot'];
+                if ($existing) {
+                    $plotId=(int)$existing->id;
+                    $changed=['name'=>trim($v['plot_code']),'description'=>$v['description'],
+                        'size'=>$v['area'],'unit'=>$v['unit'],'type'=>(string)$v['type'],
+                        'road_id'=>$v['road_id'],'facing_id'=>$v['facing_id'],
+                        'is_corner'=>($v['is_corner']??0)?1:0];
+                    foreach (['category','type','size','unit'] as $type) {
+                        $field='plot_'.$type.'_definition_id';
+                        if (!Schema::hasColumn('plots',$field)) continue;
+                        $definition=(int)($v[$field]??0);
+                        if ($definition && (!Schema::hasTable('plot_definitions') ||
+                            !DB::table('plot_definitions')->where('id',$definition)
+                                ->where('project_id',$project)->where('kind',$type)
+                                ->where('is_active',1)->exists())) {
+                            throw new \DomainException('Invalid plot definition.');
+                        }
+                        $changed[$field]=$definition?:null;
+                    }
+                    DB::table('plots')->where('id',$plotId)->where('project_id',$project)->update($changed);
+                    DB::table('finance_plot_purchase_items')->where('id',$p['row']->id)
+                        ->where('purchase_id',$id)->update([
+                            'plot_code'=>trim($v['plot_code']),'description'=>$v['description'],
+                            'area'=>$v['area'],'unit'=>$v['unit'],'unit_rate'=>$v['unit_rate'],
+                            'amount'=>$p['amount'],'inventory_account_id'=>$v['inventory_account_id'],
+                            'updated_at'=>now(),
+                        ]);
+                } else {
+                    $plotId=(new PlotEntryWriter())->createAvailablePlot($project,$v,$actor);
+                    DB::table('finance_plot_purchase_items')->insert([
+                        'purchase_id'=>$id,'legacy_plot_id'=>$plotId,
+                        'plot_code'=>trim($v['plot_code']),'description'=>$v['description'],
+                        'area'=>$v['area'],'unit'=>$v['unit'],'unit_rate'=>$v['unit_rate'],
+                        'amount'=>$p['amount'],'inventory_account_id'=>$v['inventory_account_id'],
+                        'is_active'=>1,'created_at'=>now(),'updated_at'=>now(),
+                    ]);
                 }
-                DB::table('plots')->where('id',$idPlot)->where('project_id',$project)->update($changed);
-                DB::table('finance_plot_purchase_items')->where('id',$p['row']->id)->where('purchase_id',$id)->update([
-                    'plot_code'=>trim($v['plot_code']),'description'=>$v['description'],'area'=>$v['area'],
-                    'unit'=>$v['unit'],'unit_rate'=>$v['unit_rate'],'amount'=>$p['amount'],
-                    'inventory_account_id'=>$v['inventory_account_id'],'updated_at'=>now(),
-                ]);
+            }
+            foreach ($removed as $row) {
+                DB::table('finance_plot_purchase_items')->where('purchase_id',$id)
+                    ->where('id',$row->id)->update(['is_active'=>0,'updated_at'=>now()]);
+                DB::table('plots')->where('id',$row->legacy_plot_id)->where('project_id',$project)
+                    ->update(['is_active'=>0,'updated_at'=>now()]);
             }
             DB::table('finance_plot_purchases')->where('id',$id)->where('project_id',$project)->update([
                 'purchase_number'=>$number,'purchase_date'=>$data['date'],'seller_account_id'=>$seller,
@@ -279,4 +332,5 @@ final class PlotVoucherEditor
             return ['source_id'=>$id,'posting_batch_id'=>(int)$batch->id,'updated'=>true];
         },3);
     }
+
 }
