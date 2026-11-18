@@ -543,7 +543,9 @@ final class DailyVoucherDirectoryController extends Controller
             } elseif (!empty($filters['account'])) {
                 $query->whereExists(fn ($sub) => $sub->selectRaw('1')->from('finance_posting_lines as filtered_line')
                     ->whereColumn('filtered_line.posting_batch_id', 'batch.id')
-                    ->where('filtered_line.project_head_subhead_id', (int) $filters['account']));
+                    ->where('filtered_line.project_head_subhead_id', (int) $filters['account'])
+                    ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                        fn($q)=>$q->where('filtered_line.is_active',1)));
             }
             if (!empty($filters['search'])) {
                 $term = '%'.addcslashes($filters['search'], '%_\\').'%';
@@ -573,7 +575,11 @@ final class DailyVoucherDirectoryController extends Controller
             ['table' => 'finance_plot_purchases', 'posting' => 'finance_plot_purchase_postings', 'kind' => 'purchase', 'type' => 'PP', 'number' => 'purchase_number', 'date' => 'purchase_date', 'print' => 'purchase'],
         ] as $typed) {
             if (!Schema::hasTable($typed['table']) || !Schema::hasTable($typed['posting'])) continue;
-            $query = DB::table($typed['table'].' as source')->where('source.project_id', $projectId);
+            $query = DB::table($typed['table'].' as source')->where('source.project_id', $projectId)
+                ->when(Schema::hasColumn($typed['table'],'is_active'),
+                    fn($q)=>$q->where('source.is_active',1))
+                ->when(Schema::hasColumn($typed['table'],'deleted_at'),
+                    fn($q)=>$q->whereNull('source.deleted_at'));
             if (!empty($filters['from'])) $query->whereDate('source.'.$typed['date'], '>=', $filters['from']);
             if (!empty($filters['to'])) $query->whereDate('source.'.$typed['date'], '<=', $filters['to']);
             if (!empty($filters['type']) && $filters['type'] !== $typed['type']) continue;
@@ -582,7 +588,9 @@ final class DailyVoucherDirectoryController extends Controller
                 $query->whereExists(fn ($sub) => $sub->selectRaw('1')->from($typed['posting'].' as source_posting')
                     ->join('finance_posting_lines as filtered_line', 'filtered_line.posting_batch_id', '=', 'source_posting.posting_batch_id')
                     ->whereColumn('source_posting.source_id', 'source.id')
-                    ->where('filtered_line.project_head_subhead_id', (int) $filters['account']));
+                    ->where('filtered_line.project_head_subhead_id', (int) $filters['account'])
+                    ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                        fn($q)=>$q->where('filtered_line.is_active',1)));
             }
             if (!empty($filters['search'])) {
                 $term = '%'.addcslashes($filters['search'], '%_\\').'%';
@@ -734,7 +742,10 @@ final class DailyVoucherDirectoryController extends Controller
                 $join->on('account.id', '=', 'line.project_head_subhead_id')->where('account.project_id', '=', $projectId);
             })->leftJoin('head_accountings as head', 'head.id', '=', 'account.head_accounting_id')
             ->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
-            ->where('line.posting_batch_id', $batchId)->orderBy('line.id')
+            ->where('line.posting_batch_id', $batchId)
+            ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                fn($q)=>$q->where('line.is_active',1))
+            ->orderBy('line.id')
             ->get(['account.id as account_id', 'head.name as head_name', 'sub.name as subhead_name', 'line.debit', 'line.credit', 'line.description'])
             ->map(fn ($line) => [
                 'account' => trim(($line->head_name ? $line->head_name.' / ' : '').($line->subhead_name ?: 'Account #'.$line->account_id)),
