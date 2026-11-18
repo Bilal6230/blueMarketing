@@ -60,7 +60,7 @@
     <link rel="stylesheet" href="{{ asset('template/admin/dist/css/theme.css') }}?v={{ time() }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-    <link rel="stylesheet" href="{{ asset('css/blue-table-skeleton.css') }}?v=1">
+    <link rel="stylesheet" href="{{ asset('css/blue-table-skeleton.css') }}?v=2">
     <link rel="stylesheet" href="{{ asset('css/blue-design-system.css') }}?v=4">
 <link rel="stylesheet" href="{{ asset('css/finance-voucher-compact.css') }}?v=1">
     <link rel="stylesheet" href="{{ asset('css/blue-action-menu.css') }}?v=2">
@@ -205,7 +205,7 @@
     <!-- ./wrapper -->
     <!-- jQuery -->
     <script src="{{ asset('template/admin/plugins/jquery/jquery.min.js') }}"></script>
-    <script src="{{ asset('js/blue-table-skeleton.js') }}?v=1"></script>
+    <script src="{{ asset('js/blue-table-skeleton.js') }}?v=2"></script>
     <script src="{{ asset('js/finance-voucher-feedback.js') }}?v=10"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
