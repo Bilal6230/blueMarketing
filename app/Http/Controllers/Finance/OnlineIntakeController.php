@@ -268,7 +268,7 @@ final class OnlineIntakeController extends Controller
     public function confirm(Request $request, int $id)
     {
         $this->ready();
-        abort_unless($request->user()?->can('create voucher'),403);
+        abort_unless($request->user()?->can('finance online approve'),403);
         abort_unless(Schema::hasTable('finance_online_confirmation_events'),409,
             'Online confirmation history migration has not been applied.');
         $project=$this->project();
