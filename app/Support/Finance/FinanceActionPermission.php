@@ -83,6 +83,33 @@ final class FinanceActionPermission
         return self::moduleForSeries((string)$type) ?? 'jv';
     }
 
+    public static function dailyApprovalModule(int $approvalId): string
+    {
+        $project = (int)getSelectedTown();
+        abort_unless($project > 0 && $approvalId > 0,403);
+        $approval = DB::table('daily_voucher_approvals')->where('project_id',$project)
+            ->where('id',$approvalId)->first(['voucher_type','source_table','source_id']);
+        abort_unless($approval,404);
+        if ($approval->source_table === 'customer_ledger') return self::sourceModule((int)$approval->source_id);
+        if ($approval->source_table === 'journal_vouchers') return self::journalModule((int)$approval->source_id);
+        return self::moduleForSeries((string)$approval->voucher_type) ?? 'directory';
+    }
+
+    public static function pendingModule(int $pendingId): ?string
+    {
+        $project = (int)getSelectedTown();
+        abort_unless($project > 0 && $pendingId > 0,403);
+        $pending = DB::table('pending_updates')->where('id',$pendingId)
+            ->first(['table_name','record_id']);
+        abort_unless($pending,404);
+        return match ($pending->table_name) {
+            'ledgers' => self::ledgerModule((int)$pending->record_id),
+            'customer_ledger' => self::sourceModule((int)$pending->record_id),
+            'draft_ledgers' => 'draft',
+            default => null,
+        };
+    }
+
     /** @return array{0:string,1:string}|null */
     public static function forRequest(Request $request): ?array
     {
@@ -132,6 +159,18 @@ final class FinanceActionPermission
                 'journal.voucher.delete' => 'delete', default => 'print',
             };
             return [self::journalModule((int)$route->parameter('id')),$action];
+        }
+        if ($name === 'finance.daily-vouchers.approvals.decide') {
+            $approvalId = (int)$route->parameter('approval');
+            $decision = (string)$route->parameter('decision');
+            return [self::dailyApprovalModule($approvalId),$decision === 'reject' ? 'reject' : 'approve'];
+        }
+        if ($name === 'finance.daily-vouchers.approvals.policy') return ['directory','approve'];
+        if ($name === 'finance.daily-vouchers.approvals.index') return ['directory','view'];
+        if (in_array($name,['approvals.finance.approve','approvals.finance.reject',
+            'finance.voucher.approveadmin','finance.voucher.rejectadmin'],true)) {
+            $module = self::pendingModule((int)($route->parameter('pending') ?: $route->parameter('id')));
+            return $module ? [$module,str_contains($name,'reject') ? 'reject' : 'approve'] : null;
         }
         if (isset($fixed[$name])) return $fixed[$name];
         if ($name === 'finance.cheques.action') {
@@ -196,7 +235,7 @@ final class FinanceActionPermission
             $default = $incoming ? 'CR' : 'DR';
             $series = strtoupper((string)$request->query('series',$default));
             $module = self::moduleForSeries($series);
-            return [$module ?? strtolower($default),'view'];
+            return [$module ?? strtolower($default), $request->boolean('embed') ? 'create' : 'view'];
         }
         if (in_array($name,['finance.voucher.bank.workspace','finance.voucher.bank.sources',
             'finance.voucher.bank.history','finance.voucher.bank.print'],true)) {
