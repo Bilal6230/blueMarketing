@@ -21,7 +21,7 @@
  data-print-base="{{ url('admin/finance/voucher/plot-receipt') }}"
  data-void-base="{{ url('admin/finance/voucher/plot-receipt') }}">
  <div class="bm-voucher-heading pr-heading d-flex align-items-center justify-content-between">
-  <div><h2>Plot Receive Payment</h2><div class="bm-voucher-subtitle pr-subtitle">Selected project records · Audited narration Edit</div></div>
+  <div><h2>Plot Receive Payment</h2><div class="bm-voucher-subtitle pr-subtitle">Selected project records · Full voucher Edit</div></div>
   <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
  </div>
  <x-finance.voucher-filter-card class="pr-filter-card">
@@ -34,7 +34,7 @@
     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
     <button type="button" id="prResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
     @can('finance plot-receipt create')
-    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotReceiptCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
+    <button type="button" id="prNewVoucher" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotReceiptCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
     @endcan
    </div>
   </form>
@@ -79,7 +79,7 @@
    <div class="d-flex align-items-center justify-content-between mb-2"><label for="prSearch" class="mb-0">Allocate to one or more active plot bookings</label><input id="prSearch" class="form-control form-control-sm" style="max-width:240px" placeholder="Search plots"></div>
    <div class="table-responsive pr-bookings"><table class="table table-bordered table-hover table-sm mb-0"><thead><tr><th style="width:45px">Select</th><th>Plot / Booking</th><th>Customer</th><th>Receivable account</th><th style="width:150px">Allocate amount</th></tr></thead><tbody id="prBookingRows"><tr><td colspan="5" class="text-center text-muted p-3">Select customer to load bookings.</td></tr></tbody></table></div>
    <div class="pr-stat mt-3"><small>Receipt total (allocated): </small><span class="pr-total" id="prTotal">0.00</span><div class="small text-muted"><span id="prSelected">0</span> plots selected · choose at least 1</div></div>
-   <small class="d-block text-muted mt-2">Each plot allocation posts to its own mapped receivable account. Corrections require reversal.</small>
+   <small class="d-block text-muted mt-2">Each plot allocation updates its mapped account. Current Edit retains the original allocation count.</small>
   </div>
   <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button><button id="prPost" type="button" class="btn btn-primary btn-sm" disabled><i class="fas fa-check-circle mr-1"></i> Post receipt</button></div>
  </div></div>
@@ -125,7 +125,7 @@
  'use strict';
  $(function(){
  var $root=$('#plotReceiptApp');if(!$root.length)return;
- var bookings=[],history=[],page=1,filters={from:'',to:'',customer:'',search:''},busy=false,pendingKey=null;
+ var bookings=[],history=[],page=1,filters={from:'',to:'',customer:'',search:''},busy=false,pendingKey=null,editReceiptId=null,editAllocations=[];
  var sort='date',direction='desc',columns=null;
  var escapeText=function(value){return $('<div>').text(value == null?'':String(value)).html();};
  var money=function(n){return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});};
@@ -167,6 +167,13 @@
    $tr.append($('<td>').append($('<input>',{'type':'number','class':'form-control form-control-sm pr-amount','data-amount':b.booking_id,min:'0.01',step:'0.01',placeholder:'0.00',disabled:!b.receivable_account_id})));
    $body.append($tr);
   });
+  if(editReceiptId){
+   editAllocations.forEach(function(a){
+    $('.pr-check').filter(function(){return Number($(this).val())===Number(a.booking_id);})
+     .prop('checked',true).closest('tr').addClass('pr-picked');
+    $('.pr-amount[data-amount="'+a.booking_id+'"]').val(a.amount);
+   });
+  }
   recalc();
  };
  var filtered=function(){
@@ -194,7 +201,7 @@
    $row.append($('<td>',{'class':'text-right'}).text(money(r.amount)),$('<td>').text(r.reversed?'Reversed':'Posted'));
    var $actions=$('<td>',{'class':'blue-actions-cell'}).append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-detail','data-id':r.id,text:'Details'}));
    @can('finance plot-receipt edit')
-   if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-narration ml-1','data-id':r.id,text:'Edit narration'}));
+   if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-edit ml-1','data-id':r.id,text:'Edit voucher'}));
    @endcan
    @can('finance plot-receipt reverse')
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-void ml-1','data-id':r.id,text:'Reverse'}));
@@ -270,6 +277,28 @@
  $('#prLength').on('change',function(){page=1;drawHistory();});
  $('#prQuickSearch').on('input',function(){page=1;drawHistory();});
  @can('finance plot-receipt edit')
+ $('#prHistoryRows').on('click','.pr-edit',function(){
+  var id=$(this).attr('data-id');
+  $('#prListError').addClass('d-none').text('');
+  ajax($root.attr('data-details-base')+'/'+encodeURIComponent(id),'GET').done(function(result){
+   var receipt=result.receipt;
+   editReceiptId=Number(id);editAllocations=result.allocations||[];pendingKey=null;
+   $('#prNumber').val(receipt.receipt_number);$('#prDate').val(String(receipt.receipt_date).slice(0,10));
+   $('#prCustomer').val(String(receipt.customer_id));$('#prAccount').val(String(receipt.cash_account_id));
+   $('#prNarration').val(receipt.narration);$('#prSearch').val('');
+   $('#prCreateTitle').text('Edit Plot Receive Payment');$('#prPost').text('Save voucher');
+   drawBookings();$('#plotReceiptCreateModal').modal('show');
+  }).fail(function(xhr){
+   $('#prListError').removeClass('d-none').text(xhr.responseJSON&&xhr.responseJSON.message||'Unable to load full voucher');
+  });
+ });
+ @endcan
+ $('#prNewVoucher').on('click',function(){
+  editReceiptId=null;editAllocations=[];pendingKey=null;
+  $('#prCreateTitle').text('New Plot Receive Payment');$('#prPost').text('Post receipt');
+  $('#prNumber,#prNarration,#prSearch').val('');$('#prCustomer,#prAccount').val('');drawBookings();
+ });
+ @can('finance plot-receipt edit')
   $('#prHistoryRows').on('click','.pr-narration',function(){
    var id=$(this).attr('data-id'),record=history.find(function(row){return String(row.id)===String(id);});
    if(!record)return;
@@ -333,12 +362,15 @@
    allocations:state.rows.map(function(row){return {booking_id:row.booking_id,plot_id:row.plot_id,
     receivable_account_id:row.receivable_account_id,
     amount:Number($('.pr-amount[data-amount="'+row.booking_id+'"]').val()).toFixed(2)};})};
-  ajax($root.attr('data-post-url'),'POST',payload).done(function(res){
-   pendingKey=null;$('#plotReceiptCreateModal').modal('hide');$('#prNumber,#prNarration').val('');
+  var url=editReceiptId?$root.attr('data-details-base')+'/'+editReceiptId:$root.attr('data-post-url');
+  $.ajax({url:url,type:editReceiptId?'PATCH':'POST',contentType:'application/json',dataType:'json',
+   headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+   data:JSON.stringify(payload)}).done(function(res){
+   pendingKey=null;editReceiptId=null;editAllocations=[];$('#plotReceiptCreateModal').modal('hide');$('#prNumber,#prNarration').val('');
    $('#prCustomer').val('');$('#prSearch').val('');drawBookings();loadHistory();
   }).fail(function(xhr){
    var error=xhr.responseJSON||{};
-   notify('danger',error.message||Object.values(error.errors||{}).flat().join(' ')||'Receipt was rejected');
+   notify('danger',error.message||Object.values(error.errors||{}).flat().join(' ')||'Receipt was rejected');$('#prAlert').removeClass('d-none');
   }).always(function(){busy=false;recalc();});
  });
  loadBookings();loadHistory();
