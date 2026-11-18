@@ -1394,7 +1394,10 @@ class VoucherController extends Controller
             ->where('link.source_id',$receiptId)->where('link.source_kind','plot_receipt')
             ->where('batch.project_id',$projectId)->first(['batch.id']);
         $postingAccounts = $link ? DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$link->id)->orderBy('id')
+            ->where('posting_batch_id',$link->id)
+            ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                fn($query)=>$query->where('is_active',1))
+            ->orderBy('id')
             ->pluck('project_head_subhead_id')->all() : [];
         $cashAccount=$postingAccounts[0]??null;
         $allocations=$details['allocations']->values()->map(function($row,$index)use($postingAccounts){
