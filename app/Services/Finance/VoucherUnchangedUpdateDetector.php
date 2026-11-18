@@ -23,6 +23,16 @@ final class VoucherUnchangedUpdateDetector
             || $oldDetails->count() !== count($lines)) {
             return false;
         }
+        $totalDebit=0.0;
+        $totalCredit=0.0;
+        foreach ($lines as $line) {
+            $totalDebit+=(float)$line['debit'];
+            $totalCredit+=(float)$line['credit'];
+        }
+        if ($this->amount($voucher->total_debit??$totalDebit)!==$this->amount($totalDebit)
+            || $this->amount($voucher->total_credit??$totalCredit)!==$this->amount($totalCredit)) {
+            return false;
+        }
         $old=$oldDetails->sortBy('id')->values();
         foreach (array_values($lines) as $index=>$line) {
             $detail=$old[$index];
