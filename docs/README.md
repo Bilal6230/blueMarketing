@@ -176,6 +176,8 @@ Expected new classification: `landing_pages` **ELOQUENT_MODEL_DEPENDENT**, `lega
 
 **Honest limitations:** Editing **the number of allocated plot lines or purchased inventory rows** is not yet supported: those operations currently fail with a clear 409 and roll back without partial writes. Neither ordinary Plot Delete nor other remaining voucher families' full CRUD is delivered in this commit. Existing exact financial posting lines are modified **in place** under a transaction and before-image snapshot rather than physically deleted; this changes their original amounts, so accounting/provenance acceptance must explicitly confirm it meets owner policy before live deployment. No claim of completed Milestone 03 yet. Browser acceptance required for each full Edit flow.
 
+**Follow-up quality fixes in the same implementation batch:** Full Receipt Details now reads the original cash and individual receivable accounts from the exact posting lines, so editing does not silently replace a historical account with the current default. Purchase Edit Details reads optional plot-definition columns conditionally for database portability. Added two more integration regressions: booked Purchase inventory and wrong-project Receipt edits fail without changing postings. Old original Create idempotency request keys now reject stale replay after full editing. The full form's Save preserves existing source/batch/plot IDs and does not add a table. **These new tests are code-committed only; owner local PASS is still pending.**
+
 **Owner local gate:**
 ```powershell
 cd C:\laragon\www\blueMarketing
