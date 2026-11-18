@@ -35,6 +35,7 @@
    <div class="bm-voucher-filter-actions">
     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
     <button type="button" id="ppResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
+    @can('finance plot-purchase create')
     <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotPurchaseCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
      @endcan
    </div>
