@@ -33,7 +33,9 @@
    <div class="bm-voucher-filter-actions pr-filter-actions">
     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
     <button type="button" id="prResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
+    @can('finance plot-receipt create')
     <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotReceiptCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
+    @endcan
    </div>
   </form>
  </x-finance.voucher-filter-card>
@@ -88,7 +90,7 @@
   <div class="modal-body" id="prDetailsBody"></div>
  </div></div>
 </div>
-@can('delete voucher')
+@can('finance plot-receipt reverse')
 <div class="modal fade" id="prVoidModal" tabindex="-1" role="dialog" aria-labelledby="prVoidTitle" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
   <div class="modal-header"><h5 id="prVoidTitle" class="modal-title">Reverse Plot Receipt</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
@@ -178,7 +180,7 @@
    $row.append($('<td>').text(r.customer),$('<td>').text(r.narration));
    $row.append($('<td>',{'class':'text-right'}).text(money(r.amount)),$('<td>').text(r.reversed?'Reversed':'Posted'));
    var $actions=$('<td>',{'class':'blue-actions-cell'}).append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-detail','data-id':r.id,text:'Details'}));
-   @can('delete voucher')
+   @can('finance plot-receipt reverse')
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-void ml-1','data-id':r.id,text:'Reverse'}));
    @endcan
    $row.append($actions);
@@ -252,7 +254,7 @@
  $('#prLength').on('change',function(){page=1;drawHistory();});
  $('#prQuickSearch').on('input',function(){page=1;drawHistory();});
  $('#prHistoryRows').on('click','.pr-detail',function(){showDetails($(this).attr('data-id'));});
- @can('delete voucher')
+ @can('finance plot-receipt reverse')
  $('#prHistoryRows').on('click','.pr-void',function(){
   $('#prVoidForm').data('source-id',$(this).attr('data-id'));
   $('#prVoidReason').val('');$('#prVoidError').addClass('d-none').text('');
