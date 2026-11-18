@@ -35,4 +35,13 @@ final class PlotVoucherLifecycleColumnsTest extends TestCase
         self::assertStringContainsString("->whereNull('receipt.deleted_at')",$controller);
         self::assertStringContainsString("->whereNull('purchase.deleted_at')",$controller);
     }
+    public function test_plot_writer_has_single_schema_import_and_blocks_archived_idempotency_replay(): void
+    {
+        $source=file_get_contents(dirname(__DIR__,3).'/app/Services/Finance/PlotEntryWriter.php');
+        self::assertIsString($source);
+        self::assertSame(1,substr_count($source,'use Illuminate\\Support\\Facades\\Schema;'));
+        self::assertStringContainsString('PLOT_SOURCE_ARCHIVED',$source);
+        self::assertStringContainsString("->where('project_id',\$project)",$source);
+    }
+
 }
