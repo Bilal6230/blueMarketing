@@ -143,7 +143,7 @@
 
                                                 <!-- Table -->
                                                 <div class="table-responsive bm-draft-scroll bm-voucher-initial-pending">
-                                                    <div class="bm-voucher-initial-skeleton" role="status" aria-label="Loading draft vouchers"><table class="table table-bordered w-100" aria-hidden="true"><tbody id="draftVoucherInitialSkeleton"></tbody></table></div>
+                                                    <div class="bm-voucher-initial-skeleton" role="status" aria-label="Loading draft vouchers"><table class="table table-bordered w-100" aria-hidden="true"><tbody id="draftVoucherInitialSkeleton">@include('components.finance.voucher-skeleton-rows', ['columns' => 9])</tbody></table></div>
                                                     <table id="bmDraftTable" class="table bm-table table-bordered table-hover align-middle mb-0 w-100">
                                                         <thead class="table-light border-bottom">
                                                             <tr>
