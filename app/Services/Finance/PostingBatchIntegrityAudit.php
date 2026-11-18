@@ -37,6 +37,12 @@ final class PostingBatchIntegrityAudit
             ->get(['line.posting_batch_id','line.project_head_subhead_id','line.debit','line.credit',
                 'account.project_id as account_project_id'])
             ->groupBy('posting_batch_id');
+        // Read original reversal targets independently, including foreign
+        // projects, so a cross-project reversal cannot masquerade as valid.
+        $reversalIds=$batches->pluck('reversal_of_batch_id')->filter()->unique()->values()->all();
+        $reversedOriginals=$reversalIds === [] ? collect() :
+            DB::table('finance_posting_batches')->whereIn('id',$reversalIds)
+                ->get(['id','project_id','posted_at','reversal_of_batch_id'])->keyBy('id');
         $findings=[];
         foreach ($batches as $batch) {
             $legs=$lines->get($batch->id,collect());
@@ -56,6 +62,19 @@ final class PostingBatchIntegrityAudit
                 $debit+=$dr;$credit+=$cr;
             }
             if ($debit<1 || $debit!==$credit) $issues[]='POSTING_UNBALANCED';
+            if ($batch->reversal_of_batch_id !== null) {
+                $original=$reversedOriginals->get((int)$batch->reversal_of_batch_id);
+                if (!$original || (int)$original->project_id!==$projectId
+                    || $original->posted_at===null
+                    || $original->reversal_of_batch_id!==null) {
+                    $issues[]='REVERSAL_ORIGINAL_PROJECT_OR_STATE_MISMATCH';
+                }
+                if ((string)$batch->voucher_series!=='REV') {
+                    $issues[]='REVERSAL_SERIES_MISMATCH';
+                }
+            } elseif ((string)$batch->voucher_series==='REV') {
+                $issues[]='REVERSAL_ORIGINAL_MISSING';
+            }
             if ($issues!==[]) $findings[]=[
                 'batch_id'=>(int)$batch->id,
                 'series'=>(string)$batch->voucher_series,
