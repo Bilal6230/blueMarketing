@@ -437,3 +437,32 @@ Further source inspection found a crucial edge case in the new integrity guard: 
 **Regression extensions:** The existing add/archive/restore Receipt test now performs one more valid Edit after restoring the older booking and asserts balance, original allocation row count and single batch. The existing Purchase dynamic add/archive test likewise performs an additional Edit after removing a prior plot and verifies no duplicate purchase items or batch.
 
 **Owner verification pending:** Run the PlotEntryWriterTest and PlotFullVoucherEditContractTest commands in the preceding section after pulling latest branch. This is a code/test change, not a new migration. No new SQL tables or columns.
+
+
+## 2026-11-18 — Owner accepted Plot relationship browser tests + cross-series posting audit batch
+
+**Owner acceptance:** Local `bluenew_clean_final` browser scenarios 1) Plot Receipt add/remove/restore + correct receivable account prefill, 2) Plot Purchase existing record Update/no duplicate inventory, and 3) AJAX validation error without full-page reload were all explicitly confirmed PASS. The immediately preceding owner terminal results were `PlotEntryWriterTest` **41 PASS / 263 assertions**, `PlotFullVoucherEditContractTest` **5 PASS / 88 assertions** (46 total / 351 assertions); `view:cache` and PHP lint passed. Do not request these browser tests again without relevant UX changes.
+
+**This GitHub implementation batch (new local verification PENDING):**
+- `PlotPurchaseReconciliation::audit` excludes logically deleted (`is_active=0` or `deleted_at` set) Plot Purchase roots from *active* inventory reconciliation. The original source, posting, reversal and item evidence remain stored; no financial mutation occurs. Extended Plot Purchase Delete integration test to assert no false-positive active inventory findings after archive.
+- Added reusable read-only `PostingBatchIntegrityAudit`, which scans every posted series (including reversal batches) for a requested project, considers only active posting legs, checks debit/credit positivity and equal amounts, verifies account project ownership, and reports invalid or missing line legs. It does not change rows or introduce a table.
+- Added Artisan command `finance:audit-posting-balances --project=N` (`--json` optional). Explicit project scoping is required to avoid accidental cross-project reporting. It exits nonzero if findings exist. This is an integrity check; it does not certify every voucher module's business lifecycle or replace full reports.
+- Added isolated integration regression for a valid Receipt and Purchase pair, tampered financial credit, restored balanced posting, an inactive credit leg, and another project's empty result. It checks that no extra posting batch is created.
+
+**Owner local gate (no migration or browser test for backend/read-only change):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/PostingBatchIntegrityAudit.php
+php -l app/Console/Commands/AuditPostingBatchIntegrity.php
+php -l app/Services/Finance/PlotPurchaseReconciliation.php
+php -l tests/Feature/Finance/PlotEntryWriterTest.php
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=PlotFullVoucherEditContractTest
+php artisan finance:audit-posting-balances --project=3
+```
+
+The example project ID 3 is only valid if project 3 exists in the user's current DB; use the selected local project ID. Audit is read-only. Do not misreport failures if actual historical data is inconsistent; investigate each batch first.
+
+**Roadmap:** Milestone 03 remains PARTIAL. This batch advances shared posting integrity and Plot reconciliation, but remaining JV/CV/cash/stock/etc full CRUD and permissions browser acceptance are not certified, and Milestones 04/05 are pending. The preceding browser gate is closed and does not require repetition.
