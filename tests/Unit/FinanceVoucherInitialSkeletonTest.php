@@ -33,7 +33,7 @@ final class FinanceVoucherInitialSkeletonTest extends TestCase
         self::assertStringContainsString('extraChargeInitialSkeleton', $view);
         self::assertStringContainsString("$(document).on('init.dt'", $view);
         self::assertStringContainsString("settings.nTable.id==='example1'", $view);
-        self::assertStringContainsString("removeClass('bm-extra-list-pending')", $view);
+        self::assertStringContainsString("removeClass('bm-extra-list-pending bm-voucher-initial-pending')", $view);
     }
     public function test_shared_skeleton_takes_voucher_theme_color_and_preserves_credit_debit_tones(): void
     {
