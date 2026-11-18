@@ -300,12 +300,16 @@ $(function () {
     };
     var loadHistory = function () {
         $('#transferListError').addClass('d-none');
+        if ($.blueTableSkeleton) $.blueTableSkeleton.show('#transferRows',{rows:10,columns:9});
         return $.ajax({
             url:$root.attr('data-history-url'),dataType:'json',headers:{Accept:'application/json'}
         }).done(function (json) {
             allRows = $.isArray(json.data) ? json.data : [];
             page = 1;drawRows();
+            if ($.blueTableSkeleton) $.blueTableSkeleton.clear('#transferRows');
         }).fail(function(xhr) {
+            if ($.blueTableSkeleton) $.blueTableSkeleton.clear('#transferRows');
+            $('#transferRows').empty().append($('<tr>').append($('<td>',{colspan:9,'class':'text-center text-muted p-4',text:'Unable to load voucher history'})));
             showError($('#transferListError'),xhr,'Could not load voucher history');
         });
     };
