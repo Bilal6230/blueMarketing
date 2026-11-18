@@ -23,7 +23,7 @@
  data-details-base="{{ url('admin/finance/voucher/plot-purchase') }}"
  data-void-base="{{ url('admin/finance/voucher/plot-purchase') }}">
  <div class="bm-voucher-heading d-flex justify-content-between align-items-center">
-  <div><h2>Plot Purchase Voucher</h2><div class="bm-voucher-subtitle">Selected project records · Audited narration Edit</div></div>
+  <div><h2>Plot Purchase Voucher</h2><div class="bm-voucher-subtitle">Selected project records · Full voucher Edit</div></div>
   <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
  </div>
  <x-finance.voucher-filter-card class="bm-voucher-filter-card pp-filter-card">
@@ -36,7 +36,7 @@
     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
     <button type="button" id="ppResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
     @can('finance plot-purchase create')
-    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotPurchaseCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
+    <button type="button" id="ppNewVoucher" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotPurchaseCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
      @endcan
    </div>
   </form>
@@ -75,7 +75,7 @@
    <div class="form-group"><label>Narration</label><textarea id="ppNarration" class="form-control" rows="2" maxlength="2000" placeholder="Purchase agreement, seller reference, or notes"></textarea></div>
    <div class="d-flex justify-content-between align-items-center mb-2"><b>Purchased plots</b><button type="button" id="ppAdd" class="btn btn-sm btn-outline-primary">+ Add plot</button></div>
    <div id="ppItems"></div><div class="d-flex justify-content-between align-items-center border-top pt-3 mb-3"><span>Total purchase cost</span><span class="pp-total" id="ppTotal">0.00</span></div>
-   <small class="d-block pp-muted mt-2">Posts plot inventory debit and seller credit. Posting is append-only; corrections require reversal.</small>
+   <small class="d-block pp-muted mt-2">Posts plot inventory debit and seller credit. Edit retains existing source, plot and posting IDs and the purchased plot count.</small>
 
   </div>
   </div>
@@ -143,7 +143,7 @@
       return {ok:false,status:xhr.status||0,json:async()=>xhr.responseJSON||{message:xhr.statusText||'Request failed'}};
     }
   };
-  const root=$('#plotPurchaseApp')[0];if(!root)return;const byId=id=>$('#'+$.escapeSelector(id))[0],esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),money=n=>(Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});let options={roads:[],facings:[],definitions:[]},busy=false,pendingRequestKey=null;
+  const root=$('#plotPurchaseApp')[0];if(!root)return;const byId=id=>$('#'+$.escapeSelector(id))[0],esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),money=n=>(Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});let options={roads:[],facings:[],definitions:[]},busy=false,pendingRequestKey=null,editPurchaseId=null;
  const alert=(kind,msg)=>{const box=byId('ppAlert');box.className='alert alert-'+kind;box.textContent=msg;$(box).removeClass('d-none')};
  const defs=kind=>options.definitions.filter(x=>x.kind===kind);
  function fillSelect(select,items,label){select.innerHTML=`<option value="">Select ${label}</option>`+items.map(x=>`<option value="${x.id}" data-legacy="${esc(x.legacy_value??'')}" data-size="${esc(x.size_value??'')}" data-unit="${esc(x.unit_code??'')}">${esc(x.code?x.code+' · ':'')}${esc(x.name)}</option>`).join('')}
@@ -187,7 +187,7 @@
      var $actions=$('<td>',{'class':'blue-actions-cell'}).append(
        $('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-detail','data-id':x.id,text:'Details / print'}));
      @can('finance plot-purchase edit')
-     if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-narration ml-1','data-id':x.id,text:'Edit narration'}));
+     if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-edit ml-1','data-id':x.id,text:'Edit voucher'}));
      @endcan
      @can('finance plot-purchase reverse')
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-void ml-1','data-id':x.id,text:'Reverse'}));
@@ -241,6 +241,38 @@
  });
  $('#ppLength,#ppQuickSearch').on('input change',function(){historyPage=1;drawHistory();});
  @can('finance plot-purchase edit')
+  $('#ppHistory').on('click','.pp-edit',function(){
+   var id=$(this).attr('data-id');
+   $('#ppAlert').addClass('d-none').text('');
+   $.ajax({url:root.dataset.detailsBase+'/'+encodeURIComponent(id),dataType:'json',
+    headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}).done(function(result){
+    var purchase=result.purchase,items=result.items||[];
+    editPurchaseId=Number(id);pendingRequestKey=null;
+    $('#ppNumber').val(purchase.purchase_number);$('#ppDate').val(String(purchase.purchase_date).slice(0,10));
+    $('#ppSeller').val(String(purchase.seller_account_id));$('#ppNarration').val(purchase.narration);
+    $('#ppItems').empty();
+    items.forEach(function(item){
+     row();var $fields=$('#ppItems .pp-item').last();
+     $fields.find('[data-field]').each(function(){
+      if(item[this.dataset.field]!==null && item[this.dataset.field]!==undefined)
+       $(this).val(String(item[this.dataset.field]));
+     });
+    });
+    $('#ppCreateTitle').text('Edit Plot Purchase Voucher');
+    $('#ppPost').text('Save voucher');$('#ppAdd,.pp-remove').prop('disabled',true);
+    recalc();$('#plotPurchaseCreateModal').modal('show');
+   }).fail(function(xhr){
+    alert('danger',xhr.responseJSON&&xhr.responseJSON.message||'Cannot load full purchase voucher');
+   });
+  });
+  @endcan
+  $('#ppNewVoucher').on('click',function(){
+   editPurchaseId=null;pendingRequestKey=null;
+   $('#ppCreateTitle').text('New Plot Purchase Voucher');$('#ppPost').text('Post purchase');
+   $('#ppNumber,#ppNarration').val('');$('#ppSeller').val('');
+   $('#ppAdd').prop('disabled',false);$('#ppItems').empty();row();
+  });
+ @can('finance plot-purchase edit')
   $('#ppHistory').on('click','.pp-narration',function(){
    var id=$(this).attr('data-id'),record=history.find(function(row){return String(row.id)===String(id);});
    if(!record)return;
@@ -292,7 +324,7 @@
   }).always(function(){$submit.prop('disabled',false);});
  });
  @endcan
- $('#ppAdd').on('click',row);['ppNumber','ppDate','ppSeller','ppNarration'].forEach(id=>$('#'+$.escapeSelector(id)).on('input',recalc));$('#ppPost').on('click',async()=>{recalc();if(byId('ppPost').disabled)return;busy=true;recalc();const payload={request_key:(pendingRequestKey||(pendingRequestKey=('plotpurchase'+Date.now().toString(36)+Math.random().toString(36).slice(2,15)))),purchase_number:byId('ppNumber').value.trim(),date:byId('ppDate').value,seller_account_id:Number(byId('ppSeller').value),narration:byId('ppNarration').value.trim(),items:$('.pp-item').toArray().map(el=>{const o={};$(el).find('[data-field]').toArray().forEach(x=>o[x.dataset.field]=x.value);for(const k of ['type','road_id','facing_id','is_corner','plot_category_definition_id','plot_type_definition_id','plot_size_definition_id','plot_unit_definition_id','inventory_account_id'])if(o[k]==='')delete o[k];return o})};try{const r=await requestJson(root.dataset.postUrl,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},body:JSON.stringify(payload)}),j=await r.json();if(!r.ok)throw Error(j.message||Object.values(j.errors||{}).flat().join(' ')||'Purchase was rejected');pendingRequestKey=null;alert('success',`Purchase ${payload.purchase_number} posted. Posting batch #${j.data.posting_batch_id}.`);byId('ppNumber').value='';byId('ppNarration').value='';await loadHistory();$('#plotPurchaseCreateModal').modal('hide')}catch(e){alert('danger',e.message)}finally{busy=false;recalc()}});init()});
+ $('#ppAdd').on('click',row);['ppNumber','ppDate','ppSeller','ppNarration'].forEach(id=>$('#'+$.escapeSelector(id)).on('input',recalc));$('#ppPost').on('click',async()=>{recalc();if(byId('ppPost').disabled)return;busy=true;recalc();const payload={request_key:(pendingRequestKey||(pendingRequestKey=('plotpurchase'+Date.now().toString(36)+Math.random().toString(36).slice(2,15)))),purchase_number:byId('ppNumber').value.trim(),date:byId('ppDate').value,seller_account_id:Number(byId('ppSeller').value),narration:byId('ppNarration').value.trim(),items:$('.pp-item').toArray().map(el=>{const o={};$(el).find('[data-field]').toArray().forEach(x=>o[x.dataset.field]=x.value);for(const k of ['type','road_id','facing_id','is_corner','plot_category_definition_id','plot_type_definition_id','plot_size_definition_id','plot_unit_definition_id','inventory_account_id'])if(o[k]==='')delete o[k];return o})};try{const r=await requestJson(editPurchaseId?root.dataset.detailsBase+'/'+editPurchaseId:root.dataset.postUrl,{method:editPurchaseId?'PATCH':'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},body:JSON.stringify(payload)}),j=await r.json();if(!r.ok)throw Error(j.message||Object.values(j.errors||{}).flat().join(' ')||'Purchase was rejected');pendingRequestKey=null;alert('success',editPurchaseId?'Plot Purchase updated.':`Purchase ${payload.purchase_number} posted. Posting batch #${j.data.posting_batch_id}.`);editPurchaseId=null;byId('ppNumber').value='';byId('ppNarration').value='';await loadHistory();$('#plotPurchaseCreateModal').modal('hide')}catch(e){alert('danger',e.message);$('#ppAlert').removeClass('d-none')}finally{busy=false;recalc()}});init()});
 })();
 </script>
 @endsection
