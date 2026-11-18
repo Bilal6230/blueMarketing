@@ -330,7 +330,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         ->middleware(['throttle:20,1'])->name('finance.cheques.store');
 
     Route::get('finance/voucher/cash-only/attachment/{attachment}', [\App\Http\Controllers\Finance\CashOnlyVoucherController::class, 'attachment'])
-        ->whereNumber('attachment')->name('finance.voucher.cash-only.attachment');
+        ->whereNumber('attachment')->middleware('permission:read voucher|voucher approver')->name('finance.voucher.cash-only.attachment');
     Route::post('finance/voucher/cash-only/draft', [\App\Http\Controllers\Finance\CashOnlyVoucherController::class, 'draft'])
         ->middleware(['throttle:20,1'])->name('finance.voucher.cash-only.draft');
     Route::post('finance/voucher/cash-only', [\App\Http\Controllers\Finance\CashOnlyVoucherController::class, 'store'])
