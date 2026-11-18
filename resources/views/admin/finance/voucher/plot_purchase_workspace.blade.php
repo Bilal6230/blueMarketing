@@ -184,12 +184,15 @@
    });
  }
  async function loadHistory(){
+   if($.blueTableSkeleton)$.blueTableSkeleton.show('#ppHistory',{rows:10,columns:8});
    try{
      const response=await requestJson(root.dataset.historyUrl,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}});
      const data=await response.json();
      if(!response.ok)throw Error(data.message||'Could not load purchases');
      history=data.data||[];historyPage=1;drawHistory();
+     if($.blueTableSkeleton)$.blueTableSkeleton.clear('#ppHistory');
    }catch(error){
+     if($.blueTableSkeleton)$.blueTableSkeleton.clear('#ppHistory');
      $('#ppHistory').empty().append($('<tr>').append($('<td>',{colspan:8,'class':'text-danger p-3',text:error.message||'Unable to load'})));
      $('#ppSummary').text('Unable to load purchases');
    }
