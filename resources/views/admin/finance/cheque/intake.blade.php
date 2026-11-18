@@ -89,7 +89,7 @@
         <div class="cheque-heading bm-page-heading d-flex align-items-center justify-content-between flex-wrap">
             <div><h4 class="mb-0">Cheque Management</h4><small class="text-muted">Selected project records · Receiving Register</small></div>
             <x-finance.voucher-directory-actions>
-                @can('create voucher')
+                @can('finance cheque create')
                     <button type="button" class="btn btn-success btn-sm" id="cheque-add-btn"><i class="fas fa-plus mr-1"></i> Add Cheque</button>
                 @endcan
             </x-finance.voucher-directory-actions>
@@ -153,7 +153,7 @@
     </div>
 </div>
 
-@can('create voucher')
+@can('finance cheque create')
 <div class="modal fade" id="cheque-create-modal" tabindex="-1" role="dialog" aria-labelledby="cheque-create-title" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title" id="cheque-create-title">Add New Cheque</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
@@ -440,35 +440,41 @@ $(function () {
         $('<td>').addClass('text-right').text(Number.isFinite(amount)?amount.toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}):'0.00').appendTo($tr);
         $('<td>').append($('<span>').addClass('cheque-status-badge cheque-status-'+(r.status||'received')).text((r.status||'received').replace(/_/g,' '))).appendTo($tr);
         var $slip=$('<td>').addClass('text-nowrap');
+        if(@json(auth()->user()->can('finance cheque print'))) {
         $('<a>').addClass('btn btn-sm btn-outline-success mr-1').attr({
             href:slipUrl(r.id)+'?size=a5&print=1',target:'_blank',rel:'noopener',title:'A5 receipt'
         }).text('A5 Print').appendTo($slip);
         $('<a>').addClass('btn btn-sm btn-outline-primary').attr({
             href:slipUrl(r.id)+'?size=pos80&print=1',target:'_blank',rel:'noopener',title:'POS 80mm receipt'
         }).text('POS 80').appendTo($slip);
+        }
         $slip.appendTo($tr);
         var $actions=$('<td>').addClass('blue-actions-cell');
-        if(@json(auth()->user()->can('create voucher')) && (r.status==='received'||r.status==='issued')) {
+        if((r.status==='received'||r.status==='issued')) {
+            if(@json(auth()->user()->can('finance cheque clear')))
             $('<button type="button">').addClass('btn btn-sm btn-outline-success mr-1 cheque-action')
                 .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
                 .attr('data-amount',r.amount).attr('data-direction',r.direction||'in').attr('data-kind','clearing').text('Send for Clearing').appendTo($actions);
-            if((r.direction||'in')==='in') {
+            if((r.direction||'in')==='in' && @json(auth()->user()->can('finance cheque withdraw'))) {
                 $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-action')
                     .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
                     .attr('data-amount',r.amount).attr('data-kind','withdrawal').text('Direct Withdrawal').appendTo($actions);
             }
-        } else if(@json(auth()->user()->can('create voucher')) && r.status==='pending_clearing') {
+        } else if(r.status==='pending_clearing') {
+            var decisionPermissions={cleared:@json(auth()->user()->can('finance cheque clear')),returned:@json(auth()->user()->can('finance cheque return')),rejected:@json(auth()->user()->can('finance cheque reject'))};
             $.each([['cleared','Mark Cleared','success'],['returned','Returned / Bounced','warning'],['rejected','Rejected / Memo','danger']],function(_,item){
+                if(!decisionPermissions[item[0]])return;
                 $('<button type="button">').addClass('btn btn-sm btn-outline-'+item[2]+' mr-1 cheque-finalize')
                     .attr({'data-id':r.id,'data-cheque':r.cheque_number,'data-amount':r.amount,'data-direction':r.direction||'in','data-decision':item[0]})
                     .text(item[1]).appendTo($actions);
             });
         }
-        if(Number(r.linked_voucher_count||0)>0){
+        if(@json(auth()->user()->can('finance cheque history')) && Number(r.linked_voucher_count||0)>0){
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-history mr-1')
                 .attr({'data-id':r.id,'data-cheque':r.cheque_number,'title':'Open linked voucher allocation history'})
                 .text('Vouchers ('+Number(r.linked_voucher_count)+')').appendTo($actions);
         }
+        if(@json(auth()->user()->can('finance cheque history')))
         $('<button type="button">').addClass('btn btn-sm btn-outline-secondary cheque-history')
             .attr({'data-id':r.id,'data-cheque':r.cheque_number}).text('History').appendTo($actions);
         $actions.appendTo($tr);
@@ -663,7 +669,7 @@ $(function () {
     });
     initChequeTomSelects();
     // Bank-clearing / direct-withdrawal workflows. No accounting postings are made here.
-    @can('create voucher')
+    @if(auth()->user()->can('finance cheque clear') || auth()->user()->can('finance cheque withdraw') || auth()->user()->can('finance cheque return') || auth()->user()->can('finance cheque reject'))
     $('#cheque-table-body').on('click','.cheque-action',function(){
         var $button=$(this),kind=$button.attr('data-kind');
         actionTarget={id:$button.attr('data-id'),kind:kind};
@@ -730,7 +736,7 @@ $(function () {
             }).always(function(){actionBusy=false;$('#cheque-action-submit').prop('disabled',false);});
         });
     });
-    @endcan
+    @endif
     // Milestone 01.4 — history, mandatory bank verification and terminal status decisions.
     $('#cheque-table-body').on('click','.cheque-history',function(){
         var id=$(this).attr('data-id'), number=$(this).attr('data-cheque');
@@ -763,7 +769,7 @@ $(function () {
             $body.empty().append($('<tr>').append($('<td colspan="5" class="text-danger">').text('Could not load cheque history.')));
         });
     });
-    @can('create voucher')
+    @can('finance cheque create')
     $('#cheque-table-body').on('click','.cheque-finalize',function(){
         var $btn=$(this),decision=$btn.attr('data-decision');
         finalizeTarget={id:$btn.attr('data-id'),decision:decision};
