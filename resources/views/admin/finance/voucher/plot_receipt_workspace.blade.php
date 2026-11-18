@@ -191,6 +191,7 @@
  };
  var loadHistory=function(){
   $('#prListError').addClass('d-none').empty();
+  if($.blueTableSkeleton)$.blueTableSkeleton.show('#prHistoryRows',{rows:10,columns:8});
   return ajax($root.attr('data-history-url'),'GET').done(function(res){
    history=res.data||[];var names={};
    history.forEach(function(r){if(r.customer)names[r.customer]=true;});
@@ -198,7 +199,8 @@
    $filter.empty().append($('<option>',{value:'',text:'All customers'}));
    Object.keys(names).sort().forEach(function(name){$filter.append($('<option>',{value:name,text:name}));});
    $filter.val(chosen||'');page=1;drawHistory();
-  }).fail(function(xhr){$('#prHistoryRows').empty().append($('<tr>').append($('<td>',{colspan:8,'class':'text-danger p-3',text:xhr.responseJSON&&xhr.responseJSON.message||'Unable to load receipts'})));
+   if($.blueTableSkeleton)$.blueTableSkeleton.clear('#prHistoryRows');
+  }).fail(function(xhr){if($.blueTableSkeleton)$.blueTableSkeleton.clear('#prHistoryRows');$('#prHistoryRows').empty().append($('<tr>').append($('<td>',{colspan:8,'class':'text-danger p-3',text:xhr.responseJSON&&xhr.responseJSON.message||'Unable to load receipts'})));
    $('#prListError').removeClass('d-none').text(xhr.responseJSON&&xhr.responseJSON.message||'Unable to load receipts');});
  };
  var loadBookings=function(){
