@@ -14,7 +14,7 @@ final class FinanceVoucherEditPermissionParityTest extends TestCase
         $mapping = file_get_contents(dirname(__DIR__, 3).'/app/Support/Finance/FinanceActionPermission.php');
         self::assertIsString($mapping);
         self::assertStringContainsString("'finance.daily-vouchers.revise.edit','finance.daily-vouchers.revise.store'", $mapping);
-        self::assertStringContainsString("str_ends_with(\$name,'.edit') ? 'edit' : 'edit'", $mapping);
+        self::assertStringContainsString("default => 'edit'", $mapping);
         self::assertSame('finance cr edit', FinanceActionPermission::name('cr','edit'));
         self::assertNotSame(FinanceActionPermission::name('cr','edit'),FinanceActionPermission::name('cr','resubmit'));
     }
