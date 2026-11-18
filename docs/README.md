@@ -426,3 +426,14 @@ php artisan test --filter=PlotFullVoucherEditContractTest
 ```
 
 **Remaining scope:** overall Milestone 03 cross-family voucher CRUD and shared financial reporting regression are still not certified complete. Do not imply this focused integrity batch completes those unrelated modules. No new DB migration needed.
+
+
+## 2026-11-18 — Follow-on: historical posting line identity after archive/restore
+
+Further source inspection found a crucial edge case in the new integrity guard: after an allocation was archived then restored, the allocation row ID may be older than the new active posting line ID. An index-based old-line check would reject a valid subsequent Edit. This was corrected before owner testing.
+
+**Committed code fix:** Existing Receipt credit legs are now matched against active allocation rows by project/customer/plot account relation and exact amount, not line sequence; original posting-line ID maps to the matching booking_id for the replacement operation. Existing Purchase inventory debit legs are matched by linked source item's unique plot-code description, inventory account and amount, and mapped to the matching legacy_plot_id regardless of row order. Ambiguous/mismatched original evidence fails safely before writes; no extra posting batch. Historic lines remain deactivated, not hard-deleted.
+
+**Regression extensions:** The existing add/archive/restore Receipt test now performs one more valid Edit after restoring the older booking and asserts balance, original allocation row count and single batch. The existing Purchase dynamic add/archive test likewise performs an additional Edit after removing a prior plot and verifies no duplicate purchase items or batch.
+
+**Owner verification pending:** Run the PlotEntryWriterTest and PlotFullVoucherEditContractTest commands in the preceding section after pulling latest branch. This is a code/test change, not a new migration. No new SQL tables or columns.
