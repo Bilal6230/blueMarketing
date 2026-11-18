@@ -21,6 +21,9 @@ final class AuditVoucherSchema extends Command
         ['ledgers','journal_voucher_detail_id','journal_voucher_details','id'],
         ['ledgers','customer_ledger_id','customer_ledger','id'],
         ['ledgers','project_head_subheads_id','project_head_subheads','id'],
+        ['journal_voucher_details','account_id','project_head_subheads','id'],
+        ['commision_voucher_details','account_id','project_head_subheads','id'],
+        ['ledger_source_attributions','ledger_id','ledgers','id'],
     ];
 
     public function handle(): int
