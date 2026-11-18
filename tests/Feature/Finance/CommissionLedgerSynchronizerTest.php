@@ -187,4 +187,25 @@ final class CommissionLedgerSynchronizerTest extends TestCase
             'date'=>'2026-11-18','status'=>'0','is_active'=>0,
         ]);
     }
+    public function test_draft_backfill_command_is_read_only_until_apply_and_idempotent(): void
+    {
+        DB::table('commision_vouchers')->insert([
+            'id'=>3,'project_id'=>1,'voucher_number'=>'CV-OLD-3',
+            'date'=>'2026-11-18','status'=>'draft',
+            'total_debit'=>500,'total_credit'=>500,
+        ]);
+        DB::table('commision_voucher_details')->insert([
+            ['id'=>31,'commision_voucher_id'=>3,'account_id'=>101,'debit'=>500,'credit'=>0],
+            ['id'=>32,'commision_voucher_id'=>3,'account_id'=>102,'debit'=>0,'credit'=>500],
+        ]);
+        $artisan=\Illuminate\Support\Facades\Artisan::class;
+        self::assertSame(0,$artisan::call('finance:sync-commission-draft-ledgers'));
+        self::assertSame(0,DB::table('ledgers')->count());
+        self::assertSame(0,$artisan::call('finance:sync-commission-draft-ledgers',['--apply'=>true]));
+        self::assertSame(2,DB::table('ledgers')->count());
+        self::assertSame(0,$artisan::call('finance:sync-commission-draft-ledgers',['--apply'=>true]));
+        self::assertSame(2,DB::table('ledgers')->count());
+        self::assertSame(0,DB::table('ledgers')->where('is_active',1)->count());
+    }
+
 }
