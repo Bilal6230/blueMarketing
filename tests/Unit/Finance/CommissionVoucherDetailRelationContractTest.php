@@ -18,7 +18,7 @@ final class CommissionVoucherDetailRelationContractTest extends TestCase
         self::assertStringContainsString('restrictOnDelete()',$migration);
         self::assertStringNotContainsString('Schema::create(',$migration);
         self::assertStringContainsString('commision_voucher_detail_id',$ledger);
-        self::assertStringContainsString("$attributes['commision_voucher_detail_id'] = $detail->id",$controller);
+        self::assertStringContainsString("\$attributes['commision_voucher_detail_id'] = \$detail->id",$controller);
         self::assertStringContainsString('Commission ledger detail account or amount mismatch',$retirement);
         self::assertStringContainsString('if (!$detailId) continue;',$retirement);
     }
@@ -38,6 +38,8 @@ final class CommissionVoucherDetailRelationContractTest extends TestCase
         self::assertNotFalse($guard);
         self::assertNotFalse($archive);
         self::assertLessThan($archive,$guard);
-        self::assertStringContainsString("->where('commision_voucher_id', $sourceId)->whereNull('deleted_at')",$update);
+        self::assertStringContainsString("->where('commision_voucher_id', \$sourceId)->whereNull('deleted_at')",$update);
+        self::assertStringContainsString("array_key_exists('reference',\$metadata)",$update);
+        self::assertStringContainsString("array_key_exists('description',\$metadata)",$update);
     }
 }
