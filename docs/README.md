@@ -116,6 +116,28 @@ php artisan finance:audit-voucher-schema --require-fks
 
 **Follow-on engineering policy:** Before adding any further business or audit table, explicitly inspect existing tables and prefer reuse where semantics and integrity can be preserved. Schema growth needs a demonstrated functional necessity, not one table per new Edit/Delete action. **Milestone 03 still PARTIAL**: full amount/allocation/inventory edits and ordinary logical deletion remain unimplemented.
 
+## 2026-11-18 — Owner PASS + full-table redundancy audit (LATEST)
+
+**Owner local confirmations:** `PlotNarrationEditContractTest`: **2 PASS / 35 assertions**; `PlotEntryWriterTest`: **28 PASS / 150 assertions**; combined **30 PASS / 185 assertions**. `2026_11_18_180000_consolidate_plot_narration_audit.php` migrated **DONE** on configured `bluenew_clean_final`, copying evidence from the redundant `finance_plot_voucher_edit_audits` table to shared `daily_voucher_edit_snapshots` and removing the old table. FK audit still **8/8 FKs present**, **0 orphans**, **0 cross-project JV/CV detail/account links**. The user wants additional genuinely unused tables cleaned, without arbitrary schema proliferation.
+
+**This batch: read-only whole-database inventory, NOT destructive removal.** New `app/Console/Commands/AuditUnusedTables.php`, command `php artisan schema:audit-unused-tables --json`, inspects **all tables in currently configured schema**, estimated row counts, exact row counts for unreferenced candidates, **incoming and outgoing FK relationships**, MySQL view and trigger references and application source matches under `app`, `routes`, `resources/views`, `resources/js`, `public/js`, and `config`. No other databases are queried or modified. Results include `REVIEW_EMPTY_UNREFERENCED`, `REVIEW_UNREFERENCED_WITH_DATA`, and `REFERENCED_OR_DEPENDENT`. The test `UnusedTableAuditSafetyTest` checks that this tool is read-only and requires evidence. **Current true row counts, current trigger/view dependencies and complete runtime-source matches are not available to GitHub-only review; owner must run it locally. No other table was removed in this batch.**
+
+**Interpretation rules:** Zero records or absence of direct literal references does **NOT** prove a table is useless. Dynamic table names, queued jobs, integrations, reporting, historical migrations, raw SQL, offline consumers and accounting audit evidence require manual trace. Never drop a finance source, posting, reversal, claim, ledger, approval, receipt allocation, purchase inventory, audit/history, permission, migration or system table without confirming all consumers and preserving any relevant data. A candidate with rows is **not delete-ready**. Do not issue broad `DROP TABLE`, `migrate:fresh`, `db:wipe`, `TRUNCATE` or mass rollback. Only after a verified report and confirmed no consumers may a minimal, reversible, data-preserving migration be authored for specific tables. The owner explicitly prefers **reuse/consolidation of shared tables** rather than one new table per Edit/Delete feature.
+
+**Owner next commands (READ ONLY; no browser test for this audit):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Console/Commands/AuditUnusedTables.php
+php artisan test --filter=UnusedTableAuditSafetyTest
+php artisan tinker --execute="dump(DB::connection()->getDatabaseName());"
+php artisan schema:audit-unused-tables
+php artisan schema:audit-unused-tables --json | Set-Content .\storage\app\unused-table-audit.json -Encoding UTF8
+```
+
+The concise terminal candidate table and the `storage/app/unused-table-audit.json` contain the required evidence for a **specific** cleanup batch. Do not invent a numeric “tables to delete” count before owner provides actual DB results. **Browser acceptance for Plot narration Edit remains pending separately.**
+
 ## Remaining Milestone 03 work — do not mark complete yet
 
 1. Rerun `PlotEntryWriterTest` on local; resolve any subsequent actual assertion failures. Verify Plot History/Details/Replay after root logical archive.
