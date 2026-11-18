@@ -199,6 +199,36 @@ php artisan finance:audit-voucher-schema --require-fks
 
 **Follow-on:** finish safe add/remove allocation/item line lifecycle, plot ordinary logical Delete, other voucher CRUD, then Milestone 04 linked cheque/online and 05 configurable reversal. Do not add new tables for these unless evidence demonstrates existing schema cannot safely represent source and history.
 
+## 2026-11-18 — Plot Receipt/Purchase ordinary logical Delete (LATEST)
+
+**GitHub implementation, not owner-accepted yet:**
+- `PlotEntryLifecycleService::archive` performs **ordinary Delete** of active Plot Receipt/Purchase inside a DB transaction: locks same-project source, uses the established exact linked-posting compensation writer internally to neutralize debit/credit effects, retires unbooked/unsold purchased plot inventory, and marks the original voucher `is_active=0`, `deleted_at=now()`. **It never hard-deletes financial source, allocation, purchase item or posting rows.** If any step fails, the transaction rolls back.
+- `VoucherController::deletePlotReceipt` and `deletePlotPurchase` enforce **independent `finance plot-receipt delete` / `finance plot-purchase delete` permissions**. Their DELETE routes and both directory Actions add jQuery AJAX Delete + confirmation/reason modal. Users do not need Reverse permission merely to perform ordinary Delete. Archive supports future-dated original posting through a chronological compensation date and normalizes user-entered multiline reasons.
+- New `PlotEntryWriterTest` SQLite integration tests cover Receipt archive (source inactive, old allocations retained, original and compensating batches offset, second Delete rejected) and Purchase archive (source + unsold plot inactive, financial balancing, retained item evidence); `PlotFullVoucherEditContractTest` additionally covers independent Delete permissions/routes/modal.
+- Full-field Edit from the same batch remains: original Create modal prefilled, same source and existing posting IDs, changed amounts/dates/accounts/plots, shared before/after snapshot; source/account lookups project scoped and stale original request key replay forbidden. Additional tests reject booked Plot Purchase updates and cross-project receipt updates.
+
+**Still NOT complete:** The present Edit does not support **changing the number of Receipt allocations or Purchase items**. It returns a conflict instead of hard-deleting line evidence or creating wrong mappings. This requires a safe per-line lifecycle extension. Other voucher modules' full CRUD are not implemented by this batch, so **Milestone 03 remains PARTIAL, pending local tests and browser acceptance**. Historical original posting amounts are updated under same-ID Edit with shared before-image snapshot; confirm reconciliation expectations before using real data. No new database table or migration in this batch.
+
+**Exact owner PowerShell verification:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/PlotVoucherEditor.php
+php -l app/Services/Finance/PlotEntryLifecycleService.php
+php -l app/Http/Controllers/Finance/VoucherController.php
+php artisan view:cache
+php artisan test --filter=PlotFullVoucherEditContractTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan finance:audit-voucher-schema --require-fks
+```
+
+**BROWSER TEST REQUIRED after automated tests PASS:** Use **disposable vouchers in local selected project**.
+- `/admin/finance/voucher/plot-receipt`: Actions→Edit voucher; entire form prefilled (number, date, customer, account, amount via allocations, narration), change amount and other fields, Save; expect AJAX update and same voucher ID/balanced posting. Actions→Delete; enter reason; expect confirmation close, original hidden from active history, account balance neutralized and original posting evidence retained.
+- `/admin/finance/voucher/plot-purchase`: Edit voucher existing purchased plot metadata/area/rate/seller; Save; expect same original plot ID, purchase cost and source history updated; Delete an unbooked unsold test purchase and expect source/plot inactive plus compensated account balance.
+- Independent permissions: turn Edit off while Delete on and Reverse off; Edit hidden, Delete works, direct PATCH 403. Turn Delete off: Delete button hidden, direct DELETE 403. A booked/sold purchase must be rejected without changes. No full-page reload or raw error page; toast/modal error only.
+- Record browser PASS/FAIL separately; **NO browser acceptance yet reported for new full Edit/Delete** (previous narration-only browser pass does not cover it).
+
 ## Remaining Milestone 03 work — do not mark complete yet
 
 1. Rerun `PlotEntryWriterTest` on local; resolve any subsequent actual assertion failures. Verify Plot History/Details/Replay after root logical archive.
