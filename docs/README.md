@@ -240,6 +240,8 @@ php artisan finance:audit-voucher-schema --require-fks
 - Integration fixture now installs the line lifecycle columns. New tests exercise Receipt allocation addition and later archive (balances, source ID and before-image history), Purchase plot addition and later archive (original plot ID retained for active item, removed plot inactive, account balance maintained), plus existing linked-CRUD and Delete regressions.
 - **No local PHP tests or real browser tests have yet been executed by assistant for this newest extension.** Previous verified Owner PASS (30 tests/185 assertions) applies only to the earlier schema cleanup, not the new Plot full Edit/Delete batch.
 
+**Final same-turn UI guard:** While Plot Receipt Edit is open, the optional booking search is disabled so table rerender cannot silently discard or restore changed allocation selections; normal Create mode still supports the search. Purchase Edit uses a hidden `legacy_plot_id` to distinguish an explicitly new row from an existing plot (including empty-string-to-null middleware conversion). No new table was added. All new changes still await the owner's local PHP and browser pass.
+
 **Important deploy order:** Because the new tests use the migration in disposable SQLite fixtures, first verify test commands below; then confirm the connected DB is `bluenew_clean_final`; apply the NEW `190000` migration once; then perform browser acceptance against disposable local Plot vouchers, not live financial sources. Do NOT rerun old 150000/160000/170000/180000 migrations, nor migrate:fresh.
 
 ```powershell
