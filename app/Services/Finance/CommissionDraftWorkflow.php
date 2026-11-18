@@ -132,6 +132,18 @@ final class CommissionDraftWorkflow
                 throw new \DomainException('V2_CV_DRAFT_IMMUTABLE');
             }
             [$prepared, $amount] = $this->lines($projectId, $lines);
+            $activeDetails=DB::table('commision_voucher_details')
+                ->where('commision_voucher_id', $sourceId)->whereNull('deleted_at')
+                ->orderBy('id')->lockForUpdate()->get();
+            $candidateHeader=[
+                'date'=>$date,
+                'reference'=>$metadata['reference']??$header->reference,
+                'description'=>$metadata['description']??$header->description,
+            ];
+            if (app(VoucherUnchangedUpdateDetector::class)
+                ->same($header,$activeDetails,$candidateHeader,$prepared)) {
+                return; // Same-ID draft and details; no duplicate history rows.
+            }
             DB::table('commision_voucher_details')
                 ->where('commision_voucher_id', $sourceId)->whereNull('deleted_at')
                 ->update(['deleted_at' => now(), 'updated_at' => now()]);
