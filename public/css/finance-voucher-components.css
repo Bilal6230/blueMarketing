@@ -724,3 +724,11 @@
 .bm-modern-extra .fvc-table-skeleton{
  background:#fff!important;z-index:12!important;overflow:hidden!important;
 }
+
+/* One initial server-rendered list skeleton for Draft and Extra Charges.
+   The page title and toolbar remain visible; the raw expanded rows never flash. */
+.bm-voucher-directory .bm-voucher-initial-pending{position:relative!important;min-height:420px!important;}
+.bm-voucher-directory .bm-voucher-initial-pending>table[id]{position:absolute!important;visibility:hidden!important;pointer-events:none!important;}
+.bm-voucher-directory .bm-voucher-initial-skeleton{min-height:420px!important;width:100%;}
+.bm-voucher-directory .bm-voucher-initial-skeleton table{table-layout:fixed!important;width:100%;margin:0!important;}
+.bm-voucher-directory .bm-voucher-initial-skeleton .bm-skeleton-row td{height:44px!important;}
