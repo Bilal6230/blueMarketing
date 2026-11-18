@@ -332,7 +332,7 @@
                             @can('read slip')
                                 <x-finance.voucher-table-card class="mb-2">
                                 <div class="table-responsive bm-extra-list-pending bm-voucher-initial-pending">
-                                    <div class="bm-extra-list-skeleton bm-voucher-initial-skeleton" role="status" aria-label="Loading extra charges"><table class="table table-bordered w-100" aria-hidden="true"><tbody id="extraChargeInitialSkeleton"></tbody></table></div>
+                                    <div class="bm-extra-list-skeleton bm-voucher-initial-skeleton" role="status" aria-label="Loading extra charges"><table class="table table-bordered w-100" aria-hidden="true"><tbody id="extraChargeInitialSkeleton">@include('components.finance.voucher-skeleton-rows', ['columns' => 14])</tbody></table></div>
                                     <table id="example1" class="table table-striped table-bordered " style="width:100%">
                                         <thead>
                                             <tr>
