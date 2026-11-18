@@ -229,6 +229,42 @@ php artisan finance:audit-voucher-schema --require-fks
 - Independent permissions: turn Edit off while Delete on and Reverse off; Edit hidden, Delete works, direct PATCH 403. Turn Delete off: Delete button hidden, direct DELETE 403. A booked/sold purchase must be rejected without changes. No full-page reload or raw error page; toast/modal error only.
 - Record browser PASS/FAIL separately; **NO browser acceptance yet reported for new full Edit/Delete** (previous narration-only browser pass does not cover it).
 
+## 2026-11-18 — Plot full Edit: allocation/item add-remove lifecycle (LATEST)
+
+**Supersedes the earlier same-count Edit limitation.** This subsequent code batch implements adding/removing existing Plot Receipt allocations and Plot Purchase items while retaining source ID and financial integrity. **No new tables**; one idempotent schema migration only adds `is_active` default true to `finance_plot_receipt_allocations`, `finance_plot_purchase_items`, and shared `finance_posting_lines`. Already-stored records remain active. This migration has **NOT** run on owner MySQL yet.
+
+- `PlotVoucherEditor::replaceLines` now updates debit/credit sides independently, keeps old cash/seller posting-line IDs, inserts additional active posting lines for new allocations/inventory, and archives removed posting lines with `is_active=0` and **zero debit/credit** (so historic inactive legs cannot distort balances). Full before-image is kept in existing shared `daily_voucher_edit_snapshots`; no destructive child-row deletion.
+- `receipt` can add/reassign/remove multiple plot allocations. No longer requires fixed count. Old removed allocations stay physically present with `is_active=0`; newly selected ones link to same receipt. The original source, posting batch, project and balance remain consistent. `PlotEntryWriter::receipt` filters inactive allocation rows.
+- `purchase` now uses `legacy_plot_id` to retain precise existing plot identity, allows new purchased plots via the existing validated `PlotEntryWriter::createAvailablePlot` method, and archives removed purchased plot items and unsold/unbooked plot inventory logically. It refuses duplicates or booked/sold inventory. `purchaseDetails` and purchase list counts filter inactive items. Purchase Edit form includes hidden linked plot IDs and enables Add/Remove controls.
+- `PostingReversalWriter::reverse` now ignores inactive (zeroed) historical posting lines, and `PlotEntryLifecycleService::reverse` checks only active purchased plot items for reversal/archive inventory.
+- Integration fixture now installs the line lifecycle columns. New tests exercise Receipt allocation addition and later archive (balances, source ID and before-image history), Purchase plot addition and later archive (original plot ID retained for active item, removed plot inactive, account balance maintained), plus existing linked-CRUD and Delete regressions.
+- **No local PHP tests or real browser tests have yet been executed by assistant for this newest extension.** Previous verified Owner PASS (30 tests/185 assertions) applies only to the earlier schema cleanup, not the new Plot full Edit/Delete batch.
+
+**Important deploy order:** Because the new tests use the migration in disposable SQLite fixtures, first verify test commands below; then confirm the connected DB is `bluenew_clean_final`; apply the NEW `190000` migration once; then perform browser acceptance against disposable local Plot vouchers, not live financial sources. Do NOT rerun old 150000/160000/170000/180000 migrations, nor migrate:fresh.
+
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/PlotVoucherEditor.php
+php -l app/Services/Finance/PlotEntryLifecycleService.php
+php -l app/Services/Finance/PlotEntryWriter.php
+php -l app/Services/Finance/PostingReversalWriter.php
+php -l database/migrations/2026_11_18_190000_add_plot_detail_lifecycle_columns.php
+php artisan view:cache
+php artisan test --filter=PlotFullVoucherEditContractTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan tinker --execute="dump(DB::connection()->getDatabaseName());"
+php artisan migrate --path=database/migrations/2026_11_18_190000_add_plot_detail_lifecycle_columns.php
+php artisan finance:audit-voucher-schema --require-fks
+```
+
+**BROWSER TEST REQUIRED after tests/migration PASS:**
+1. Plot Receipt on `/admin/finance/voucher/plot-receipt`: Edit full voucher; change date/account/amount and **add second booking allocation**, save and verify balanced posting; reopen and remove it, save again; source ID unchanged and inactive historical allocation excluded from details.
+2. Plot Purchase on `/admin/finance/voucher/plot-purchase`: Edit; **Add plot**, set unique code, definition/road/facing, area/rate/inventory account; save and verify new linked plot ID. Reopen and remove a **not-booked/not-sold** plot, save; removed inventory inactive, original record/audit preserved and active price updated. Reverse/ordinary Delete should preserve balance and must reject booked/sold plots.
+3. Test Edit/Reverse/Delete permissions independently; ensure no full-page reload, server errors shown inside modal and the history refreshed through AJAX.
+4. Confirm original JV/CV/CR/etc voucher behavior and reporting are not negatively affected by the shared `finance_posting_lines.is_active` column. Broader Milestone 03 acceptance (other voucher families) is still pending; do not declare whole milestone complete.
+
 ## Remaining Milestone 03 work — do not mark complete yet
 
 1. Rerun `PlotEntryWriterTest` on local; resolve any subsequent actual assertion failures. Verify Plot History/Details/Replay after root logical archive.
