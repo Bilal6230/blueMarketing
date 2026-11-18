@@ -367,6 +367,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::get('finance/voucher/plot-receipt/options', 'plotReceiptOptions')->name('finance.voucher.plot-receipt.options');
         Route::get('finance/voucher/plot-receipt/history', 'plotReceiptHistory')->name('finance.voucher.plot-receipt.history');
         Route::post('finance/voucher/plot-receipt', 'postPlotReceipt')->name('finance.voucher.plot-receipt.post');
+        Route::patch('finance/voucher/plot-receipt/{receiptId}', 'updatePlotReceipt')->whereNumber('receiptId')->name('finance.voucher.plot-receipt.update');
         Route::patch('finance/voucher/plot-receipt/{receiptId}/narration', 'updatePlotReceiptNarration')->whereNumber('receiptId')->name('finance.voucher.plot-receipt.narration.update');
         Route::post('finance/voucher/plot-receipt/{receiptId}/reverse', 'reversePlotReceipt')->whereNumber('receiptId')
             ->middleware(['throttle:10,1'])->name('finance.voucher.plot-receipt.reverse');
@@ -376,6 +377,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::get('finance/voucher/plot-purchase/options', 'plotPurchaseOptions')->name('finance.voucher.plot-purchase.options');
         Route::get('finance/voucher/plot-purchase/history', 'plotPurchaseHistory')->name('finance.voucher.plot-purchase.history');
         Route::post('finance/voucher/plot-purchase', 'postPlotPurchase')->name('finance.voucher.plot-purchase.post');
+        Route::patch('finance/voucher/plot-purchase/{purchaseId}', 'updatePlotPurchase')->whereNumber('purchaseId')->name('finance.voucher.plot-purchase.update');
         Route::patch('finance/voucher/plot-purchase/{purchaseId}/narration', 'updatePlotPurchaseNarration')->whereNumber('purchaseId')->name('finance.voucher.plot-purchase.narration.update');
         Route::post('finance/voucher/plot-purchase/{purchaseId}/reverse', 'reversePlotPurchase')->whereNumber('purchaseId')
             ->middleware(['throttle:10,1'])->name('finance.voucher.plot-purchase.reverse');
