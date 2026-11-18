@@ -236,7 +236,7 @@ final class PlotEntryWriter
             ->join('bookings as b','b.id','=','a.booking_id')->join('leads as customer','customer.id','=','b.customer_id')
             ->where('a.receipt_id',$id)->where('p.project_id',$project)->where('b.project_id',$project)
             ->where('b.customer_id',(int) $source->customer_id)->where('customer.project_id',$project)
-            ->whereColumn('b.plot_id','a.plot_id')
+            ->whereColumn('b.plot_id','a.plot_id')->orderBy('a.id')
             ->get(['a.plot_id','p.name as plot_name','a.booking_id','a.amount','customer.first_name','customer.last_name','customer.business']);
         return ['receipt'=>$source,'allocations'=>$allocations];
     }
