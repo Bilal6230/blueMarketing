@@ -1041,7 +1041,7 @@ class PlotEntryWriterTest extends TestCase
             (new \App\Services\Finance\PlotVoucherEditor())->purchase(1,$created['source_id'],[
                 'date'=>'2026-11-06','purchase_number'=>'PP-ILLEGAL-EDIT','seller_account_id'=>102,
                 'narration'=>'Should rollback','items'=>[[
-                    'plot_code'=>'LAND-BOOKING-NEW','description'=>'No write','area'=>'2',
+                    'legacy_plot_id'=>$plotId,'plot_code'=>'LAND-BOOKING-NEW','description'=>'No write','area'=>'2',
                     'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
                     'unit_rate'=>'300','inventory_account_id'=>104,
                 ]],
