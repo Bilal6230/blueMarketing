@@ -55,7 +55,7 @@
 
 **New code delivered in this batch:** `2026_11_18_160000_add_plot_voucher_lifecycle_columns.php` adds idempotent `is_active` default true and `deleted_at` to the two mutable roots `finance_plot_receipts` and `finance_plot_purchases`. Existing source records stay active and are not deleted. `VoucherController` History and `PlotEntryWriter` Details use schema-aware active/not-deleted filters, preserving behavior until migration. This only establishes logical archive support; **it does not provide linked accounting Edit/Delete yet**. Posting batches, allocations and audit evidence remain untouched. Added `PlotVoucherLifecycleColumnsTest`.
 
-**Latest code needs local acceptance; no new tests or plot migration run by assistant.**
+**Owner has now verified this migration and its initial tests PASS. New archived replay guards/tests still require local verification.**
 
 ```powershell
 cd C:\laragon\www\blueMarketing
@@ -71,6 +71,30 @@ php artisan finance:audit-voucher-schema --require-fks
 ```
 
 Next coding: implement full project-scoped atomic Plot source Edit/Delete, associated posting and inventory consequences; then remaining bank/extra, typed JV/CV and CR/DR lifecycle flows. Avoid merely setting `is_active` without synchronizing posting/accounting claims. **Milestone 03 is not yet complete.**
+
+## 2026-11-18 — Owner PASS: Plot lifecycle migration; archived source regression repair
+
+**Owner local confirmation:**
+- `bluenew_clean_final` selected in `php artisan db:show`.
+- `php artisan migrate --path=database/migrations/2026_11_18_160000_add_plot_voucher_lifecycle_columns.php` **DONE** (339.92ms).
+- `PlotVoucherLifecycleColumnsTest` **2 PASS, 19 assertions**; `VoucherRelationshipSafetyMilestoneTest` **4 PASS, 57 assertions**; view cache PASS.
+- `finance:audit-voucher-schema --require-fks` **PASS**: all **8/8 FKs** present, **0 orphans**, **0 cross-project JV/CV detail links**.
+- `finance_plot_receipts` and `finance_plot_purchases` have dropped out of the “neither `deleted_at` nor `is_active`” report. Their lifecycle-column subset is therefore **complete on local MySQL**. Do **not** rerun these migrations on that database.
+
+**This same-turn code repair:** Direct code inspection found duplicate `use Illuminate\\Support\\Facades\\Schema;` imports in `app/Services/Finance/PlotEntryWriter.php`; removed the duplicate to avoid a PHP class-load failure that static unit tests missed. The plot writer's idempotent replay now rejects an already archived or inactive plot receipt/purchase source (`PLOT_SOURCE_ARCHIVED`) rather than returning it as active, with selected-project scoping. Added isolated feature tests to `PlotEntryWriterTest` covering both receipt and purchase archived detail/replay rejection while preserving original posting and child records, plus an import/replay regression in `PlotVoucherLifecycleColumnsTest`. **These new tests are committed but not locally executed.** The earlier 6/76 owner PASS does **not** cover these new changes.
+
+**Important distinction:** Direct source archives are not yet implemented as an end-user Edit/Delete workflow; the new tests simulate the archived root to validate consumers and idempotency. `PlotEntryLifecycleService` currently implements reversal; it must **not** be called an ordinary logical delete. Full transactional Plot Edit/Delete with finance postings and purchased-plot inventory remains open in Milestone 03. No forced reversal added in this batch.
+
+**Next local command:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/PlotEntryWriter.php
+php artisan test --filter=PlotVoucherLifecycleColumnsTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan finance:audit-voucher-schema --require-fks
+```
 
 ## What is still required before marking Milestone 03 COMPLETE
 
