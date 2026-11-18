@@ -1289,7 +1289,7 @@ class VoucherController extends Controller
         try {
             $batch=app(\App\Services\Finance\PlotEntryLifecycleService::class)->archive(
                 $projectId,$kind,$sourceId,(string)\Illuminate\Support\Str::uuid(),
-                now()->toDateString(),trim($data['reason']),(int)auth()->id()
+                now()->toDateString(),preg_replace('/\\s+/u',' ',trim($data['reason'])),(int)auth()->id()
             );
         } catch (\DomainException $error) {
             return response()->json(['status'=>'error','message'=>$error->getMessage()],409);
