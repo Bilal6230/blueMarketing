@@ -115,6 +115,15 @@ final class PlotEntryWriter
         if (Schema::hasColumn($sourceRoot,'is_active')) $sourceQuery->where('is_active',1);
         if (Schema::hasColumn($sourceRoot,'deleted_at')) $sourceQuery->whereNull('deleted_at');
         if (!$sourceQuery->exists()) throw new \DomainException('PLOT_SOURCE_ARCHIVED');
+        // A former Create idempotency key must not replay the outdated payload
+        // after full same-source Edit. Snapshot status is distinct from notes.
+        if (Schema::hasTable('daily_voucher_edit_snapshots')
+            && DB::table('daily_voucher_edit_snapshots')
+                ->where('project_id',$project)->where('source_id',(int)$link->source_id)
+                ->where('status','plot_edit')
+                ->where('before_snapshot','like','%"source_kind":"'.$kind.'"%')->exists()) {
+            throw new \DomainException('PLOT_SOURCE_HAS_BEEN_EDITED');
+        }
         return ['source_id'=>(int)$link->source_id,'posting_batch_id'=>(int)$batch->id,'replayed'=>true];
     }
     private function post(int $project, string $key, string $series, string $kind, string $date, array $lines, string $payloadHash, ?int $actor): int
