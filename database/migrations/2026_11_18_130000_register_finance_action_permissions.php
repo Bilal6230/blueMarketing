@@ -59,7 +59,7 @@ return new class extends Migration {
                 }
             }
         }
-        app(\\Spatie\\Permission\\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     public function down(): void
