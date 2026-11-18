@@ -57,8 +57,9 @@ final class FinanceActionPermission
                 ->where('project_id', $project)->where('source_kind', 'customer_ledger')
                 ->where('source_id', $sourceId)->value('series');
         }
-        return self::moduleForSeries((string)($series ?: $source->transaction_type))
-            ?? 'directory';
+        $module = self::moduleForSeries((string)($series ?: $source->transaction_type));
+        abort_unless($module !== null, 403, 'Unsupported voucher permission scope.');
+        return $module;
     }
 
     public static function ledgerModule(int $ledgerId): string
@@ -71,7 +72,9 @@ final class FinanceActionPermission
             ->first(['ledger.type','ledger.customer_ledger_id']);
         abort_unless($ledger, 404);
         if ($ledger->customer_ledger_id) return self::sourceModule((int)$ledger->customer_ledger_id);
-        return self::moduleForSeries((string)$ledger->type) ?? 'directory';
+        $module = self::moduleForSeries((string)$ledger->type);
+        abort_unless($module !== null,403,'Unsupported ledger voucher permission scope.');
+        return $module;
     }
 
     public static function journalModule(int $id): string
