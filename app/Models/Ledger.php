@@ -27,7 +27,8 @@ class Ledger extends Model
         'date',
         'delete_reason',
         'voucher_number',
-        'journal_voucher_detail_id'
+        'journal_voucher_detail_id',
+        'commision_voucher_detail_id'
     ];
 
     protected static function booted(): void
