@@ -52,9 +52,9 @@
 
 ## 2026-11-18 batch completion ledger
 - **Code committed:** shared voucher-accent neutral skeleton, Draft and Extra initial DataTables skeleton, common initial-state CSS, versioned asset loading, and regression assertions. The previous Bank/Plot AJAX skeletons remain in place.
-- **Documentation cleanup committed:** 49 superseded markdown worklogs/roadmaps/archived audits removed from the active tree. Exactly **two docs files** remain: this authoritative five-milestone README and the original client requirement source. Git history preserves deleted documentation for recovery.
+- **Documentation cleanup committed:** 49 superseded markdown worklogs/roadmaps/archived audits removed from the active tree. Root `AGENTS.md` now points to this file and no longer mandates V2-isolated workflow boundaries. Exactly **two docs files** remain: this authoritative five-milestone README and the original client requirement source. Git history preserves deleted documentation for recovery.
 - **Acceptance:** source inspection completed; owner's prior 4 unit tests PASS belongs to the earlier batch. **New code local PHPUnit and browser PASS are NOT claimed.** Current active milestone remains 01, with 02-05 queued and not silently marked complete.
-- **Key commits:** `e3ce6e7e`, `9fb867ce`, `59ee2ab3`, `d381ef06`, `27017abc`, `56020b14` (docs purge), `7d73fcea` (test update).
+- **Key commits:** `e3ce6e7e`, `9fb867ce`, `59ee2ab3`, `d381ef06`, `27017abc`, `56020b14` (docs purge), `7d73fcea` (test update), `6e45f14f` (AGENTS.md alignment), `c1364dd7` (component CSS cache bust).
 
 ## What was retired
 The previous 10 phases and V2-specific migration/isolation phases are historical, NOT active instructions. Their superseded docs were removed from the working `docs/` directory; Git history retains them for evidence/recovery. The original client requirements remain available at `docs/BLUEMARKETING_POINT03_DAILY_ENTRIES_REQUIREMENTS_ROMAN_URDU.md` as historical/source scope, not as a replacement for this owner's five new rules.
