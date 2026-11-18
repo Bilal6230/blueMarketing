@@ -3,6 +3,7 @@
 namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /** Reverses immutable M6 sources without changing their original rows. */
 final class PlotEntryLifecycleService
@@ -22,9 +23,12 @@ final class PlotEntryLifecycleService
         return DB::transaction(function () use ($projectId, $kind, $sourceId, $requestKey,
             $effectiveDate, $reason, $actorId, $links): int {
             $sourceTable = $kind === 'plot_receipt' ? 'finance_plot_receipts' : 'finance_plot_purchases';
-            $source = DB::table($sourceTable)->where('project_id', $projectId)
-                ->where('id', $sourceId)->lockForUpdate()->first();
-            if (!$source) throw new \DomainException('V2_PLOT_VOID_SOURCE_NOT_FOUND');
+            $query = DB::table($sourceTable)->where('project_id', $projectId)
+                ->where('id', $sourceId)->lockForUpdate();
+            if (Schema::hasColumn($sourceTable, 'is_active')) $query->where('is_active', 1);
+            if (Schema::hasColumn($sourceTable, 'deleted_at')) $query->whereNull('deleted_at');
+            $source = $query->first();
+            if (!$source) throw new \DomainException('PLOT_SOURCE_NOT_ACTIVE');
 
             $link = DB::table($links[$kind])->where('source_id', $sourceId)->first();
             if (!$link || $link->source_kind !== $kind) throw new \DomainException('V2_PLOT_VOID_POSTING_MISSING');
