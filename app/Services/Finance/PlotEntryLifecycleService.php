@@ -58,4 +58,37 @@ final class PlotEntryLifecycleService
             return $batchId;
         }, 3);
     }
+
+    /**
+     * Ordinary user-facing Delete: logically archives the original source and
+     * neutralizes its posted balance in the same transaction. The compensating
+     * posting is an accounting implementation detail; no Reverse permission is
+     * required for a user granted the independent Delete action.
+     */
+    public function archive(int $projectId,string $kind,int $sourceId,string $requestKey,
+        string $effectiveDate,string $reason,?int $actorId): int
+    {
+        $sourceTable=match($kind) {
+            'plot_receipt'=>'finance_plot_receipts',
+            'plot_purchase'=>'finance_plot_purchases',
+            default=>throw new \DomainException('Unsupported plot voucher.'),
+        };
+        if (!Schema::hasColumn($sourceTable,'is_active') || !Schema::hasColumn($sourceTable,'deleted_at')) {
+            throw new \DomainException('Voucher lifecycle columns are not installed.');
+        }
+        return DB::transaction(function()use($projectId,$kind,$sourceId,$requestKey,$effectiveDate,$reason,$actorId,$sourceTable){
+            $source=DB::table($sourceTable)->where('project_id',$projectId)
+                ->where('id',$sourceId)->where('is_active',1)->whereNull('deleted_at')
+                ->lockForUpdate()->first();
+            if (!$source) throw new \DomainException('Voucher already deleted or unavailable.');
+            // reverse() verifies exact source posting and unsold/unbooked
+            // purchased plots before creating any compensating batch.
+            $batch=$this->reverse($projectId,$kind,$sourceId,$requestKey,$effectiveDate,$reason,$actorId);
+            $affected=DB::table($sourceTable)->where('id',$sourceId)
+                ->where('project_id',$projectId)->where('is_active',1)->whereNull('deleted_at')
+                ->update(['is_active'=>0,'deleted_at'=>now(),'updated_at'=>now()]);
+            if ($affected!==1) throw new \DomainException('Concurrent voucher archive rejected.');
+            return $batch;
+        },3);
+    }
 }
