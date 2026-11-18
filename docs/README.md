@@ -569,3 +569,10 @@ php artisan finance:audit-posting-balances
 ```
 
 **Acceptance:** after local tests and migration, test normal JV/CV and Commission draft Edit with identical Save twice, then actual value change, confirming no extra details or active ledgers on no-op; original IDs preserved. Milestone 03 overall remains PARTIAL: additional cash/bank/stock/extra-charge lifecycle and cross-module permission/browser acceptance are not yet complete. Milestones 04 and 05 pending. Do not re-run old Plot browser tests.
+
+
+### Follow-up in same CV/JV edit safety batch
+
+- Commission draft no-op guard now uses `array_key_exists` when resolving optional `reference` / `description`, so deliberately clearing a field to `null` is recognized as a real change rather than skipped.
+- The Commission relation contract test was corrected to use literal PHP variable tokens in its static string assertions and now checks that nullable draft metadata is handled explicitly.
+- No extra migration was added after the single additive `2026_11_18_220000_link_commission_details_to_ledger.php` migration listed above. The new code has not yet passed owner-local lint/test/migration gates; do not claim full Milestone 03 complete.
