@@ -75,7 +75,7 @@
    <div class="form-group"><label>Narration</label><textarea id="ppNarration" class="form-control" rows="2" maxlength="2000" placeholder="Purchase agreement, seller reference, or notes"></textarea></div>
    <div class="d-flex justify-content-between align-items-center mb-2"><b>Purchased plots</b><button type="button" id="ppAdd" class="btn btn-sm btn-outline-primary">+ Add plot</button></div>
    <div id="ppItems"></div><div class="d-flex justify-content-between align-items-center border-top pt-3 mb-3"><span>Total purchase cost</span><span class="pp-total" id="ppTotal">0.00</span></div>
-   <small class="d-block pp-muted mt-2">Posts plot inventory debit and seller credit. Edit retains existing source, plot and posting IDs and the purchased plot count.</small>
+   <small class="d-block pp-muted mt-2">Posts plot inventory debit and seller credit. Edit can add/remove purchased plots. Removed rows remain archived; booking/sale history is protected.</small>
 
   </div>
   </div>
@@ -130,7 +130,7 @@
  </div></div>
 </div>
 @endcan
-<template id="ppItemTemplate"><div class="pp-item"><div class="d-flex justify-content-between mb-2"><strong class="pp-item-title">Plot</strong><button type="button" class="btn btn-sm btn-outline-danger pp-remove" aria-label="Remove plot">Remove</button></div><div class="pp-item-grid">
+<template id="ppItemTemplate"><div class="pp-item"><input type="hidden" data-field="legacy_plot_id" value=""><div class="d-flex justify-content-between mb-2"><strong class="pp-item-title">Plot</strong><button type="button" class="btn btn-sm btn-outline-danger pp-remove" aria-label="Remove plot">Remove</button></div><div class="pp-item-grid">
  <div><label>Plot code</label><input data-field="plot_code" class="form-control" maxlength="64" placeholder="e.g. A-101"></div><div class="wide"><label>Description</label><input data-field="description" class="form-control" maxlength="255" placeholder="Plot description"></div><div><label>Area</label><input data-field="area" class="form-control" type="number" min="0.0001" step="0.0001" placeholder="0"></div><div><label>Unit</label><input data-field="unit" class="form-control" maxlength="24" placeholder="Marla / Sq Ft"></div>
  <div><label>Plot class</label><select data-field="type" class="form-control"><option value="1">Residential</option><option value="2">Commercial</option></select></div><div><label>Road</label><select data-field="road_id" class="form-control"><option value="">Select road</option></select></div><div><label>Facing</label><select data-field="facing_id" class="form-control"><option value="">Select facing</option></select></div><div><label>Inventory account</label><select data-field="inventory_account_id" class="form-control"><option value="">Select project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
  <div><label>Unit rate</label><input data-field="unit_rate" class="form-control" type="number" min="0.01" step="0.01" placeholder="0.00"></div><div><label>Corner plot</label><select data-field="is_corner" class="form-control"><option value="0">No</option><option value="1">Yes</option></select></div>
@@ -277,7 +277,7 @@
      });
     });
     $('#ppCreateTitle').text('Edit Plot Purchase Voucher');
-    $('#ppPost').text('Save voucher');$('#ppAdd,.pp-remove').prop('disabled',true);
+    $('#ppPost').text('Save voucher');$('#ppAdd,.pp-remove').prop('disabled',false);
     recalc();$('#plotPurchaseCreateModal').modal('show');
    }).fail(function(xhr){
     alert('danger',xhr.responseJSON&&xhr.responseJSON.message||'Cannot load full purchase voucher');
