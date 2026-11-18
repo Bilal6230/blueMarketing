@@ -3,6 +3,9 @@
 
 ## 1. Project Context
 
+**ACTIVE HANDOFF:** Read `docs/README.md` before each task. The current work is a FIVE-milestone roadmap (01 loaders/skeleton, 02 per-action permissions, 03 relationship-safe voucher CRUD/logical deletion, 04 linked cheque/online cascades, 05 reversal setting and regression). Former 10 phases / V2-isolation reports are retired. Update the SAME `docs/README.md` after EVERY completed implementation batch; do not create further competing phase/handoff documents. Only the original client source requirements and README remain in active `docs/`. Never hard-code a database name; use the configured `.env` connection.
+
+
 - Project: BlueMarketing ERP
 - Framework: Laravel / PHP / MySQL
 - Active development branch: `upgrade/laravel-framework`
@@ -69,7 +72,7 @@ Execution:
 
 Examples:
 - Laravel framework upgrades
-- Finance V2 migration
+- Unified finance workflow modernization
 - Ledger architecture changes
 - Multiple milestone implementations
 - Large database migrations
@@ -140,14 +143,13 @@ Unless explicitly requested, do not modify:
 - Journal voucher relationships
 - Transaction reversals
 - Financial reconciliation logic
-- V2 migration guards
 - Financial database schemas
 
 For finance-related tasks:
 - Preserve debit/credit correctness.
 - Preserve voucher identity and relationships.
 - Respect existing approval and permission checks.
-- Never bypass database readiness or V2 safety guards.
+- Do not introduce V2-isolated database restrictions. Preserve actual accounting consistency and authorization; align old code guards with the owner's currently authorized five-milestone rules when that milestone is implemented.
 - Do not silently change transaction behavior.
 - Avoid introducing duplicate ledger postings.
 - Do not mutate production financial data during testing.
@@ -171,7 +173,7 @@ For finance-related tasks:
 - Avoid unnecessary dependencies and package installations.
 - Validate request input appropriately.
 - Preserve existing Blade layouts and UI patterns.
-- Respect legacy and V2 workflow boundaries.
+- Use one normal application workflow across the configured database. Do not recreate former V2 namespaces, pilot-only code paths, or database-name restrictions.
 - Do not introduce new architectural patterns for a small bug fix.
 
 ## 9. UI, Forms, and Modal Fixes
