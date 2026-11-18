@@ -81,6 +81,15 @@ final class PlotEntryLifecycleService
                 ->where('id',$sourceId)->where('is_active',1)->whereNull('deleted_at')
                 ->lockForUpdate()->first();
             if (!$source) throw new \DomainException('Voucher already deleted or unavailable.');
+            // A future-dated source can only be offset on or after its
+            // original posting effective date.
+            $linkTable=$kind==='plot_receipt'?'finance_plot_receipt_postings':'finance_plot_purchase_postings';
+            $originalDate=DB::table($linkTable.' as link')
+                ->join('finance_posting_batches as batch','batch.id','=','link.posting_batch_id')
+                ->where('link.source_id',$sourceId)->where('batch.project_id',$projectId)
+                ->value('batch.effective_date');
+            if (!$originalDate) throw new \DomainException('Source posting missing.');
+            $effectiveDate=max($effectiveDate,substr((string)$originalDate,0,10));
             // reverse() verifies exact source posting and unsold/unbooked
             // purchased plots before creating any compensating batch.
             $batch=$this->reverse($projectId,$kind,$sourceId,$requestKey,$effectiveDate,$reason,$actorId);
