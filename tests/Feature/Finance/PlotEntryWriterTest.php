@@ -1335,6 +1335,16 @@ class PlotEntryWriterTest extends TestCase
             ->where('posting_batch_id',$purchase['posting_batch_id'])
             ->where('credit','>',0)->update(['credit'=>'100.00']);
         $this->assertSame([],$audit->audit(1));
+        // A REV-labelled posting without an original is not a valid
+        // accounting reversal, even when its debit/credit totals balance.
+        DB::table('finance_posting_batches')->where('id',$receipt['posting_batch_id'])
+            ->update(['voucher_series'=>'REV']);
+        $reversalFindings=$audit->audit(1);
+        $this->assertCount(1,$reversalFindings);
+        $this->assertContains('REVERSAL_ORIGINAL_MISSING',$reversalFindings[0]['issues']);
+        DB::table('finance_posting_batches')->where('id',$receipt['posting_batch_id'])
+            ->update(['voucher_series'=>'PR']);
+        $this->assertSame([],$audit->audit(1));
         DB::table('finance_posting_lines')
             ->where('posting_batch_id',$receipt['posting_batch_id'])
             ->where('credit','>',0)->update(['is_active'=>0]);
