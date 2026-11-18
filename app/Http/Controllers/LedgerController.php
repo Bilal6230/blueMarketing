@@ -1327,35 +1327,25 @@ class LedgerController extends Controller
 
     public function draftDestroy(Request $request)
     {
-        $data = [
-            'is_active' => "0",
-        ];
-        DB::beginTransaction();
-        try {
-            $result = DraftLedger::find($request->id);
-            if (Auth::user()->hasRole('super-admin') || Auth::user()->can('direct-update')) {
-                $result->update(['is_active' => 0]);
-                DB::commit();
-
-                Alert::success('Notification', 'Voucher <b>' . $result->detail . '</b> deleted successfully.')
-                    ->toToast()->toHtml();
-                return back();
-            }
-
-            PendingUpdate::create([
-                'table_name' => 'draft_ledgers',
-                'record_id' => $result->id,
-                'old_values' => json_encode($result->toArray()),
-                'new_values' => json_encode($data),
-                'status' => 'pending',
-                'submitted_by' => Auth::id(),
-            ]);
-            DB::commit();
-            Alert::success('Notification', 'Data <b>' . $result->name . '</b> Deleted')->toToast()->toHtml();
-        } catch (\Throwable $th) {
-            DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $result->name . '</b> failed to delete: ' . $th->getMessage())->toToast()->toHtml();
-        }
+        $data=$request->validate(['id'=>['required','integer','min:1']]);
+        $projectId=(int)getSelectedTown();
+        abort_unless($projectId>0,403,'Select a project.');
+        abort_unless($request->user()?->can('finance draft delete'),403);
+        $result=DB::transaction(function () use($data,$projectId) {
+            $draft=DraftLedger::query()->whereKey($data['id'])
+                ->where('project_id',$projectId)->lockForUpdate()->firstOrFail();
+            // Drafts have deleted_at: preserve the row instead of writing a
+            // pending mutation whose approval might never arrive.
+            $draft->is_active=0;
+            $draft->update_by=auth()->id();
+            $draft->save();
+            $draft->delete();
+            return $draft;
+        });
+        $message='Draft voucher archived. No financial records were hard-deleted.';
+        if($request->ajax()||$request->expectsJson())
+            return response()->json(['status'=>'success','message'=>$message]);
+        Alert::success('Draft archived',$message)->toToast()->toHtml();
         return back();
     }
 
