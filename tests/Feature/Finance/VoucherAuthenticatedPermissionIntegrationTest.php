@@ -63,10 +63,14 @@ class VoucherAuthenticatedPermissionIntegrationTest extends TestCase
 
     public function test_granted_permission_reaches_existing_409_safety_gate(): void
     {
-        foreach (['create jv', 'edit jv', 'delete jv'] as $name) {
+        foreach (['create jv', 'edit jv', 'delete jv',
+            'finance cv create', 'finance cv edit', 'finance cv delete',
+            'finance jv edit', 'finance jv delete'] as $name) {
             Permission::findOrCreate($name, 'web');
         }
-        auth()->user()->givePermissionTo('create jv', 'edit jv', 'delete jv');
+        auth()->user()->givePermissionTo('create jv', 'edit jv', 'delete jv',
+            'finance cv create', 'finance cv edit', 'finance cv delete',
+            'finance jv edit', 'finance jv delete');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         foreach ([
