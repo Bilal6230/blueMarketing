@@ -1061,6 +1061,8 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame(90.0,(float)DB::table('finance_posting_lines')
             ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
         $this->assertCount(1,$writer->purchaseDetails(1,$created['source_id'])['items']);
+        $reconciliation=(new \App\Services\Finance\PlotPurchaseReconciliation())->audit(1);
+        $this->assertTrue($reconciliation[0]['ok'],implode(',',$reconciliation[0]['issues']));
         $this->assertDatabaseCount('finance_posting_batches',1);
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',2);
     }
