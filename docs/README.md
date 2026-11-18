@@ -16,15 +16,15 @@
 
 ## The FIVE active milestones (authoritative order)
 
-### 01 — Global Loader + Unified Skeleton Design — **IN PROGRESS**
+### 01 — Global Loader + Unified Skeleton Design — **COMPLETE / OWNER PASS 2026-11-18**
 - Remove full-screen/application-blocking loaders; display the shell immediately.
 - Standardize CR/DR-equivalent table skeletons across ALL finance voucher pages; the skeleton color follows each voucher's own `--voucher-accent`, including Bank Deposit, Bank Withdrawal, Plot Receive Payment, Plot Purchase Voucher, Draft Voucher, Extra Charges, JV/SV/CV, cheque and online lists.
 - DataTables pages require special initial server-row concealment until initialized; AJAX pages render skeleton in the table body, not a blocking page overlay.
 - Completed in code: master layout nonblocking loader; initial four AJAX list skeletons; new global accent-following neutral skeleton CSS; Draft/Extra initial DataTables skeleton; reusable modal/table skeleton components.
 - **Verified by owner locally:** `FinanceVoucherInitialSkeletonTest` 2 PASS (21 assertions); `AdminNonBlockingLoaderTest` 2 PASS (13 assertions); `php artisan view:cache` PASS before latest accent/Draft changes.
-- **NOT verified yet:** latest CSS/Draft/Extra changes in local PHPUnit/Blade/browser; comprehensive color and initial-load visual browser PASS on every voucher page. Milestone 01 cannot be marked complete until these pass. No server accounting changes in this UI batch.
+- **NOT verified yet:** latest CSS/Draft/Extra changes in local PHPUnit/Blade/browser; comprehensive color and initial-load visual browser PASS on every voucher page. Owner confirmed the updated browser test PASS and PHP tests PASS: `FinanceVoucherInitialSkeletonTest` 6 passed/58 assertions, `AdminNonBlockingLoaderTest` 2 passed/13 assertions; Milestone 01 closed by owner. No server accounting changes in this UI batch.
 
-### 02 — Granular Daily Entries Action Permissions — **NOT STARTED UNDER NEW RULES**
+### 02 — Granular Daily Entries Action Permissions — **CODE IMPLEMENTED / LOCAL AND BROWSER VERIFICATION PENDING**
 - All voucher types and management modules: distinct server-side permissions for each supported action (View/Create/Edit/Delete/Approve/Reject/Reverse/Print, plus applicable actions).
 - UI must reflect permissions, but backend authorization is authoritative; inventory existing policies/routes first.
 
@@ -48,7 +48,7 @@
 - Latest: `draft_voucher.blade.php` and `extra_charge.blade.php` present initial skeleton and conceal server table rows until DataTables `init.dt`; common presentation in `public/css/finance-voucher-components.css`.
 - `resources/views/admin/layouts/master.blade.php`: bumped skeleton CSS/JS asset versions.
 - **Testing state:** GitHub commits present. Regression coverage extended to accent color and Draft/Extra initialization; source contracts inspected. Latest local PHPUnit, view cache and visual browser checks are still PENDING.
-- **Next batch:** user browser QA of accent colors + slow reload, then fix any remaining page-specific loader gaps **within Milestone 01**, then move to Milestone 02.
+- **Next batch:** implement/verify Milestone 02 permissions on the same configured local database; do not modify finance postings just for UI acceptance.
 
 ## 2026-11-18 batch completion ledger
 - **Code committed:** shared voucher-accent neutral skeleton, Draft and Extra initial DataTables skeleton, common initial-state CSS, versioned asset loading, and regression assertions. The previous Bank/Plot AJAX skeletons remain in place.
@@ -62,6 +62,35 @@
 **Implemented:** Added shared server-rendered `resources/views/components/finance/voucher-skeleton-rows.blade.php` first-frame rows and reused in Bank Deposit/Withdrawal, Plot Receive Payment, Plot Purchase Voucher, Draft Voucher and Extra Charges. Plain `Loading vouchers…` / `Loading purchases…` first-frame rows removed from three AJAX directories; AJAX still refreshes the same shared skeleton as before. Extra Charges and Draft initial DOM skeleton no longer starts empty. Moved critical initial-list concealment and voucher-accent skeleton CSS into the layout `<head>` so it applies before content is painted, independently of late common stylesheets and jQuery initialization. Original table rows stay in DOM and return after DataTables `init.dt`; no financial/DB/controller changes. Extended `FinanceVoucherInitialSkeletonTest` source checks for first-paint and early CSS.
 
 **Verification:** GitHub code committed and static source inspection performed. Local `php artisan view:cache`, updated PHPUnit, browser throttled reload and correct final DataTables layout **NOT RUN by assistant / OWNER PASS PENDING**. This remains **Milestone 01**. Check Plot Receive, Plot Purchase, both Bank pages, Extra Charges and Draft; on slow reload skeleton must appear in the table region immediately, colored by voucher, without text-only loading rows or exploded unformatted table. Check data and actions appear after loading. If still failing, investigate generated HTML and layout/asset response order; do not move to milestone 02 yet.
+
+## 2026-11-18 — Milestone 02 delivery checkpoint (current active milestone)
+
+**Scope:** Distinct, configurable permissions for each Daily Entries voucher and management action. **Code committed; owner local migrate/automated/browser verification NOT YET RUN.** Do not claim fully accepted until the owner's gate passes.
+
+- Central source: `app/Support/Finance/FinanceActionPermission.php`. Independent permission names `finance <module> <action>`, including CR, DR, CP, CCR, CDR, BOR, BOP, JV, SV, CV, Bank Deposit/Withdrawal, Plot Receipt/Purchase, Draft, Extra Charges, Cheque and Online. Actions: view/create/edit/delete/approve/reject/reverse/print plus history/details/confirm/clear/return/withdraw/release/resubmit.
+- Registered `finance.action` middleware in `app/Http/Kernel.php`, applied to the authenticated admin routes in `routes/web.php`. Bank/plot voucher and cheque/online endpoints now map actions independently; original cash/ledger/commission/journal and daily approval routes also use source-specific mappings. For edits, deletions, reversals and approvals, resolve persisted source/ledger identity and selected project rather than trusting a submitted voucher type.
+- Special booking deposit middleware preserves the former unrelated `create plot` permission for standard bookings while Extra Charges require `finance extra-charge create`.
+- First-run migration `2026_11_18_130000_register_finance_action_permissions.php` registers definitions using `insertOrIgnore`, copies existing active user/role grants into their new specific abilities (without deleting the originals), flushes Spatie permission cache, and keeps grants on rollback. **This migration must run on the intended local database before exercising finance UI.** Subsequent role edits can set each permission independently. Do not run `migrate:fresh`, `db:wipe` or seeding.
+- Updated Create/Edit Role UI in `resources/views/admin/role.blade.php` groups each voucher's actions into expandable sections; existing permission checkboxes and role APIs remain.
+- Finance voucher pages now display create/reverse/decision/history controls conditionally; the Daily Voucher Directory filters out unauthorized voucher types and action URLs; cheque/online intake action buttons use independent permissions.
+- Added `tests/Unit/Finance/FinanceActionPermissionMatrixTest.php`; updated the authenticated JV/CV permission test `tests/Feature/Finance/VoucherAuthenticatedPermissionIntegrationTest.php`.
+- **Technical limitation / verification gate:** This is an extensive authorization change; source inspection alone does not prove every historical route/controller, mixed-directory pagination, or browser permission combination correct. Run migration and targeted tests, then validate a role with just View, just Create, just Edit, just Delete, just Approve/Reject, and print-only against each applicable module. Ensure no 403 on authorized operations and no access when permission disabled. Record any gaps before closing Milestone 02.
+- **Next after Milestone 02 owner PASS:** Milestone 03 relationship-safe create/edit/logical delete and FK/column inventory.
+
+### Local verification commands (new milestone)
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan db:show
+php artisan migrate --force
+php artisan permission:cache-reset
+php artisan view:cache
+php artisan test --filter=FinanceActionPermissionMatrixTest
+php artisan test --filter=VoucherAuthenticatedPermissionIntegrationTest
+php artisan route:list --path=admin/finance
+```
+Before migration verify `db:show` reports **the intended `.env` database**; do not run it on live/staging without separate authorization. The migration backfills existing grants; new permissions are managed in Role Create/Edit after migration.
 
 ## What was retired
 The previous 10 phases and V2-specific migration/isolation phases are historical, NOT active instructions. Their superseded docs were removed from the working `docs/` directory; Git history retains them for evidence/recovery. The original client requirements remain available at `docs/BLUEMARKETING_POINT03_DAILY_ENTRIES_REQUIREMENTS_ROMAN_URDU.md` as historical/source scope, not as a replacement for this owner's five new rules.
