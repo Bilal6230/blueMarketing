@@ -10,11 +10,14 @@ use Illuminate\Http\Request;
 final class FinanceActionPermission
 {
     public const MODULES = [
-        'cr', 'dr', 'ccr', 'cdr', 'bor', 'bop', 'jv', 'sv', 'cv',
+        'cr', 'dr', 'cp', 'ccr', 'cdr', 'bor', 'bop', 'jv', 'sv', 'cv',
         'bank-deposit', 'bank-withdrawal', 'plot-receipt', 'plot-purchase',
         'draft', 'extra-charge', 'cheque', 'online',
     ];
-    public const ACTIONS = ['view', 'create', 'edit', 'delete', 'approve', 'reject', 'reverse', 'print'];
+    public const ACTIONS = [
+        'view', 'create', 'edit', 'delete', 'approve', 'reject', 'reverse', 'print',
+        'history', 'details', 'confirm', 'clear', 'return', 'withdraw', 'release', 'resubmit',
+    ];
 
     public static function name(string $module, string $action): string
     {
@@ -34,25 +37,24 @@ final class FinanceActionPermission
         $fixed = [
             'finance.cheques.index'=>['cheque','view'],
             'finance.cheques.data'=>['cheque','view'],
-            'finance.cheques.history'=>['cheque','view'],
+            'finance.cheques.history'=>['cheque','history'],
             'finance.cheques.slip'=>['cheque','print'],
             'finance.cheques.memo'=>['cheque','print'],
             'finance.cheques.store'=>['cheque','create'],
-            'finance.cheques.action'=>['cheque','approve'],
-            'finance.cheques.finalize'=>['cheque','approve'],
+            
             'finance.online.index'=>['online','view'],
             'finance.online.data'=>['online','view'],
             'finance.online.eligible'=>['online','view'],
-            'finance.online.history'=>['online','view'],
+            'finance.online.history'=>['online','history'],
             'finance.online.proof'=>['online','print'],
             'finance.online.store'=>['online','create'],
-            'finance.online.confirm'=>['online','approve'],
+            'finance.online.confirm'=>['online','confirm'],
             'journal.voucher.index'=>['jv','view'],
             'journal.voucher.create'=>['jv','create'],
             'journal.voucher.store'=>['jv','create'],
             'journal.voucher.edit'=>['jv','edit'],
             'journal.voucher.update'=>['jv','edit'],
-            'journal.voucher.resubmit'=>['jv','edit'],
+            'journal.voucher.resubmit'=>['jv','resubmit'],
             'journal.voucher.delete'=>['jv','delete'],
             'journal.voucher.print'=>['jv','print'],
             'sales.voucher.index'=>['sv','view'],
@@ -68,11 +70,19 @@ final class FinanceActionPermission
             'payment_schedule.extra_charge'=>['extra-charge','view'],
         ];
         if (isset($fixed[$name])) return $fixed[$name];
+        if ($name === 'finance.cheques.action') {
+            return ['cheque', $request->input('action') === 'withdrawal' ? 'withdraw' : 'clear'];
+        }
+        if ($name === 'finance.cheques.finalize') {
+            return ['cheque', match ($request->input('decision')) {
+                'returned' => 'return', 'rejected' => 'reject', default => 'clear',
+            }];
+        }
 
         $transfers = [
             'finance.voucher.transfer.workspace'=>'view',
             'finance.voucher.transfer.sources'=>'view',
-            'finance.voucher.transfer.history'=>'view',
+            'finance.voucher.transfer.history'=>'history',
             'finance.voucher.transfer.post'=>'create',
             'finance.voucher.transfer.reverse'=>'reverse',
             'finance.voucher.transfer.print'=>'print',
@@ -85,15 +95,15 @@ final class FinanceActionPermission
         $plot = [
             'finance.voucher.plot-receipt.workspace'=>'view',
             'finance.voucher.plot-receipt.options'=>'view',
-            'finance.voucher.plot-receipt.history'=>'view',
-            'finance.voucher.plot-receipt.details'=>'view',
+            'finance.voucher.plot-receipt.history'=>'history',
+            'finance.voucher.plot-receipt.details'=>'details',
             'finance.voucher.plot-receipt.post'=>'create',
             'finance.voucher.plot-receipt.reverse'=>'reverse',
             'finance.voucher.plot-receipt.print'=>'print',
             'finance.voucher.plot-purchase.workspace'=>'view',
             'finance.voucher.plot-purchase.options'=>'view',
-            'finance.voucher.plot-purchase.history'=>'view',
-            'finance.voucher.plot-purchase.details'=>'view',
+            'finance.voucher.plot-purchase.history'=>'history',
+            'finance.voucher.plot-purchase.details'=>'details',
             'finance.voucher.plot-purchase.post'=>'create',
             'finance.voucher.plot-purchase.reverse'=>'reverse',
             'finance.voucher.plot-purchase.print'=>'print',
