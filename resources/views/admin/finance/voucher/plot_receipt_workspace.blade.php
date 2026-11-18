@@ -145,7 +145,14 @@
  var escapeText=function(value){return $('<div>').text(value == null?'':String(value)).html();};
  var money=function(n){return (Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});};
  var key=function(){return 'plotreceipt'+Date.now().toString(36)+Math.random().toString(36).slice(2,14);};
- var notify=function(kind,message){$('#prAlert').attr('class','alert alert-'+kind).text(message);};
+ var notify=function(kind,message){
+  var type=kind==='danger'?'error':kind,feedback=$.financeVoucherFeedback||{};
+  if($.isFunction(feedback.toast))feedback.toast(type,message);
+  else if(window.toastr&&$.isFunction(window.toastr[type]))window.toastr[type](message);
+  else $('<div>',{'class':'alert alert-'+(type==='success'?'success':'danger')+' fvc-feedback-fallback',role:'alert',text:message})
+   .appendTo('body').delay(4500).fadeOut(250,function(){$(this).remove();});
+  $('#prAlert').attr('class','alert alert-'+kind).text(message);
+ };
  var ajax=function(url,method,data){
   return $.ajax({url:url,type:method||'GET',dataType:'json',
    data:method==='POST'?JSON.stringify(data):undefined,
