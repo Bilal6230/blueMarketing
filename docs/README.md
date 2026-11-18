@@ -271,6 +271,28 @@ php artisan finance:audit-voucher-schema --require-fks
 3. Test Edit/Reverse/Delete permissions independently; ensure no full-page reload, server errors shown inside modal and the history refreshed through AJAX.
 4. Confirm original JV/CV/CR/etc voucher behavior and reporting are not negatively affected by the shared `finance_posting_lines.is_active` column. Broader Milestone 03 acceptance (other voucher families) is still pending; do not declare whole milestone complete.
 
+## 2026-11-18 — Owner Plot full Edit test gate: UNIQUE allocation correction (LATEST)
+
+**Owner local results at commit `f4262105` (database `bluenew_clean_final`):** `PlotFullVoucherEditContractTest` **4 PASS / 78 assertions**, `PlotEntryWriterTest` **35 PASS, 1 FAIL / 214 assertions**. All requested Plot PHP files passed lint and `view:cache` passed. Failed test: `full receipt edit adds and archives allocation rows without hard delete`. SQLite `UNIQUE(receipt_id, booking_id)` rejected an attempted positional reassignment of row #1 to booking #32 while booking #32 already existed. **This is an application matching bug, not a redundant database constraint.** No schema migration has been reported as executed yet for the latest Plot line lifecycle.
+
+**Code repair after owner output (GitHub committed; owner retest pending):**
+- `PlotVoucherEditor::receipt` no longer updates allocation child rows by array index. It locks all receipt allocations, indexes by **booking_id**, deactivates old active bookings that have been removed, updates matching booking records, **reactivates an archived booking row** if re-added, and inserts only genuinely unseen booking IDs. This respects the existing composite unique key and preserves same-child identity.
+- A changed set of booking IDs requires the Plot lifecycle `is_active` migration, **even if allocation counts happen to be equal**. Editing existing booking amounts without a membership change remains supported on older schema.
+- `PlotEntryWriterTest` integration test now verifies **add booking 32 → archive booking 31 → restore booking 31**, preserving its original allocation row ID, exactly 2 unique booking rows, balanced account credits, same posting batch and 3 edit snapshots. No new table, column or migration created in this repair.
+- **Do not report PHP tests PASS until owner terminal confirms.** The earlier 35 PASS/1 FAIL is the only verified feature-test outcome.
+
+**Local verification (first, no migration):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/PlotVoucherEditor.php
+php artisan test --filter=PlotFullVoucherEditContractTest
+php artisan test --filter=PlotEntryWriterTest
+```
+
+If the tests pass, confirm the configured database and inspect the shared-posting impact before applying the existing `2026_11_18_190000_add_plot_detail_lifecycle_columns.php` migration. **Do not add or drop any new table.** Specifically, `finance_posting_lines` is shared across voucher series: audit readers/reporters that sum all lines must be checked for correct inactive-line treatment. The migration itself adds `is_active` to 3 existing tables only and has not yet been owner-applied. After a safe migration and accounting report checks, **browser test is required** for complete Plot Receipt/Purchase Edit, dynamic row add/remove and Delete; previous narration-only browser PASS does not cover it.
+
 ## Remaining Milestone 03 work — do not mark complete yet
 
 1. Rerun `PlotEntryWriterTest` on local; resolve any subsequent actual assertion failures. Verify Plot History/Details/Replay after root logical archive.
