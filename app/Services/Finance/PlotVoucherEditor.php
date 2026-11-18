@@ -148,19 +148,25 @@ final class PlotVoucherEditor
             if ($lines->count()!==$old->count()+1) {
                 throw new \DomainException('Existing Plot Receipt posting does not match active allocations.');
             }
-            // Refuse to edit mismatched historical evidence. The related
-            // receivable posting must still point at the same project's
-            // customer/plot account and carry the allocation's amount.
+            // Resolve original credit legs by their related account/plot and
+            // exact amount, never by old posting-line row order. A previously
+            // restored booking can have an older allocation ID but a newer
+            // active posting-line ID.
             $priorCredits=$lines->filter(fn($line)=>(float)$line->credit>0)->values();
-            foreach ($old->values() as $index=>$allocation) {
-                $leg=$priorCredits[$index]??null;
-                if (!$leg || $this->cents($leg->credit)!==$this->cents($allocation->amount)
-                    || !DB::table('project_head_subheads')
-                        ->where('id',$leg->project_head_subhead_id)->where('project_id',$project)
-                        ->where('customer_id',$source->customer_id)
-                        ->where('plot_id',$allocation->plot_id)->exists()) {
+            $bookingByLineId=[];
+            foreach ($old as $allocation) {
+                $matches=$priorCredits->filter(function($leg)use($allocation,$project,$source,$bookingByLineId) {
+                    return !isset($bookingByLineId[$leg->id])
+                        && $this->cents($leg->credit)===$this->cents($allocation->amount)
+                        && DB::table('project_head_subheads')
+                            ->where('id',$leg->project_head_subhead_id)->where('project_id',$project)
+                            ->where('customer_id',$source->customer_id)
+                            ->where('plot_id',$allocation->plot_id)->exists();
+                })->values();
+                if ($matches->count()!==1) {
                     throw new \DomainException('Existing receipt allocation posting relationship mismatch.');
                 }
+                $bookingByLineId[(int)$matches[0]->id]=(string)$allocation->booking_id;
             }
             $oldBookingIds=$old->pluck('booking_id')->map(fn($id)=>(int)$id)->sort()->values()->all();
             $newBookingIds=array_map(static fn(array $row): int => (int)$row['booking_id'],$data['allocations']);
@@ -206,7 +212,7 @@ final class PlotVoucherEditor
             $before=['voucher'=>(array)$source,'allocations'=>$old->map(fn($r)=>(array)$r)->all(),
                 'posting_lines'=>$lines->map(fn($r)=>(array)$r)->all()];
             $this->replaceLines($project,(int)$batch->id,$lines,$newLines,
-                ['debit'=>['receipt_cash'],'credit'=>$old->pluck('booking_id')->map(fn($value)=>(string)$value)->all()],
+                ['debit'=>['receipt_cash'],'credit'=>$priorCredits->map(fn($line)=>$bookingByLineId[(int)$line->id])->all()],
                 ['debit'=>['receipt_cash'],'credit'=>array_map(fn($value)=>(string)$value['booking_id'],$newAllocations)]);
             // (receipt_id, booking_id) is UNIQUE. Never recycle a row
             // position for another booking: identity is the booking itself.
@@ -270,17 +276,23 @@ final class PlotVoucherEditor
                 && !Schema::hasColumn('finance_plot_purchase_items','is_active')) {
                 throw new \DomainException('Apply Plot line lifecycle migration before adding/removing purchased plots.');
             }
-            // Preserve the identity and amount of each linked inventory leg.
-            // Never overwrite a posting that no longer matches its source.
+            // Match inventory legs to purchased item source identity using
+            // unique plot code in their persisted description, account and
+            // amount. Do not assume posting-line IDs sort like item IDs.
             $priorDebits=$lines->filter(fn($line)=>(float)$line->debit>0)->values();
-            foreach ($old->values() as $index=>$item) {
-                $leg=$priorDebits[$index]??null;
-                if (!$leg || (int)$leg->project_head_subhead_id!==(int)$item->inventory_account_id
-                    || $this->cents($leg->debit)!==$this->cents($item->amount)
-                    || !DB::table('plots')->where('id',$item->legacy_plot_id)
-                        ->where('project_id',$project)->exists()) {
+            $plotByLineId=[];
+            foreach ($old as $item) {
+                $expectedDescription='Plot purchase '.$item->plot_code.' · '.$item->description;
+                $matches=$priorDebits->filter(fn($leg)=>
+                    !isset($plotByLineId[(int)$leg->id])
+                    && (int)$leg->project_head_subhead_id===(int)$item->inventory_account_id
+                    && $this->cents($leg->debit)===$this->cents($item->amount)
+                    && (string)$leg->description===$expectedDescription)->values();
+                if ($matches->count()!==1 || !DB::table('plots')
+                    ->where('id',$item->legacy_plot_id)->where('project_id',$project)->exists()) {
                     throw new \DomainException('Existing purchase inventory posting relationship mismatch.');
                 }
+                $plotByLineId[(int)$matches[0]->id]=(string)$item->legacy_plot_id;
             }
             $seller=(int)$data['seller_account_id'];$this->account($project,$seller);
             $number=trim((string)$data['purchase_number']);
@@ -346,7 +358,7 @@ final class PlotVoucherEditor
             $before=['voucher'=>(array)$source,'items'=>$old->map(fn($r)=>(array)$r)->all(),
                 'posting_lines'=>$lines->map(fn($r)=>(array)$r)->all(),'plots'=>$priorPlots];
             $this->replaceLines($project,(int)$batch->id,$lines,$newLines,
-                ['debit'=>$old->pluck('legacy_plot_id')->map(fn($value)=>(string)$value)->all(),'credit'=>['purchase_seller']],
+                ['debit'=>$priorDebits->map(fn($line)=>$plotByLineId[(int)$line->id])->all(),'credit'=>['purchase_seller']],
                 ['debit'=>array_map(fn($index,$value)=>(string)($value['plot']?->id ?? 'new:'.$index),array_keys($plots),$plots),'credit'=>['purchase_seller']]);
             foreach ($plots as $p) {
                 $v=$p['input'];$existing=$p['plot'];
