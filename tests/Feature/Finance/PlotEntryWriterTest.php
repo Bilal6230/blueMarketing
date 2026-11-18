@@ -578,4 +578,62 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_plot_purchase_items',1);
         $this->assertDatabaseCount('finance_plot_purchases',1);
     }
+
+    public function test_archived_plot_receipt_cannot_be_reversed_or_create_any_posting(): void
+    {
+        Schema::table('finance_plot_receipts', function (Blueprint $table): void {
+            $table->boolean('is_active')->default(true);
+            $table->softDeletes();
+        });
+        $created=(new PlotEntryWriter())->receive(1, 5, 'PLOT-RECEIPT-ARCHIVED-REV-001', [
+            'date'=>'2026-11-05','receipt_number'=>'PR-ARCHIVED-REV-1',
+            'amount'=>'75.00','cash_account_id'=>101,'narration'=>'Archive reversal guard',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'75.00']],
+        ],7);
+        DB::table('finance_plot_receipts')->where('id',$created['source_id'])
+            ->update(['is_active'=>0,'deleted_at'=>now()]);
+        try {
+            (new \App\Services\Finance\PlotEntryLifecycleService())->reverse(
+                1,'plot_receipt',$created['source_id'],'PLOT-RECEIPT-ARCHIVED-VOID1',
+                '2026-11-05','Archived receipt cannot reverse',7
+            );
+            $this->fail('Archived receipt must not produce a new posting batch.');
+        } catch (\DomainException $error) {
+            $this->assertSame('PLOT_SOURCE_NOT_ACTIVE',$error->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches',1);
+        $this->assertDatabaseCount('finance_posting_lines',2);
+    }
+
+    public function test_archived_plot_purchase_cannot_reverse_or_deactivate_its_inventory(): void
+    {
+        Schema::table('finance_plot_purchases', function (Blueprint $table): void {
+            $table->boolean('is_active')->default(true);
+            $table->softDeletes();
+        });
+        $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-ARCHIVED-REV-001',[
+            'date'=>'2026-11-05','purchase_number'=>'PP-ARCHIVED-REV-1',
+            'seller_account_id'=>102,'narration'=>'Archive purchase reversal guard',
+            'items'=>[[
+                'plot_code'=>'LAND-ARCHIVED-REV-1','description'=>'Temporary plot','area'=>'1',
+                'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'100','inventory_account_id'=>104,
+            ]],
+        ],7);
+        DB::table('finance_plot_purchases')->where('id',$created['source_id'])
+            ->update(['is_active'=>0,'deleted_at'=>now()]);
+        $plotId=(int)DB::table('finance_plot_purchase_items')
+            ->where('purchase_id',$created['source_id'])->value('legacy_plot_id');
+        try {
+            (new \App\Services\Finance\PlotEntryLifecycleService())->reverse(
+                1,'plot_purchase',$created['source_id'],'PLOT-PURCHASE-ARCHIVED-VOID1',
+                '2026-11-05','Archived purchase cannot reverse',7
+            );
+            $this->fail('Archived purchase must not produce a new posting batch.');
+        } catch (\DomainException $error) {
+            $this->assertSame('PLOT_SOURCE_NOT_ACTIVE',$error->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches',1);
+        $this->assertSame(1,(int)DB::table('plots')->where('id',$plotId)->value('is_active'));
+    }
 }
