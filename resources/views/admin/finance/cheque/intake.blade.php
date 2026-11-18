@@ -769,7 +769,7 @@ $(function () {
             $body.empty().append($('<tr>').append($('<td colspan="5" class="text-danger">').text('Could not load cheque history.')));
         });
     });
-    @can('finance cheque create')
+    @if(auth()->user()->can('finance cheque clear') || auth()->user()->can('finance cheque return') || auth()->user()->can('finance cheque reject'))
     $('#cheque-table-body').on('click','.cheque-finalize',function(){
         var $btn=$(this),decision=$btn.attr('data-decision');
         finalizeTarget={id:$btn.attr('data-id'),decision:decision};
@@ -836,7 +836,7 @@ $(function () {
             }).always(function(){finalizeBusy=false;$('#cheque-finalize-save').prop('disabled',false);});
         });
     });
-    @endcan
+    @endif
     load(1);
 });
 </script>
