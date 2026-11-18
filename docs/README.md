@@ -327,3 +327,14 @@ php artisan finance:audit-voucher-schema --require-fks
 - Any configured database should work via `.env` without special database-name isolation, custom V2 modules, or renamed copies of finance.
 - Financial mutations must be transactional, source-linked, project-scoped, and never hard-delete business rows. Maintain account/ledger integrity and preserve immutable evidence.
 - Separate code-committed, user terminal PASS, browser PASS, and pending acceptance in the progress report.
+
+
+## 2026-11-18 — Owner confirmation: Plot full Edit/Delete browser gate PASS
+
+**Owner local confirmation:** `bluenew_clean_final` selected; `2026_11_18_190000_add_plot_detail_lifecycle_columns.php` migration **DONE**. `finance:audit-voucher-schema --require-fks` reported **8/8 foreign keys present, 0 orphan references, 0 cross-project JV/CV account links**. The lifecycle migration adds `is_active` to three existing tables (`finance_plot_receipt_allocations`, `finance_plot_purchase_items`, `finance_posting_lines`), no new tables.
+
+**Automated local gate:** `PlotFullVoucherEditContractTest` **4 PASS / 78 assertions**, `PlotEntryWriterTest` **36 PASS / 226 assertions**, combined **40 PASS / 304 assertions**; editor PHP lint PASS.
+
+**Owner reports Plot Receipt and Plot Purchase browser tests PASS.** Treat their full Edit/Delete browser acceptance as owner-confirmed. Do not request the same browser gate again without a new change that affects it. This does not independently establish that all shared financial reports were regression-tested or that remaining voucher families have complete CRUD acceptance.
+
+**Next engineering priorities:** (1) inspect readers and reporters of shared `finance_posting_lines` and validate inactive-row semantics and balances across unrelated voucher families; (2) proceed with Milestone 03 remaining voucher Create/Edit/Delete workflows and project-scoped account integrity; (3) keep full application AJAX, common modal/filter/dropdown/skeleton/toast patterns consistent; (4) update this single README after each actual implementation batch. **Milestone 03 remains PARTIAL overall.**
