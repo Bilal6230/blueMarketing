@@ -1268,6 +1268,33 @@ class VoucherController extends Controller
             'message' => 'Voucher reversed. Original posting history remains available.']);
     }
 
+    public function updatePlotReceiptNarration(Request $request, int $receiptId)
+    {
+        return $this->updatePlotNarration($request, 'plot_receipt', $receiptId);
+    }
+
+    public function updatePlotPurchaseNarration(Request $request, int $purchaseId)
+    {
+        return $this->updatePlotNarration($request, 'plot_purchase', $purchaseId);
+    }
+
+    private function updatePlotNarration(Request $request, string $kind, int $sourceId)
+    {
+        $projectId=(int)getSelectedTown();
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
+        $module=$kind==='plot_receipt'?'plot-receipt':'plot-purchase';
+        abort_unless($request->user()?->can('finance '.$module.' edit'),403);
+        $data=$request->validate(['narration'=>['required','string','max:2000']]);
+        try {
+            $result=app(\App\Services\Finance\PlotVoucherNarrationEditor::class)
+                ->update($projectId,$kind,$sourceId,$data['narration'],$request->user()?->id);
+        } catch (\DomainException $exception) {
+            return response()->json(['status'=>'error','message'=>$exception->getMessage()],409);
+        }
+        return response()->json(['status'=>'success','data'=>$result,
+            'message'=>$result['changed']?'Voucher narration updated.':'Narration unchanged.']);
+    }
+
     public function plotReceiptDetails(int $receiptId)
     {
         $projectId = (int) getSelectedTown();
