@@ -63,4 +63,22 @@ final class VoucherRelationshipSafetyMilestoneTest extends TestCase
             self::assertStringNotContainsString('forceDelete(', $controller);
         }
     }
+    public function test_draft_deletion_archives_the_scoped_row_without_pending_update_or_hard_delete(): void
+    {
+        $controller=$this->source('app/Http/Controllers/LedgerController.php');
+        $start=strpos($controller,'public function draftDestroy(Request $request)');
+        $end=strpos($controller,'public function update(Request $request,',$start);
+        self::assertNotFalse($start);
+        self::assertNotFalse($end);
+        $method=substr($controller,$start,$end-$start);
+        self::assertStringContainsString("can('finance draft delete')",$method);
+        self::assertStringContainsString("->where('project_id',\$projectId)",$method);
+        self::assertStringContainsString('DB::transaction(', $method);
+        self::assertStringContainsString('->is_active=0',$method);
+        self::assertStringContainsString('$draft->delete()',$method);
+        self::assertStringNotContainsString('PendingUpdate::create(', $method);
+        self::assertStringNotContainsString('forceDelete(', $method);
+        self::assertStringContainsString("response()->json(['status'=>'success'",$method);
+    }
+
 }
