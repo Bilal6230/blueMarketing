@@ -1306,4 +1306,45 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches',1);
     }
 
+    public function test_shared_posting_balance_audit_checks_all_series_and_ignores_archived_legs(): void
+    {
+        $receipt=(new PlotEntryWriter())->receive(1,5,'POSTING-AUDIT-RECEIPT-001',[
+            'date'=>'2026-11-05','receipt_number'=>'PR-AUDIT-1','amount'=>'70.00',
+            'cash_account_id'=>101,'narration'=>'Audit receipt',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,
+                'amount'=>'70.00']],
+        ],7);
+        $purchase=(new PlotEntryWriter())->purchase(1,'POSTING-AUDIT-PURCHASE-001',[
+            'date'=>'2026-11-05','purchase_number'=>'PP-AUDIT-1','seller_account_id'=>102,
+            'narration'=>'Audit purchase','items'=>[[
+                'plot_code'=>'AUDIT-PLOT-ONE','description'=>'Audit',
+                'area'=>'1','unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'100','inventory_account_id'=>104,
+            ]],
+        ],7);
+        $audit=new \App\Services\Finance\PostingBatchIntegrityAudit();
+        $this->assertSame([],$audit->audit(1));
+        DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$purchase['posting_batch_id'])
+            ->where('credit','>',0)->update(['credit'=>'101.00']);
+        $findings=$audit->audit(1);
+        $this->assertCount(1,$findings);
+        $this->assertSame($purchase['posting_batch_id'],$findings[0]['batch_id']);
+        $this->assertContains('POSTING_UNBALANCED',$findings[0]['issues']);
+        DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$purchase['posting_batch_id'])
+            ->where('credit','>',0)->update(['credit'=>'100.00']);
+        $this->assertSame([],$audit->audit(1));
+        DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$receipt['posting_batch_id'])
+            ->where('credit','>',0)->update(['is_active'=>0]);
+        $findings=$audit->audit(1);
+        $this->assertCount(1,$findings);
+        $this->assertSame($receipt['posting_batch_id'],$findings[0]['batch_id']);
+        $this->assertContains('ACTIVE_LINES_MISSING',$findings[0]['issues']);
+        $this->assertContains('POSTING_UNBALANCED',$findings[0]['issues']);
+        $this->assertSame([],$audit->audit(2));
+        $this->assertDatabaseCount('finance_posting_batches',2);
+    }
+
 }
