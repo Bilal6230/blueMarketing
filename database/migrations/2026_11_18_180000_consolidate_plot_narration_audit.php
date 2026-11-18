@@ -35,11 +35,16 @@ return new class extends Migration {
                     'source_kind'=>$row->source_kind,'source_id'=>(int)$row->source_id,
                     'narration'=>(string)$row->updated_narration,
                 ],JSON_THROW_ON_ERROR);
+                $reason='Plot narration legacy audit #'.(int)$row->id;
+                $alreadyCopied=DB::table('daily_voucher_edit_snapshots')
+                    ->where('project_id',$row->project_id)->where('source_id',$row->source_id)
+                    ->where('status','plot_note')->where('reason',$reason)->exists();
+                if ($alreadyCopied) continue;
                 DB::table('daily_voucher_edit_snapshots')->insert([
                     'project_id'=>$row->project_id,'source_id'=>$row->source_id,
                     'approval_id'=>null,'status'=>'plot_note',
                     'before_snapshot'=>$before,'proposed_snapshot'=>$after,
-                    'reason'=>'Plot voucher narration edited (consolidated)',
+                    'reason'=>$reason,
                     'submitted_by'=>$row->edited_by,'decided_by'=>$row->edited_by,
                     'created_at'=>$row->created_at,'updated_at'=>$row->updated_at,
                 ]);
