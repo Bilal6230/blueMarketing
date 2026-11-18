@@ -86,6 +86,27 @@ final class PlotFullVoucherEditContractTest extends TestCase
         }
     }
 
+    public function test_receipt_prefill_uses_actual_related_accounts_not_posting_position(): void
+    {
+        $root=dirname(__DIR__,3);
+        $controller=file_get_contents($root.'/app/Http/Controllers/Finance/VoucherController.php');
+        $start=strpos($controller,'public function plotReceiptDetails(');
+        $end=strpos($controller,'public function printPlotReceipt(',$start);
+        self::assertNotFalse($start);
+        self::assertNotFalse($end);
+        $method=substr($controller,$start,$end-$start);
+        foreach ([
+            "where('account.project_id',",
+            "where('line.is_active',1)",
+            "groupBy(fn(",
+            "line->plot_id",
+            "line->customer_id",
+            "receivable account relationship is ambiguous",
+            "response()->json(",
+        ] as $guard) self::assertStringContainsString($guard,$method);
+        self::assertStringNotContainsString('postingAccounts[',$method);
+    }
+
     public function test_both_voucher_create_modals_are_reused_for_full_edit(): void
     {
         $root=dirname(__DIR__,3);
