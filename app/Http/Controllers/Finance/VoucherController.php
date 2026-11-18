@@ -1363,12 +1363,18 @@ class VoucherController extends Controller
             ->join('finance_posting_batches as batch','batch.id','=','link.posting_batch_id')
             ->where('link.source_id',$receiptId)->where('link.source_kind','plot_receipt')
             ->where('batch.project_id',$projectId)->first(['batch.id']);
-        $cashAccount = $link ? DB::table('finance_posting_lines')->where('posting_batch_id',$link->id)
-            ->orderBy('id')->value('project_head_subhead_id') : null;
+        $postingAccounts = $link ? DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$link->id)->orderBy('id')
+            ->pluck('project_head_subhead_id')->all() : [];
+        $cashAccount=$postingAccounts[0]??null;
+        $allocations=$details['allocations']->values()->map(function($row,$index)use($postingAccounts){
+            $row->receivable_account_id=$postingAccounts[$index+1]??null;
+            return $row;
+        });
         return response()->json(['receipt' => array_merge((array) $details['receipt'], [
             'cash_account_id'=>$cashAccount,
             'customer' => $customer ? (trim((string) $customer->first_name.' '.(string) $customer->last_name) ?: (string) ($customer->business ?? 'Customer')) : 'Customer',
-        ]), 'allocations' => $details['allocations']]);
+        ]), 'allocations' => $allocations]);
     }
 
     public function printPlotReceipt(int $receiptId, int $plotId)
