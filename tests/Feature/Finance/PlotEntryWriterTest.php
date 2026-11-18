@@ -920,4 +920,73 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('finance_posting_batches',1);
     }
 
+    public function test_plot_receipt_delete_archives_source_and_offsets_balance_without_erasing_evidence(): void
+    {
+        Schema::table('finance_plot_receipts',function(Blueprint $t): void {
+            $t->boolean('is_active')->default(true);$t->softDeletes();
+        });
+        $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-DELETE-001',[
+            'date'=>'2026-11-05','receipt_number'=>'PR-DELETE-1','amount'=>'75.00',
+            'cash_account_id'=>101,'narration'=>'Disposable test',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'75.00']],
+        ],7);
+        $batch=(new \App\Services\Finance\PlotEntryLifecycleService())->archive(
+            1,'plot_receipt',$created['source_id'],'PLOT-RECEIPT-ARCHIVE-KEY-001',
+            '2026-11-18','Test logical delete',7
+        );
+        $this->assertSame($created['posting_batch_id'],
+            (int)DB::table('finance_posting_batches')->where('id',$batch)->value('reversal_of_batch_id'));
+        $this->assertSame(0,(int)DB::table('finance_plot_receipts')
+            ->where('id',$created['source_id'])->value('is_active'));
+        $this->assertNotNull(DB::table('finance_plot_receipts')
+            ->where('id',$created['source_id'])->value('deleted_at'));
+        $this->assertDatabaseCount('finance_plot_receipts',1);
+        $this->assertDatabaseCount('finance_plot_receipt_allocations',1);
+        $this->assertDatabaseCount('finance_posting_batches',2);
+        $this->assertSame(75.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+        $this->assertSame(75.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->sum('credit'));
+        try{
+            (new \App\Services\Finance\PlotEntryLifecycleService())->archive(
+                1,'plot_receipt',$created['source_id'],'PLOT-RECEIPT-ARCHIVE-KEY-002',
+                '2026-11-18','Second attempt',7
+            );
+            $this->fail('Already archived receipt must not generate a new posting.');
+        }catch(\DomainException $error){
+            $this->assertStringContainsString('deleted',$error->getMessage());
+        }
+        $this->assertDatabaseCount('finance_posting_batches',2);
+    }
+
+    public function test_plot_purchase_delete_archives_original_and_its_unbooked_inventory(): void
+    {
+        Schema::table('finance_plot_purchases',function(Blueprint $t): void {
+            $t->boolean('is_active')->default(true);$t->softDeletes();
+        });
+        $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-DELETE-001',[
+            'date'=>'2026-11-05','purchase_number'=>'PP-DELETE-1','seller_account_id'=>102,
+            'narration'=>'Disposable plot','items'=>[[
+                'plot_code'=>'LAND-DELETE-1','description'=>'Test plot','area'=>'1',
+                'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'100','inventory_account_id'=>104,
+            ]],
+        ],7);
+        $plotId=(int)DB::table('finance_plot_purchase_items')->where('purchase_id',$created['source_id'])
+            ->value('legacy_plot_id');
+        $batch=(new \App\Services\Finance\PlotEntryLifecycleService())->archive(
+            1,'plot_purchase',$created['source_id'],'PLOT-PURCHASE-ARCHIVE-KEY-001',
+            '2026-11-18','Test logical purchase delete',7
+        );
+        $this->assertSame(0,(int)DB::table('plots')->where('id',$plotId)->value('is_active'));
+        $this->assertSame(0,(int)DB::table('finance_plot_purchases')
+            ->where('id',$created['source_id'])->value('is_active'));
+        $this->assertDatabaseCount('finance_plot_purchase_items',1);
+        $this->assertDatabaseCount('finance_posting_batches',2);
+        $this->assertSame(100.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->sum('debit'));
+        $this->assertSame(100.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->sum('credit'));
+    }
+
 }
