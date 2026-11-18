@@ -21,6 +21,7 @@ final class VoucherRelationshipSafetyMilestoneTest extends TestCase
         self::assertStringContainsString('information_schema.KEY_COLUMN_USAGE',$audit);
         self::assertStringContainsString('tables_with_neither',$audit);
         self::assertStringContainsString('orphan_count',$audit);
+        self::assertStringContainsString('cross_project_detail_links',$audit);
         foreach (['->insert(', '->update(', '->delete(', 'DB::statement(', 'DB::unprepared('] as $writer) {
             self::assertStringNotContainsString($writer,$audit);
         }
@@ -34,9 +35,14 @@ final class VoucherRelationshipSafetyMilestoneTest extends TestCase
             "'commision_voucher_details','commision_voucher_id','commision_vouchers'",
             "'ledgers','journal_voucher_detail_id','journal_voucher_details'",
             "'ledgers','customer_ledger_id','customer_ledger'",
+            "'ledgers','project_head_subheads_id','project_head_subheads'",
+            "'journal_voucher_details','account_id','project_head_subheads'",
+            "'commision_voucher_details','account_id','project_head_subheads'",
+            "'ledger_source_attributions','ledger_id','ledgers'",
         ] as $relationship) self::assertStringContainsString($relationship,$migration);
         self::assertStringContainsString('->restrictOnDelete()->restrictOnUpdate()',$migration);
         self::assertStringContainsString('orphan references',$migration);
+        self::assertStringContainsString('cross-project account links',$migration);
         self::assertStringNotContainsString('cascadeOnDelete',$migration);
         self::assertStringNotContainsString('SET FOREIGN_KEY_CHECKS=0',$migration);
     }
