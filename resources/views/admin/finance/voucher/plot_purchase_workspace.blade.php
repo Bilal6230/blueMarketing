@@ -204,10 +204,10 @@
      @can('finance plot-purchase edit')
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-edit ml-1','data-id':x.id,text:'Edit voucher'}));
      @endcan
-     @can('finance plot-purchase reverse')
-     @can('finance plot-purchase delete')
+          @can('finance plot-purchase delete')
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-delete ml-1','data-id':x.id,text:'Delete'}));
      @endcan
+     @can('finance plot-purchase reverse')
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-void ml-1','data-id':x.id,text:'Reverse'}));
      @endcan
      $tr.append($actions);
@@ -318,7 +318,6 @@
   });
   @endcan
   $('#ppHistory').on('click','.pp-detail',function(){details($(this).attr('data-id'));});
- @can('finance plot-purchase reverse')
  @can('finance plot-purchase delete')
  $('#ppHistory').on('click','.pp-delete',function(){
   $('#ppDeleteForm').data('source-id',$(this).attr('data-id'));
@@ -344,6 +343,7 @@
   }).always(function(){$button.prop('disabled',false);});
  });
 @endcan
+ @can('finance plot-purchase reverse')
  $('#ppHistory').on('click','.pp-void',function(){
   $('#ppVoidForm').data('source-id',$(this).attr('data-id'));
   $('#ppVoidReason').val('');$('#ppVoidError').addClass('d-none').text('');
