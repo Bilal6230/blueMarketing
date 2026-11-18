@@ -39,8 +39,13 @@ final class PlotEntryLifecycleService
                     ->join('plots as plot', 'plot.id', '=', 'item.legacy_plot_id')
                     ->where('item.purchase_id', $sourceId)
                     ->where('plot.project_id', $projectId)
+                    ->when(Schema::hasColumn('finance_plot_purchase_items','is_active'),
+                        fn($q)=>$q->where('item.is_active',1))
                     ->lockForUpdate()->get(['plot.id', 'plot.sold', 'plot.is_active']);
-                if ($purchasePlots->count() !== DB::table('finance_plot_purchase_items')->where('purchase_id', $sourceId)->count()
+                if ($purchasePlots->count() !== DB::table('finance_plot_purchase_items')
+                    ->where('purchase_id', $sourceId)
+                    ->when(Schema::hasColumn('finance_plot_purchase_items','is_active'),
+                        fn($q)=>$q->where('is_active',1))->count()
                     || $purchasePlots->contains(fn ($plot) => (int) $plot->sold !== 0
                         || DB::table('bookings')->where('plot_id', $plot->id)->exists())) {
                     throw new \DomainException('V2_PLOT_PURCHASE_INVENTORY_IN_USE');
