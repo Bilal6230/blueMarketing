@@ -171,19 +171,38 @@ final class PlotVoucherEditor
             $before=['voucher'=>(array)$source,'allocations'=>$old->map(fn($r)=>(array)$r)->all(),
                 'posting_lines'=>$lines->map(fn($r)=>(array)$r)->all()];
             $this->replaceLines($project,(int)$batch->id,$lines,$newLines);
-            for ($i=0;$i<max($old->count(),count($newAllocations));$i++) {
-                $row=$old[$i]??null;$allocation=$newAllocations[$i]??null;
-                if ($row && $allocation) {
-                    DB::table('finance_plot_receipt_allocations')->where('id',$row->id)
-                        ->where('receipt_id',$id)->update($allocation+['updated_at'=>now()]);
-                } elseif ($row) {
+            // (receipt_id, booking_id) is UNIQUE. Never recycle a row
+            // position for another booking: identity is the booking itself.
+            // Include inactive rows so a previously removed booking can be
+            // reactivated instead of attempting an illegal duplicate insert.
+            $allRows=DB::table('finance_plot_receipt_allocations')
+                ->where('receipt_id',$id)->orderBy('id')->lockForUpdate()->get();
+            $byBooking=$allRows->keyBy('booking_id');
+            $desiredBookings=array_fill_keys(
+                array_map(static fn(array $a): int => (int)$a['booking_id'],$newAllocations),true
+            );
+            foreach ($old as $row) {
+                if (!isset($desiredBookings[(int)$row->booking_id])) {
                     DB::table('finance_plot_receipt_allocations')->where('id',$row->id)
                         ->where('receipt_id',$id)->update(['is_active'=>0,'updated_at'=>now()]);
-                } elseif ($allocation) {
-                    DB::table('finance_plot_receipt_allocations')->insert(
-                        $allocation+['receipt_id'=>$id,'is_active'=>1,
-                            'created_at'=>now(),'updated_at'=>now()]
-                    );
+                }
+            }
+            foreach ($newAllocations as $allocation) {
+                $existing=$byBooking->get((int)$allocation['booking_id']);
+                if ($existing) {
+                    $values=$allocation+['updated_at'=>now()];
+                    if (Schema::hasColumn('finance_plot_receipt_allocations','is_active')) {
+                        $values['is_active']=1;
+                    }
+                    DB::table('finance_plot_receipt_allocations')->where('id',$existing->id)
+                        ->where('receipt_id',$id)->update($values);
+                } else {
+                    $values=$allocation+['receipt_id'=>$id,
+                        'created_at'=>now(),'updated_at'=>now()];
+                    if (Schema::hasColumn('finance_plot_receipt_allocations','is_active')) {
+                        $values['is_active']=1;
+                    }
+                    DB::table('finance_plot_receipt_allocations')->insert($values);
                 }
             }
             DB::table('finance_plot_receipts')->where('id',$id)->where('project_id',$project)->update([
