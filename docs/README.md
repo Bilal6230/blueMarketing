@@ -28,6 +28,32 @@
 - **NEW safe audit command:** `php artisan permissions:audit --json` lists every permission, guard, legacy/granular classification, assigned role names/count and direct-user grant count. It is read-only. No permission deletion/cleanup has been performed yet.
 - New tests: `tests/Unit/RoleManagementModernizationTest.php` (modern layout + safe role-grant contract). **Local test/browser outcome of this new batch still PENDING.**
 
+## 2026-11-18 — Data Operator CR Edit authorization repair (CURRENT batch)
+
+**User evidence:** Role editor screenshot shows Data Operator's CR Edit granted, but CR voucher actions do not offer Edit. Local tests already PASS: RoleManagementModernizationTest 4/424, FinanceActionPermissionMatrixTest 6/365, VoucherAuthenticatedPermissionIntegrationTest 2/19; these tests did **not** cover the actual customer-ledger source-to-Edit action flow. User generated `storage/app/permission-audit.json` locally, but **has not uploaded the file**; do not claim actual DB role/user grant contents were inspected.
+
+**Root cause verified in current code:** `DailyVoucherDirectoryController` still checked obsolete `update voucher` before supplying `edit_url`. `RejectedCashVoucherController` also checked `update voucher` internally, even when role had `finance cr edit`. The route mapping erroneously required `resubmit` for `finance.daily-vouchers.revise.edit`; final row permission filter mapped `revise_url` to `resubmit`. Legacy `delete voucher` also gated the reverse event handler. In addition, existing source list Edit eligibility required original submitter and excluded approved/posted vouchers of eligible cash type. These competing gates meant the checkbox could be saved yet have no effect.
+
+**GitHub code changes committed:**
+- Route action mapping: `finance.daily-vouchers.revise.edit` and its same-source POST store use **Edit**; reverse and release keep separate permissions.
+- Daily Directory customer-ledger rows use `finance <module> edit/delete/reverse/release`, plus independently scoped JV/CV rights; no obsolete generic update/delete/read JV checks for these actions. Rows with approved or posted **active cash CR/CP/CCR/CDR** are offered Edit when eligible; rejected records use Revise under Edit. Voucher source/project/accounting validations remain.
+- `RejectedCashVoucherController` GET and POST both check persisted source's `finance <module> edit`, independent of which user originally submitted it; selected project scope and financial transaction/lifecycle checks remain.
+- Shared Daily Directory Javascript no longer requires `@can('delete voucher')` merely to attach Reverse click handlers. Backend remains authorized independently.
+- New `tests/Unit/Finance/FinanceVoucherEditPermissionParityTest.php` checks the actual directory/controller/route permission contract, including no legacy generic permissions in that chain.
+- **Local PHPUnit and browser QA of this fix have NOT been run by assistant.** Do not close Milestone 02 until owner PASS. No DB/role grants were altered in this fix.
+
+**Owner verification:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=FinanceVoucherEditPermissionParityTest
+php artisan test --filter=FinanceActionPermissionMatrixTest
+php artisan test --filter=RoleManagementModernizationTest
+```
+With an ordinary Data Operator user assigned to the edited role and correct project, refresh `/admin/finance/daily-vouchers?type=CR`. An active posted/approved **cash CR** with an eligible linked ledger should expose Edit in its shared floating action menu; clicking Edit should open the same-source form, not a 403. Revocation of CR Edit must remove that link and direct endpoint must return 403. Pending or bank/cheque entries may still have unrelated lifecycle restrictions; do not pretend a missing Edit button on an ineligible lifecycle state is a permission bug. Upload `storage/app/permission-audit.json` to investigate remaining legacy names and distinguish actual role grants from UI or lifecycle gating.
+
 ## Next actions — Milestone 02 acceptance
 
 Owner run in Windows PowerShell, on the intended local DB only:
