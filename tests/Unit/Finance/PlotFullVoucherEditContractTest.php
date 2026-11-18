@@ -29,6 +29,37 @@ final class PlotFullVoucherEditContractTest extends TestCase
         self::assertStringContainsString("finance.voucher.plot-purchase.update",$routes);
     }
 
+    public function test_plot_voucher_delete_is_independent_of_reverse_and_keeps_original_source_evidence(): void
+    {
+        $root=dirname(__DIR__,3);
+        $controller=file_get_contents($root.'/app/Http/Controllers/Finance/VoucherController.php');
+        $lifecycle=file_get_contents($root.'/app/Services/Finance/PlotEntryLifecycleService.php');
+        $routes=file_get_contents($root.'/routes/web.php');
+        self::assertStringContainsString("'finance plot-receipt delete'",$controller);
+        self::assertStringContainsString("'finance plot-purchase delete'",$controller);
+        self::assertStringContainsString("function deletePlotReceipt(",$controller);
+        self::assertStringContainsString("function deletePlotPurchase(",$controller);
+        self::assertStringContainsString("Route::delete('finance/voucher/plot-receipt/", $routes);
+        self::assertStringContainsString("Route::delete('finance/voucher/plot-purchase/", $routes);
+        self::assertStringContainsString('function archive(', $lifecycle);
+        self::assertStringContainsString('is_active', $lifecycle);
+        self::assertStringContainsString('deleted_at', $lifecycle);
+        self::assertStringContainsString('$this->reverse(', $lifecycle);
+        self::assertStringNotContainsString('->delete(', $lifecycle);
+        foreach([
+            ['plot_receipt_workspace.blade.php','plot-receipt','pr'],
+            ['plot_purchase_workspace.blade.php','plot-purchase','pp'],
+        ] as [$file,$kind,$prefix]){
+            $blade=file_get_contents($root.'/resources/views/admin/finance/voucher/'.$file);
+            self::assertStringContainsString("@can('finance {$kind} delete')",$blade);
+            self::assertStringContainsString("{$prefix}-delete",$blade);
+            self::assertStringContainsString("id=\"{$prefix}DeleteModal\"",$blade);
+            self::assertStringContainsString("type:'DELETE'",$blade);
+            self::assertStringContainsString("{$prefix}DeleteReason",$blade);
+            self::assertStringContainsString("@can('finance {$kind} reverse')",$blade);
+        }
+    }
+
     public function test_both_voucher_create_modals_are_reused_for_full_edit(): void
     {
         $root=dirname(__DIR__,3);
