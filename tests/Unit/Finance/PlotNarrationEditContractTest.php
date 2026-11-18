@@ -27,7 +27,7 @@ final class PlotNarrationEditContractTest extends TestCase
         self::assertStringContainsString('previous_narration',$migration);
         self::assertStringContainsString('updated_narration',$migration);
         self::assertStringNotContainsString('->delete(', $service);
-        self::assertStringNotContainsString('finance_posting_lines')->update(', $service);
+        self::assertStringNotContainsString("DB::table('finance_posting_lines')->update(", $service);
     }
 
     public function test_both_ajax_edit_actions_are_independent_of_reverse_permission(): void
