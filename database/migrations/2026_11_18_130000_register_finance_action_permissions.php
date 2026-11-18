@@ -33,6 +33,8 @@ return new class extends Migration {
                     'print' => 'print jv', default => 'can approve',
                 };
             }
+            if ($module === 'cheque' && in_array($action, ['clear','return','reject','withdraw'], true)) return 'create voucher';
+            if ($module === 'online' && $action === 'confirm') return 'create voucher';
             return match ($action) {
                 'view', 'print', 'history', 'details' => $module === 'extra-charge' ? 'read slip' : 'read voucher',
                 'create' => $module === 'extra-charge' ? 'create plot' : 'create voucher',
