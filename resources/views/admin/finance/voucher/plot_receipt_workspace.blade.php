@@ -283,6 +283,10 @@
   ajax($root.attr('data-details-base')+'/'+encodeURIComponent(id),'GET').done(function(result){
    var receipt=result.receipt;
    editReceiptId=Number(id);editAllocations=result.allocations||[];pendingKey=null;
+   editAllocations.forEach(function(allocation){
+    var mapped=bookings.find(function(b){return Number(b.booking_id)===Number(allocation.booking_id);});
+    if(mapped && allocation.receivable_account_id)mapped.receivable_account_id=Number(allocation.receivable_account_id);
+   });
    $('#prNumber').val(receipt.receipt_number);$('#prDate').val(String(receipt.receipt_date).slice(0,10));
    $('#prCustomer').val(String(receipt.customer_id));$('#prAccount').val(String(receipt.cash_account_id));
    $('#prNarration').val(receipt.narration);$('#prSearch').val('');
