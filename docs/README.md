@@ -51,6 +51,12 @@ php artisan test --filter=PlotLegacyMigrationCompatibilityTest
 php artisan finance:audit-voucher-schema --require-fks
 ```
 
+## 2026-11-18 — Owner accepted archived-source regression tests; browser gate policy
+
+**Owner verified on local `bluenew_clean_final`:** `PlotEntryWriterTest` **25 PASS / 127 assertions**, `PlotLegacyMigrationCompatibilityTest` **2 PASS / 24 assertions**; total **27 PASS / 151 assertions**. `PlotEntryLifecycleService.php` PHP lint PASS. `finance:audit-voucher-schema --require-fks` remains PASS (**8/8 FKs**, zero orphans, zero cross-project JV/CV detail links). This validates both recently added **archived Plot Receipt and Plot Purchase reversal refusal** integration tests. No browser pass has been reported for these flows.
+
+**Owner instruction:** proactively flag browser-testing gates when they actually arise; specify URL/page, role/project, exact Create/Edit/Delete/reversal action, expected result, and whether disposable local test data is necessary. **No browser testing is required for this strictly backend archived-source regression batch.** A browser gate becomes mandatory once actual user-facing Plot Edit/Delete and linked posting/inventory workflow is implemented. Do not mark complete on unit tests alone. Maintain this single README after each implementation batch and keep future handoffs up to date.
+
 ## Remaining Milestone 03 work — do not mark complete yet
 
 1. Rerun `PlotEntryWriterTest` on local; resolve any subsequent actual assertion failures. Verify Plot History/Details/Replay after root logical archive.
