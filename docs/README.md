@@ -138,6 +138,29 @@ php artisan schema:audit-unused-tables --json | Set-Content .\storage\app\unused
 
 The concise terminal candidate table and the `storage/app/unused-table-audit.json` contain the required evidence for a **specific** cleanup batch. Do not invent a numeric “tables to delete” count before owner provides actual DB results. **Browser acceptance for Plot narration Edit remains pending separately.**
 
+## 2026-11-18 — Owner full DB usage audit PASS; corrected false positives (LATEST)
+
+**Owner ran** `schema:audit-unused-tables` on **`bluenew_clean_final`**: **147 tables / 536 runtime source files**, and `UnusedTableAuditSafetyTest` **1 PASS / 24 assertions**. Initial scan listed only three candidates: `landing_pages` (exact **0** rows, zero literal SQL references), `legacy_migration_history` (**14** rows), `personal_access_tokens` (**18** rows). **NO TABLES WERE DROPPED.**
+
+**Crucial dependency verification:** The original candidate classification was too aggressive because SQL-string-only inspection misses Eloquent model inference and third-party framework consumers:
+- **`landing_pages` MUST remain.** `app/Models/LandingPage.php` is an active Eloquent model with inferred table name, `LandingPageAdminController` reads/writes/drafts/publishes page data, and `routes/web.php` defines six admin actions for it. An empty table means public landing content is still on defaults, **not** that the feature is unused.
+- **`personal_access_tokens` MUST remain.** `laravel/sanctum` is installed, and `SanctumTokenRegressionTest` creates/verifies/revokes bearer tokens for mobile API. The 18 token records also merit retention subject to explicit expiry policy; removing the table breaks login.
+- **`legacy_migration_history` MUST remain.** 14 rows are historical migration evidence; zero first-party runtime matches is insufficient to justify deleting upgrade/reconciliation records. Historical migration files are present.
+- Other **144 tables** had source and/or FK/view/trigger references according to initial scanner. This does not certify every table useful, but there is **no verified removable table** among the three flags.
+
+**Implemented scanner accuracy repair (GitHub committed, new local run pending):** `AuditUnusedTables` now infers Eloquent conventional table names and explicit `$table` mappings from `app/Models`. It marks implicit model tables `ELOQUENT_MODEL_DEPENDENT`, and framework/migration infrastructure `FRAMEWORK_OR_HISTORY_PROTECTED`; these **never** appear as removal candidates. Added regression in `UnusedTableAuditSafetyTest` against real LandingPage, LandingPageAdminController and Sanctum test evidence. This is a **code/test fix only**, no migration, no schema changes or table drops. **Never use the initial report to delete `landing_pages`.**
+
+**Verification:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php -l app/Console/Commands/AuditUnusedTables.php
+php artisan test --filter=UnusedTableAuditSafetyTest
+php artisan schema:audit-unused-tables
+```
+
+Expected new classification: `landing_pages` **ELOQUENT_MODEL_DEPENDENT**, `legacy_migration_history` and `personal_access_tokens` **FRAMEWORK_OR_HISTORY_PROTECTED**. In this verified set there is **nothing safe to remove**; do not create a cleanup migration. The previously completed Plot-only redundant audit table cleanup remains successful. Browser test for Plot narration Edit is **still pending**, but this scanner fix requires no browser testing.
+
 ## Remaining Milestone 03 work — do not mark complete yet
 
 1. Rerun `PlotEntryWriterTest` on local; resolve any subsequent actual assertion failures. Verify Plot History/Details/Replay after root logical archive.
