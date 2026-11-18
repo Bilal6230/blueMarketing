@@ -395,7 +395,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
             ->middleware(['permission:read voucher'])->name('finance.voucher.source.print');
     });
 
-    Route::controller(App\Http\Controllers\Finance\DailyVoucherDirectoryController::class)->middleware(['permission:read voucher'])->prefix('finance/daily-vouchers')->name('finance.daily-vouchers.')->group(function () {
+    Route::controller(App\Http\Controllers\Finance\DailyVoucherDirectoryController::class)->prefix('finance/daily-vouchers')->name('finance.daily-vouchers.')->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/data', 'data')->name('data');
         Route::get('/sources/{customerLedger}/print', 'printSource')->whereNumber('customerLedger')->name('source.print');
