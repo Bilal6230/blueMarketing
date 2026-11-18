@@ -1228,6 +1228,9 @@ class PlotEntryWriterTest extends TestCase
             ->where('posting_batch_id',$batch)->sum('debit'));
         $this->assertSame(100.0,(float)DB::table('finance_posting_lines')
             ->where('posting_batch_id',$batch)->sum('credit'));
+        // Reconciliation is for live inventory only; archival evidence and
+        // reversal entries remain in storage but are not active purchases.
+        $this->assertSame([], (new \App\Services\Finance\PlotPurchaseReconciliation())->audit(1));
     }
 
     public function test_full_purchase_edit_adds_then_archives_plots_and_preserves_balanced_postings(): void
