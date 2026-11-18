@@ -17,11 +17,11 @@ final class PlotNarrationEditContractTest extends TestCase
         self::assertIsString($service);self::assertIsString($migration);
         self::assertStringContainsString('updatePlotReceiptNarration',$routes);
         self::assertStringContainsString('updatePlotPurchaseNarration',$routes);
-        self::assertStringContainsString("'finance '.$module.' edit'",$controller);
+        self::assertStringContainsString("'finance '.\$module.' edit'",$controller);
         self::assertStringContainsString('FinanceWorkflowAccess::authorize($projectId)',$controller);
         self::assertStringContainsString('DB::transaction(', $service);
         self::assertStringContainsString('lockForUpdate()', $service);
-        self::assertStringContainsString("->where('project_id',$projectId)", $service);
+        self::assertStringContainsString("->where('project_id',\$projectId)", $service);
         self::assertStringContainsString('finance_plot_voucher_edit_audits',$service);
         self::assertStringContainsString('reversal_of_batch_id',$service);
         self::assertStringContainsString('previous_narration',$migration);
