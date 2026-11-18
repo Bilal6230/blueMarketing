@@ -1415,12 +1415,14 @@ class VoucherController extends Controller
             $matching=($receivables->get((string)$row->plot_id)??collect())
                 ->filter(fn($line)=>(int)$line->customer_id===(int)$details['receipt']->customer_id)
                 ->values();
-            if ($matching->count()!==1) {
-                throw new \DomainException('Plot receipt receivable account relationship is ambiguous.');
-            }
-            $row->receivable_account_id=(int)$matching[0]->project_head_subhead_id;
+            $row->receivable_account_id=$matching->count()===1
+                ? (int)$matching[0]->project_head_subhead_id : null;
             return $row;
         });
+        if ($allocations->contains(fn($row)=>$row->receivable_account_id===null)) {
+            return response()->json(['status'=>'error',
+                'message'=>'Plot receipt receivable account relationship is ambiguous.'],409);
+        }
         $cashAccount=(int)$cashLegs[0]->project_head_subhead_id;
         return response()->json(['receipt' => array_merge((array) $details['receipt'], [
             'cash_account_id'=>$cashAccount,
