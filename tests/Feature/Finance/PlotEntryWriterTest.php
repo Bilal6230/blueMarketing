@@ -316,15 +316,15 @@ class PlotEntryWriterTest extends TestCase
         $this->assertTrue(Schema::hasTable('finance_plot_receipt_postings'));
     }
 
-    public function test_phase07_mysql_claim_fk_repair_refuses_production_environment(): void
+    public function test_phase07_mysql_claim_fk_repair_checks_driver_even_with_production_environment(): void
     {
         $repair = require base_path('database/local_finance_migrations/2026_11_14_000101_repair_finance_plot_receipt_claim_fk.php');
         config()->set('app.env', 'production');
         try {
             $repair->up();
-            $this->fail('FK repair must be limited to isolated local testing.');
+            $this->fail('SQLite fixture must not run a MySQL-only FK repair.');
         } catch (\RuntimeException $error) {
-            $this->assertSame('V2_ISOLATED_CONNECTION_REQUIRED', $error->getMessage());
+            $this->assertSame('V2_PLOT_RECEIPT_FK_REPAIR_MYSQL_ONLY', $error->getMessage());
         } finally {
             config()->set('app.env', 'testing');
         }
@@ -441,15 +441,15 @@ class PlotEntryWriterTest extends TestCase
         $this->assertTrue(Schema::hasTable('finance_plot_purchase_items'));
     }
 
-    public function test_phase08_local_migration_refuses_non_isolated_production_environment(): void
+    public function test_phase08_existing_storage_is_unchanged_with_production_environment(): void
     {
         $pilot = require base_path('database/local_finance_migrations/2026_11_14_000200_create_finance_plot_purchase_storage.php');
+        $before=Schema::hasTable('finance_plot_purchases');
         config()->set('app.env', 'production');
         try {
             $pilot->up();
-            $this->fail('Plot Purchase migration must not run in production.');
-        } catch (\RuntimeException $exception) {
-            $this->assertSame('V2_ISOLATED_CONNECTION_REQUIRED', $exception->getMessage());
+            $this->assertSame($before,Schema::hasTable('finance_plot_purchases'));
+            $this->assertTrue(Schema::hasTable('finance_plot_purchase_postings'));
         } finally {
             config()->set('app.env', 'testing');
         }
@@ -463,19 +463,18 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame($before, DB::table('finance_plot_purchases')->count());
     }
 
-    public function test_phase07_local_migration_fails_closed_outside_isolated_testing(): void
+    public function test_phase07_complete_storage_is_preserved_on_configured_connection(): void
     {
         $pilot = require base_path('database/local_finance_migrations/2026_11_14_000100_create_finance_plot_receipt_storage.php');
+        $before=DB::table('finance_plot_receipts')->count();
         config()->set('app.env', 'production');
         try {
             $pilot->up();
-            $this->fail('Local plot receipt migration must never run in a production environment.');
-        } catch (\RuntimeException $error) {
-            $this->assertSame('V2_ISOLATED_CONNECTION_REQUIRED', $error->getMessage());
+            $this->assertSame($before,DB::table('finance_plot_receipts')->count());
+            $this->assertTrue(Schema::hasTable('finance_plot_receipt_postings'));
         } finally {
             config()->set('app.env', 'testing');
         }
-        $this->assertTrue(Schema::hasTable('finance_plot_receipts'));
     }
 
     public function test_phase07_local_migration_rejects_partially_existing_receipt_storage(): void
