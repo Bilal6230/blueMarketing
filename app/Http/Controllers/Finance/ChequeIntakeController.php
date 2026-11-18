@@ -194,7 +194,7 @@ final class ChequeIntakeController extends Controller
 
     public function act(Request $request, int $id)
     {
-        abort_unless($request->user()?->can('finance cheque approve'), 403);
+        abort_unless($request->user()?->can($request->input('action') === 'withdrawal' ? 'finance cheque withdraw' : 'finance cheque clear'), 403);
         $this->ready();
         abort_unless(Schema::hasTable('finance_cheque_intake_actions'), 409,
             'Cheque action history migration must be applied first.');
@@ -328,7 +328,7 @@ final class ChequeIntakeController extends Controller
 
     public function finalize(Request $request, int $id)
     {
-        abort_unless($request->user()?->can('finance cheque approve'),403);
+        abort_unless($request->user()?->can(match ($request->input('decision')) { 'returned' => 'finance cheque return', 'rejected' => 'finance cheque reject', default => 'finance cheque clear' }),403);
         $this->ready();
         abort_unless(Schema::hasTable('finance_cheque_intake_actions')
             && Schema::hasColumn('finance_cheque_intake_actions','verification_confirmed_at'),
@@ -416,7 +416,7 @@ final class ChequeIntakeController extends Controller
 
     public function store(Request $request)
     {
-        abort_unless($request->user()?->can('finance cheque approve'), 403);
+        abort_unless($request->user()?->can('finance cheque clear'), 403);
         $this->ready();
         $project = $this->project();
         $data = $request->validate([
