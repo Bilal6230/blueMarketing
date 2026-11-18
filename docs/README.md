@@ -466,3 +466,25 @@ php artisan finance:audit-posting-balances --project=3
 The example project ID 3 is only valid if project 3 exists in the user's current DB; use the selected local project ID. Audit is read-only. Do not misreport failures if actual historical data is inconsistent; investigate each batch first.
 
 **Roadmap:** Milestone 03 remains PARTIAL. This batch advances shared posting integrity and Plot reconciliation, but remaining JV/CV/cash/stock/etc full CRUD and permissions browser acceptance are not certified, and Milestones 04/05 are pending. The preceding browser gate is closed and does not require repetition.
+
+
+## 2026-11-18 — Owner cross-series audit PASS; reversal source-state integrity extension
+
+**Owner verified on configured local database `bluenew_clean_final`:** latest `PlotEntryWriterTest` **42 PASS / 275 assertions**; `PlotFullVoucherEditContractTest` **5 PASS / 88 assertions**, combined **47 PASS / 363 assertions**. PHP lint for PostingBatchIntegrityAudit, AuditPostingBatchIntegrity and PlotPurchaseReconciliation PASS. Read-only `php artisan finance:audit-posting-balances --project=3` returned **no imbalanced or invalid active posting batches**. This certifies the checked active batches in project 3, not every project or every voucher CRUD workflow. Previously owner confirmed all three Plot relationship browser scenarios PASS.
+
+**Further implementation this turn (GitHub committed, new local gate pending):** Extended existing `PostingBatchIntegrityAudit` without schema changes to validate accounting reversal source integrity in addition to active posting totals: any batch with `reversal_of_batch_id` must refer to an existing, posted, non-reversal original in the same project, and carry voucher series `REV`; a `REV` batch with no original reference is flagged. This helps prevent cross-project or orphan reversal anomalies from appearing clean merely because debit and credit totals happen to balance. All checks are read-only; business rows unchanged.
+
+**Regression:** Added a test to `PlotEntryWriterTest` that temporarily labels a valid balanced receipt batch `REV` without original linkage, checks that audit flags `REVERSAL_ORIGINAL_MISSING`, restores series, and verifies clean audit. Earlier Project 3 audit success predates this change and must not be represented as a retest of it.
+
+**Owner verification:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php -l app/Services/Finance/PostingBatchIntegrityAudit.php
+php -l tests/Feature/Finance/PlotEntryWriterTest.php
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=PlotFullVoucherEditContractTest
+php artisan finance:audit-posting-balances --project=3
+```
+
+**Milestone 03 remains PARTIAL:** pending comprehensive remaining voucher family Create/Edit/Delete and shared reporting checks; the new audit extends safety but does not implement those families. No new DB migration and no browser gate for this read-only change.
