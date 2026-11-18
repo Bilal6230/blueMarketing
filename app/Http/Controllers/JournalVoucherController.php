@@ -943,7 +943,7 @@ class JournalVoucherController extends Controller
         }
         return $this->voucherWriteResponse(
             request(),
-            'Journal voucher reversed; original accounting history preserved.'
+            'Journal voucher deactivated; source and ledger history preserved.'
         );
     }
 
