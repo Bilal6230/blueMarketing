@@ -12,7 +12,7 @@ final class PlotNarrationEditContractTest extends TestCase
         $routes=file_get_contents($root.'/routes/web.php');
         $controller=file_get_contents($root.'/app/Http/Controllers/Finance/VoucherController.php');
         $service=file_get_contents($root.'/app/Services/Finance/PlotVoucherNarrationEditor.php');
-        $migration=file_get_contents($root.'/database/migrations/2026_11_18_170000_create_plot_voucher_edit_audits_table.php');
+        $migration=file_get_contents($root.'/database/migrations/2026_11_18_180000_consolidate_plot_narration_audit.php');
         self::assertIsString($routes);self::assertIsString($controller);
         self::assertIsString($service);self::assertIsString($migration);
         self::assertStringContainsString('updatePlotReceiptNarration',$routes);
@@ -22,9 +22,11 @@ final class PlotNarrationEditContractTest extends TestCase
         self::assertStringContainsString('DB::transaction(', $service);
         self::assertStringContainsString('lockForUpdate()', $service);
         self::assertStringContainsString("->where('project_id',\$projectId)", $service);
-        self::assertStringContainsString('finance_plot_voucher_edit_audits',$service);
+        self::assertStringContainsString('daily_voucher_edit_snapshots',$service);
+        self::assertStringNotContainsString('finance_plot_voucher_edit_audits',$service);
         self::assertStringContainsString('reversal_of_batch_id',$service);
         self::assertStringContainsString('previous_narration',$migration);
+        self::assertStringContainsString('Schema::drop(\'finance_plot_voucher_edit_audits\')',$migration);
         self::assertStringContainsString('updated_narration',$migration);
         self::assertStringNotContainsString('->delete(', $service);
         self::assertStringNotContainsString("DB::table('finance_posting_lines')->update(", $service);
