@@ -291,43 +291,43 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
 
     // Phase 02.1: online receipt/payment source capture only; no bank voucher posting.
     Route::get('finance/online-transactions', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'index'])
-        ->middleware('permission:read voucher')->name('finance.online.index');
+        ->name('finance.online.index');
     Route::get('finance/online-transactions/data', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'data'])
-        ->middleware('permission:read voucher')->name('finance.online.data');
+        ->name('finance.online.data');
     Route::get('finance/online-transactions/{id}/proof', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'proof'])
-        ->whereNumber('id')->middleware('permission:read voucher')->name('finance.online.proof');
+        ->whereNumber('id')->name('finance.online.proof');
     Route::get('finance/online-transactions/eligible', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'eligible'])
-        ->middleware('permission:read voucher')->name('finance.online.eligible');
+        ->name('finance.online.eligible');
     Route::get('finance/bank-source/{method}/{source}/linked-vouchers/print', [\App\Http\Controllers\Finance\BankSourceLinkedVoucherPrintController::class, 'show'])
         ->where(['method' => 'online|cheque', 'source' => '[0-9]+'])
         ->middleware('permission:read voucher')->name('finance.bank_source.linked_print');
     Route::get('finance/online-transactions/{id}/history', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'history'])
-        ->whereNumber('id')->middleware('permission:read voucher')->name('finance.online.history');
+        ->whereNumber('id')->name('finance.online.history');
     Route::post('finance/online-transactions/{id}/confirm', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'confirm'])
-        ->whereNumber('id')->middleware(['permission:create voucher','throttle:20,1'])->name('finance.online.confirm');
+        ->whereNumber('id')->middleware(['throttle:20,1'])->name('finance.online.confirm');
     Route::post('finance/online-transactions', [\App\Http\Controllers\Finance\OnlineIntakeController::class,'store'])
-        ->middleware(['permission:create voucher','throttle:20,1'])->name('finance.online.store');
+        ->middleware(['throttle:20,1'])->name('finance.online.store');
 
     Route::get('finance/voucher/passed-sources', [\App\Http\Controllers\Finance\PassedBankSourcePickerController::class,'index'])
         ->middleware('permission:read voucher')->name('finance.voucher.passed_sources');
 
     // Phase 01: receipt-only cheque intake; deliberately separate from cash voucher posting.
     Route::get('finance/cheques', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'index'])
-        ->middleware('permission:read voucher')->name('finance.cheques.index');
+        ->name('finance.cheques.index');
     Route::get('finance/cheques/data', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'data'])
-        ->middleware('permission:read voucher')->name('finance.cheques.data');
+        ->name('finance.cheques.data');
     Route::get('finance/cheques/{id}/slip', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'slip'])
-        ->whereNumber('id')->middleware('permission:read voucher')->name('finance.cheques.slip');
+        ->whereNumber('id')->name('finance.cheques.slip');
     Route::post('finance/cheques/{id}/action', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'act'])
-        ->whereNumber('id')->middleware(['permission:create voucher', 'throttle:20,1'])->name('finance.cheques.action');
+        ->whereNumber('id')->middleware(['throttle:20,1'])->name('finance.cheques.action');
     Route::get('finance/cheques/{id}/history', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'history'])
-        ->whereNumber('id')->middleware('permission:read voucher')->name('finance.cheques.history');
+        ->whereNumber('id')->name('finance.cheques.history');
     Route::get('finance/cheques/{id}/memos/{event}', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'memo'])
-        ->whereNumber('id')->whereNumber('event')->middleware('permission:read voucher')->name('finance.cheques.memo');
+        ->whereNumber('id')->whereNumber('event')->name('finance.cheques.memo');
     Route::post('finance/cheques/{id}/finalize', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'finalize'])
-        ->whereNumber('id')->middleware(['permission:create voucher','throttle:20,1'])->name('finance.cheques.finalize');
+        ->whereNumber('id')->middleware(['throttle:20,1'])->name('finance.cheques.finalize');
     Route::post('finance/cheques', [\App\Http\Controllers\Finance\ChequeIntakeController::class, 'store'])
-        ->middleware(['permission:create voucher', 'throttle:20,1'])->name('finance.cheques.store');
+        ->middleware(['throttle:20,1'])->name('finance.cheques.store');
 
     Route::get('finance/voucher/cash-only/attachment/{attachment}', [\App\Http\Controllers\Finance\CashOnlyVoucherController::class, 'attachment'])
         ->whereNumber('attachment')->middleware('permission:read voucher|voucher approver')->name('finance.voucher.cash-only.attachment');
@@ -355,35 +355,35 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::get('finance/voucher/bank/{direction}/sources', 'bankVoucherSources')->where('direction', 'receipt|payment')->middleware(['permission:read voucher'])->name('finance.voucher.bank.sources');
         Route::get('finance/voucher/bank/{direction}/history', 'bankVoucherHistory')->where('direction', 'receipt|payment')->middleware(['permission:read voucher'])->name('finance.voucher.bank.history');
         Route::get('finance/voucher/bank/{direction}/{postingBatch}/print', 'printBankVoucher')->where(['direction' => 'receipt|payment', 'postingBatch' => '[0-9]+'])->middleware(['permission:read voucher'])->name('finance.voucher.bank.print');
-        Route::get('finance/voucher/bank-transfer/{kind}', 'transferVoucherWorkspace')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.workspace');
-        Route::get('finance/voucher/bank-transfer/{kind}/sources', 'transferVoucherSources')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.sources');
-        Route::get('finance/voucher/bank-transfer/{kind}/history', 'transferVoucherHistory')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.history');
-        Route::post('finance/voucher/bank-transfer/{kind}', 'postTransferVoucher')->where('kind', 'deposit|withdrawal')->middleware(['permission:read voucher'])->name('finance.voucher.transfer.post');
+        Route::get('finance/voucher/bank-transfer/{kind}', 'transferVoucherWorkspace')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.workspace');
+        Route::get('finance/voucher/bank-transfer/{kind}/sources', 'transferVoucherSources')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.sources');
+        Route::get('finance/voucher/bank-transfer/{kind}/history', 'transferVoucherHistory')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.history');
+        Route::post('finance/voucher/bank-transfer/{kind}', 'postTransferVoucher')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.post');
         Route::post('finance/voucher/bank-transfer/{kind}/{postingBatch}/reverse', 'reverseTransferVoucher')
             ->where(['kind' => 'deposit|withdrawal', 'postingBatch' => '[0-9]+'])
-            ->middleware(['permission:delete voucher','throttle:10,1'])->name('finance.voucher.transfer.reverse');
-        Route::get('finance/voucher/bank-transfer/{kind}/{postingBatch}/print', 'printTransferVoucher')->where(['kind' => 'deposit|withdrawal', 'postingBatch' => '[0-9]+'])->middleware(['permission:read voucher'])->name('finance.voucher.transfer.print');
-        Route::get('finance/voucher/plot-receipt', 'plotReceiptWorkspace')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.workspace');
-        Route::get('finance/voucher/plot-receipt/options', 'plotReceiptOptions')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.options');
-        Route::get('finance/voucher/plot-receipt/history', 'plotReceiptHistory')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.history');
-        Route::post('finance/voucher/plot-receipt', 'postPlotReceipt')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.post');
+            ->middleware(['throttle:10,1'])->name('finance.voucher.transfer.reverse');
+        Route::get('finance/voucher/bank-transfer/{kind}/{postingBatch}/print', 'printTransferVoucher')->where(['kind' => 'deposit|withdrawal', 'postingBatch' => '[0-9]+'])->name('finance.voucher.transfer.print');
+        Route::get('finance/voucher/plot-receipt', 'plotReceiptWorkspace')->name('finance.voucher.plot-receipt.workspace');
+        Route::get('finance/voucher/plot-receipt/options', 'plotReceiptOptions')->name('finance.voucher.plot-receipt.options');
+        Route::get('finance/voucher/plot-receipt/history', 'plotReceiptHistory')->name('finance.voucher.plot-receipt.history');
+        Route::post('finance/voucher/plot-receipt', 'postPlotReceipt')->name('finance.voucher.plot-receipt.post');
         Route::post('finance/voucher/plot-receipt/{receiptId}/reverse', 'reversePlotReceipt')->whereNumber('receiptId')
-            ->middleware(['permission:delete voucher','throttle:10,1'])->name('finance.voucher.plot-receipt.reverse');
-        Route::get('finance/voucher/plot-receipt/{receiptId}', 'plotReceiptDetails')->whereNumber('receiptId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.details');
-        Route::get('finance/voucher/plot-receipt/{receiptId}/plots/{plotId}/print', 'printPlotReceipt')->whereNumber('receiptId')->whereNumber('plotId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-receipt.print');
-        Route::get('finance/voucher/plot-purchase', 'plotPurchaseWorkspace')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.workspace');
-        Route::get('finance/voucher/plot-purchase/options', 'plotPurchaseOptions')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.options');
-        Route::get('finance/voucher/plot-purchase/history', 'plotPurchaseHistory')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.history');
-        Route::post('finance/voucher/plot-purchase', 'postPlotPurchase')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.post');
+            ->middleware(['throttle:10,1'])->name('finance.voucher.plot-receipt.reverse');
+        Route::get('finance/voucher/plot-receipt/{receiptId}', 'plotReceiptDetails')->whereNumber('receiptId')->name('finance.voucher.plot-receipt.details');
+        Route::get('finance/voucher/plot-receipt/{receiptId}/plots/{plotId}/print', 'printPlotReceipt')->whereNumber('receiptId')->whereNumber('plotId')->name('finance.voucher.plot-receipt.print');
+        Route::get('finance/voucher/plot-purchase', 'plotPurchaseWorkspace')->name('finance.voucher.plot-purchase.workspace');
+        Route::get('finance/voucher/plot-purchase/options', 'plotPurchaseOptions')->name('finance.voucher.plot-purchase.options');
+        Route::get('finance/voucher/plot-purchase/history', 'plotPurchaseHistory')->name('finance.voucher.plot-purchase.history');
+        Route::post('finance/voucher/plot-purchase', 'postPlotPurchase')->name('finance.voucher.plot-purchase.post');
         Route::post('finance/voucher/plot-purchase/{purchaseId}/reverse', 'reversePlotPurchase')->whereNumber('purchaseId')
-            ->middleware(['permission:delete voucher','throttle:10,1'])->name('finance.voucher.plot-purchase.reverse');
-        Route::get('finance/voucher/plot-purchase/{purchaseId}/print', 'printPlotPurchase')->whereNumber('purchaseId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.print');
-        Route::get('finance/voucher/plot-purchase/{purchaseId}', 'plotPurchaseDetails')->whereNumber('purchaseId')->middleware(['permission:read voucher'])->name('finance.voucher.plot-purchase.details');
+            ->middleware(['throttle:10,1'])->name('finance.voucher.plot-purchase.reverse');
+        Route::get('finance/voucher/plot-purchase/{purchaseId}/print', 'printPlotPurchase')->whereNumber('purchaseId')->name('finance.voucher.plot-purchase.print');
+        Route::get('finance/voucher/plot-purchase/{purchaseId}', 'plotPurchaseDetails')->whereNumber('purchaseId')->name('finance.voucher.plot-purchase.details');
         Route::get('finance/voucher/data', 'cash_out_data')->middleware(['permission:read voucher'])->name('voucher.cash_out.data');
         Route::get('finance/voucher/data/in', 'cash_in_data')->middleware(['permission:read voucher'])->name('voucher.cash_in.data');
         Route::get('finance/voucher/data/in/{method}', 'cash_in_data')->where('method', 'cash|online|cheque')->middleware(['permission:read voucher'])->name('voucher.cash_in.method.data');
         Route::get('finance/voucher/data/out/{method}', 'cash_out_data')->where('method', 'cash|online|cheque')->middleware(['permission:read voucher'])->name('voucher.cash_out.method.data');
-        Route::get('finance/voucher/draft', 'cash_draft')->middleware(['permission:read voucher'])->name('finance.voucher.draft');
+        Route::get('finance/voucher/draft', 'cash_draft')->name('finance.voucher.draft');
         Route::post('finance/voucher/{id}/approve', 'approve')->middleware(['permission:read voucher'])->name('finance.voucher.approve');
         Route::post('finance/voucher/{id}/reject', 'reject')->middleware(['permission:read voucher'])->name('finance.voucher.reject');
         Route::post('finance/voucher/{id}/approveadmin', 'approveAdmin')->middleware(['permission:read voucher'])->name('finance.voucher.approveadmin');
@@ -565,7 +565,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::get('booking/plot/voucher/', 'cash_in')->middleware(['permission:read slip'])->name('payment_schedule.cash');
         Route::any('booking/plot/voucher/update/{id}', 'updateCashIn')->middleware(['permission:read slip'])->name('payment_schedule.cash.update');
         Route::get('booking/plot/voucher/print/{id}', 'printCashIn')->middleware(['permission:read slip'])->name('booking.customer.print');
-        Route::get('extra_charge/', 'extraCharge')->middleware(['permission:read slip'])->name('payment_schedule.extra_charge');
+        Route::get('extra_charge/', 'extraCharge')->name('payment_schedule.extra_charge');
         Route::get('booking/customer/report/form', 'customer_report_form')->middleware(['permission:view booking report'])->name('booking.customer.report.form');
         Route::post('booking/customer/report/display', 'customer_report_display')->middleware(['permission:view booking report'])->name('booking.customer.report.display');
 
@@ -593,31 +593,31 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
 
     Route::controller(App\Http\Controllers\JournalVoucherController::class)->group(function () {
 
-        Route::get('sales-voucher', 'salesIndex')->middleware(['permission:read jv'])->name('sales.voucher.index');
-        Route::get('journal-voucher', 'index')->middleware(['permission:read jv'])->name('journal.voucher.index');
-        Route::get('journal-voucher/create', 'create')->middleware(['permission:create jv'])->name('journal.voucher.create');
-        Route::post('journal-voucher/create', 'store')->middleware(['permission:create jv'])->name('journal.voucher.store');
-        Route::get('journal-vouchers/{id}/edit', 'edit')->middleware(['permission:edit jv'])->name('journal.voucher.edit');
-        Route::put('journal-vouchers/{id}', 'update')->middleware(['permission:edit jv'])->name('journal.voucher.update');
-        Route::post('journal-vouchers/{id}/resubmit', 'update')->middleware(['permission:edit jv'])->name('journal.voucher.resubmit');
-        Route::delete('journal-vouchers/delete/{id}', 'destroy')->middleware(['permission:delete jv'])->name('journal.voucher.delete');
+        Route::get('sales-voucher', 'salesIndex')->name('sales.voucher.index');
+        Route::get('journal-voucher', 'index')->name('journal.voucher.index');
+        Route::get('journal-voucher/create', 'create')->name('journal.voucher.create');
+        Route::post('journal-voucher/create', 'store')->name('journal.voucher.store');
+        Route::get('journal-vouchers/{id}/edit', 'edit')->name('journal.voucher.edit');
+        Route::put('journal-vouchers/{id}', 'update')->name('journal.voucher.update');
+        Route::post('journal-vouchers/{id}/resubmit', 'update')->name('journal.voucher.resubmit');
+        Route::delete('journal-vouchers/delete/{id}', 'destroy')->name('journal.voucher.delete');
 
-        Route::get('/journal-voucher/print/{id}', 'print')->middleware(['permission:print jv'])->name('journal.voucher.print');
+        Route::get('/journal-voucher/print/{id}', 'print')->name('journal.voucher.print');
 
 
 
 
     });
     Route::controller(App\Http\Controllers\CommissionVoucherController::class)->group(function () {
-        Route::get('commision-voucher', 'index')->middleware(['permission:read jv'])->name('commision.voucher.index');
-        Route::get('commision-voucher/create', 'create')->middleware(['permission:create jv'])->name('commision.voucher.create');
-        Route::post('commision-voucher/create', 'store')->middleware(['permission:create jv'])->name('commision.voucher.store');
-        Route::post('commision-vouchers/{id}/approve', 'approve')->middleware(['permission:can approve'])->name('commision.voucher.approve');
-        Route::get('commision-vouchers/{id}/edit', 'edit')->middleware(['permission:edit jv'])->name('commision.voucher.edit');
-        Route::put('commision-vouchers/{id}', 'update')->middleware(['permission:edit jv'])->name('commision.voucher.update');
-        Route::delete('commision-vouchers/delete/{id}', 'destroy')->middleware(['permission:delete jv'])->name('commision.voucher.delete');
+        Route::get('commision-voucher', 'index')->name('commision.voucher.index');
+        Route::get('commision-voucher/create', 'create')->name('commision.voucher.create');
+        Route::post('commision-voucher/create', 'store')->name('commision.voucher.store');
+        Route::post('commision-vouchers/{id}/approve', 'approve')->name('commision.voucher.approve');
+        Route::get('commision-vouchers/{id}/edit', 'edit')->name('commision.voucher.edit');
+        Route::put('commision-vouchers/{id}', 'update')->name('commision.voucher.update');
+        Route::delete('commision-vouchers/delete/{id}', 'destroy')->name('commision.voucher.delete');
 
-        Route::get('/commision-voucher/print/{id}', 'print')->middleware(['permission:print jv'])->name('commision.voucher.print');
+        Route::get('/commision-voucher/print/{id}', 'print')->name('commision.voucher.print');
 
 
 
