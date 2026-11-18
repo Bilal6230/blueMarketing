@@ -834,6 +834,39 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',1);
     }
 
+    public function test_full_receipt_edit_rejects_duplicate_booking_id_without_financial_writes(): void
+    {
+        $this->installFullPlotEditHistory();
+        $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-DUP-EDIT-001',[
+            'date'=>'2026-11-05','receipt_number'=>'PR-DUP-1','amount'=>'70.00',
+            'cash_account_id'=>101,'narration'=>'Original',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
+        ],7);
+        $batchId=$created['posting_batch_id'];
+        $sourceId=$created['source_id'];
+        $beforeLines=DB::table('finance_posting_lines')->where('posting_batch_id',$batchId)
+            ->orderBy('id')->get()->map(fn($row)=>(array)$row)->all();
+        try {
+            (new \App\Services\Finance\PlotVoucherEditor())->receipt(1,$sourceId,[
+                'customer_id'=>5,'receipt_number'=>'PR-DUP-CHANGED','date'=>'2026-11-06',
+                'amount'=>'90.00','cash_account_id'=>101,'narration'=>'Duplicate booking',
+                'allocations'=>[
+                    ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'45.00'],
+                    ['booking_id'=>31,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'45.00'],
+                ],
+            ],7);
+            $this->fail('Duplicate booking allocation must fail validation.');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('Duplicate booking', $e->getMessage());
+        }
+        $this->assertSame('PR-DUP-1',DB::table('finance_plot_receipts')->where('id',$sourceId)->value('receipt_number'));
+        $this->assertSame(1,DB::table('finance_plot_receipt_allocations')->where('receipt_id',$sourceId)->count());
+        $this->assertSame($beforeLines,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batchId)->orderBy('id')->get()->map(fn($row)=>(array)$row)->all());
+        $this->assertSame(0,DB::table('daily_voucher_edit_snapshots')
+            ->where('status','plot_edit')->where('source_id',$sourceId)->count());
+    }
+
     public function test_full_receipt_edit_adds_and_archives_allocation_rows_without_hard_delete(): void
     {
         $this->installFullPlotEditHistory();
