@@ -1268,6 +1268,62 @@ class VoucherController extends Controller
             'message' => 'Voucher reversed. Original posting history remains available.']);
     }
 
+
+    public function updatePlotReceipt(Request $request,int $receiptId)
+    {
+        $projectId=(int)getSelectedTown();
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
+        abort_unless($request->user()?->can('finance plot-receipt edit'),403);
+        $data=$request->validate([
+            'customer_id' => ['required', 'integer', 'min:1'], 'receipt_number' => ['required', 'string', 'max:64'], 'date' => ['required', 'date_format:Y-m-d'],
+            'amount' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\.[0-9]{1,2})?$/D'],
+            'cash_account_id' => ['required', 'integer', 'min:1'], 'narration' => ['required', 'string', 'max:2000'],
+            'allocations' => ['required', 'array', 'min:1', 'max:100'],
+            'allocations.*.booking_id' => ['required', 'integer', 'min:1'], 'allocations.*.plot_id' => ['required', 'integer', 'min:1'],
+            'allocations.*.receivable_account_id' => ['required', 'integer', 'min:1'],
+            'allocations.*.amount' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\.[0-9]{1,2})?$/D'],
+
+        ]);
+        try {
+            $result=app(\App\Services\Finance\PlotVoucherEditor::class)
+                ->receipt($projectId,$receiptId,$data,(int)auth()->id());
+        } catch (\DomainException $error) {
+            return response()->json(['status'=>'error','message'=>$error->getMessage()],409);
+        }
+        return response()->json(['status'=>'success','data'=>$result,'message'=>'Plot Receipt updated.']);
+    }
+
+    public function updatePlotPurchase(Request $request,int $purchaseId)
+    {
+        $projectId=(int)getSelectedTown();
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
+        abort_unless($request->user()?->can('finance plot-purchase edit'),403);
+        $data=$request->validate([
+            'purchase_number' => ['required', 'string', 'max:64'], 'date' => ['required', 'date_format:Y-m-d'],
+            'seller_account_id' => ['required', 'integer', 'min:1'], 'narration' => ['required', 'string', 'max:2000'],
+            'items' => ['required', 'array', 'min:1', 'max:100'],
+            'items.*.plot_code' => ['required', 'string', 'max:64'], 'items.*.description' => ['required', 'string', 'max:255'],
+            'items.*.area' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,4})?$/D'],
+            'items.*.unit' => ['required', 'string', 'max:24'], 'items.*.type' => ['required', 'integer', \Illuminate\Validation\Rule::in([1, 2])],
+            'items.*.road_id' => ['required', 'integer', 'min:1'], 'items.*.facing_id' => ['required', 'integer', 'min:1'],
+            'items.*.is_corner' => ['sometimes', 'boolean'],
+            'items.*.plot_category_definition_id' => ['nullable', 'integer', 'min:1'],
+            'items.*.plot_type_definition_id' => ['nullable', 'integer', 'min:1'],
+            'items.*.plot_size_definition_id' => ['nullable', 'integer', 'min:1'],
+            'items.*.plot_unit_definition_id' => ['nullable', 'integer', 'min:1'],
+            'items.*.unit_rate' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,2})?$/D'],
+            'items.*.inventory_account_id' => ['required', 'integer', 'min:1'],
+
+        ]);
+        try {
+            $result=app(\App\Services\Finance\PlotVoucherEditor::class)
+                ->purchase($projectId,$purchaseId,$data,(int)auth()->id());
+        } catch (\DomainException $error) {
+            return response()->json(['status'=>'error','message'=>$error->getMessage()],409);
+        }
+        return response()->json(['status'=>'success','data'=>$result,'message'=>'Plot Purchase updated.']);
+    }
+
     public function updatePlotReceiptNarration(Request $request, int $receiptId)
     {
         return $this->updatePlotNarration($request, 'plot_receipt', $receiptId);
