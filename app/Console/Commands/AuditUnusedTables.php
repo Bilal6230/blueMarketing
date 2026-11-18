@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Read-only database / runtime-source inventory.
@@ -16,6 +17,25 @@ final class AuditUnusedTables extends Command
         {--exact-empty : Verify unreferenced row counts with SELECT COUNT(*) instead of relying on MySQL estimates}';
 
     protected $description = 'Read-only scan of database table usage, foreign-key references, and application source code';
+
+    /**
+     * Framework-owned and migration metadata tables cannot be identified
+     * by literal SQL strings in first-party source code.
+     */
+    private const PROTECTED_TABLES = [
+        'personal_access_tokens' => 'Laravel Sanctum authenticates bearer tokens through package internals',
+        'migrations' => 'Laravel migration repository',
+        'legacy_migration_history' => 'Historical migration evidence; retention required even when no runtime query exists',
+        'failed_jobs' => 'Laravel queue failure history',
+        'password_resets' => 'Authentication password reset storage',
+        'sessions' => 'Laravel session storage where database driver is configured',
+        'cache' => 'Laravel database cache storage where configured',
+        'cache_locks' => 'Laravel database cache locks where configured',
+        'jobs' => 'Laravel queued job storage where configured',
+        'job_batches' => 'Laravel queue batches where configured',
+        'notifications' => 'Laravel notification infrastructure',
+    ];
+
 
     public function handle(): int
     {
@@ -38,6 +58,7 @@ final class AuditUnusedTables extends Command
             FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=?',[$database]);
 
         $sources=$this->runtimeSources();
+        $modelTables=$this->modelTables($sources);
         $report=[];
         foreach ($tables as $table) {
             $name=(string)$table->table_name;
@@ -55,24 +76,31 @@ final class AuditUnusedTables extends Command
             $triggerReferences=collect($triggerRows)->filter(fn($r)=>
                 $r->source_table===$name || preg_match($pattern,(string)$r->statement))
                 ->pluck('trigger_name')->values()->all();
+            $modelReferences=$modelTables[$name]??[];
+            $frameworkReason=self::PROTECTED_TABLES[$name]??null;
             $estimated=$table->estimated_rows===null?null:(int)$table->estimated_rows;
             // COUNT(*) is exact only for candidates or when explicitly asked,
             // and does not write any business data.
             $count=null;
             $noRuntimeRef=count($references)===0 && !$incoming && !$outgoing
-                && !$viewReferences && !$triggerReferences;
+                && !$viewReferences && !$triggerReferences
+                && !$modelReferences && !$frameworkReason;
             if ($this->option('exact-empty') || $noRuntimeRef) {
                 // Name is from the database's own information_schema (not user input).
                 $quoted='`'.str_replace('`','``',$name).'`';
                 $count=(int)DB::table(DB::raw($quoted))->count();
             }
-            $status= $noRuntimeRef && $count===0 ? 'REVIEW_EMPTY_UNREFERENCED'
-                : ($noRuntimeRef ? 'REVIEW_UNREFERENCED_WITH_DATA' : 'REFERENCED_OR_DEPENDENT');
+            $status= $frameworkReason ? 'FRAMEWORK_OR_HISTORY_PROTECTED'
+                : ($modelReferences ? 'ELOQUENT_MODEL_DEPENDENT'
+                : ($noRuntimeRef && $count===0 ? 'REVIEW_EMPTY_UNREFERENCED'
+                : ($noRuntimeRef ? 'REVIEW_UNREFERENCED_WITH_DATA' : 'REFERENCED_OR_DEPENDENT')));
             $report[]=[
                 'table'=>$name,'status'=>$status,
                 'estimated_rows'=>$estimated,'exact_rows'=>$count,
                 'application_reference_count'=>count($references),
                 'application_reference_examples'=>array_slice($references,0,12),
+                'eloquent_model_references'=>$modelReferences,
+                'protected_reason'=>$frameworkReason,
                 'incoming_fk_tables'=>$incoming,'outgoing_fk_tables'=>$outgoing,
                 'views'=>$viewReferences,'triggers'=>$triggerReferences,
             ];
@@ -80,7 +108,8 @@ final class AuditUnusedTables extends Command
         $result=[
             'database'=>$database,'read_only'=>true,'tables_scanned'=>count($tables),
             'runtime_source_files_scanned'=>count($sources),
-            'warning'=>'Static scan cannot prove a table is unused: dynamic query names, external apps, jobs, exports, and historical migrations may still depend on it. Never drop based only on this report.',
+            'eloquent_models_scanned'=>count(array_unique(array_merge(...array_values($modelTables?:[[]])))),
+            'warning'=>'Static scan cannot prove a table is unused: dynamic query names, model conventions, external apps, jobs, exports, package internals, and historical migrations may still depend on it. Never drop based only on this report.',
             'candidates'=>array_values(array_filter($report,fn($r)=>str_starts_with($r['status'],'REVIEW_'))),
             'tables'=>$report,
         ];
@@ -97,6 +126,31 @@ final class AuditUnusedTables extends Command
             $this->warn('No tables have been dropped. REVIEW candidates are NOT automatically safe to delete.');
         }
         return self::SUCCESS;
+    }
+
+    /**
+     * Infer Eloquent's conventional plural-snake table names for each model
+     * under app/Models. Also capture explicit protected $table declarations.
+     * Does not instantiate models or perform database writes.
+     *
+     * @param array<string,string> $sources
+     * @return array<string,array<int,string>>
+     */
+    private function modelTables(array $sources): array
+    {
+        $map=[];
+        foreach ($sources as $file=>$body) {
+            if (!str_starts_with($file,'app/Models/') || !str_ends_with($file,'.php')) continue;
+            if (!preg_match('/\\bclass\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+extends\\s+[\\\\A-Za-z_][\\\\A-Za-z0-9_]*/',$body,$match)) continue;
+            $class=$match[1];
+            $explicit=null;
+            if (preg_match('/\\b(?:protected|public)\\s+\\$table\\s*=\\s*[\\x27\\x22]([A-Za-z0-9_]+)[\\x27\\x22]/',$body,$tableMatch)) {
+                $explicit=$tableMatch[1];
+            }
+            $table=$explicit?:Str::snake(Str::pluralStudly($class));
+            $map[$table][]=$file;
+        }
+        return $map;
     }
 
     /** @return array<string,string> Only live application references; migrations/tests excluded on purpose. */
