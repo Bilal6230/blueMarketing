@@ -14,6 +14,7 @@ final class FinanceActionPermissionMatrixTest extends TestCase
         $request = Request::create($uri, 'POST', $inputs);
         $route = new Route('POST', 'admin/test', static fn () => null);
         $route->name($routeName);
+        $route->bind($request);
         $request->setRouteResolver(static fn () => $route);
         return FinanceActionPermission::forRequest($request);
     }
