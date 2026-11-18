@@ -488,3 +488,25 @@ php artisan finance:audit-posting-balances --project=3
 ```
 
 **Milestone 03 remains PARTIAL:** pending comprehensive remaining voucher family Create/Edit/Delete and shared reporting checks; the new audit extends safety but does not implement those families. No new DB migration and no browser gate for this read-only change.
+
+
+## 2026-11-18 — All-project posting audit default (owner correction)
+
+**Owner local test gate PASS:** PlotEntryWriterTest 42 PASS / 278 assertions and PlotFullVoucherEditContractTest 5 PASS / 88 assertions, total **47 PASS / 366 assertions**. PHP lint PASS. `finance:audit-posting-balances --project=3` on the configured local database reported no active posting anomalies in project 3; that is a project-specific observation only. The owner then ran `finance:audit-posting-balances` and rightly received `Supply an explicit positive project ID`, contradicting the required default all-project behavior.
+
+**Code fix committed:** `app/Console/Commands/AuditPostingBatchIntegrity.php` now treats `--project` as optional. Without it, audits every project ID from the **currently configured** database `projects` table plus any project IDs present in posted batches; with it, still audits only the requested ID. Results include `project_id` for each finding, the number of projects scanned, and the selected project (null if all) in JSON output. No project/database name hard-coded and no schema or data mutation. Existing balance/relationship audit service still enforces exact project scope per iteration.
+
+**New isolated integration regression:** Covers the default all-project command for two configured test projects, detects a deliberately tampered voucher in the proper project, confirms an explicit other-project filter stays clean, and validates rejection of a malformed project ID.
+
+**New owner local gate (NOT yet verified for this code change):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php -l app/Console/Commands/AuditPostingBatchIntegrity.php
+php -l tests/Feature/Finance/PlotEntryWriterTest.php
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=PlotFullVoucherEditContractTest
+php artisan finance:audit-posting-balances
+```
+
+`finance:audit-posting-balances --project=N` remains optional and read-only. Do not demand project 3 or a specific database name. Browser test and migration are not required for this command-only change. Milestone 03 cross-family CRUD acceptance remains pending.
