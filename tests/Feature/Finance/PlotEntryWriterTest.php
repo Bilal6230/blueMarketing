@@ -876,8 +876,28 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame(55.0,(float)DB::table('finance_posting_lines')
             ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
         $this->assertCount(1,(new PlotEntryWriter())->receipt(1,$created['source_id'])['allocations']);
+        // Reintroduce previously archived booking #31. The UNIQUE
+        // (receipt_id, booking_id) constraint must reuse its original row.
+        $archivedId=(int)DB::table('finance_plot_receipt_allocations')
+            ->where('receipt_id',$created['source_id'])->where('booking_id',31)->value('id');
+        $editor->receipt(1,$created['source_id'],[
+            'customer_id'=>5,'receipt_number'=>'PR-COUNT-RESTORED','date'=>'2026-11-08',
+            'amount'=>'80.00','cash_account_id'=>101,'narration'=>'Restore booking',
+            'allocations'=>[
+                ['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'55.00'],
+                ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'25.00'],
+            ],
+        ],7);
+        $this->assertSame(2,DB::table('finance_plot_receipt_allocations')
+            ->where('receipt_id',$created['source_id'])->where('is_active',1)->count());
+        $this->assertSame(2,DB::table('finance_plot_receipt_allocations')
+            ->where('receipt_id',$created['source_id'])->count());
+        $this->assertSame($archivedId,(int)DB::table('finance_plot_receipt_allocations')
+            ->where('receipt_id',$created['source_id'])->where('booking_id',31)->value('id'));
+        $this->assertSame(80.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
         $this->assertDatabaseCount('finance_posting_batches',1);
-        $this->assertDatabaseCount('daily_voucher_edit_snapshots',2);
+        $this->assertDatabaseCount('daily_voucher_edit_snapshots',3);
     }
 
     public function test_full_purchase_edit_rejects_booked_plot_without_mutating_financial_state(): void
