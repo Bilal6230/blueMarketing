@@ -44,6 +44,7 @@ final class LinkedVoucherLedgerRetirementTest extends TestCase
             $t->id();$t->string('type');$t->unsignedBigInteger('type_id');
             $t->unsignedBigInteger('project_head_subheads_id');
             $t->unsignedBigInteger('journal_voucher_detail_id')->nullable();
+            $t->unsignedBigInteger('commision_voucher_detail_id')->nullable();
             $t->decimal('amount_in');$t->decimal('amount_out');
             $t->boolean('is_active');$t->timestamps();
         });
@@ -71,9 +72,13 @@ final class LinkedVoucherLedgerRetirementTest extends TestCase
         ]);
         DB::table('ledgers')->insert([
             ['id'=>201,'type'=>$series,'type_id'=>33,'project_head_subheads_id'=>10,
-                'journal_voucher_detail_id'=>$series==='JV'?101:null,'amount_in'=>50,'amount_out'=>0,'is_active'=>1],
+                'journal_voucher_detail_id'=>$series==='JV'?101:null,
+                'commision_voucher_detail_id'=>$series==='CV'?101:null,
+                'amount_in'=>50,'amount_out'=>0,'is_active'=>1],
             ['id'=>202,'type'=>$series,'type_id'=>33,'project_head_subheads_id'=>11,
-                'journal_voucher_detail_id'=>$series==='JV'?102:null,'amount_in'=>0,'amount_out'=>50,'is_active'=>1],
+                'journal_voucher_detail_id'=>$series==='JV'?102:null,
+                'commision_voucher_detail_id'=>$series==='CV'?102:null,
+                'amount_in'=>0,'amount_out'=>50,'is_active'=>1],
         ]);
     }
 
@@ -116,4 +121,27 @@ final class LinkedVoucherLedgerRetirementTest extends TestCase
         }
         self::assertSame(2,DB::table('ledgers')->where('is_active',1)->count());
     }
+    public function test_commission_wrong_detail_link_rejects_retirement_even_when_amounts_match(): void
+    {
+        $this->seedVoucher('CV');
+        DB::table('ledgers')->where('id',202)->update(['commision_voucher_detail_id'=>101]);
+        try {
+            DB::transaction(fn()=>app(LinkedVoucherLedgerRetirement::class)->retire(5,'CV',33));
+            self::fail('Duplicate CV detail identity must be refused.');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('duplicate voucher detail',$e->getMessage());
+        }
+        self::assertSame(2,DB::table('ledgers')->where('is_active',1)->count());
+        self::assertSame(2,DB::table('commision_voucher_details')->whereNull('deleted_at')->count());
+    }
+
+    public function test_legacy_null_commission_detail_links_remain_retirable_by_exact_amounts(): void
+    {
+        $this->seedVoucher('CV');
+        DB::table('ledgers')->where('type','CV')
+            ->update(['commision_voucher_detail_id'=>null]);
+        self::assertSame(2,DB::transaction(fn()=>app(LinkedVoucherLedgerRetirement::class)->retire(5,'CV',33)));
+        self::assertSame(0,DB::table('ledgers')->where('is_active',1)->count());
+    }
+
 }
