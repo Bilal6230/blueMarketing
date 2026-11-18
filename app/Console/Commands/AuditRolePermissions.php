@@ -28,11 +28,16 @@ class AuditRolePermissions extends Command
         $roleCount = DB::table('role_has_permissions')
             ->select('permission_id')->selectRaw('count(*) as assignments')
             ->groupBy('permission_id')->pluck('assignments','permission_id');
+        $roleNames = DB::table('role_has_permissions as pivot')
+            ->join('roles as role','role.id','=','pivot.role_id')
+            ->get(['pivot.permission_id','role.name'])
+            ->groupBy('permission_id')
+            ->map(fn($grants)=>$grants->pluck('name')->unique()->values()->all());
         $userCount = DB::table('model_has_permissions')
             ->select('permission_id')->selectRaw('count(*) as assignments')
             ->groupBy('permission_id')->pluck('assignments','permission_id');
         $items = DB::table('permissions')->orderBy('guard_name')->orderBy('name')
-            ->get(['id','name','guard_name'])->map(function ($item) use ($roleCount,$userCount) {
+            ->get(['id','name','guard_name'])->map(function ($item) use ($roleCount,$userCount,$roleNames) {
                 $name = (string)$item->name;
                 return [
                     'id'=>(int)$item->id,
@@ -40,6 +45,7 @@ class AuditRolePermissions extends Command
                     'guard'=>(string)$item->guard_name,
                     'category'=>RolePermissionCatalog::category($name),
                     'role_grants'=>(int)($roleCount[$item->id] ?? 0),
+                    'role_names'=>$roleNames[$item->id] ?? [],
                     'direct_user_grants'=>(int)($userCount[$item->id] ?? 0),
                 ];
             })->values();
