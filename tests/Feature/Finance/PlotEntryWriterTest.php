@@ -860,4 +860,64 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',0);
     }
 
+    public function test_full_purchase_edit_rejects_booked_plot_without_mutating_financial_state(): void
+    {
+        $this->installFullPlotEditHistory();
+        $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-BOOKING-EDIT-001',[
+            'date'=>'2026-11-05','purchase_number'=>'PP-NO-BOOKING-EDIT','seller_account_id'=>102,
+            'narration'=>'Original','items'=>[[
+                'plot_code'=>'LAND-BOOKING-EDIT','description'=>'Original plot','area'=>'1',
+                'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'100','inventory_account_id'=>104,
+            ]],
+        ],7);
+        $plotId=(int)DB::table('finance_plot_purchase_items')
+            ->where('purchase_id',$created['source_id'])->value('legacy_plot_id');
+        DB::table('bookings')->insert(['id'=>55,'project_id'=>1,'customer_id'=>5,
+            'plot_id'=>$plotId,'status'=>'active','cancel_status'=>'0']);
+        try {
+            (new \App\Services\Finance\PlotVoucherEditor())->purchase(1,$created['source_id'],[
+                'date'=>'2026-11-06','purchase_number'=>'PP-ILLEGAL-EDIT','seller_account_id'=>102,
+                'narration'=>'Should rollback','items'=>[[
+                    'plot_code'=>'LAND-BOOKING-NEW','description'=>'No write','area'=>'2',
+                    'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                    'unit_rate'=>'300','inventory_account_id'=>104,
+                ]],
+            ],7);
+            $this->fail('Booked purchased plot must not be financially edited.');
+        } catch (\DomainException $error) {
+            $this->assertStringContainsString('bookings',$error->getMessage());
+        }
+        $this->assertDatabaseHas('plots',['id'=>$plotId,'name'=>'LAND-BOOKING-EDIT']);
+        $this->assertDatabaseHas('finance_plot_purchases',['id'=>$created['source_id'],
+            'purchase_number'=>'PP-NO-BOOKING-EDIT','amount'=>100]);
+        $this->assertSame(100.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+        $this->assertDatabaseCount('daily_voucher_edit_snapshots',0);
+    }
+
+    public function test_full_receipt_edit_rejects_other_project_without_changing_posting(): void
+    {
+        $this->installFullPlotEditHistory();
+        $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-CROSS-EDIT-001',[
+            'date'=>'2026-11-05','receipt_number'=>'PR-SCOPED-1','amount'=>'70.00',
+            'cash_account_id'=>101,'narration'=>'Before',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
+        ],7);
+        try {
+            (new \App\Services\Finance\PlotVoucherEditor())->receipt(2,$created['source_id'],[
+                'customer_id'=>6,'receipt_number'=>'PR-SCOPED-2','date'=>'2026-11-06',
+                'amount'=>'90','cash_account_id'=>201,'narration'=>'Forbidden',
+                'allocations'=>[['booking_id'=>41,'plot_id'=>21,'receivable_account_id'=>201,'amount'=>'90']],
+            ],7);
+            $this->fail('Other projects must not edit this receipt.');
+        } catch (\DomainException $error) {
+            $this->assertStringContainsString('not found',$error->getMessage());
+        }
+        $this->assertDatabaseHas('finance_plot_receipts',['id'=>$created['source_id'],
+            'receipt_number'=>'PR-SCOPED-1','amount'=>70]);
+        $this->assertDatabaseCount('daily_voucher_edit_snapshots',0);
+        $this->assertDatabaseCount('finance_posting_batches',1);
+    }
+
 }
