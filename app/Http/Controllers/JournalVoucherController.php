@@ -934,21 +934,9 @@ class JournalVoucherController extends Controller
                     ->lockForUpdate()->firstOrFail();
                 app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
                     ->assertLegacyMutationAllowed($projectId, 'journal_vouchers', (int) $voucher->id);
-                $ledgers = Ledger::query()->withoutGlobalScopes()->where('type', 'JV')
-                    ->where('type_id', $voucher->id)->where('is_active', 1)
-                    ->whereIn('project_head_subheads_id', ProjectHeadSubhead::where('project_id', $projectId)->select('id'))
-                    ->lockForUpdate()->get();
-                abort_if($ledgers->isEmpty(), 409, 'JV ledger entries are missing; reversal stopped.');
-                $date = $data['effective_date'] ?? now()->toDateString();
-                foreach ($ledgers as $old) {
-                    Ledger::create([
-                        'voucher_number' => $voucher->voucher_number, 'type' => 'JV', 'type_id' => $voucher->id,
-                        'project_head_subheads_id' => $old->project_head_subheads_id,
-                        'reference' => $voucher->reference, 'amount_in' => $old->amount_out,
-                        'amount_out' => $old->amount_in, 'date' => $date, 'is_active' => 1, 'status' => '0',
-                        'create_by' => Auth::id(), 'detail' => 'Voucher reversal: '.($data['reason'] ?? $old->detail),
-                    ]);
-                }
+                // All source-linked ledger legs are retired by exact voucher identity.
+                app(\App\Services\Finance\LinkedVoucherLedgerRetirement::class)
+                    ->retire($projectId, 'JV', (int)$voucher->id);
                 JournalVoucherDetail::where('journal_voucher_id', $voucher->id)->get()->each->delete();
                 $voucher->delete();
             });
