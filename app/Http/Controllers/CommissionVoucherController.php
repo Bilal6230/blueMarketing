@@ -346,8 +346,12 @@ class CommissionVoucherController extends Controller
                 $voucher->delete();
             });
         }
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json(['status'=>'success',
+                'message'=>'Commission voucher deactivated; linked ledger history preserved.']);
+        }
         return redirect()->route('commision.voucher.index')
-            ->with('success', 'Commission voucher reversed; original accounting history preserved.');
+            ->with('success', 'Commission voucher deactivated; linked ledger history preserved.');
     }
 
     public function edit($id)
@@ -482,8 +486,13 @@ class CommissionVoucherController extends Controller
                 }
             });
         }
-        return redirect()->route('commision.voucher.edit', ['id' => $id] + ($request->boolean('embed') ? ['embed'=>1] : []))
-            ->with('success', 'Commission voucher corrected successfully; previous posting history was preserved.');
+        $redirect=route('commision.voucher.edit', ['id' => $id] + ($request->boolean('embed') ? ['embed'=>1] : []));
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['status'=>'success','redirect'=>$redirect,
+                'message'=>'Commission voucher updated; prior linked ledger history preserved.']);
+        }
+        return redirect()->to($redirect)
+            ->with('success', 'Commission voucher updated; prior linked ledger history preserved.');
     }
 
     private function moneyToCents(string $value): int
