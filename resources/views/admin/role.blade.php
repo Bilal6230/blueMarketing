@@ -84,7 +84,27 @@
           @endforeach
           <th>Actions</th>
         </tr></thead>
-        <tbody id="roleRows"><tr><td colspan="6" class="text-muted text-center py-3">Loading roles...</td></tr></tbody>
+        <tbody id="roleRows">
+          @forelse ($roleRows as $role)
+            <tr>
+              <td class="role-id">{{ $role['id'] }}</td>
+              <td class="role-name">{{ $role['name'] }}</td>
+              <td><span class="role-guard">{{ $role['guard'] }}</span></td>
+              <td>{{ $role['updated'] ?: '—' }}</td>
+              <td>{{ $role['updated_by'] }}</td>
+              <td class="blue-actions-cell">
+                @if (!$role['locked'])
+                  @can('update role')<button type="button" class="btn btn-outline-primary btn-sm btn-edit" data-id="{{ $role['id'] }}">Edit</button>@endcan
+                  @can('delete role')<button type="button" class="btn btn-outline-danger btn-sm btn-delete" data-id="{{ $role['id'] }}">Archive</button>@endcan
+                @else
+                  <i class="fas fa-lock text-muted" title="Protected system role"></i>
+                @endif
+              </td>
+            </tr>
+          @empty
+            <tr><td colspan="6" class="text-center text-muted py-4">No roles found</td></tr>
+          @endforelse
+        </tbody>
       </table>
     </div>
     <div class="role-foot"><small id="roleSummary" class="text-muted"></small><div id="rolePages" class="role-pages"></div></div>
