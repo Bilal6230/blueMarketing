@@ -108,7 +108,7 @@ final class AuditUnusedTables extends Command
         $result=[
             'database'=>$database,'read_only'=>true,'tables_scanned'=>count($tables),
             'runtime_source_files_scanned'=>count($sources),
-            'eloquent_models_scanned'=>count(array_unique(array_merge(...array_values($modelTables?:[[]])))),
+            'eloquent_models_scanned'=>array_sum(array_map('count',$modelTables)),
             'warning'=>'Static scan cannot prove a table is unused: dynamic query names, model conventions, external apps, jobs, exports, package internals, and historical migrations may still depend on it. Never drop based only on this report.',
             'candidates'=>array_values(array_filter($report,fn($r)=>str_starts_with($r['status'],'REVIEW_'))),
             'tables'=>$report,
@@ -141,7 +141,7 @@ final class AuditUnusedTables extends Command
         $map=[];
         foreach ($sources as $file=>$body) {
             if (!str_starts_with($file,'app/Models/') || !str_ends_with($file,'.php')) continue;
-            if (!preg_match('/\\bclass\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+extends\\s+[\\\\A-Za-z_][\\\\A-Za-z0-9_]*/',$body,$match)) continue;
+            if (!preg_match('/\\bclass\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+extends\\s+/', $body, $match)) continue;
             $class=$match[1];
             $explicit=null;
             if (preg_match('/\\b(?:protected|public)\\s+\\$table\\s*=\\s*[\\x27\\x22]([A-Za-z0-9_]+)[\\x27\\x22]/',$body,$tableMatch)) {
