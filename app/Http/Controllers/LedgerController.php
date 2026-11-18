@@ -1268,7 +1268,7 @@ class LedgerController extends Controller
                     // never hard-deleted. Settled bank/cheque sources require an
                     // independent clearing reversal and remain blocked.
                     if ($approvedCashVoid) {
-                        abort_unless(auth()->user()?->can('delete voucher'), 403);
+                        abort_unless(auth()->user()?->can('finance '.\App\Support\Finance\FinanceActionPermission::ledgerModule((int)$validated['id']).' delete'), 403);
                         DB::table('daily_voucher_approval_events')->insert([
                             'approval_id' => $trackedApproval->id,
                             'event' => 'approved_cash_void',
@@ -1387,7 +1387,7 @@ class LedgerController extends Controller
         $account = ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
             ->where('head_accounting_id', (int) $data['accounts_id'])
             ->where('subhead_accounting_id', (int) $data['subaccounts_id'])->firstOrFail();
-        abort_unless(auth()->user()?->can('update voucher'),403);
+        abort_unless(auth()->user()?->can('finance '.\App\Support\Finance\FinanceActionPermission::ledgerModule((int)$data['id']).' edit'),403);
         $source=$ledger->customerLedger;
         abort_unless($source && (int)$source->project_id===$projectId,403);
         abort_unless((int)$data['payment_type']===(int)$source->payment_type,409,
