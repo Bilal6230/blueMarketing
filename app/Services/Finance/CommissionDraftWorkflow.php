@@ -101,6 +101,9 @@ final class CommissionDraftWorkflow
                     'commision_voucher_id' => $id, 'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
+            // Draft leg records are persisted with the actual detail FK but
+            // cannot affect balances until the approved posting is committed.
+            app(CommissionLedgerSynchronizer::class)->ensureDraft($projectId,(int)$id,$actorId);
             return (int) $id;
         }, 3);
     }
@@ -140,9 +143,13 @@ final class CommissionDraftWorkflow
                 'reference'=>array_key_exists('reference',$metadata) ? $metadata['reference'] : $header->reference,
                 'description'=>array_key_exists('description',$metadata) ? $metadata['description'] : $header->description,
             ];
+            app(CommissionLedgerSynchronizer::class)->assertDraftCanReplace($projectId,$sourceId);
             if (app(VoucherUnchangedUpdateDetector::class)
                 ->same($header,$activeDetails,$candidateHeader,$prepared)) {
-                return; // Same-ID draft and details; no duplicate history rows.
+                // Backfill legacy Draft details which pre-date FK-linked
+                // ledger creation. Repeated Save remains idempotent.
+                app(CommissionLedgerSynchronizer::class)->ensureDraft($projectId,$sourceId);
+                return;
             }
             DB::table('commision_voucher_details')
                 ->where('commision_voucher_id', $sourceId)->whereNull('deleted_at')
@@ -157,6 +164,7 @@ final class CommissionDraftWorkflow
                 'date' => $date, 'total_debit' => $amount, 'total_credit' => $amount,
                 'updated_at' => now(),
             ]);
+            app(CommissionLedgerSynchronizer::class)->ensureDraft($projectId,$sourceId);
         }, 3);
     }
 
@@ -175,6 +183,8 @@ final class CommissionDraftWorkflow
                     ->where('commision_voucher_id', $sourceId)->exists()) {
                 throw new \DomainException('V2_CV_DRAFT_IMMUTABLE');
             }
+            // Check exact linked ledger ownership before archiving the draft.
+            app(CommissionLedgerSynchronizer::class)->assertDraftCanReplace($projectId,$sourceId);
             DB::table('commision_voucher_details')
                 ->where('commision_voucher_id', $sourceId)
                 ->update(['deleted_at' => now(), 'updated_at' => now()]);
@@ -209,10 +219,15 @@ final class CommissionDraftWorkflow
                 DB::table('commision_vouchers')->where('id', $sourceId)
                     ->update(['status' => 'approved', 'updated_at' => now()]);
             }
-            // Nested DB transaction: a failed posting rolls back approval too.
-            return (new PostingGateway())->postCommission(
+            // Nested transaction: approval, immutable finance posting and
+            // legacy ledger activation must either all commit or all roll back.
+            $batch=(new PostingGateway())->postCommission(
                 $projectId, $sourceId, $requestKey, $actorId
             );
+            app(CommissionLedgerSynchronizer::class)->activateApproved(
+                $projectId,$sourceId,$actorId
+            );
+            return $batch;
         }, 3);
     }
 }
