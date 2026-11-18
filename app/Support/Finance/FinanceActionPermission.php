@@ -3,6 +3,8 @@
 namespace App\Support\Finance;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * One source of truth for granular finance abilities. No wildcard permissions.
@@ -38,6 +40,47 @@ final class FinanceActionPermission
         }
 
         return 'finance '.$module.' '.$action;
+    }
+
+    /** Resolve the persisted voucher series instead of trusting a submitted type. */
+    public static function sourceModule(int $sourceId): string
+    {
+        $project = (int) getSelectedTown();
+        abort_unless($project > 0 && $sourceId > 0, 403);
+        $source = DB::table('customer_ledger')->where('project_id', $project)
+            ->where('id', $sourceId)->first(['transaction_type','payment_type']);
+        abort_unless($source, 404);
+
+        $series = null;
+        if (Schema::hasTable('project_voucher_display_numbers')) {
+            $series = DB::table('project_voucher_display_numbers')
+                ->where('project_id', $project)->where('source_kind', 'customer_ledger')
+                ->where('source_id', $sourceId)->value('series');
+        }
+        return self::moduleForSeries((string)($series ?: $source->transaction_type))
+            ?? 'directory';
+    }
+
+    public static function ledgerModule(int $ledgerId): string
+    {
+        $project = (int) getSelectedTown();
+        abort_unless($project > 0 && $ledgerId > 0, 403);
+        $ledger = DB::table('ledgers as ledger')
+            ->join('project_head_subheads as account','account.id','=','ledger.project_head_subheads_id')
+            ->where('ledger.id',$ledgerId)->where('account.project_id',$project)
+            ->first(['ledger.type','ledger.customer_ledger_id']);
+        abort_unless($ledger, 404);
+        if ($ledger->customer_ledger_id) return self::sourceModule((int)$ledger->customer_ledger_id);
+        return self::moduleForSeries((string)$ledger->type) ?? 'directory';
+    }
+
+    public static function journalModule(int $id): string
+    {
+        $project = (int) getSelectedTown();
+        abort_unless($project > 0 && $id > 0, 403);
+        $type = DB::table('journal_vouchers')->where('id',$id)->where('project_id',$project)->value('type');
+        abort_unless($type,404);
+        return self::moduleForSeries((string)$type) ?? 'jv';
     }
 
     /** @return array{0:string,1:string}|null */
@@ -81,6 +124,15 @@ final class FinanceActionPermission
             'finance.voucher.draft'=>['draft','view'],
             'payment_schedule.extra_charge'=>['extra-charge','view'],
         ];
+        if (in_array($name, ['journal.voucher.edit','journal.voucher.update',
+            'journal.voucher.resubmit','journal.voucher.delete','journal.voucher.print'], true)) {
+            $action = match ($name) {
+                'journal.voucher.edit', 'journal.voucher.update' => 'edit',
+                'journal.voucher.resubmit' => 'resubmit',
+                'journal.voucher.delete' => 'delete', default => 'print',
+            };
+            return [self::journalModule((int)$route->parameter('id')),$action];
+        }
         if (isset($fixed[$name])) return $fixed[$name];
         if ($name === 'finance.cheques.action') {
             return ['cheque', $request->input('action') === 'withdrawal' ? 'withdraw' : 'clear'];
@@ -122,6 +174,56 @@ final class FinanceActionPermission
         ];
         if (isset($plot[$name])) {
             return [str_contains($name,'plot-receipt')?'plot-receipt':'plot-purchase',$plot[$name]];
+        }
+
+        if (in_array($name,['ledger.store','ledger.store.fixed_method'],true)) {
+            $prefix = strtoupper((string)strtok((string)$request->input('voucher',''),'-'));
+            return [self::moduleForSeries($prefix) ?? 'directory','create'];
+        }
+        if (in_array($name,['ledger.save_as_draft','ledger.save_as_draft.fixed_method'],true)) {
+            return ['draft','create'];
+        }
+        if (in_array($name,['ledger.update','ledger.update.fixed_method'],true)) {
+            return [self::ledgerModule((int)$request->input('id')),'edit'];
+        }
+        if ($name === 'ledger.destroy') return [self::ledgerModule((int)$request->input('id')),'delete'];
+        if ($name === 'draft.ledger.update') return ['draft','edit'];
+        if ($name === 'draft.ledger.destroy') return ['draft','delete'];
+
+        if (in_array($name,['finance.voucher.in','finance.voucher.out',
+            'finance.voucher.in.method','finance.voucher.out.method'],true)) {
+            $incoming = str_contains($name,'.in');
+            $default = $incoming ? 'CR' : 'DR';
+            $series = strtoupper((string)$request->query('series',$default));
+            $module = self::moduleForSeries($series);
+            return [$module ?? strtolower($default),'view'];
+        }
+        if (in_array($name,['finance.voucher.bank.workspace','finance.voucher.bank.sources',
+            'finance.voucher.bank.history','finance.voucher.bank.print'],true)) {
+            $type = $route->parameter('direction') === 'receipt' ? 'bor' : 'bop';
+            return [$type, str_ends_with($name,'.print') ? 'print'
+                : (str_ends_with($name,'.history') ? 'history' : 'view')];
+        }
+        if (in_array($name,['finance.voucher.print','finance.voucher.print.method'],true)) {
+            return [self::ledgerModule((int)$route->parameter('id')),'print'];
+        }
+        if ($name === 'finance.voucher.source.print') {
+            return [self::sourceModule((int)$route->parameter('customerLedger')),'print'];
+        }
+        if (in_array($name,['finance.daily-vouchers.sources.reverse',
+            'finance.daily-vouchers.bank-allocation.release',
+            'finance.daily-vouchers.revise.edit','finance.daily-vouchers.revise.store'],true)) {
+            $action = str_ends_with($name,'.reverse') ? 'reverse'
+                : (str_ends_with($name,'.release') ? 'release' : 'resubmit');
+            return [self::sourceModule((int)$route->parameter('customerLedger')),$action];
+        }
+        if (in_array($name,['finance.voucher.cash-only.draft','finance.voucher.cash-only.store'],true)) {
+            $series = strtoupper((string)$request->input('display_series',$request->input('type','')));
+            return [in_array($series,['CCR','CDR'],true) ? strtolower($series) : 'directory',
+                $name === 'finance.voucher.cash-only.draft' ? 'create' : 'create'];
+        }
+        if ($name === 'booking.customer.deposit' && $request->input('action') === 'extra_charge') {
+            return ['extra-charge','create'];
         }
 
         $series = strtoupper((string)($route->parameter('series') ?: $request->input('type', $request->input('series', $request->query('series','')))));
