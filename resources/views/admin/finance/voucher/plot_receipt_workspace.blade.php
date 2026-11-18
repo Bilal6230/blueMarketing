@@ -103,6 +103,21 @@
  </div></div>
 </div>
 @endcan
+@can('finance plot-receipt delete')
+<div class="modal fade" id="prDeleteModal" tabindex="-1" role="dialog" aria-label="Delete voucher">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
+  <div class="modal-header"><h5 class="modal-title">Delete voucher</h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div>
+  <form id="prDeleteForm"><div class="modal-body">
+   <p class="small text-muted">The voucher is archived, not permanently erased. Linked financial entries are offset to keep balances consistent.</p>
+   <label for="prDeleteReason">Reason</label><textarea id="prDeleteReason" class="form-control" required minlength="3" maxlength="200" rows="3"></textarea>
+   <div id="prDeleteError" class="alert alert-danger d-none mt-2" role="alert"></div>
+  </div><div class="modal-footer">
+   <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+   <button id="prDeleteSubmit" type="submit" class="btn btn-danger btn-sm">Delete voucher</button>
+  </div></form>
+ </div></div>
+</div>
+@endcan
 @can('finance plot-receipt reverse')
 <div class="modal fade" id="prVoidModal" tabindex="-1" role="dialog" aria-labelledby="prVoidTitle" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
@@ -204,6 +219,9 @@
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-edit ml-1','data-id':r.id,text:'Edit voucher'}));
    @endcan
    @can('finance plot-receipt reverse')
+   @can('finance plot-receipt delete')
+   if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-delete ml-1','data-id':r.id,text:'Delete'}));
+   @endcan
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-void ml-1','data-id':r.id,text:'Reverse'}));
    @endcan
    $row.append($actions);
@@ -331,6 +349,31 @@
   @endcan
   $('#prHistoryRows').on('click','.pr-detail',function(){showDetails($(this).attr('data-id'));});
  @can('finance plot-receipt reverse')
+ @can('finance plot-receipt delete')
+ $('#prHistoryRows').on('click','.pr-delete',function(){
+  $('#prDeleteForm').data('source-id',$(this).attr('data-id'));
+  $('#prDeleteReason').val('');$('#prDeleteError').addClass('d-none').text('');
+  $('#prDeleteModal').modal('show');
+ });
+ $('#prDeleteForm').on('submit',function(event){
+  event.preventDefault();
+  var id=$(this).data('source-id'),$button=$('#prDeleteSubmit');
+  if(!id||$button.prop('disabled'))return;
+  $button.prop('disabled',true);
+  $.ajax({
+   url:$root.attr('data-details-base')+'/'+encodeURIComponent(id),
+   type:'DELETE',contentType:'application/json',dataType:'json',
+   headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+   data:JSON.stringify({reason:$.trim($('#prDeleteReason').val())})
+  }).done(function(response){
+   $('#prDeleteModal').modal('hide');
+   notify('success',response.message||'Voucher deleted');
+   loadHistory();
+  }).fail(function(xhr){
+   $('#prDeleteError').removeClass('d-none').text(xhr.responseJSON&&xhr.responseJSON.message||'Unable to delete voucher');
+  }).always(function(){$button.prop('disabled',false);});
+ });
+@endcan
  $('#prHistoryRows').on('click','.pr-void',function(){
   $('#prVoidForm').data('source-id',$(this).attr('data-id'));
   $('#prVoidReason').val('');$('#prVoidError').addClass('d-none').text('');
