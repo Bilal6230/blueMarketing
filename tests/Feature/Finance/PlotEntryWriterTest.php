@@ -742,4 +742,112 @@ class PlotEntryWriterTest extends TestCase
         (require base_path('database/migrations/2026_11_18_180000_consolidate_plot_narration_audit.php'))->up();
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',1);
     }
+    private function installFullPlotEditHistory(): void
+    {
+        Schema::create('daily_voucher_edit_snapshots',function(Blueprint $t): void {
+            $t->id();$t->unsignedBigInteger('project_id');$t->unsignedBigInteger('source_id');
+            $t->unsignedBigInteger('approval_id')->nullable();$t->string('status',16);
+            $t->longText('before_snapshot');$t->longText('proposed_snapshot');
+            $t->text('reason');$t->unsignedBigInteger('submitted_by');
+            $t->unsignedBigInteger('decided_by')->nullable();$t->timestamps();
+        });
+    }
+
+    public function test_full_plot_receipt_edit_updates_source_allocations_and_existing_balanced_posting(): void
+    {
+        $this->installFullPlotEditHistory();
+        $original=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-FULL-EDIT-001',[
+            'date'=>'2026-11-05','receipt_number'=>'PR-FULL-1','amount'=>'70.00',
+            'cash_account_id'=>101,'narration'=>'Before full edit',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
+        ],7);
+        $lineIds=DB::table('finance_posting_lines')->where('posting_batch_id',$original['posting_batch_id'])
+            ->orderBy('id')->pluck('id')->all();
+        $changed=(new \App\Services\Finance\PlotVoucherEditor())->receipt(1,$original['source_id'],[
+            'customer_id'=>5,'receipt_number'=>'PR-FULL-UPDATED','date'=>'2026-11-06',
+            'amount'=>'81.50','cash_account_id'=>101,'narration'=>'Full fields updated',
+            'allocations'=>[['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'81.50']],
+        ],7);
+        $this->assertSame($original['source_id'],$changed['source_id']);
+        $this->assertSame($original['posting_batch_id'],$changed['posting_batch_id']);
+        $this->assertDatabaseHas('finance_plot_receipts',['id'=>$original['source_id'],
+            'receipt_number'=>'PR-FULL-UPDATED','amount'=>81.5,'narration'=>'Full fields updated']);
+        $this->assertDatabaseHas('finance_plot_receipt_allocations',['receipt_id'=>$original['source_id'],
+            'booking_id'=>32,'plot_id'=>12,'amount'=>81.5]);
+        $lines=DB::table('finance_posting_lines')->where('posting_batch_id',$original['posting_batch_id'])
+            ->orderBy('id')->get();
+        $this->assertSame($lineIds,$lines->pluck('id')->all());
+        $this->assertSame(81.5,(float)$lines->sum('debit'));
+        $this->assertSame(81.5,(float)$lines->sum('credit'));
+        $this->assertSame(103,(int)$lines[1]->project_head_subhead_id);
+        $this->assertDatabaseCount('finance_posting_batches',1);
+        $this->assertDatabaseHas('daily_voucher_edit_snapshots',['project_id'=>1,'source_id'=>$original['source_id'],
+            'status'=>'plot_edit','submitted_by'=>7]);
+        $snapshot=DB::table('daily_voucher_edit_snapshots')->first();
+        $this->assertSame('PR-FULL-1',json_decode($snapshot->before_snapshot,true)['voucher']['receipt_number']);
+        $this->assertSame('PR-FULL-UPDATED',json_decode($snapshot->proposed_snapshot,true)['voucher']['receipt_number']);
+    }
+
+    public function test_full_purchase_edit_updates_existing_inventory_and_cost_without_new_batch(): void
+    {
+        $this->installFullPlotEditHistory();
+        $original=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-FULL-EDIT-001',[
+            'date'=>'2026-11-05','purchase_number'=>'PP-FULL-1','seller_account_id'=>102,
+            'narration'=>'Before edit','items'=>[[
+                'plot_code'=>'LAND-EDIT-OLD','description'=>'Before','area'=>'1',
+                'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'100','inventory_account_id'=>104,
+            ]],
+        ],7);
+        $plotId=(int)DB::table('finance_plot_purchase_items')->where('purchase_id',$original['source_id'])
+            ->value('legacy_plot_id');
+        $updated=(new \App\Services\Finance\PlotVoucherEditor())->purchase(1,$original['source_id'],[
+            'date'=>'2026-11-06','purchase_number'=>'PP-FULL-UPDATED','seller_account_id'=>102,
+            'narration'=>'Updated purchase','items'=>[[
+                'plot_code'=>'LAND-EDIT-NEW','description'=>'After','area'=>'2',
+                'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'150','inventory_account_id'=>104,
+            ]],
+        ],7);
+        $this->assertSame($original['source_id'],$updated['source_id']);
+        $this->assertSame($original['posting_batch_id'],$updated['posting_batch_id']);
+        $this->assertDatabaseHas('plots',['id'=>$plotId,'project_id'=>1,'name'=>'LAND-EDIT-NEW']);
+        $this->assertDatabaseHas('finance_plot_purchase_items',['purchase_id'=>$original['source_id'],
+            'legacy_plot_id'=>$plotId,'plot_code'=>'LAND-EDIT-NEW','amount'=>300]);
+        $this->assertDatabaseHas('finance_plot_purchases',['id'=>$original['source_id'],
+            'purchase_number'=>'PP-FULL-UPDATED','amount'=>300]);
+        $lines=DB::table('finance_posting_lines')->where('posting_batch_id',$original['posting_batch_id'])->get();
+        $this->assertSame(300.0,(float)$lines->sum('debit'));
+        $this->assertSame(300.0,(float)$lines->sum('credit'));
+        $this->assertDatabaseCount('finance_posting_batches',1);
+        $this->assertDatabaseCount('daily_voucher_edit_snapshots',1);
+    }
+
+    public function test_full_plot_receipt_edit_rejects_allocation_count_changes_atomically(): void
+    {
+        $this->installFullPlotEditHistory();
+        $original=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-COUNT-EDIT-001',[
+            'date'=>'2026-11-05','receipt_number'=>'PR-COUNT-1','amount'=>'70.00',
+            'cash_account_id'=>101,'narration'=>'Before',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
+        ],7);
+        try{
+            (new \App\Services\Finance\PlotVoucherEditor())->receipt(1,$original['source_id'],[
+                'customer_id'=>5,'receipt_number'=>'PR-COUNT-MOD','date'=>'2026-11-06',
+                'amount'=>'70.00','cash_account_id'=>101,'narration'=>'Not saved',
+                'allocations'=>[
+                    ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'30.00'],
+                    ['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'40.00'],
+                ],
+            ],7);
+            $this->fail('Changing allocation count must not partially mutate original posting.');
+        }catch(\DomainException $error){
+            $this->assertStringContainsString('count',$error->getMessage());
+        }
+        $this->assertDatabaseHas('finance_plot_receipts',['id'=>$original['source_id'],
+            'receipt_number'=>'PR-COUNT-1','amount'=>70]);
+        $this->assertDatabaseCount('finance_posting_lines',2);
+        $this->assertDatabaseCount('daily_voucher_edit_snapshots',0);
+    }
+
 }
