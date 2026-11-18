@@ -10,7 +10,7 @@
 | # | Milestone | Status |
 |---|---|---|
 | **01** | Full-page loader removal; global voucher-tinted skeletons | **COMPLETED — owner terminal/browser PASS**. 8 methods, 71 assertions (2026-11-18). |
-| **02** | Per-voucher, per-action permissions and modern Roles management | **ACTIVE — backend tests PASS; Roles UI redesign committed; local migration/UI QA and permissions inventory pending.** |
+| **02** | Per-voucher, per-action permissions and modern Roles management | **ACTIVE — backend tests PASS; Roles UI migration, tests and visual layout owner PASS; CR Edit browser behavior still unresolved, permission inventory upload pending.** |
 | **03** | Atomic voucher create/edit/delete, FK and soft-delete / is_active audit | **PENDING, start after 02 accepted.** |
 | **04** | Cheque/Online cleared-record edit/delete and linked-voucher cascade | **PENDING, after 03.** |
 | **05** | Reversal ON/OFF setting, approved/posted reversal and end-to-end tests | **PENDING, after 04.** |
@@ -24,9 +24,9 @@
 - Create/Edit uses a single, centered, search-enabled, category/module sidebar **AJAX modal** with relevant action checkboxes only, selected counter, section select/clear, modern error feedback. Delete uses a dedicated confirmation modal. No full-page reload after success. User may create a role with zero permissions; changing an existing role's guard is prohibited (create a new role).
 - Updated `app/Http/Controllers/RoleController.php` supports AJAX list/create/edit/archive, preserved old grants, protected superadmin, name+guard uniqueness (including archived names), and soft deletion only; a role still assigned to users cannot be archived.
 - `app/Support/Finance/RolePermissionCatalog.php` classifies permissions: legacy generic voucher/JV actions are **hidden from selectable UI** (no duplicate permissions), not deleted/revoked; existing old grants are preserved through role edit until an accurate code-and-DB usage audit. New roles cannot re-grant the legacy duplicates in the editor.
-- **NEW migration (not yet verified locally):** `database/migrations/2026_11_18_140000_add_updated_by_to_roles.php` adds nullable `roles.updated_by` for future audit display; historical unknown editors show “—”.
+- **Role migration (owner local PASS):** `database/migrations/2026_11_18_140000_add_updated_by_to_roles.php` adds nullable `roles.updated_by` for future audit display; historical unknown editors show “—”.
 - **NEW safe audit command:** `php artisan permissions:audit --json` lists every permission, guard, legacy/granular classification, assigned role names/count and direct-user grant count. It is read-only. No permission deletion/cleanup has been performed yet.
-- New tests: `tests/Unit/RoleManagementModernizationTest.php` (modern layout + safe role-grant contract). **Local test/browser outcome of this new batch still PENDING.**
+- New tests: `tests/Unit/RoleManagementModernizationTest.php` (modern layout + safe role-grant contract). **RoleManagementModernizationTest 4 PASS / 424 assertions verified by owner. New CR Edit diagnostic test/browser result is pending.**
 
 ## 2026-11-18 — Data Operator CR Edit authorization repair (CURRENT batch)
 
