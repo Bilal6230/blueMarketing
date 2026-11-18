@@ -186,10 +186,10 @@
      $tr.append($('<td>').text(x.items),$('<td>',{'class':'text-right'}).text(money(x.amount)));
      var $actions=$('<td>',{'class':'blue-actions-cell'}).append(
        $('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-detail','data-id':x.id,text:'Details / print'}));
-     @can('finance plot-purchase reverse')
      @can('finance plot-purchase edit')
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-narration ml-1','data-id':x.id,text:'Edit narration'}));
      @endcan
+     @can('finance plot-purchase reverse')
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-void ml-1','data-id':x.id,text:'Reverse'}));
      @endcan
      $tr.append($actions);
