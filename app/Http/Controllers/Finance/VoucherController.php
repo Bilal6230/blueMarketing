@@ -1269,6 +1269,35 @@ class VoucherController extends Controller
     }
 
 
+    public function deletePlotReceipt(Request $request,int $receiptId)
+    {
+        return $this->deletePlotSource($request,'plot_receipt',$receiptId);
+    }
+
+    public function deletePlotPurchase(Request $request,int $purchaseId)
+    {
+        return $this->deletePlotSource($request,'plot_purchase',$purchaseId);
+    }
+
+    private function deletePlotSource(Request $request,string $kind,int $sourceId)
+    {
+        $projectId=(int)getSelectedTown();
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
+        $permission=$kind==='plot_receipt'?'finance plot-receipt delete':'finance plot-purchase delete';
+        abort_unless($request->user()?->can($permission),403);
+        $data=$request->validate(['reason'=>['required','string','min:3','max:200']]);
+        try {
+            $batch=app(\App\Services\Finance\PlotEntryLifecycleService::class)->archive(
+                $projectId,$kind,$sourceId,(string)\Illuminate\Support\Str::uuid(),
+                now()->toDateString(),trim($data['reason']),(int)auth()->id()
+            );
+        } catch (\DomainException $error) {
+            return response()->json(['status'=>'error','message'=>$error->getMessage()],409);
+        }
+        return response()->json(['status'=>'success','data'=>['posting_batch_id'=>$batch],
+            'message'=>'Voucher deleted from active records. Linked financial balance was neutralized.']);
+    }
+
     public function updatePlotReceipt(Request $request,int $receiptId)
     {
         $projectId=(int)getSelectedTown();
