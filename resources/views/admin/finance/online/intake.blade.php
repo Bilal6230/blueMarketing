@@ -77,7 +77,7 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
   <div class="online-heading bm-page-heading d-flex justify-content-between align-items-center flex-wrap">
    <div><h4 class="mb-0">Online Transaction Management</h4><small class="text-muted">Selected project records · Pending Source Register</small></div>
    <x-finance.voucher-directory-actions>
-    @can('create voucher')<button class="btn btn-success btn-sm" type="button" id="online-add"><i class="fas fa-plus mr-1"></i> Add Transaction</button>@endcan
+    @can('finance online confirm')<button class="btn btn-success btn-sm" type="button" id="online-add"><i class="fas fa-plus mr-1"></i> Add Transaction</button>@endcan
    </x-finance.voucher-directory-actions>
   </div>
   <div class="online-filter bm-card bm-filter mt-2">
@@ -136,7 +136,7 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
   </div>
  </div>
 </div>
-@can('create voucher')
+@can('finance online create')
 <div class="modal fade" id="online-entry-modal" tabindex="-1" role="dialog" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title">Add Online Transaction</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
@@ -181,7 +181,7 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
   </div>
  </div></div>
 </div>
-@can('create voucher')
+@can('finance online confirm')
 <div class="modal fade" id="online-confirm-modal" tabindex="-1" role="dialog" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title">Confirm Online Transaction</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
@@ -363,19 +363,20 @@ $(function(){
   else $proof.addClass('text-muted').text('—');
   $proof.appendTo($r);
   var $actions=$('<td>').addClass('blue-actions-cell');
-  @can('create voucher')
-  if(x.status==='pending'){
+  @can('finance online create')
+  if(x.status==='pending' && @json(auth()->user()->can('finance online confirm'))){
    $('<button type="button">').addClass('btn btn-outline-success btn-sm mr-1 online-confirm-button')
     .attr({'data-id':x.id,'data-reference':x.reference,'data-amount':x.amount,
      'data-type':x.type,'data-date':x.transaction_date})
     .text('Confirm').appendTo($actions);
   }
   @endcan
-  if(Number(x.linked_voucher_count||0)>0){
+  if(@json(auth()->user()->can('finance online history')) && Number(x.linked_voucher_count||0)>0){
    $('<button type="button">').addClass('btn btn-outline-primary btn-sm mr-1 online-history-button')
     .attr({'data-id':x.id,'data-reference':x.reference,'title':'Open linked voucher allocation history'})
     .text('Vouchers ('+Number(x.linked_voucher_count)+')').appendTo($actions);
   }
+  if(@json(auth()->user()->can('finance online history')))
   $('<button type="button">').addClass('btn btn-outline-secondary btn-sm online-history-button')
    .attr({'data-id':x.id,'data-reference':x.reference}).text('History').appendTo($actions);
   $actions.appendTo($r);
@@ -530,7 +531,7 @@ $(function(){
     $body.empty().append($('<tr>').append($('<td colspan="6" class="text-danger">').text(msg)));
    });
  });
- @can('create voucher')
+ @can('finance online create')
  $rows.on('click','.online-confirm-button',function(){
   var $button=$(this);
   confirmRecord={id:String($button.attr('data-id')),type:$button.attr('data-type'),
