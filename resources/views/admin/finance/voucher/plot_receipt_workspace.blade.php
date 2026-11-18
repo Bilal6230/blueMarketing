@@ -307,7 +307,7 @@
    });
    $('#prNumber').val(receipt.receipt_number);$('#prDate').val(String(receipt.receipt_date).slice(0,10));
    $('#prCustomer').val(String(receipt.customer_id));$('#prAccount').val(String(receipt.cash_account_id));
-   $('#prNarration').val(receipt.narration);$('#prSearch').val('');
+   $('#prNarration').val(receipt.narration);$('#prSearch').val('').prop('disabled',true);
    $('#prCreateTitle').text('Edit Plot Receive Payment');$('#prPost').text('Save voucher');
    drawBookings();$('#plotReceiptCreateModal').modal('show');
   }).fail(function(xhr){
@@ -318,7 +318,8 @@
  $('#prNewVoucher').on('click',function(){
   editReceiptId=null;editAllocations=[];pendingKey=null;
   $('#prCreateTitle').text('New Plot Receive Payment');$('#prPost').text('Post receipt');
-  $('#prNumber,#prNarration,#prSearch').val('');$('#prCustomer,#prAccount').val('');drawBookings();
+  $('#prNumber,#prNarration,#prSearch').val('');$('#prSearch').prop('disabled',false);
+  $('#prCustomer,#prAccount').val('');drawBookings();
  });
  @can('finance plot-receipt edit')
   $('#prHistoryRows').on('click','.pr-narration',function(){
