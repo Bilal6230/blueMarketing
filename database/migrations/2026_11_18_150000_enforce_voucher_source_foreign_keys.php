@@ -46,6 +46,23 @@ return new class extends Migration
             if ($otherFk) {
                 throw new \RuntimeException('Existing incompatible FK on '.$table.'.'.$column);
             }
+            $types=DB::select('SELECT TABLE_NAME AS table_name, COLUMN_NAME AS column_name,
+                     COLUMN_TYPE AS column_type, DATA_TYPE AS data_type
+                 FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA=? AND
+                    ((TABLE_NAME=? AND COLUMN_NAME=?) OR (TABLE_NAME=? AND COLUMN_NAME=?))',
+                [$database,$table,$column,$parent,$pk]);
+            $childType=collect($types)->first(fn($t)=>$t->table_name===$table && $t->column_name===$column);
+            $parentType=collect($types)->first(fn($t)=>$t->table_name===$parent && $t->column_name===$pk);
+            if (!$childType || !$parentType || $childType->column_type!==$parentType->column_type) {
+                throw new \RuntimeException('Voucher FK column type mismatch: '.$table.'.'.$column.' -> '.$parent.'.'.$pk);
+            }
+            $engines=DB::select('SELECT TABLE_NAME AS table_name, ENGINE AS engine
+                 FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME IN (?,?)',
+                [$database,$table,$parent]);
+            if (collect($engines)->contains(fn($t)=>strtoupper((string)$t->engine)!=='INNODB')) {
+                throw new \RuntimeException('Voucher FK requires InnoDB tables: '.$table.' and '.$parent);
+            }
             $orphanCount=(int)DB::table($table.' as child')
                 ->leftJoin($parent.' as parent','parent.'.$pk,'=','child.'.$column)
                 ->whereNotNull('child.'.$column)->whereNull('parent.'.$pk)->count();
