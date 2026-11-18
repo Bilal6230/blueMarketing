@@ -321,7 +321,7 @@ final class PlotVoucherEditor
                 'posting_lines'=>$lines->map(fn($r)=>(array)$r)->all(),'plots'=>$priorPlots];
             $this->replaceLines($project,(int)$batch->id,$lines,$newLines,
                 ['debit'=>$old->pluck('legacy_plot_id')->map(fn($value)=>(string)$value)->all(),'credit'=>['purchase_seller']],
-                ['debit'=>array_map(fn($value)=>(string)($value['plot']?->id ?? 'new:'.array_search($value,$plots,true)),$plots),'credit'=>['purchase_seller']]);
+                ['debit'=>array_map(fn($index,$value)=>(string)($value['plot']?->id ?? 'new:'.$index),array_keys($plots),$plots),'credit'=>['purchase_seller']]);
             foreach ($plots as $p) {
                 $v=$p['input'];$existing=$p['plot'];
                 if ($existing) {
