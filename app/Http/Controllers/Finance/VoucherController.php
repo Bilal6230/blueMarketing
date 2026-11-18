@@ -1358,7 +1358,15 @@ class VoucherController extends Controller
         try { $details = (new \App\Services\Finance\PlotEntryWriter())->receipt($projectId, $receiptId); }
         catch (\DomainException $error) { abort(404); }
         $customer = $details['allocations']->first();
+        // Preserve the original project-scoped cash account for full edit prefilling.
+        $link = DB::table('finance_plot_receipt_postings as link')
+            ->join('finance_posting_batches as batch','batch.id','=','link.posting_batch_id')
+            ->where('link.source_id',$receiptId)->where('link.source_kind','plot_receipt')
+            ->where('batch.project_id',$projectId)->first(['batch.id']);
+        $cashAccount = $link ? DB::table('finance_posting_lines')->where('posting_batch_id',$link->id)
+            ->orderBy('id')->value('project_head_subhead_id') : null;
         return response()->json(['receipt' => array_merge((array) $details['receipt'], [
+            'cash_account_id'=>$cashAccount,
             'customer' => $customer ? (trim((string) $customer->first_name.' '.(string) $customer->last_name) ?: (string) ($customer->business ?? 'Customer')) : 'Customer',
         ]), 'allocations' => $details['allocations']]);
     }
@@ -1459,6 +1467,12 @@ class VoucherController extends Controller
         \App\Services\Finance\FinanceWorkflowAccess::authorizeRead($projectId);
         try { $details = (new \App\Services\Finance\PlotEntryWriter())->purchaseDetails($projectId, $purchaseId); }
         catch (\DomainException $error) { abort(404); }
+        $details['items'] = DB::table('finance_plot_purchase_items as item')
+            ->join('plots as plot','plot.id','=','item.legacy_plot_id')
+            ->where('item.purchase_id',$purchaseId)->where('plot.project_id',$projectId)
+            ->orderBy('item.id')->get(['item.*','plot.type','plot.road_id','plot.facing_id',
+                'plot.is_corner', 'plot.plot_category_definition_id','plot.plot_type_definition_id',
+                'plot.plot_size_definition_id','plot.plot_unit_definition_id']);
         $details['purchase']->seller = DB::table('project_head_subheads as account')->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
             ->where('account.project_id', $projectId)->where('account.id', $details['purchase']->seller_account_id)->value('sub.name');
         return response()->json($details);
