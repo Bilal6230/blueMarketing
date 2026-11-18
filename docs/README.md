@@ -54,6 +54,28 @@ php artisan test --filter=RoleManagementModernizationTest
 ```
 With an ordinary Data Operator user assigned to the edited role and correct project, refresh `/admin/finance/daily-vouchers?type=CR`. An active posted/approved **cash CR** with an eligible linked ledger should expose Edit in its shared floating action menu; clicking Edit should open the same-source form, not a 403. Revocation of CR Edit must remove that link and direct endpoint must return 403. Pending or bank/cheque entries may still have unrelated lifecycle restrictions; do not pretend a missing Edit button on an ineligible lifecycle state is a permission bug. Upload `storage/app/permission-audit.json` to investigate remaining legacy names and distinguish actual role grants from UI or lifecycle gating.
 
+## 2026-11-18 Follow-up: CR Edit still missing in owner's screenshot
+
+Owner reports CR Edit still absent after prior GitHub fix. The new screenshot shows **Pending**, **Approved** and **Posted** CR entries. The owner has NOT supplied a fresh terminal pull/test log since commit `743484ad`, so local code version and actual database role grants cannot be independently verified. Do not claim browser PASS.
+
+**Cause split:** (1) old `update voucher` checks were corrected in the directory/Edit GET+POST in prior commits; (2) the listing still only renders an Edit link for eligible **active cash posted/approved** sources with a linked ledger; **Pending** records and online/cheque sources have distinct lifecycle rules and cannot be made editable merely by adding permission; (3) a checkbox in role configuration does not prove the logged-in user has that role or a refreshed effective grant. There is also a possible source/display series mismatch. These facts need database checks, not more guessed grants.
+
+**This batch:** Added read-only `finance:diagnose-edit` command with role name, series, optional project id. It reports the role's `finance cr edit` grant, number of assigned users and effective grants, plus up to 12 voucher source statuses/payment methods and linked ledger counts when `--project` is supplied. It modifies **no** records, roles or permissions. Added `FinanceVoucherEditDiagnosticTest`. The previous fixes remain committed. The original five-milestone roadmap is unchanged; **Milestone 02 remains OPEN until direct browser Edit test succeeds**.
+
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=FinanceVoucherEditDiagnosticTest
+php artisan test --filter=FinanceVoucherEditPermissionParityTest
+php artisan finance:diagnose-edit --role="Data Operator" --series=CR
+# Optional after identifying selected project ID:
+# php artisan finance:diagnose-edit --role="Data Operator" --series=CR --project=3
+```
+
+If the role grant is YES and the browser still has no Edit for an eligible cash voucher, inspect the authenticated user's actual role/effective grant, relevant source identity, and listing JSON (Network -> daily-vouchers/data -> `edit_url`). If the role's grant is NO, use role editor to save that role's CR Edit. **Do not enable unsafe edit on Pending, cleared online/cheque or broken ledger-linked rows without implementing and testing the corresponding atomic lifecycle edit workflow.**
+
 ## Next actions — Milestone 02 acceptance
 
 Owner run in Windows PowerShell, on the intended local DB only:
