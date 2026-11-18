@@ -1083,6 +1083,22 @@ class PlotEntryWriterTest extends TestCase
             ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
         $this->assertDatabaseCount('finance_posting_batches',1);
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',3);
+        // Another Edit after archive + restore must resolve the booking by
+        // its credit leg identity (posting IDs no longer sort like allocations).
+        $editor->receipt(1,$created['source_id'],[
+            'customer_id'=>5,'receipt_number'=>'PR-COUNT-RESTORED','date'=>'2026-11-08',
+            'amount'=>'80.00','cash_account_id'=>101,'narration'=>'After restore',
+            'allocations'=>[
+                ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'30.00'],
+                ['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'50.00'],
+            ],
+        ],7);
+        $this->assertSame(2,DB::table('finance_plot_receipt_allocations')
+            ->where('receipt_id',$created['source_id'])->count());
+        $this->assertSame(80.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
+        $this->assertDatabaseCount('finance_posting_batches',1);
+        $this->assertDatabaseCount('daily_voucher_edit_snapshots',4);
     }
 
     public function test_full_purchase_edit_rejects_booked_plot_without_mutating_financial_state(): void
@@ -1270,6 +1286,21 @@ class PlotEntryWriterTest extends TestCase
         $this->assertTrue($reconciliation[0]['ok'],implode(',',$reconciliation[0]['issues']));
         $this->assertDatabaseCount('finance_posting_batches',1);
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',2);
+        // Further Edit after the first item was archived must not reuse
+        // its old debit leg or create another inventory record.
+        $editor->purchase(1,$created['source_id'],[
+            'date'=>'2026-11-08','purchase_number'=>'PP-DYNAMIC-3','seller_account_id'=>102,
+            'narration'=>'Still one plot','items'=>[[
+                'legacy_plot_id'=>$newId,'plot_code'=>'LAND-DYN-NEW','description'=>'Retained again',
+                'area'=>'1','unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'95','inventory_account_id'=>104,
+            ]],
+        ],7);
+        $this->assertSame(2,DB::table('finance_plot_purchase_items')
+            ->where('purchase_id',$created['source_id'])->count());
+        $this->assertSame(95.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+        $this->assertDatabaseCount('finance_posting_batches',1);
     }
 
 }
