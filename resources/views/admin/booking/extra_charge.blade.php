@@ -1,4 +1,13 @@
 @extends('admin.layouts.master')
+@push('style')
+<style>
+/* Keep server-rendered extra-charge rows out of view until DataTables is ready. */
+.bm-extra-list-pending {min-height:430px;position:relative}
+.bm-extra-list-pending #example1 {position:absolute;visibility:hidden;pointer-events:none}
+.bm-extra-list-skeleton {min-height:420px}
+.bm-extra-list-skeleton .bm-skeleton-row td {height:42px}
+</style>
+@endpush
 @section('content')
 
     <div class="content-wrapper bm-ui bm-voucher-directory bm-booking-vouchers bm-modern-extra" style="--voucher-accent:#7145bd;--voucher-tint:#f2edff" data-extra-errors="{{ $errors->any() ? '1' : '0' }}">
@@ -331,7 +340,8 @@
                             <!-- /.card-header -->
                             @can('read slip')
                                 <x-finance.voucher-table-card class="mb-2">
-                                <div class="table-responsive">
+                                <div class="table-responsive bm-extra-list-pending">
+                                    <div class="bm-extra-list-skeleton" role="status" aria-label="Loading extra charges"><table class="table table-bordered w-100" aria-hidden="true"><tbody id="extraChargeInitialSkeleton"></tbody></table></div>
                                     <table id="example1" class="table table-striped table-bordered " style="width:100%">
                                         <thead>
                                             <tr>
@@ -936,6 +946,15 @@
 
 @section('js')
     <script>
+        $(function(){
+            if($.blueTableSkeleton)$.blueTableSkeleton.show('#extraChargeInitialSkeleton',{rows:10,columns:14});
+        });
+        $(document).on('init.dt',function(event,settings){
+            if(settings&&settings.nTable&&settings.nTable.id==='example1'){
+                var $wrap=$('#example1').closest('.table-responsive');
+                $wrap.removeClass('bm-extra-list-pending').find('.bm-extra-list-skeleton').remove();
+            }
+        });
         function submitForm() {
             $('#voucherForm').trigger('submit');
         }
