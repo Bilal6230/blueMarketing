@@ -777,10 +777,13 @@ class PlotEntryWriterTest extends TestCase
             'booking_id'=>32,'plot_id'=>12,'amount'=>81.5]);
         $lines=DB::table('finance_posting_lines')->where('posting_batch_id',$original['posting_batch_id'])
             ->orderBy('id')->get();
-        $this->assertSame($lineIds,$lines->pluck('id')->all());
+        $this->assertSame($lineIds, $lines->take(2)->pluck('id')->all());
+        $this->assertCount(3,$lines); // removed booking leg is retained as archived evidence
+        $this->assertSame(0,(int)$lines[1]->is_active);
+        $this->assertSame(1,(int)$lines[2]->is_active);
         $this->assertSame(81.5,(float)$lines->sum('debit'));
         $this->assertSame(81.5,(float)$lines->sum('credit'));
-        $this->assertSame(103,(int)$lines[1]->project_head_subhead_id);
+        $this->assertSame(103,(int)$lines[2]->project_head_subhead_id);
         $this->assertDatabaseCount('finance_posting_batches',1);
         $this->assertDatabaseHas('daily_voucher_edit_snapshots',['project_id'=>1,'source_id'=>$original['source_id'],
             'status'=>'plot_edit','submitted_by'=>7]);
@@ -815,7 +818,7 @@ class PlotEntryWriterTest extends TestCase
         $updated=(new \App\Services\Finance\PlotVoucherEditor())->purchase(1,$original['source_id'],[
             'date'=>'2026-11-06','purchase_number'=>'PP-FULL-UPDATED','seller_account_id'=>102,
             'narration'=>'Updated purchase','items'=>[[
-                'plot_code'=>'LAND-EDIT-NEW','description'=>'After','area'=>'2',
+                'legacy_plot_id'=>$plotId,'plot_code'=>'LAND-EDIT-NEW','description'=>'After','area'=>'2',
                 'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
                 'unit_rate'=>'150','inventory_account_id'=>104,
             ]],
@@ -832,6 +835,42 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame(300.0,(float)$lines->sum('credit'));
         $this->assertDatabaseCount('finance_posting_batches',1);
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',1);
+    }
+
+    public function test_receipt_reordering_keeps_booking_posting_line_ids_and_does_not_duplicate_rows(): void
+    {
+        $this->installFullPlotEditHistory();
+        $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-REORDER-EDIT-001',[
+            'date'=>'2026-11-05','receipt_number'=>'PR-REORDER-1','amount'=>'100.00',
+            'cash_account_id'=>101,'narration'=>'Before',
+            'allocations'=>[
+                ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'60.00'],
+                ['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'40.00'],
+            ],
+        ],7);
+        $batch=$created['posting_batch_id'];
+        $originalIds=DB::table('finance_posting_lines')->where('posting_batch_id',$batch)
+            ->orderBy('id')->pluck('id')->all();
+        $editor=new \App\Services\Finance\PlotVoucherEditor();
+        $data=[
+            'customer_id'=>5,'receipt_number'=>'PR-REORDER-1','date'=>'2026-11-05',
+            'amount'=>'100.00','cash_account_id'=>101,'narration'=>'After',
+            'allocations'=>[
+                ['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'35.00'],
+                ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'65.00'],
+            ],
+        ];
+        $editor->receipt(1,$created['source_id'],$data,7);
+        $editor->receipt(1,$created['source_id'],$data,7);
+        $lines=DB::table('finance_posting_lines')->where('posting_batch_id',$batch)->orderBy('id')->get();
+        $this->assertSame($originalIds,$lines->pluck('id')->all());
+        $this->assertSame(65.0,(float)$lines[1]->credit);
+        $this->assertSame(35.0,(float)$lines[2]->credit);
+        $this->assertSame(100.0,(float)$lines->sum('debit'));
+        $this->assertSame(100.0,(float)$lines->sum('credit'));
+        $this->assertSame(2,DB::table('finance_plot_receipt_allocations')
+            ->where('receipt_id',$created['source_id'])->count());
+        $this->assertDatabaseCount('finance_posting_batches',1);
     }
 
     public function test_full_receipt_edit_rejects_duplicate_booking_id_without_financial_writes(): void
