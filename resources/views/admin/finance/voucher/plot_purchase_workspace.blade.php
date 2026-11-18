@@ -159,7 +159,14 @@
     }
   };
   const root=$('#plotPurchaseApp')[0];if(!root)return;const byId=id=>$('#'+$.escapeSelector(id))[0],esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),money=n=>(Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});let options={roads:[],facings:[],definitions:[]},busy=false,pendingRequestKey=null,editPurchaseId=null;
- const alert=(kind,msg)=>{const box=byId('ppAlert');box.className='alert alert-'+kind;box.textContent=msg;$(box).removeClass('d-none')};
+ const alert=(kind,msg)=>{
+  var type=kind==='danger'?'error':kind,feedback=$.financeVoucherFeedback||{};
+  if($.isFunction(feedback.toast))feedback.toast(type,msg);
+  else if(window.toastr&&$.isFunction(window.toastr[type]))window.toastr[type](msg);
+  else $('<div>',{'class':'alert alert-'+(type==='success'?'success':'danger')+' fvc-feedback-fallback',role:'alert',text:msg})
+   .appendTo('body').delay(4500).fadeOut(250,function(){$(this).remove();});
+  $('#ppAlert').attr('class','alert alert-'+kind).text(msg);
+ };
  const defs=kind=>options.definitions.filter(x=>x.kind===kind);
  function fillSelect(select,items,label){select.innerHTML=`<option value="">Select ${label}</option>`+items.map(x=>`<option value="${x.id}" data-legacy="${esc(x.legacy_value??'')}" data-size="${esc(x.size_value??'')}" data-unit="${esc(x.unit_code??'')}">${esc(x.code?x.code+' · ':'')}${esc(x.name)}</option>`).join('')}
  function row(){const node=byId('ppItemTemplate').content.firstElementChild.cloneNode(true);for(const kind of ['road_id','facing_id'])fillSelect($(node).find(`[data-field="${kind}"]`)[0],options[kind==='road_id'?'roads':'facings'],kind==='road_id'?'road':'facing');for(const kind of ['category','type','size','unit']){const wrap=$(node).find(`[data-definition="${kind}"]`)[0],select=$(wrap).find('select')[0];fillSelect(select,defs(kind),kind);wrap.hidden=!defs(kind).length;select.required=defs(kind).length>0;if(kind==='type')$(select).on('change',()=>{const v=select.selectedOptions[0]?.dataset.legacy;if(['1','2'].includes(v))$(node).find('[data-field="type"]')[0].value=v});if(kind==='size')$(select).on('change',()=>{const opt=select.selectedOptions[0];if(opt?.dataset.size)$(node).find('[data-field="area"]')[0].value=opt.dataset.size;if(opt?.dataset.unit)$(node).find('[data-field="unit"]')[0].value=opt.dataset.unit})}$(node).find('input,select').toArray().forEach(el=>$(el).on('input',recalc));$(node).find('.pp-remove').on('click',()=>{if(byId('ppItems').children.length>1)node.remove();recalc()});byId('ppItems').append(node);$(node).find('.pp-item-title')[0].textContent=`Plot ${byId('ppItems').children.length}`;recalc()}
