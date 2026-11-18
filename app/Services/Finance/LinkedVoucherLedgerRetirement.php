@@ -56,15 +56,22 @@ final class LinkedVoucherLedgerRetirement
             }
         }
         if ($type==='CV' && $hasCommissionDetailLink) {
-            $detailIds=$activeDetails->pluck('id')->map(fn($id)=>(int)$id)->all();
+            $detailsById=$activeDetails->keyBy('id');
             $seenLinked=[];
             foreach ($active as $leg) {
                 $detailId=(int)($leg->commision_voucher_detail_id??0);
                 // NULL means a historical CV leg from before the FK existed.
                 // It remains covered by the exact account/amount multiset.
                 if (!$detailId) continue;
-                if (!in_array($detailId,$detailIds,true) || isset($seenLinked[$detailId])) {
+                $detail=$detailsById->get($detailId);
+                if (!$detail || isset($seenLinked[$detailId])) {
                     throw new \DomainException('Commission ledger points to a different or duplicate voucher detail; no rows modified.');
+                }
+                $signature=static fn($account,$debit,$credit): string =>
+                    (int)$account.'|'.number_format((float)$debit,2,'.','').'|'.number_format((float)$credit,2,'.','');
+                if ($signature($detail->account_id,$detail->debit,$detail->credit)!==
+                    $signature($leg->project_head_subheads_id,$leg->amount_in,$leg->amount_out)) {
+                    throw new \DomainException('Commission ledger detail account or amount mismatch; no rows modified.');
                 }
                 $seenLinked[$detailId]=true;
             }
