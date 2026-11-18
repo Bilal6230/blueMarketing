@@ -52,7 +52,7 @@
      @endforeach
      <th>Actions</th>
     </tr></thead>
-    <tbody id="prHistoryRows"><tr><td colspan="8" class="text-center text-muted py-4">Loading vouchers…</td></tr></tbody>
+    <tbody id="prHistoryRows" aria-busy="true">@include('components.finance.voucher-skeleton-rows', ['columns' => 8])</tbody>
    </table>
   </div>
   <div class="bm-voucher-table-footer pr-footer"><span id="prSummary" class="bm-voucher-count pr-count">Loading records…</span><div id="prPages" class="d-flex align-items-center flex-wrap" style="gap:4px"></div></div>
