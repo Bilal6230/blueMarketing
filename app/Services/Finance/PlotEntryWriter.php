@@ -107,6 +107,14 @@ final class PlotEntryWriter
         $link = DB::table($sourceTable)->where('posting_batch_id',$batch->id)->first();
         if (!$link || $batch->voucher_series !== ($kind === 'plot_receipt' ? 'PR' : 'PP')
             || !hash_equals((string)$batch->payload_sha256,$hash)) throw new \DomainException('V2_PLOT_REQUEST_CONFLICT');
+        // Do not revive an archived source via an old idempotency key.
+        // This check is a read-only lifecycle guard, not a new posting.
+        $sourceRoot = $kind === 'plot_receipt' ? 'finance_plot_receipts' : 'finance_plot_purchases';
+        $sourceQuery = DB::table($sourceRoot)->where('id',(int)$link->source_id)
+            ->where('project_id',$project);
+        if (Schema::hasColumn($sourceRoot,'is_active')) $sourceQuery->where('is_active',1);
+        if (Schema::hasColumn($sourceRoot,'deleted_at')) $sourceQuery->whereNull('deleted_at');
+        if (!$sourceQuery->exists()) throw new \DomainException('PLOT_SOURCE_ARCHIVED');
         return ['source_id'=>(int)$link->source_id,'posting_batch_id'=>(int)$batch->id,'replayed'=>true];
     }
     private function post(int $project, string $key, string $series, string $kind, string $date, array $lines, string $payloadHash, ?int $actor): int
