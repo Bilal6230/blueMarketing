@@ -1,3 +1,7 @@
+> **CURRENT HANDOFF (2026-11-18):** Read [docs/README.md](README.md) first. This file retains historical development evidence and may mention V2 isolation, retired phases, old database restrictions, or superseded statuses. Those are not current requirements. The user requires one normal, merged application across configured databases. Latest implemented UI batch: skeleton loading for Bank Deposit/Withdrawal, Plot Receive Payment, Plot Purchase Voucher; hide Extra Charges raw table until DataTables initializes. Committed to `upgrade/laravel-framework`; new regression test `FinanceVoucherInitialSkeletonTest`; browser PASS still pending. Update docs alongside each subsequent milestone.
+
+---
+
 # BlueMarketing — ACTIVE HANDOFF (new chat continuity)
 
 ## 2026-11-17 — OWNER APPROVED BD/BW MODERN UI — CLOSED
