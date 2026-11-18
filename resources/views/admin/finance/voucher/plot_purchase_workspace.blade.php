@@ -23,7 +23,7 @@
  data-details-base="{{ url('admin/finance/voucher/plot-purchase') }}"
  data-void-base="{{ url('admin/finance/voucher/plot-purchase') }}">
  <div class="bm-voucher-heading d-flex justify-content-between align-items-center">
-  <div><h2>Plot Purchase Voucher</h2><div class="bm-voucher-subtitle">Selected project records · Read-only history</div></div>
+  <div><h2>Plot Purchase Voucher</h2><div class="bm-voucher-subtitle">Selected project records · Audited narration Edit</div></div>
   <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
  </div>
  <x-finance.voucher-filter-card class="bm-voucher-filter-card pp-filter-card">
@@ -88,6 +88,19 @@
   <div class="modal-body" id="ppDetails"></div>
  </div></div>
 </div>
+@can('finance plot-purchase edit')
+<div class="modal fade" id="ppNarrationModal" tabindex="-1" role="dialog" aria-labelledby="ppNarrationTitle" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
+  <div class="modal-header"><h5 class="modal-title" id="ppNarrationTitle">Edit voucher narration</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <form id="ppNarrationForm"><div class="modal-body">
+   <p class="small text-muted">Narration only; financial postings, amounts, allocations and plot inventory are unchanged.</p>
+   <label for="ppNarrationValue">Narration</label><textarea id="ppNarrationValue" class="form-control" maxlength="2000" rows="4" required></textarea>
+   <div id="ppNarrationError" class="alert alert-danger d-none mt-2"></div>
+  </div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+   <button id="ppNarrationSubmit" class="btn btn-primary btn-sm" type="submit">Save narration</button></div></form>
+ </div></div>
+</div>
+@endcan
 @can('finance plot-purchase reverse')
 <div class="modal fade" id="ppVoidModal" tabindex="-1" role="dialog" aria-labelledby="ppVoidTitle" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
@@ -174,6 +187,9 @@
      var $actions=$('<td>',{'class':'blue-actions-cell'}).append(
        $('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-detail','data-id':x.id,text:'Details / print'}));
      @can('finance plot-purchase reverse')
+     @can('finance plot-purchase edit')
+     if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-narration ml-1','data-id':x.id,text:'Edit narration'}));
+     @endcan
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-void ml-1','data-id':x.id,text:'Reverse'}));
      @endcan
      $tr.append($actions);
@@ -224,7 +240,34 @@
    purchaseColumns.reset();historyPage=1;drawHistory();
  });
  $('#ppLength,#ppQuickSearch').on('input change',function(){historyPage=1;drawHistory();});
- $('#ppHistory').on('click','.pp-detail',function(){details($(this).attr('data-id'));});
+ @can('finance plot-purchase edit')
+  $('#ppHistory').on('click','.pp-narration',function(){
+   var id=$(this).attr('data-id'),record=history.find(function(row){return String(row.id)===String(id);});
+   if(!record)return;
+   $('#ppNarrationForm').data('source-id',id);
+   $('#ppNarrationValue').val(record.narration||'');
+   $('#ppNarrationError').addClass('d-none').text('');
+   $('#ppNarrationModal').modal('show');
+  });
+  $('#ppNarrationForm').on('submit',function(event){
+   event.preventDefault();
+   var id=$(this).data('source-id'),$button=$('#ppNarrationSubmit');
+   if(!id||$button.prop('disabled'))return;
+   $button.prop('disabled',true);
+   $.ajax({
+    url:$('#plotPurchaseApp').attr('data-details-base')+'/'+encodeURIComponent(id)+'/narration',
+    type:'PATCH',contentType:'application/json',dataType:'json',
+    headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+    data:JSON.stringify({narration:$.trim($('#ppNarrationValue').val())})
+   }).done(function(response){
+    $('#ppNarrationModal').modal('hide');
+    alert('success',response.message||'Narration updated');loadHistory();
+   }).fail(function(xhr){
+    $('#ppNarrationError').removeClass('d-none').text(xhr.responseJSON&&xhr.responseJSON.message||'Unable to update narration');
+   }).always(function(){$button.prop('disabled',false);});
+  });
+  @endcan
+  $('#ppHistory').on('click','.pp-detail',function(){details($(this).attr('data-id'));});
  @can('finance plot-purchase reverse')
  $('#ppHistory').on('click','.pp-void',function(){
   $('#ppVoidForm').data('source-id',$(this).attr('data-id'));
