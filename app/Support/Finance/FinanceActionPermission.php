@@ -173,6 +173,37 @@ final class FinanceActionPermission
             $module = self::pendingModule((int)($route->parameter('pending') ?: $route->parameter('id')));
             return $module ? [$module,str_contains($name,'reject') ? 'reject' : 'approve'] : null;
         }
+        if ($name === 'booking.customer.approve') {
+            return [self::sourceModule((int)$request->input('id')),
+                (int)$request->input('is_approve') === 0 ? 'reject' : 'approve'];
+        }
+        if ($name === 'booking.customer.destroy') {
+            return [self::sourceModule((int)$request->input('id')),'delete'];
+        }
+        if ($name === 'booking.voucher.show') {
+            return [self::sourceModule((int)$request->input('id')),'details'];
+        }
+        if ($name === 'booking.customer.print') {
+            return [self::sourceModule((int)$route->parameter('id')),'print'];
+        }
+        if ($name === 'finance.bank_source.linked_print') {
+            return [(string)$route->parameter('method') === 'online' ? 'online' : 'cheque','print'];
+        }
+        if ($name === 'finance.voucher.passed_sources') return ['directory','view'];
+        if (in_array($name,['finance.voucher.approve','finance.voucher.reject'],true)) {
+            $table = (string)$request->input('table');
+            $record = (int)$route->parameter('id');
+            $module = match ($table) {
+                'customer_ledger' => self::sourceModule($record),
+                'ledgers' => self::ledgerModule($record),
+                'draft_ledgers' => 'draft',
+                default => null,
+            };
+            return $module ? [$module,$name === 'finance.voucher.reject'?'reject':'approve'] : null;
+        }
+        if ($name === 'finance.daily-vouchers.source.print') {
+            return [self::sourceModule((int)$route->parameter('customerLedger')),'print'];
+        }
         if (isset($fixed[$name])) return $fixed[$name];
         if ($name === 'finance.cheques.action') {
             return ['cheque', $request->input('action') === 'withdrawal' ? 'withdraw' : 'clear'];
@@ -270,8 +301,7 @@ final class FinanceActionPermission
         $daily = [
             'finance.daily-vouchers.index'=>'view',
             'finance.daily-vouchers.data'=>'view',
-            'finance.daily-vouchers.source.print'=>'print',
-        ];
+                    ];
         if (isset($daily[$name])) {
             return [self::moduleForSeries($series) ?? 'directory', $daily[$name]];
         }
