@@ -716,4 +716,30 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',1);
         $this->assertDatabaseCount('finance_posting_batches',2);
     }
+
+    public function test_legacy_plot_edit_audit_consolidates_into_shared_snapshots_before_removing_extra_table(): void
+    {
+        Schema::create('daily_voucher_edit_snapshots',function(Blueprint $t): void {
+            $t->id();$t->unsignedBigInteger('project_id');$t->unsignedBigInteger('source_id');
+            $t->unsignedBigInteger('approval_id')->nullable();$t->string('status',16);
+            $t->longText('before_snapshot');$t->longText('proposed_snapshot');
+            $t->text('reason');$t->unsignedBigInteger('submitted_by');
+            $t->unsignedBigInteger('decided_by')->nullable();$t->timestamps();
+        });
+        (require base_path('database/migrations/2026_11_18_170000_create_plot_voucher_edit_audits_table.php'))->up();
+        DB::table('finance_plot_voucher_edit_audits')->insert([
+            'project_id'=>1,'source_kind'=>'plot_receipt','source_id'=>15,
+            'previous_narration'=>'Old original','updated_narration'=>'Updated existing',
+            'edited_by'=>7,'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        (require base_path('database/migrations/2026_11_18_180000_consolidate_plot_narration_audit.php'))->up();
+        $this->assertFalse(Schema::hasTable('finance_plot_voucher_edit_audits'));
+        $this->assertDatabaseCount('daily_voucher_edit_snapshots',1);
+        $saved=DB::table('daily_voucher_edit_snapshots')->first();
+        $this->assertSame('plot_note',$saved->status);
+        $this->assertSame('Old original',json_decode($saved->before_snapshot,true)['narration']);
+        $this->assertSame('Updated existing',json_decode($saved->proposed_snapshot,true)['narration']);
+        (require base_path('database/migrations/2026_11_18_180000_consolidate_plot_narration_audit.php'))->up();
+        $this->assertDatabaseCount('daily_voucher_edit_snapshots',1);
+    }
 }
