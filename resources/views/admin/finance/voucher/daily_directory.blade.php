@@ -628,7 +628,7 @@
             else window.alert(message);
         }).always(function(){$button.prop('disabled',false);});
     });
-    @can('delete voucher')
+    // The API only supplies reverse URLs for the corresponding granular voucher grant.
     $('#dv-rows').on('click','.dv-typed-reverse',function(){
         var $button=$(this);
         $('#dvTypedReverseForm').data('url',$button.attr('data-url'));
@@ -659,7 +659,6 @@
                 .text((xhr.responseJSON||{}).message||'Unable to reverse voucher');
         }).always(function(){$button.prop('disabled',false);});
     });
-    @endcan
     $('#dv-rows').on('click','.dv-delete',function(){
         const button=this;
         const reason=window.prompt('Reason for deactivating '+$(button).data('number')+' (required):');
