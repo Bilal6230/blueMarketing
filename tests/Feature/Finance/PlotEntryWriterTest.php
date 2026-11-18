@@ -48,6 +48,7 @@ class PlotEntryWriterTest extends TestCase
         });
         (require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php'))->up();
         (require base_path('database/finance_legacy_migrations/2026_11_05_000300_create_finance_plot_receipt_purchase.php'))->up();
+        (require base_path('database/migrations/2026_11_18_190000_add_plot_detail_lifecycle_columns.php'))->up();
         DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
         DB::table('users')->insert(['id' => 7]);
         DB::table('leads')->insert([
@@ -833,31 +834,50 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',1);
     }
 
-    public function test_full_plot_receipt_edit_rejects_allocation_count_changes_atomically(): void
+    public function test_full_receipt_edit_adds_and_archives_allocation_rows_without_hard_delete(): void
     {
         $this->installFullPlotEditHistory();
-        $original=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-COUNT-EDIT-001',[
+        $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-COUNT-EDIT-001',[
             'date'=>'2026-11-05','receipt_number'=>'PR-COUNT-1','amount'=>'70.00',
             'cash_account_id'=>101,'narration'=>'Before',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
         ],7);
-        try{
-            (new \App\Services\Finance\PlotVoucherEditor())->receipt(1,$original['source_id'],[
-                'customer_id'=>5,'receipt_number'=>'PR-COUNT-MOD','date'=>'2026-11-06',
-                'amount'=>'70.00','cash_account_id'=>101,'narration'=>'Not saved',
-                'allocations'=>[
-                    ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'30.00'],
-                    ['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'40.00'],
-                ],
-            ],7);
-            $this->fail('Changing allocation count must not partially mutate original posting.');
-        }catch(\DomainException $error){
-            $this->assertStringContainsString('count',$error->getMessage());
-        }
-        $this->assertDatabaseHas('finance_plot_receipts',['id'=>$original['source_id'],
-            'receipt_number'=>'PR-COUNT-1','amount'=>70]);
-        $this->assertDatabaseCount('finance_posting_lines',2);
-        $this->assertDatabaseCount('daily_voucher_edit_snapshots',0);
+        $editor=new \App\Services\Finance\PlotVoucherEditor();
+        $result=$editor->receipt(1,$created['source_id'],[
+            'customer_id'=>5,'receipt_number'=>'PR-COUNT-MOD','date'=>'2026-11-06',
+            'amount'=>'90.00','cash_account_id'=>101,'narration'=>'Two allocations',
+            'allocations'=>[
+                ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'50.00'],
+                ['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'40.00'],
+            ],
+        ],7);
+        $this->assertSame($created['source_id'],$result['source_id']);
+        $this->assertSame(2,DB::table('finance_plot_receipt_allocations')
+            ->where('receipt_id',$created['source_id'])->where('is_active',1)->count());
+        $this->assertSame(90.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+        $this->assertSame(90.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
+        $editor->receipt(1,$created['source_id'],[
+            'customer_id'=>5,'receipt_number'=>'PR-COUNT-FINAL','date'=>'2026-11-07',
+            'amount'=>'55.00','cash_account_id'=>101,'narration'=>'One allocation',
+            'allocations'=>[
+                ['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'55.00'],
+            ],
+        ],7);
+        $this->assertSame(1,DB::table('finance_plot_receipt_allocations')
+            ->where('receipt_id',$created['source_id'])->where('is_active',1)->count());
+        $this->assertSame(1,DB::table('finance_plot_receipt_allocations')
+            ->where('receipt_id',$created['source_id'])->where('is_active',0)->count());
+        $this->assertSame(1,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',0)->count());
+        $this->assertSame(55.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+        $this->assertSame(55.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
+        $this->assertCount(1,(new PlotEntryWriter())->receipt(1,$created['source_id'])['allocations']);
+        $this->assertDatabaseCount('finance_posting_batches',1);
+        $this->assertDatabaseCount('daily_voucher_edit_snapshots',2);
     }
 
     public function test_full_purchase_edit_rejects_booked_plot_without_mutating_financial_state(): void
