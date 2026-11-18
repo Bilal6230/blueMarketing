@@ -619,6 +619,27 @@ final class DailyVoucherDirectoryController extends Controller
             }
         }
 
+        // Apply row-level authorization before facet values, counts and URLs are returned.
+        // A mixed voucher directory must not expose another voucher's data or actions.
+        $viewer = $request->user();
+        $beforePermissionFilter = $rows->count();
+        $rows = $rows->filter(function (array $row) use ($viewer): bool {
+            $module = \App\Support\Finance\FinanceActionPermission::moduleForSeries((string)($row['type'] ?? ''));
+            return $module !== null && $viewer?->can('finance '.$module.' view');
+        })->map(function (array $row) use ($viewer): array {
+            $module = \App\Support\Finance\FinanceActionPermission::moduleForSeries((string)($row['type'] ?? ''));
+            foreach (['edit_url'=>'edit', 'revise_url'=>'resubmit', 'delete_url'=>'delete',
+                'reverse_url'=>'reverse', 'release_url'=>'release', 'url'=>'print'] as $field=>$action) {
+                if (!$viewer->can('finance '.$module.' '.$action)) $row[$field] = null;
+            }
+            if (!$viewer->can('finance '.$module.' print')) $row['prints'] = [];
+            return $row;
+        })->values();
+        if ($rows->count() !== $beforePermissionFilter) {
+            // Never report counts that include records hidden by permissions.
+            $total = $rows->count();
+        }
+
         if ($requiresFullCandidateSet && $total > $filterCandidateLimit) {
             return response()->json([
                 'message' => 'Too many vouchers to sort or filter completely. Select a narrower date range first.',
