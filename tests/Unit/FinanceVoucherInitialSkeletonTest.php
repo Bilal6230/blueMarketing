@@ -63,4 +63,44 @@ final class FinanceVoucherInitialSkeletonTest extends TestCase
         self::assertStringContainsString('bm-voucher-initial-skeleton', $css);
     }
 
+    public function test_first_frame_is_server_rendered_skeleton_not_loading_text(): void
+    {
+        $root = dirname(__DIR__, 2);
+        foreach ([
+            'bank_transfer_workspace.blade.php' => 9,
+            'plot_receipt_workspace.blade.php' => 8,
+            'plot_purchase_workspace.blade.php' => 8,
+        ] as $name => $columns) {
+            $view = file_get_contents($root.'/resources/views/admin/finance/voucher/'.$name);
+            self::assertIsString($view);
+            self::assertStringContainsString("voucher-skeleton-rows', ['columns' => ".$columns."]", $view);
+            self::assertStringNotContainsString('Loading vouchers…</td>', $view);
+            self::assertStringNotContainsString('Loading purchases…</td>', $view);
+        }
+        $partial = file_get_contents($root.'/resources/views/components/finance/voucher-skeleton-rows.blade.php');
+        self::assertIsString($partial);
+        self::assertStringContainsString('bm-skeleton-row bm-skeleton-neutral', $partial);
+        self::assertStringContainsString('bm-skeleton-bar', $partial);
+    }
+
+    public function test_initial_table_visibility_rules_are_in_head_before_the_content(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $layout = file_get_contents($root.'/resources/views/admin/layouts/master.blade.php');
+        self::assertIsString($layout);
+        $headEnd = strpos($layout, '</head>');
+        $critical = strpos($layout, '.bm-voucher-initial-pending>table[id]');
+        self::assertNotFalse($headEnd);
+        self::assertNotFalse($critical);
+        self::assertLessThan($headEnd, $critical);
+        foreach ([
+            $root.'/resources/views/admin/booking/extra_charge.blade.php',
+            $root.'/resources/views/admin/finance/voucher/draft_voucher.blade.php',
+        ] as $path) {
+            $view = file_get_contents($path);
+            self::assertStringContainsString("voucher-skeleton-rows', ['columns' => ", $view);
+            self::assertStringContainsString('bm-voucher-initial-pending', $view);
+        }
+    }
+
 }
