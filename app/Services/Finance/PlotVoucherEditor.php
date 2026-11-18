@@ -74,7 +74,7 @@ final class PlotVoucherEditor
         ]);
     }
 
-    private function replaceLines(int $project,int $batchId,$old,array $new): void
+    private function replaceLines(int $project,int $batchId,$old,array $new,array $oldLegKeys=[],array $newLegKeys=[]): void
     {
         $debit=0;$credit=0;
         foreach ($new as $line) {
@@ -91,8 +91,23 @@ final class PlotVoucherEditor
         foreach (['debit','credit'] as $side) {
             $prior=$old->filter(fn($line)=>(float)$line->$side>0)->values();
             $next=collect($new)->filter(fn($line)=>(float)$line[$side]>0)->values();
-            for($i=0;$i<max($prior->count(),$next->count());$i++) {
-                $line=$prior[$i]??null;$target=$next[$i]??null;
+            // Match legs by their original source identity, never their position
+            // in a reordered form. A removed source leaves its line archived;
+            // genuinely new source identities receive a new line.
+            $beforeKeys=$oldLegKeys[$side]??range(0,$prior->count()-1);
+            $afterKeys=$newLegKeys[$side]??range(0,$next->count()-1);
+            if (count($beforeKeys)!==$prior->count() || count($afterKeys)!==$next->count()
+                || count(array_unique($beforeKeys))!==count($beforeKeys)
+                || count(array_unique($afterKeys))!==count($afterKeys)) {
+                throw new \DomainException('Posting source identity mismatch.');
+            }
+            $priorByKey=[];
+            foreach ($prior as $i=>$line) $priorByKey[(string)$beforeKeys[$i]]=$line;
+            $nextByKey=[];
+            foreach ($next as $i=>$line) $nextByKey[(string)$afterKeys[$i]]=$line;
+            foreach (array_unique(array_merge($beforeKeys,$afterKeys)) as $key) {
+                $line=$priorByKey[(string)$key]??null;
+                $target=$nextByKey[(string)$key]??null;
                 if ($line && (int)$line->posting_batch_id!==$batchId) {
                     throw new \DomainException('Posting identity mismatch.');
                 }
@@ -176,7 +191,9 @@ final class PlotVoucherEditor
             if ($total!==$expected) throw new \DomainException('Allocated amount does not equal voucher total.');
             $before=['voucher'=>(array)$source,'allocations'=>$old->map(fn($r)=>(array)$r)->all(),
                 'posting_lines'=>$lines->map(fn($r)=>(array)$r)->all()];
-            $this->replaceLines($project,(int)$batch->id,$lines,$newLines);
+            $this->replaceLines($project,(int)$batch->id,$lines,$newLines,
+                ['debit'=>['receipt_cash'],'credit'=>$old->pluck('booking_id')->map(fn($value)=>(string)$value)->all()],
+                ['debit'=>['receipt_cash'],'credit'=>array_map(fn($value)=>(string)$value['booking_id'],$newAllocations)]);
             // (receipt_id, booking_id) is UNIQUE. Never recycle a row
             // position for another booking: identity is the booking itself.
             // Include inactive rows so a previously removed booking can be
@@ -248,9 +265,9 @@ final class PlotVoucherEditor
             $byPlot=$old->keyBy('legacy_plot_id');
             $plots=[];$total=0;$newLines=[];$usedCodes=[];$usedIds=[];
             foreach ($data['items'] as $index=>$item) {
-                $legacyId=array_key_exists('legacy_plot_id',$item)
-                    ? (int)($item['legacy_plot_id']??0)
-                    : (int)($old[$index]->legacy_plot_id??0);
+                // Missing identity is a new row. Never silently assign an
+                // existing plot by its old array index after form reordering.
+                $legacyId=(int)($item['legacy_plot_id']??0);
                 if ($legacyId && (isset($usedIds[$legacyId]) || !$byPlot->has($legacyId))) {
                     throw new \DomainException('Purchased plot is not linked to this source.');
                 }
@@ -302,7 +319,9 @@ final class PlotVoucherEditor
                 ->where('project_id',$project)->get()->map(fn($r)=>(array)$r)->all();
             $before=['voucher'=>(array)$source,'items'=>$old->map(fn($r)=>(array)$r)->all(),
                 'posting_lines'=>$lines->map(fn($r)=>(array)$r)->all(),'plots'=>$priorPlots];
-            $this->replaceLines($project,(int)$batch->id,$lines,$newLines);
+            $this->replaceLines($project,(int)$batch->id,$lines,$newLines,
+                ['debit'=>$old->pluck('legacy_plot_id')->map(fn($value)=>(string)$value)->all(),'credit'=>['purchase_seller']],
+                ['debit'=>array_map(fn($value)=>(string)($value['plot']?->id ?? 'new:'.array_search($value,$plots,true)),$plots),'credit'=>['purchase_seller']]);
             foreach ($plots as $p) {
                 $v=$p['input'];$existing=$p['plot'];
                 if ($existing) {
