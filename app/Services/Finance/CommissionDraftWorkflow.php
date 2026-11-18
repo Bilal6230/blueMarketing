@@ -137,8 +137,8 @@ final class CommissionDraftWorkflow
                 ->orderBy('id')->lockForUpdate()->get();
             $candidateHeader=[
                 'date'=>$date,
-                'reference'=>$metadata['reference']??$header->reference,
-                'description'=>$metadata['description']??$header->description,
+                'reference'=>array_key_exists('reference',$metadata) ? $metadata['reference'] : $header->reference,
+                'description'=>array_key_exists('description',$metadata) ? $metadata['description'] : $header->description,
             ];
             if (app(VoucherUnchangedUpdateDetector::class)
                 ->same($header,$activeDetails,$candidateHeader,$prepared)) {
