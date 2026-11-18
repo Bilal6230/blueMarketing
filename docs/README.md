@@ -242,6 +242,8 @@ php artisan finance:audit-voucher-schema --require-fks
 
 **Final same-turn UI guard:** While Plot Receipt Edit is open, the optional booking search is disabled so table rerender cannot silently discard or restore changed allocation selections; normal Create mode still supports the search. Purchase Edit uses a hidden `legacy_plot_id` to distinguish an explicitly new row from an existing plot (including empty-string-to-null middleware conversion). No new table was added. All new changes still await the owner's local PHP and browser pass.
 
+**Additional code safety checks in this same batch:** Updated `FinanceActionPermission` route action map for both Plot Edit/Delete/narration endpoints, so granular permission middleware correctly recognizes the new routes. `PlotPurchaseReconciliation` now excludes archived inactive purchase items and posting lines; the dynamic Purchase integration test asserts a clean reconciliation after add/remove. `PlotFullVoucherEditContractTest` verifies the migration adds **columns only**, zeroed archived lines, and that reversal/audit consider only active evidence. Runtime line changes, extra regression tests, and the migration are committed but remain unverified locally. No manual database cleanup or earlier migration rerun is required.
+
 **Important deploy order:** Because the new tests use the migration in disposable SQLite fixtures, first verify test commands below; then confirm the connected DB is `bluenew_clean_final`; apply the NEW `190000` migration once; then perform browser acceptance against disposable local Plot vouchers, not live financial sources. Do NOT rerun old 150000/160000/170000/180000 migrations, nor migrate:fresh.
 
 ```powershell
