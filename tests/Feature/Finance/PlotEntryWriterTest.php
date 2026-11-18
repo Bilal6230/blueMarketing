@@ -786,6 +786,16 @@ class PlotEntryWriterTest extends TestCase
         $snapshot=DB::table('daily_voucher_edit_snapshots')->first();
         $this->assertSame('PR-FULL-1',json_decode($snapshot->before_snapshot,true)['voucher']['receipt_number']);
         $this->assertSame('PR-FULL-UPDATED',json_decode($snapshot->proposed_snapshot,true)['voucher']['receipt_number']);
+        try {
+            (new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-FULL-EDIT-001',[
+                'date'=>'2026-11-05','receipt_number'=>'PR-FULL-1','amount'=>'70.00',
+                'cash_account_id'=>101,'narration'=>'Before full edit',
+                'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
+            ],7);
+            $this->fail('Original request key must not replay old payload after source edit.');
+        } catch (\DomainException $error) {
+            $this->assertSame('PLOT_SOURCE_HAS_BEEN_EDITED',$error->getMessage());
+        }
     }
 
     public function test_full_purchase_edit_updates_existing_inventory_and_cost_without_new_batch(): void
