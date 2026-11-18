@@ -26,7 +26,7 @@ final class PlotEntryWriter
     private function projectAccount(int $project, int $account): bool
     { return \App\Models\ProjectHeadSubhead::availableForPosting()->where('project_id',$project)->where('id',$account)->exists(); }
 
-    private function createAvailablePlot(int $project, array $item, ?int $actor): int
+    public function createAvailablePlot(int $project, array $item, ?int $actor): int
     {
         $type = (int) $item['type'];
         $road = DB::table('roads')->where('id', (int) $item['road_id'])->where('is_active', 1)->exists();
