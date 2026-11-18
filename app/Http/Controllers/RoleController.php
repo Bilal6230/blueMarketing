@@ -74,7 +74,8 @@ class RoleController extends Controller
                 'guard_name'=>'A role guard cannot be changed while editing. Create a new role for the other guard.',
             ]);
         }
-        $duplicate = Role::where('name',$name)->where('guard_name',$guard)
+        // Include soft-archived roles: the database retains a unique name+guard index.
+        $duplicate = DB::table('roles')->where('name',$name)->where('guard_name',$guard)
             ->when($role,fn($q)=>$q->where('id','!=',$role->id))->exists();
         if ($duplicate) {
             throw \Illuminate\Validation\ValidationException::withMessages([
