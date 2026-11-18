@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Finance\V2IsolatedConnectionGuard;
+use App\Services\Finance\FinanceConnectionGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
 
         foreach (['projects', 'users', 'plots', 'project_head_subheads',
             'finance_posting_batches', 'finance_posting_source_claims'] as $table) {
