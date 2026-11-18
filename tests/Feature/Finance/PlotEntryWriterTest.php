@@ -1009,4 +1009,60 @@ class PlotEntryWriterTest extends TestCase
             ->where('posting_batch_id',$batch)->sum('credit'));
     }
 
+    public function test_full_purchase_edit_adds_then_archives_plots_and_preserves_balanced_postings(): void
+    {
+        $this->installFullPlotEditHistory();
+        $writer=new PlotEntryWriter();
+        $created=$writer->purchase(1,'PLOT-PURCHASE-DYNAMIC-EDIT-001',[
+            'date'=>'2026-11-05','purchase_number'=>'PP-DYNAMIC-1','seller_account_id'=>102,
+            'narration'=>'Before','items'=>[[
+                'plot_code'=>'LAND-DYN-OLD','description'=>'Old plot','area'=>'1',
+                'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'100','inventory_account_id'=>104,
+            ]],
+        ],7);
+        $oldId=(int)DB::table('finance_plot_purchase_items')->where('purchase_id',$created['source_id'])
+            ->value('legacy_plot_id');
+        $editor=new \App\Services\Finance\PlotVoucherEditor();
+        $editor->purchase(1,$created['source_id'],[
+            'date'=>'2026-11-06','purchase_number'=>'PP-DYNAMIC-2','seller_account_id'=>102,
+            'narration'=>'Two plots','items'=>[
+                ['legacy_plot_id'=>$oldId,'plot_code'=>'LAND-DYN-OLD','description'=>'Updated',
+                    'area'=>'1','unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                    'unit_rate'=>'120','inventory_account_id'=>104],
+                ['legacy_plot_id'=>'','plot_code'=>'LAND-DYN-NEW','description'=>'New plot',
+                    'area'=>'1','unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                    'unit_rate'=>'80','inventory_account_id'=>104],
+            ],
+        ],7);
+        $this->assertSame(2,DB::table('finance_plot_purchase_items')
+            ->where('purchase_id',$created['source_id'])->where('is_active',1)->count());
+        $this->assertSame(200.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+        $newId=(int)DB::table('finance_plot_purchase_items')->where('purchase_id',$created['source_id'])
+            ->where('plot_code','LAND-DYN-NEW')->value('legacy_plot_id');
+        $this->assertGreaterThan(0,$newId);
+        $editor->purchase(1,$created['source_id'],[
+            'date'=>'2026-11-07','purchase_number'=>'PP-DYNAMIC-3','seller_account_id'=>102,
+            'narration'=>'One remaining plot','items'=>[[
+                'legacy_plot_id'=>$newId,'plot_code'=>'LAND-DYN-NEW','description'=>'Retained',
+                'area'=>'1','unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
+                'unit_rate'=>'90','inventory_account_id'=>104,
+            ]],
+        ],7);
+        $this->assertSame(1,DB::table('finance_plot_purchase_items')
+            ->where('purchase_id',$created['source_id'])->where('is_active',1)->count());
+        $this->assertSame(1,DB::table('finance_plot_purchase_items')
+            ->where('purchase_id',$created['source_id'])->where('is_active',0)->count());
+        $this->assertSame(0,(int)DB::table('plots')->where('id',$oldId)->value('is_active'));
+        $this->assertSame(1,(int)DB::table('plots')->where('id',$newId)->value('is_active'));
+        $this->assertSame(90.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+        $this->assertSame(90.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
+        $this->assertCount(1,$writer->purchaseDetails(1,$created['source_id'])['items']);
+        $this->assertDatabaseCount('finance_posting_batches',1);
+        $this->assertDatabaseCount('daily_voucher_edit_snapshots',2);
+    }
+
 }
