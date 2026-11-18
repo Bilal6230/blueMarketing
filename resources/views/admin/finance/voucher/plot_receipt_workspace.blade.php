@@ -21,7 +21,7 @@
  data-print-base="{{ url('admin/finance/voucher/plot-receipt') }}"
  data-void-base="{{ url('admin/finance/voucher/plot-receipt') }}">
  <div class="bm-voucher-heading pr-heading d-flex align-items-center justify-content-between">
-  <div><h2>Plot Receive Payment</h2><div class="bm-voucher-subtitle pr-subtitle">Selected project records · Read-only history</div></div>
+  <div><h2>Plot Receive Payment</h2><div class="bm-voucher-subtitle pr-subtitle">Selected project records · Audited narration Edit</div></div>
   <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
  </div>
  <x-finance.voucher-filter-card class="pr-filter-card">
@@ -90,6 +90,19 @@
   <div class="modal-body" id="prDetailsBody"></div>
  </div></div>
 </div>
+@can('finance plot-receipt edit')
+<div class="modal fade" id="prNarrationModal" tabindex="-1" role="dialog" aria-labelledby="prNarrationTitle" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
+  <div class="modal-header"><h5 class="modal-title" id="prNarrationTitle">Edit voucher narration</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <form id="prNarrationForm"><div class="modal-body">
+   <p class="small text-muted">Narration only; financial postings, amounts, allocations and plot inventory are unchanged.</p>
+   <label for="prNarrationValue">Narration</label><textarea id="prNarrationValue" class="form-control" maxlength="2000" rows="4" required></textarea>
+   <div id="prNarrationError" class="alert alert-danger d-none mt-2"></div>
+  </div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+   <button id="prNarrationSubmit" class="btn btn-primary btn-sm" type="submit">Save narration</button></div></form>
+ </div></div>
+</div>
+@endcan
 @can('finance plot-receipt reverse')
 <div class="modal fade" id="prVoidModal" tabindex="-1" role="dialog" aria-labelledby="prVoidTitle" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
@@ -181,6 +194,9 @@
    $row.append($('<td>',{'class':'text-right'}).text(money(r.amount)),$('<td>').text(r.reversed?'Reversed':'Posted'));
    var $actions=$('<td>',{'class':'blue-actions-cell'}).append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-detail','data-id':r.id,text:'Details'}));
    @can('finance plot-receipt reverse')
+   @can('finance plot-receipt edit')
+   if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-narration ml-1','data-id':r.id,text:'Edit narration'}));
+   @endcan
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-void ml-1','data-id':r.id,text:'Reverse'}));
    @endcan
    $row.append($actions);
@@ -253,7 +269,34 @@
  });
  $('#prLength').on('change',function(){page=1;drawHistory();});
  $('#prQuickSearch').on('input',function(){page=1;drawHistory();});
- $('#prHistoryRows').on('click','.pr-detail',function(){showDetails($(this).attr('data-id'));});
+ @can('finance plot-receipt edit')
+  $('#prHistoryRows').on('click','.pr-narration',function(){
+   var id=$(this).attr('data-id'),record=history.find(function(row){return String(row.id)===String(id);});
+   if(!record)return;
+   $('#prNarrationForm').data('source-id',id);
+   $('#prNarrationValue').val(record.narration||'');
+   $('#prNarrationError').addClass('d-none').text('');
+   $('#prNarrationModal').modal('show');
+  });
+  $('#prNarrationForm').on('submit',function(event){
+   event.preventDefault();
+   var id=$(this).data('source-id'),$button=$('#prNarrationSubmit');
+   if(!id||$button.prop('disabled'))return;
+   $button.prop('disabled',true);
+   $.ajax({
+    url:$root.attr('data-details-base')+'/'+encodeURIComponent(id)+'/narration',
+    type:'PATCH',contentType:'application/json',dataType:'json',
+    headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+    data:JSON.stringify({narration:$.trim($('#prNarrationValue').val())})
+   }).done(function(response){
+    $('#prNarrationModal').modal('hide');
+    notify('success',response.message||'Narration updated');loadHistory();
+   }).fail(function(xhr){
+    $('#prNarrationError').removeClass('d-none').text(xhr.responseJSON&&xhr.responseJSON.message||'Unable to update narration');
+   }).always(function(){$button.prop('disabled',false);});
+  });
+  @endcan
+  $('#prHistoryRows').on('click','.pr-detail',function(){showDetails($(this).attr('data-id'));});
  @can('finance plot-receipt reverse')
  $('#prHistoryRows').on('click','.pr-void',function(){
   $('#prVoidForm').data('source-id',$(this).attr('data-id'));
