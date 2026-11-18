@@ -287,9 +287,11 @@ final class FinanceActionPermission
         if (in_array($name,['finance.daily-vouchers.sources.reverse',
             'finance.daily-vouchers.bank-allocation.release',
             'finance.daily-vouchers.revise.edit','finance.daily-vouchers.revise.store'],true)) {
-            $action = str_ends_with($name,'.reverse') ? 'reverse'
-                : (str_ends_with($name,'.release') ? 'release'
-                    : (str_ends_with($name,'.edit') ? 'edit' : 'edit'));
+            $action = match (true) {
+                str_ends_with($name,'.reverse') => 'reverse',
+                str_ends_with($name,'.release') => 'release',
+                default => 'edit',
+            };
             return [self::sourceModule((int)$route->parameter('customerLedger')),$action];
         }
         if (in_array($name,['finance.voucher.cash-only.draft','finance.voucher.cash-only.store'],true)) {
