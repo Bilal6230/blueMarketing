@@ -277,6 +277,12 @@ final class DailyVoucherDirectoryController extends Controller
                 };
                 if ($series === 'CHR') $display = preg_replace('/^CHR(?=-)/', 'BOR', $display);
                 if ($series === 'CHP') $display = preg_replace('/^CHP(?=-)/', 'BOP', $display);
+                $module = \App\Support\Finance\FinanceActionPermission::moduleForSeries($displayType);
+                $canEdit = $module !== null && auth()->user()?->can('finance '.$module.' edit');
+                $canDelete = $module !== null && auth()->user()?->can('finance '.$module.' delete');
+                $canReverse = $module !== null && auth()->user()?->can('finance '.$module.' reverse');
+                $canRelease = $module !== null && auth()->user()?->can('finance '.$module.' release');
+                $canResubmit = $module !== null && auth()->user()?->can('finance '.$module.' resubmit');
                 $linkedLines = DB::table('ledgers as linked')
                     ->join('project_head_subheads as a', 'a.id', '=', 'linked.project_head_subheads_id')
                     ->leftJoin('head_accountings as h', 'h.id', '=', 'a.head_accounting_id')
@@ -350,14 +356,14 @@ final class DailyVoucherDirectoryController extends Controller
                                 && in_array(($sourceApprovals[$source->id]['status']??'posted'),
                                     ['posted','approved'],true))
                         )
-                        && auth()->user()?->can('delete voucher')
+                        && $canDelete
                         && \App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
                         ? route('finance.daily-vouchers.bank-allocation.release',
                             ['customerLedger'=>$source->id]) : null,
                     'revise_url' => !$bankRelease && ($sourceApprovals[$source->id]['status'] ?? '') === 'rejected'
                         && in_array((int)$source->payment_type,[1,2,3],true)
                         && in_array((string)$source->transaction_type,['CR','CP','CCR','CDR'],true)
-                        && auth()->user()?->can('update voucher')
+                        && $canEdit
                         && (\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
                             || ((int)($sourceApprovals[$source->id]['submitted_by'] ?? 0)===(int)auth()->id()
                                 && (int)auth()->user()->project_id===$projectId))
@@ -365,17 +371,17 @@ final class DailyVoucherDirectoryController extends Controller
                     'reverse_url' => $typedPosting && !$typedPosting->reversal_id
                         && in_array((int) ($source->payment_type ?? 1), [0,1], true)
                         && !$pendingEdits->has($source->id)
-                        && auth()->user()?->can('delete voucher')
+                        && $canDelete
                         ? route('finance.daily-vouchers.sources.reverse', ['customerLedger' => $source->id]) : null,
                     'delete_url' => !$bankAllocations->has($source->id)
-                        && $ledgerId && auth()->user()?->can('delete voucher')
+                        && $ledgerId && $canDelete
                         && in_array((string) $source->transaction_type, ['CR', 'CP','CCR','CDR'], true)
                         && (empty($sourceApprovals[$source->id]) ||
                             (($sourceApprovals[$source->id]['status'] ?? '') === 'approved'
                                 && (int) $source->payment_type === 1 && (int) $source->is_active === 1))
                         ? route('ledger.destroy') : null,
                     'delete_id' => $ledgerId,
-                    'edit_url' => $ledgerId && auth()->user()?->can('update voucher')
+                    'edit_url' => $ledgerId && $canEdit
                         && ($sourceApprovals[$source->id]['status'] ?? '') === 'approved'
                         && (int) ($source->payment_type ?? 0) === 1
                         && (int) ($source->is_active ?? 0) === 1
@@ -383,7 +389,7 @@ final class DailyVoucherDirectoryController extends Controller
                             || ((int)($sourceApprovals[$source->id]['submitted_by'] ?? 0)===(int)auth()->id()
                                 && (int)auth()->user()->project_id===$projectId))
                         ? route('finance.daily-vouchers.revise.edit',['customerLedger'=>$source->id])
-                        : ($ledgerId && empty($sourceApprovals[$source->id]) && auth()->user()?->can('update voucher')
+                        : ($ledgerId && empty($sourceApprovals[$source->id]) && $canEdit
                             && in_array((string) $source->transaction_type, ['CR','CP','CCR','CDR'],true)
                             && (int)$source->is_active === 1
                             ? route('finance.daily-vouchers.revise.edit', ['customerLedger'=>$source->id]) : null),
@@ -401,7 +407,7 @@ final class DailyVoucherDirectoryController extends Controller
 
         foreach ([['journal_vouchers', 'JV', 'journal_voucher', 'journal.voucher.print'], ['commision_vouchers', 'CV', 'commission_voucher', 'commision.voucher.print']] as [$table, $type, $kind, $printRoute]) {
             if (!empty($filters['type']) && $filters['type'] !== $type) continue;
-            if (!auth()->user()?->can('read jv')) continue;
+            if (!auth()->user()?->can('finance '.strtolower($type).' view')) continue;
             if (!Schema::hasTable($table) || !Schema::hasColumn($table, 'project_id')) continue;
             $query = DB::table($table)->where('project_id', $projectId);
             if (Schema::hasColumn($table, 'deleted_at')) $query->whereNull('deleted_at');
@@ -471,9 +477,9 @@ final class DailyVoucherDirectoryController extends Controller
                         'Created at' => $voucher->created_at ?? null,
                         'Updated at' => $voucher->updated_at ?? null,
                     ], fn ($value) => $value !== null && $value !== ''),
-                    'url' => auth()->user()?->can('print jv') ? route($printRoute, ['id' => $voucher->id]) : null,
-                    'edit_url' => auth()->user()?->can('edit jv') ? route($type === 'JV' ? 'journal.voucher.edit' : 'commision.voucher.edit', ['id' => $voucher->id]) : null,
-                    'delete_url' => auth()->user()?->can('delete jv') ? route($type === 'JV' ? 'journal.voucher.delete' : 'commision.voucher.delete', ['id' => $voucher->id]) : null,
+                    'url' => auth()->user()?->can('finance '.strtolower($type).' print') ? route($printRoute, ['id' => $voucher->id]) : null,
+                    'edit_url' => auth()->user()?->can('finance '.strtolower($type).' edit') ? route($type === 'JV' ? 'journal.voucher.edit' : 'commision.voucher.edit', ['id' => $voucher->id]) : null,
+                    'delete_url' => auth()->user()?->can('finance '.strtolower($type).' delete') ? route($type === 'JV' ? 'journal.voucher.delete' : 'commision.voucher.delete', ['id' => $voucher->id]) : null,
                 ]);
             }
         }
@@ -519,7 +525,7 @@ final class DailyVoucherDirectoryController extends Controller
                         'Prepared by user ID' => $ledger->create_by ?? null,
                         'Updated by user ID' => $ledger->update_by ?? null,
                     ], fn ($value) => $value !== null && $value !== ''),
-                    'delete_url' => auth()->user()?->can('delete voucher') && in_array((string) $ledger->type, ['CR', 'CP'], true)
+                    'delete_url' => auth()->user()?->can('finance '.strtolower((string)$ledger->type).' delete') && in_array((string) $ledger->type, ['CR', 'CP'], true)
                         ? route('ledger.destroy') : null,
                     'delete_id' => (int) $ledger->id,
                     'url' => route('finance.voucher.print', ['id' => $ledger->id]),
@@ -748,7 +754,7 @@ final class DailyVoucherDirectoryController extends Controller
     {
         $projectId = (int) getSelectedTown();
         \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
-        abort_unless(auth()->user()?->can('delete voucher'), 403);
+        abort_unless(auth()->user()?->can('finance '.\App\Support\Finance\FinanceActionPermission::sourceModule($customerLedger).' reverse'), 403);
         $data = $request->validate([
             'reason' => ['required', 'string', 'min:3', 'max:200'],
             'effective_date' => ['required', 'date_format:Y-m-d'],
