@@ -87,6 +87,35 @@ php artisan finance:audit-voucher-schema --require-fks
 
 **BROWSER TEST REQUIRED AFTER LOCAL TESTS/MIGRATION PASS:** Open `/admin/finance/voucher/plot-receipt` and `/admin/finance/voucher/plot-purchase` with selected local test project. Login as user granted **Plot Receipt Edit** or **Plot Purchase Edit**, without requiring Reverse; open an active unreversed disposable voucher's floating Actions menu -> **Edit narration** -> change note -> Save; expect modal close, success toast, same-row narration updated via AJAX and no full-page refresh. Reload and confirm note persists. Revoke that specific Edit permission (leave Reverse as desired) and verify Edit action disappears and direct PATCH is forbidden (403). If source was reversed, editing must return 409 with visible popup error. Verify original monetary amount, allocation list, posting balance and plot inventory unchanged. **Browser acceptance unverified until owner explicitly confirms.**
 
+## 2026-11-18 — Simplify schema: consolidate redundant Plot narration audit table (LATEST)
+
+**Owner concern:** do not create a new MySQL table for every voucher action. The previous Plot narration feature introduced `finance_plot_voucher_edit_audits`, and owner applied its `2026_11_18_170000` migration to local `bluenew_clean_final`. It is excessive for a two-field before/after history already handled by the shared voucher edit snapshot structure.
+
+**Owner latest terminal verification:** `PlotNarrationEditContractTest` **2 PASS / 33 assertions**; `PlotEntryWriterTest` **26 PASS, 1 FAILED** (136 assertions) where `assertSame($before, $after)` compared separate `stdClass` object instances even though accounting line data displayed the same; `php artisan view:cache` PASS; `finance:audit-voucher-schema --require-fks` **8/8 FKs PASS, zero orphans, zero JV/CV cross-project links**; `2026_11_18_170000_create_plot_voucher_edit_audits_table.php` **DONE** on local DB. **No application-level Plot browser test reported.**
+
+**This code batch (committed; latest owner tests pending):**
+- `PlotVoucherNarrationEditor` now writes before/after JSON into **existing** `daily_voucher_edit_snapshots`, with distinct `status=plot_note`, `approval_id=NULL`, project and source id, and source kind embedded in both snapshots to disambiguate Plot Receipt vs Purchase vs customer_ledger numeric IDs. Requires valid actor ID. Retains same transaction, project-scoped source lock, original finance amounts/allocations/inventory untouched, Edit permission and AJAX UI. Existing pending cash approval queries check `status=pending` and never treat `plot_note` as an approval. **No new table required for Plot Edit going forward.**
+- `2026_11_18_180000_consolidate_plot_narration_audit.php` is **a one-time cleanup migration**: confirms shared table exists; checks all legacy Plot edit records for complete attribution; copies existing records to shared snapshots, preserving original before/after notes, actor and timestamps; uses stable per-row reason to avoid duplicate copy on retry; **only after successful copy drops the redundant `finance_plot_voucher_edit_audits` table**. On invalid evidence or copy failure, migration fails without dropping legacy table. Does **not** modify any financial source, postings, inventory or ledger. This is the only new migration to apply locally; previous `170000` already ran.
+- Updated Plot integration fixture to use existing snapshot layout and assert JSON before/after values. Fixed false test failure by comparing arrays of posting line **field values**, rather than `stdClass` object identity; ordering fixed by id. Added a SQLite feature case confirming legacy audit rows copy correctly and redundant table is removed without losing history. Updated contract test to prohibit use of the redundant table by runtime service.
+
+**Run on local test database after code pull; confirm selected .env database before migration:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Services/Finance/PlotVoucherNarrationEditor.php
+php -l database/migrations/2026_11_18_180000_consolidate_plot_narration_audit.php
+php artisan test --filter=PlotNarrationEditContractTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan db:show
+php artisan migrate --path=database/migrations/2026_11_18_180000_consolidate_plot_narration_audit.php
+php artisan finance:audit-voucher-schema --require-fks
+```
+**Expected:** New tests PASS, shared `daily_voucher_edit_snapshots` remains, redundant `finance_plot_voucher_edit_audits` disappears. If migration finds old rows without an editor, it intentionally fails and preserves old table; inspect those rows, do not force-drop. **Browser test still required for both Plot Edit Narration workspaces** after code/migration pass (disposable voucher, user with Edit ON, test independent Reverse OFF and 403 on direct PATCH without Edit).
+
+**Follow-on engineering policy:** Before adding any further business or audit table, explicitly inspect existing tables and prefer reuse where semantics and integrity can be preserved. Schema growth needs a demonstrated functional necessity, not one table per new Edit/Delete action. **Milestone 03 still PARTIAL**: full amount/allocation/inventory edits and ordinary logical deletion remain unimplemented.
+
 ## Remaining Milestone 03 work — do not mark complete yet
 
 1. Rerun `PlotEntryWriterTest` on local; resolve any subsequent actual assertion failures. Verify Plot History/Details/Replay after root logical archive.
