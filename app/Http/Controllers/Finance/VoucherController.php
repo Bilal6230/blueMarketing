@@ -1473,12 +1473,15 @@ class VoucherController extends Controller
         \App\Services\Finance\FinanceWorkflowAccess::authorizeRead($projectId);
         try { $details = (new \App\Services\Finance\PlotEntryWriter())->purchaseDetails($projectId, $purchaseId); }
         catch (\DomainException $error) { abort(404); }
+        $plotFields=['item.*','plot.type','plot.road_id','plot.facing_id','plot.is_corner'];
+        foreach(['plot_category_definition_id','plot_type_definition_id',
+            'plot_size_definition_id','plot_unit_definition_id'] as $column) {
+            if (Schema::hasColumn('plots',$column)) $plotFields[]='plot.'.$column;
+        }
         $details['items'] = DB::table('finance_plot_purchase_items as item')
             ->join('plots as plot','plot.id','=','item.legacy_plot_id')
             ->where('item.purchase_id',$purchaseId)->where('plot.project_id',$projectId)
-            ->orderBy('item.id')->get(['item.*','plot.type','plot.road_id','plot.facing_id',
-                'plot.is_corner', 'plot.plot_category_definition_id','plot.plot_type_definition_id',
-                'plot.plot_size_definition_id','plot.plot_unit_definition_id']);
+            ->orderBy('item.id')->get($plotFields);
         $details['purchase']->seller = DB::table('project_head_subheads as account')->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
             ->where('account.project_id', $projectId)->where('account.id', $details['purchase']->seller_account_id)->value('sub.name');
         return response()->json($details);
