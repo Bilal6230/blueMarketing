@@ -456,6 +456,12 @@ class CommissionVoucherController extends Controller
                     ->lockForUpdate()->firstOrFail();
                 $oldDetails = CommisionVoucherDetail::where('commision_voucher_id', $voucher->id)
                     ->lockForUpdate()->get();
+                // Identical re-save must not retire/recreate related details
+                // and ledger rows. Preserve their IDs and audit history.
+                if (app(\App\Services\Finance\VoucherUnchangedUpdateDetector::class)
+                    ->same($voucher,$oldDetails,$data,$lines)) {
+                    return;
+                }
                 $typed = app(\App\Services\Finance\FinancePostingSchemaGate::class)->mode() === 'typed';
                 // Preserve old detail/ledger history; only retire legs attached to
                 // the same source ID, then create corrected details and active legs.
