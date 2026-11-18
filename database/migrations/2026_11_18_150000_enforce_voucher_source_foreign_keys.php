@@ -16,6 +16,10 @@ return new class extends Migration
         ['commision_voucher_details','commision_voucher_id','commision_vouchers','id','fk_commission_details_voucher'],
         ['ledgers','journal_voucher_detail_id','journal_voucher_details','id','fk_ledger_journal_detail'],
         ['ledgers','customer_ledger_id','customer_ledger','id','fk_ledger_customer_source'],
+        ['ledgers','project_head_subheads_id','project_head_subheads','id','fk_ledger_account'],
+        ['journal_voucher_details','account_id','project_head_subheads','id','fk_journal_detail_account'],
+        ['commision_voucher_details','account_id','project_head_subheads','id','fk_commission_detail_account'],
+        ['ledger_source_attributions','ledger_id','ledgers','id','fk_attribution_ledger'],
     ];
 
     public function up(): void
