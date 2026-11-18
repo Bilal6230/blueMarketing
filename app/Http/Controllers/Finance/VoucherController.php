@@ -629,7 +629,7 @@ class VoucherController extends Controller
         // Embedded entry must fail fast with a real 403 rather than render a
         // full page without #voucherForm (which otherwise looks like a spinner).
         if ($x['embeddedVoucher']) {
-            abort_unless(Auth::user()->can('create voucher'), 403, 'Your role needs the create voucher permission to open this form.');
+            abort_unless(Auth::user()->can('finance '.strtolower($displaySeries).' create'), 403, 'You do not have permission to create this voucher.');
         }
         $x['role'] = $x['embeddedVoucher'] ? collect() : Role::get();
         $x['users'] = $x['embeddedVoucher'] ? collect() : User::get();
