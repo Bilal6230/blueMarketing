@@ -373,7 +373,7 @@ class VoucherController extends Controller
         // Embedded entry must fail fast with a real 403 rather than render a
         // full page without #voucherForm (which otherwise looks like a spinner).
         if ($x['embeddedVoucher']) {
-            abort_unless(Auth::user()->can('create voucher'), 403, 'Your role needs the create voucher permission to open this form.');
+            abort_unless(Auth::user()->can('finance '.strtolower($displaySeries).' create'), 403, 'You do not have permission to create this voucher.');
         }
         $x['role'] = $x['embeddedVoucher'] ? collect() : Role::get();
         $x['users'] = $x['embeddedVoucher'] ? collect() : User::get();
@@ -1236,7 +1236,7 @@ class VoucherController extends Controller
     {
         $projectId = (int) getSelectedTown();
         \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
-        abort_unless(auth()->user()?->can('delete voucher'), 403);
+        abort_unless(auth()->user()?->can('finance '.($kind === 'plot_receipt' ? 'plot-receipt' : 'plot-purchase').' reverse'), 403);
         $data = $request->validate([
             'reason' => ['required', 'string', 'min:3', 'max:200'],
             'effective_date' => ['nullable', 'date_format:Y-m-d'],
@@ -1428,7 +1428,7 @@ class VoucherController extends Controller
         abort_unless(in_array($kind, ['deposit', 'withdrawal'], true), 404);
         $projectId = (int) getSelectedTown();
         \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
-        abort_unless(auth()->user()?->can('delete voucher'), 403);
+        abort_unless(auth()->user()?->can('finance bank-'.$kind.' reverse'), 403);
         $data = $request->validate([
             'reason' => ['required', 'string', 'min:3', 'max:200'],
             'effective_date' => ['required', 'date_format:Y-m-d'],
