@@ -36,6 +36,7 @@
     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
     <button type="button" id="ppResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
     <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotPurchaseCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
+     @endcan
    </div>
   </form>
  </x-finance.voucher-filter-card>
@@ -86,7 +87,7 @@
   <div class="modal-body" id="ppDetails"></div>
  </div></div>
 </div>
-@can('delete voucher')
+@can('finance plot-purchase reverse')
 <div class="modal fade" id="ppVoidModal" tabindex="-1" role="dialog" aria-labelledby="ppVoidTitle" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content fvc-modern-modal">
   <div class="modal-header"><h5 id="ppVoidTitle" class="modal-title">Reverse Plot Purchase</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
@@ -171,7 +172,7 @@
      $tr.append($('<td>').text(x.items),$('<td>',{'class':'text-right'}).text(money(x.amount)));
      var $actions=$('<td>',{'class':'blue-actions-cell'}).append(
        $('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-detail','data-id':x.id,text:'Details / print'}));
-     @can('delete voucher')
+     @can('finance plot-purchase reverse')
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-void ml-1','data-id':x.id,text:'Reverse'}));
      @endcan
      $tr.append($actions);
@@ -223,7 +224,7 @@
  });
  $('#ppLength,#ppQuickSearch').on('input change',function(){historyPage=1;drawHistory();});
  $('#ppHistory').on('click','.pp-detail',function(){details($(this).attr('data-id'));});
- @can('delete voucher')
+ @can('finance plot-purchase reverse')
  $('#ppHistory').on('click','.pp-void',function(){
   $('#ppVoidForm').data('source-id',$(this).attr('data-id'));
   $('#ppVoidReason').val('');$('#ppVoidError').addClass('d-none').text('');
