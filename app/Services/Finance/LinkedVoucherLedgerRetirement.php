@@ -52,6 +52,24 @@ final class LinkedVoucherLedgerRetirement
                 }
             }
         }
+        // A ledger set with old reversal legs or unrelated rows must not be
+        // deactivated as though it were exactly this voucher's current details.
+        // Use a multiset: duplicate equal-value lines are valid but count.
+        $signature=static fn($account,$debit,$credit): string =>
+            (int)$account.'|'.number_format((float)$debit,2,'.','').'|'.number_format((float)$credit,2,'.','');
+        $expected=[];
+        foreach ($activeDetails as $detail) {
+            $key=$signature($detail->account_id,$detail->debit,$detail->credit);
+            $expected[$key]=($expected[$key]??0)+1;
+        }
+        $actual=[];
+        foreach ($active as $leg) {
+            $key=$signature($leg->project_head_subheads_id,$leg->amount_in,$leg->amount_out);
+            $actual[$key]=($actual[$key]??0)+1;
+        }
+        if ($expected!==$actual) {
+            throw new \DomainException('Voucher detail/ledger amounts or ownership mismatch; no rows modified.');
+        }
         $ids=$active->pluck('id')->all();
         // Only these explicit source-linked ledger IDs are retired. No bulk
         // type-only matching, no DB delete, no external account mutation.
