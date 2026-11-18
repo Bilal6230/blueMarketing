@@ -18,7 +18,7 @@
 
 ## Current Milestone 03: committed code
 
-**1. Real schema / orphan audit, read-only.** `app/Console/Commands/AuditVoucherSchema.php` implements `php artisan finance:audit-voucher-schema` and `--json`. Lists **all tables with neither `deleted_at` nor `is_active`**, 9 exact foreign-key candidates, orphan counts and cross-project JV/CV detail/account mismatches in the **configured** database. It does **not** alter data. **Actual table/column inventory remains unknown until owner runs this locally.** Technical/append-only event/history tables should not indiscriminately be assigned business delete semantics.
+**1. Real schema / orphan audit, read-only.** `app/Console/Commands/AuditVoucherSchema.php` implements `php artisan finance:audit-voucher-schema` and `--json`. Lists **all tables with neither `deleted_at` nor `is_active`**, 8 exact foreign-key candidates, orphan counts and cross-project JV/CV detail/account mismatches in the **configured** database. It does **not** alter data. **Actual table/column inventory remains unknown until owner runs this locally.** Technical/append-only event/history tables should not indiscriminately be assigned business delete semantics.
 
 **2. Exact foreign keys, staged not yet applied.** `database/migrations/2026_11_18_150000_enforce_voucher_source_foreign_keys.php` adds missing single-target FKs only after preflighting all orphan references and cross-project detail/account links; uses **RESTRICT** for physical DELETE/UPDATE (never cascade). Candidate relationships:
 - `journal_voucher_details.journal_voucher_id → journal_vouchers.id`
@@ -42,7 +42,7 @@
 
 ## What is still required before marking Milestone 03 COMPLETE
 
-- **Owner DB evidence:** inspect actual missing `deleted_at`/`is_active` tables, 9 FK/orphan rows, cross-project counts. Repair historical orphans deliberately if any; only then apply FK migration locally. Add lifecycle columns **only to operational tables that actually need logical deletion**.
+- **Owner DB evidence:** inspect actual missing `deleted_at`/`is_active` tables, 8 FK/orphan rows, cross-project counts. Repair historical orphans deliberately if any; only then apply FK migration locally. Add lifecycle columns **only to operational tables that actually need logical deletion**.
 - **Non-legacy and remaining modules:** Posted/typed JV/CV (some existing controllers still require reversal or draft-only corrections), SV and the other CR/DR/CCR/CDR/BOR/BOP/Bank/Plot/Extra Charges source-write paths require full relationship-safe create/edit/logical-delete review, implementation and tests. Do not silently weaken linked accounting or project ownership. Milestone 04's cheque/online cascades stay separately tracked.
 - **Acceptance:** latest code PHP lint/view cache + both tests + representative browser create/edit/delete and ledger balance checks have **NOT** been performed by assistant. Do not claim completed until those pass.
 
