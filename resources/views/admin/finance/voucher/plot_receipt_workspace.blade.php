@@ -218,10 +218,10 @@
    @can('finance plot-receipt edit')
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-edit ml-1','data-id':r.id,text:'Edit voucher'}));
    @endcan
-   @can('finance plot-receipt reverse')
-   @can('finance plot-receipt delete')
+      @can('finance plot-receipt delete')
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-delete ml-1','data-id':r.id,text:'Delete'}));
    @endcan
+   @can('finance plot-receipt reverse')
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-void ml-1','data-id':r.id,text:'Reverse'}));
    @endcan
    $row.append($actions);
@@ -348,7 +348,6 @@
   });
   @endcan
   $('#prHistoryRows').on('click','.pr-detail',function(){showDetails($(this).attr('data-id'));});
- @can('finance plot-receipt reverse')
  @can('finance plot-receipt delete')
  $('#prHistoryRows').on('click','.pr-delete',function(){
   $('#prDeleteForm').data('source-id',$(this).attr('data-id'));
@@ -374,6 +373,7 @@
   }).always(function(){$button.prop('disabled',false);});
  });
 @endcan
+ @can('finance plot-receipt reverse')
  $('#prHistoryRows').on('click','.pr-void',function(){
   $('#prVoidForm').data('source-id',$(this).attr('data-id'));
   $('#prVoidReason').val('');$('#prVoidError').addClass('d-none').text('');
