@@ -90,6 +90,7 @@ final class PostingReversalWriter
 
             $originalLines = DB::table('finance_posting_lines')
                 ->where('posting_batch_id', $originalBatchId)
+                ->when(Schema::hasColumn('finance_posting_lines','is_active'),fn($q)=>$q->where('is_active',1))
                 ->orderBy('id')->lockForUpdate()->get();
             if ($originalLines->count() < 2) {
                 throw new \DomainException('V2_REVERSAL_ORIGINAL_LINES_MISSING');
