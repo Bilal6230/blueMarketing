@@ -1393,17 +1393,35 @@ class VoucherController extends Controller
             ->join('finance_posting_batches as batch','batch.id','=','link.posting_batch_id')
             ->where('link.source_id',$receiptId)->where('link.source_kind','plot_receipt')
             ->where('batch.project_id',$projectId)->first(['batch.id']);
-        $postingAccounts = $link ? DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$link->id)
+        // Source identity, not list position: older legs can be archived and
+        // new legs appended after an allocation edit.
+        $postingLines = $link ? DB::table('finance_posting_lines as line')
+            ->join('project_head_subheads as account','account.id','=','line.project_head_subhead_id')
+            ->where('line.posting_batch_id',$link->id)
+            ->where('account.project_id',$projectId)
             ->when(Schema::hasColumn('finance_posting_lines','is_active'),
-                fn($query)=>$query->where('is_active',1))
-            ->orderBy('id')
-            ->pluck('project_head_subhead_id')->all() : [];
-        $cashAccount=$postingAccounts[0]??null;
-        $allocations=$details['allocations']->values()->map(function($row,$index)use($postingAccounts){
-            $row->receivable_account_id=$postingAccounts[$index+1]??null;
+                fn($query)=>$query->where('line.is_active',1))
+            ->orderBy('line.id')
+            ->get(['line.project_head_subhead_id','line.debit','line.credit',
+                'account.customer_id','account.plot_id']) : collect();
+        $cashLegs=$postingLines->filter(fn($line)=>(float)$line->debit>0)->values();
+        if ($cashLegs->count()!==1) {
+            return response()->json(['status'=>'error',
+                'message'=>'Receipt posting cash account cannot be resolved.'],409);
+        }
+        $receivables=$postingLines->filter(fn($line)=>(float)$line->credit>0)
+            ->groupBy(fn($line)=>(string)$line->plot_id);
+        $allocations=$details['allocations']->values()->map(function($row)use($receivables,$details){
+            $matching=($receivables->get((string)$row->plot_id)??collect())
+                ->filter(fn($line)=>(int)$line->customer_id===(int)$details['receipt']->customer_id)
+                ->values();
+            if ($matching->count()!==1) {
+                throw new \DomainException('Plot receipt receivable account relationship is ambiguous.');
+            }
+            $row->receivable_account_id=(int)$matching[0]->project_head_subhead_id;
             return $row;
         });
+        $cashAccount=(int)$cashLegs[0]->project_head_subhead_id;
         return response()->json(['receipt' => array_merge((array) $details['receipt'], [
             'cash_account_id'=>$cashAccount,
             'customer' => $customer ? (trim((string) $customer->first_name.' '.(string) $customer->last_name) ?: (string) ($customer->business ?? 'Customer')) : 'Customer',
