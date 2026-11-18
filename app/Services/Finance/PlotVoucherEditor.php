@@ -155,8 +155,11 @@ final class PlotVoucherEditor
             foreach ($data['allocations'] as $a) {
                 $booking=(int)$a['booking_id'];$plot=(int)$a['plot_id'];$account=(int)$a['receivable_account_id'];
                 $amount=$this->cents($a['amount']);
-                if ($amount<1 || isset($seen[$plot])) throw new \DomainException('Duplicate or zero plot allocation.');
+                if ($amount<1 || isset($seen[$plot]) || isset($seen['booking:'.$booking])) {
+                    throw new \DomainException('Duplicate booking/plot or zero plot allocation.');
+                }
                 $seen[$plot]=true;
+                $seen['booking:'.$booking]=true;
                 if (!DB::table('bookings')->where('id',$booking)->where('project_id',$project)
                     ->where('customer_id',$customer)->where('plot_id',$plot)
                     ->where('status','active')->where('cancel_status','0')->lockForUpdate()->exists())
