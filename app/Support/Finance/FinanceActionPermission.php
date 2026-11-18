@@ -78,8 +78,9 @@ final class FinanceActionPermission
     {
         $project = (int) getSelectedTown();
         abort_unless($project > 0 && $id > 0, 403);
+        if (!Schema::hasTable('journal_vouchers')) return 'jv';
         $type = DB::table('journal_vouchers')->where('id',$id)->where('project_id',$project)->value('type');
-        abort_unless($type,404);
+        if (!$type) return 'jv';
         return self::moduleForSeries((string)$type) ?? 'jv';
     }
 
