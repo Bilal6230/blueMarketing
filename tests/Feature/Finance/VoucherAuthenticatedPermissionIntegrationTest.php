@@ -61,7 +61,7 @@ class VoucherAuthenticatedPermissionIntegrationTest extends TestCase
         }
     }
 
-    public function test_granted_permission_reaches_existing_409_safety_gate(): void
+    public function test_granted_permission_reaches_validation_but_missing_project_stays_forbidden(): void
     {
         foreach (['create jv', 'edit jv', 'delete jv',
             'finance cv create', 'finance cv edit', 'finance cv delete',
@@ -73,14 +73,23 @@ class VoucherAuthenticatedPermissionIntegrationTest extends TestCase
             'finance jv edit', 'finance jv delete');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+        // Authorized writes must reach the controller's normal validation path;
+        // an empty form is 422 (JSON), not a forced 409 safety error.
         foreach ([
             ['POST', 'commision.voucher.store', []],
             ['PUT', 'commision.voucher.update', ['id' => 41]],
-            ['DELETE', 'commision.voucher.delete', ['id' => 41]],
             ['PUT', 'journal.voucher.update', ['id' => 41]],
-            ['DELETE', 'journal.voucher.delete', ['id' => 41]],
         ] as [$verb, $route, $params]) {
-            $this->call($verb, route($route, $params))->assertStatus(409);
+            $this->call($verb, route($route, $params), [], [], [], [
+                'HTTP_ACCEPT' => 'application/json',
+                'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest',
+            ])->assertStatus(422)->assertJsonValidationErrors(['date', 'accounts']);
+        }
+
+        // Deletion without a selected project must remain blocked, even when
+        // the user holds a granular delete grant.
+        foreach (['commision.voucher.delete', 'journal.voucher.delete'] as $route) {
+            $this->call('DELETE', route($route, ['id' => 41]))->assertStatus(403);
         }
     }
 
