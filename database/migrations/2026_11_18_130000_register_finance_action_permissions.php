@@ -27,15 +27,17 @@ return new class extends Migration {
             $journal = in_array($module, ['jv', 'sv', 'cv'], true);
             if ($journal) {
                 return match ($action) {
-                    'view' => 'read jv', 'create' => 'create jv',
-                    'edit' => 'edit jv', 'delete', 'reverse' => 'delete jv',
+                    'view', 'history', 'details' => 'read jv', 'create' => 'create jv',
+                    'edit', 'resubmit' => 'edit jv',
+                    'delete', 'reverse', 'release' => 'delete jv',
                     'print' => 'print jv', default => 'can approve',
                 };
             }
             return match ($action) {
-                'view', 'print' => 'read voucher',
-                'create' => 'create voucher', 'edit' => 'update voucher',
-                'delete', 'reverse' => 'delete voucher',
+                'view', 'print', 'history', 'details' => $module === 'extra-charge' ? 'read slip' : 'read voucher',
+                'create' => $module === 'extra-charge' ? 'create plot' : 'create voucher',
+                'edit', 'resubmit' => 'update voucher',
+                'delete', 'reverse', 'release' => $module === 'extra-charge' ? 'delete slip' : 'delete voucher',
                 default => 'can approve',
             };
         };
