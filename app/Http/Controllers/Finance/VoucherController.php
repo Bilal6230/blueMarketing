@@ -1696,7 +1696,11 @@ class VoucherController extends Controller
             ->join('finance_posting_batches as batch', 'batch.id', '=', 'transfer.posting_batch_id')
             ->join('project_bank_accounts as bank', function ($j) use ($projectId) { $j->on('bank.id', '=', 'transfer.bank_account_id')->where('bank.project_id', '=', $projectId); })
             ->join('finance_posting_lines as cash_line', function ($j) use ($kind) {
-                $j->on('cash_line.posting_batch_id', '=', 'batch.id')->where('cash_line.debit', $kind === 'withdrawal' ? '>' : '=', $kind === 'withdrawal' ? 0 : 0);
+                $j->on('cash_line.posting_batch_id', '=', 'batch.id')
+                    ->where('cash_line.debit', $kind === 'withdrawal' ? '>' : '=', $kind === 'withdrawal' ? 0 : 0);
+                if (Schema::hasColumn('finance_posting_lines','is_active')) {
+                    $j->where('cash_line.is_active',1);
+                }
             })->join('project_head_subheads as cash_account', 'cash_account.id', '=', 'cash_line.project_head_subhead_id')
             ->join('head_accountings as cash_head', 'cash_head.id', '=', 'cash_account.head_accounting_id')
             ->leftJoin('subhead_accountings as cash_child', 'cash_child.id', '=', 'cash_account.subhead_accounting_id')
@@ -1715,7 +1719,8 @@ class VoucherController extends Controller
                 'cash_account' => trim((string) $r->cash_name.' / '.(string) $r->cash_child_name, ' /'), 'bank' => trim((string) $r->bank_name.' / '.(string) $r->account_title, ' /'),
                 'cheque' => $r->cheque_number ? 'CP-'.$r->cheque_number.' / '.(string) $r->cheque_reference : '', 'amount' => (string) $r->amount, 'narration' => (string) $r->narration,
                 'reversed' => $r->reversal_batch_id !== null,
-                'can_reverse' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null]);
+                'can_reverse' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null,
+                'can_edit' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null]);
         return response()->json(['data' => $rows]);
     }
 
@@ -1735,6 +1740,8 @@ class VoucherController extends Controller
             $j->on('account.id', '=', 'line.project_head_subhead_id')->where('account.project_id', '=', $projectId);
         })->leftJoin('head_accountings as head', 'head.id', '=', 'account.head_accounting_id')
             ->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')->where('line.posting_batch_id', $postingBatch)
+            ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                fn($q)=>$q->where('line.is_active',1))
             ->orderBy('line.id')->get(['head.name as head_name', 'sub.name as subhead_name', 'line.debit', 'line.credit']);
         abort_unless($lines->count() === 2, 404);
         return view('admin.finance.voucher.bank_transfer_print', compact('kind', 'source', 'lines'));
@@ -1851,8 +1858,10 @@ class VoucherController extends Controller
             })
             ->leftJoin('head_accountings as head', 'head.id', '=', 'account.head_accounting_id')
             ->leftJoin('subhead_accountings as sub', 'sub.id', '=', 'account.subhead_accounting_id')
-            ->where('line.posting_batch_id', $postingBatch)->orderBy('line.id')
-            ->get(['head.name as head_name', 'sub.name as subhead_name', 'line.debit', 'line.credit']);
+            ->where('line.posting_batch_id', $postingBatch)
+            ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                fn($q)=>$q->where('line.is_active',1))
+            ->orderBy('line.id')->get(['head.name as head_name', 'sub.name as subhead_name', 'line.debit', 'line.credit']);
         abort_unless($lines->isNotEmpty(), 404);
 
         return view('admin.finance.voucher.bank_linked_print', compact('direction', 'source', 'lines'));
