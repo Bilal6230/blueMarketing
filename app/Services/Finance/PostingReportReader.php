@@ -103,7 +103,17 @@ final class PostingReportReader
                     $join->where('pl.is_active',1);
                 }
             })
-            ->where('batch.project_id', $projectId)->whereNull('pl.id')->exists();
+            ->where('batch.project_id', $projectId)->whereNull('pl.id');
+        // An ordinarily archived manual Bank Voucher retains its posted batch
+        // and retired original legs for internal history, not live balances.
+        if (Schema::hasTable('finance_bank_transfer_sources')
+            && Schema::hasColumn('finance_bank_transfer_sources','is_active')) {
+            $emptyBatch->whereNotExists(fn($q)=>$q->selectRaw('1')
+                ->from('finance_bank_transfer_sources as archived_bank')
+                ->whereColumn('archived_bank.posting_batch_id','batch.id')
+                ->where('archived_bank.is_active',0));
+        }
+        $emptyBatch = $emptyBatch->exists();
         if ($emptyBatch) {
             throw new \DomainException('V2_REPORT_EMPTY_POSTING_BATCH');
         }
