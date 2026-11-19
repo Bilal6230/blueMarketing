@@ -99,6 +99,19 @@ final class PostingReportReader
                         ->whereColumn('archived_bank.posting_batch_id','batch.id')
                         ->where('archived_bank.is_active',0));
                 }
+                foreach([
+                    ['journal_vouchers','finance_posting_journal_sources','journal_voucher_id'],
+                    ['commision_vouchers','finance_posting_commission_sources','commision_voucher_id'],
+                ] as [$headerTable,$linkTable,$fk]) {
+                    if (!Schema::hasTable($headerTable) || !Schema::hasTable($linkTable)
+                        || !Schema::hasColumn($headerTable,'deleted_at')) continue;
+                    $query->orWhereExists(fn($sub)=>$sub->selectRaw('1')
+                        ->from($linkTable.' as archived_link')
+                        ->join($headerTable.' as archived_header',
+                            'archived_header.id','=','archived_link.'.$fk)
+                        ->whereColumn('archived_link.posting_batch_id','batch.id')
+                        ->whereNotNull('archived_header.deleted_at'));
+                }
             })->exists();
         if ($inconsistent) {
             throw new \DomainException('V2_REPORT_SOURCE_OR_PROJECT_INTEGRITY_FAILURE');
@@ -119,6 +132,19 @@ final class PostingReportReader
                 ->from('finance_bank_transfer_sources as archived_bank')
                 ->whereColumn('archived_bank.posting_batch_id','batch.id')
                 ->where('archived_bank.is_active',0));
+        }
+        foreach([
+            ['journal_vouchers','finance_posting_journal_sources','journal_voucher_id'],
+            ['commision_vouchers','finance_posting_commission_sources','commision_voucher_id'],
+        ] as [$headerTable,$linkTable,$fk]) {
+            if(!Schema::hasTable($headerTable)||!Schema::hasTable($linkTable)
+                ||!Schema::hasColumn($headerTable,'deleted_at'))continue;
+            $emptyBatch->whereNotExists(fn($q)=>$q->selectRaw('1')
+                ->from($linkTable.' as archived_link')
+                ->join($headerTable.' as archived_header',
+                    'archived_header.id','=','archived_link.'.$fk)
+                ->whereColumn('archived_link.posting_batch_id','batch.id')
+                ->whereNotNull('archived_header.deleted_at'));
         }
         $emptyBatch = $emptyBatch->exists();
         if ($emptyBatch) {
