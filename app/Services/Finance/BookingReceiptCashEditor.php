@@ -69,6 +69,15 @@ final class BookingReceiptCashEditor
             $bookings=DB::table('booking_vouchers')
                 ->where('project_id',$projectId)->where('customer_ledger_id',$sourceId)
                 ->where('voucher_series','PPR')->lockForUpdate()->get();
+            // A BookingVoucher may have its own typed posting batch even
+            // when the customer_ledger row has no cash-source claim. Never
+            // mutate either source through the legacy PPR correction path.
+            if($bookings->count()===1
+                &&Schema::hasTable('finance_posting_booking_sources')
+                &&DB::table('finance_posting_booking_sources')
+                    ->where('booking_voucher_id',$bookings[0]->id)->exists()) {
+                throw new \DomainException('Receipt is owned by a typed booking financial batch.');
+            }
             if($bookings->count()!==1
                 ||(int)$bookings[0]->ledger_id!==(int)$ledgers[0]->id
                 ||(int)$bookings[0]->voucher_number!==(int)$ledgers[0]->voucher_number
@@ -147,6 +156,12 @@ final class BookingReceiptCashEditor
             $booking=DB::table('booking_vouchers')
                 ->where('project_id',$projectId)->where('customer_ledger_id',$sourceId)
                 ->where('voucher_series','PPR')->lockForUpdate()->get();
+            if($booking->count()===1
+                &&Schema::hasTable('finance_posting_booking_sources')
+                &&DB::table('finance_posting_booking_sources')
+                    ->where('booking_voucher_id',$booking[0]->id)->exists()) {
+                throw new \DomainException('Receipt is owned by a typed booking financial batch.');
+            }
             if($booking->count()!==1|| (int)$booking[0]->ledger_id!==(int)$leg[0]->id
                 ||(int)$booking[0]->voucher_number!==(int)$leg[0]->voucher_number
                 ||(int)$booking[0]->customer_id!==(int)$source->customer_id
