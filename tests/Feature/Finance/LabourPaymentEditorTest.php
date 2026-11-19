@@ -125,6 +125,36 @@ final class LabourPaymentEditorTest extends TestCase
         self::assertSame(1,DB::table('ledgers')->count());
     }
 
+    public function test_typed_labour_member_posting_ownership_blocks_legacy_payment_correction(): void
+    {
+        Schema::create('finance_posting_labour_sources',function(Blueprint $table){
+            $table->unsignedBigInteger('labour_ledger_id');
+            $table->unsignedBigInteger('posting_batch_id');
+        });
+        $linkedId=DB::table('labour_ledgers')
+            ->where('customer_ledger_id',11)->value('id');
+        DB::table('finance_posting_labour_sources')->insert([
+            'labour_ledger_id'=>$linkedId,'posting_batch_id'=>9001,
+        ]);
+        $editor=new LabourPaymentEditor();
+        try {
+            $editor->update(1,11,'2026-11-19','LABOUR-EDIT','Incorrect legacy edit',[
+                ['detail_id'=>$linkedId,'labour_id'=>31,'amount'=>'80.00'],
+            ]);
+            self::fail('Typed payroll batch must keep exclusive source ownership.');
+        }catch(\DomainException $e){
+            self::assertStringContainsString('typed payroll posting',$e->getMessage());
+        }
+        try {
+            $editor->delete(1,11);
+            self::fail('Typed payroll batch must not be bypassed by Delete.');
+        }catch(\DomainException $e){
+            self::assertStringContainsString('typed payroll posting',$e->getMessage());
+        }
+        self::assertSame(1,(int)DB::table('customer_ledger')
+            ->where('id',11)->value('is_active'));
+    }
+
     public function test_project_worker_and_fk_tampering_are_rejected_without_mutation(): void
     {
         $editor=new LabourPaymentEditor();
