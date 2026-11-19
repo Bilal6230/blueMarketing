@@ -651,3 +651,33 @@ php artisan finance:audit-posting-balances
 ## 2026-11-19 — Commission differential no-op regression corrected
 
 Owner verification after JV/CV differential change: `CommissionLedgerSynchronizerTest` **1 FAILED / 5 passed** because the original no-op integration test called `updateDraft()` without persisted `detail_id` values. With the newer row-identity contract, a missing ID explicitly means a newly inserted row; it cannot be silently inferred from array position, account or amount. The application form already submits existing hidden `detail_ids[]` and a blank ID only for new rows. **Committed fix:** update the regression to submit the two actual persisted detail IDs, exactly as the browser does, and assert their detail and linked ledger IDs remain unchanged. Remaining owner tests were green: `VoucherDifferentialEditContractTest` 3 PASS / 28 assertions; `VoucherUnchangedUpdateDetectorTest` 3 PASS / 11; `CommissionLedgerActivationContractTest` 1 PASS / 14; `LinkedVoucherLedgerRetirementTest` 6 PASS / 17. All-project posting balance audit scanned 6 projects with zero findings. Corrected test requires new local run and has not yet been verified. No migration, business data mutation or browser retest required for this test-only correction.
+
+
+## 2026-11-19 — CV Approve/Post 409 iframe error and missing Party Ledger activation
+
+**Owner browser evidence:** CV Edit iframe's native Approve form produced HTTP 409 Laravel debug page `Commission approval rejected to protect accounting history`, with no toast/modal. Previously CV Draft creation and differential edits were accepted, ledgers existed with is_active=0. Approval had not completed; therefore draft CV postings do not yet appear in active-party ledger reporting.
+
+**Implemented code fix (owner verification pending):**
+- Removed `CommissionDraftWorkflow::approveAndPost` blanket conflict check that treated any JV `ledgers.type_id` matching the CV header ID or any CV detail row ID as an ambiguous posting. Different source tables legitimately overlap numeric IDs. Approval must validate the existing enforced `commision_voucher_detail_id` FK, source voucher/project and exact accounting evidence instead. `CommissionLedgerSynchronizer::assertDraftCanReplace` is used only when source status is draft; approved idempotent retry continues through posted batch replay and ledger activation checks.
+- `CommissionVoucherController::approve` now returns structured success JSON on AJAX; handles domain integrity conflicts as HTTP 409 with safe, specific user-friendly messages, logs diagnostic error, and returns a safe JSON 500 response for unexpected failures rather than HTML exception inside iframe. Ordinary non-AJAX requests still redirect with errors.
+- Commission Edit Approve form now has a dedicated jQuery AJAX handler with Accept: application/json, busy/disabled-state protection, existing skeleton, toaster and error popup. On success it emits `finance:commission-saved`, closes parent modal and reloads parent listing. On failure it displays the JSON message without navigating iframe into exception page. Fixed longstanding `projectID: 3` literal in CV Edit subaccount Ajax, replacing with the selected configured project ID.
+- Added integration regression `CommissionLedgerSynchronizerTest::test_approve_succeeds_despite_unrelated_jv_numeric_identity_collision` using a real separate JV ledger with overlapping numeric CV identity. It executes Draft -> Approve/Post -> replay, verifies exactly two active FK-linked CV ledgers, two posting lines, one batch and no duplicated records. Added `CommissionLedgerActivationContractTest` assertions for collision removal, AJAX feedback, absence of HTML abort and selected-project dropdown.
+
+**New local verification (tests not yet run on this code):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Services/Finance/CommissionDraftWorkflow.php
+php -l app/Http/Controllers/CommissionVoucherController.php
+php -l tests/Feature/Finance/CommissionLedgerSynchronizerTest.php
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan test --filter=CommissionLedgerActivationContractTest
+php artisan test --filter=VoucherDifferentialEditContractTest
+php artisan finance:audit-posting-balances
+```
+
+**Browser acceptance after tests:** In local testing project, open existing Draft CV, click `Approve saved voucher and post` once. Expect success toast, automatic modal close/list refresh; `commision_vouchers.status=approved`, exactly current two detail-linked ledger legs `is_active=1`, old archived legs remain inactive, finance posting batch balanced, Party Ledger can include account only if its account type is part of that report. Failed approval must show toast + popup, leave Draft status and inactive ledgers unchanged. Approval replay with same key must not create duplicates. Neither schema migration nor hardcoded project-specific DB operation is needed.
+
+**Note:** Other JV/CV differential Edit tests were previously confirmed PASS (CommissionLedgerSynchronizerTest 6 PASS/31 assertions; VoucherDifferentialEditContractTest 3 PASS/28), and all-project posting audit found no issues in 6 projects. The approval fix and new test are additional code changes and have not been owner-verified yet.
