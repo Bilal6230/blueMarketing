@@ -215,8 +215,10 @@ class BankTransferWriterTest extends TestCase
             'BANK-TRANSFER-TAMPER-DELETE-0001','2026-11-05',
             '45.00','Manual',[['account_id'=>102,'amount'=>'45.00']])['posting_batch_id'];
         (new \App\Services\Finance\BankTransferEditor())->delete(1,'withdrawal',$id);
-        DB::table('finance_posting_lines')->where('posting_batch_id',$id)
-            ->orderBy('id')->limit(1)->update(['is_active'=>1]);
+        $retiredLegId=DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$id)->orderBy('id')->value('id');
+        DB::table('finance_posting_lines')->where('id',$retiredLegId)
+            ->update(['is_active'=>1]);
         $findings=(new \App\Services\Finance\PostingBatchIntegrityAudit())->audit(1);
         self::assertCount(1,$findings);
         self::assertContains('ARCHIVED_BANK_WITH_ACTIVE_POSTINGS',$findings[0]['issues']);
