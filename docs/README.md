@@ -943,3 +943,24 @@ php artisan migrate --path=database/migrations/2026_11_19_120000_link_labour_pay
 Do not run the migration before validating that you're on the intended local test database. Owner does not need to rerun already-accepted browser CV and BD/BW unless there is an actual regression. Explicit posted JV/SV and posted JV/CV Delete browser gate is still pending.
 
 **Legacy fixture rollback safety (2026-11-19):** Historical bank lookup fixture `database/finance_legacy_migrations/2026_10_30_000010_create_finance_bank_lookup.php` now refuses destructive `down()`. Removing its old DB-name allowlist must never make an accidental rollback drop real ERP `banks` master data. The file is not part of normal automatic production migrations. Do not run historical fixture migrations against a populated ERP database.
+
+
+### Stock physical source-line relationship step — implemented, owner test pending
+
+- Added additive migration `database/migrations/2026_11_19_130000_link_stock_movements_to_physical_source_lines.php`: nullable `stock_movements.stock_entry_line_id` FK to `stock_entry_lines.id` and nullable `stock_movements.stock_bill_line_id` FK to `stock_bill_lines.id`, each with RESTRICT on physical parent deletion. Existing `source_type`/`source_id`/`source_line_id` polymorphic fields are retained for compatibility; no guessed/backfilled historical relationship in the migration.
+- `StockController::storeEntry/storeBill` now writes the **actual physical detail ID** to the corresponding exact FK whenever the migration is installed, alongside existing polymorphic source identity, in the same inventory source/movement/ledger transaction. Existing un-migrated test fixtures continue to use the old columns until the additive migration is installed.
+- New `finance:link-stock-movement-sources` command defaults to READ-ONLY. It audits existing movement FKs using physical source line ID + source header ID + project + item + qty + rate + amount. Only explicitly running `--apply` writes verified exact links; ambiguous/invalid links are counted as errors, never silently guessed. No financial postings, inventory balances or stock header/detail source amounts are modified by this command. New `StockMovementExactSourceFkContractTest` and `StockMovementSourceLinkAuditContractTest` added.
+- **Important:** This fixes source relationship attribution, NOT complete Stock Entry/Stock Bill correction CRUD. Correcting quantities or deleting posted stock also requires synchronized stock balance adjustments, movement lifecycle, linked bills and customer/typed-JV posting adjustments, and must not simply delete header/rows.
+
+**Additional focused local test/migration gate (configured local TEST DB only):**
+```powershell
+php -l app/Console/Commands/LinkStockMovementSources.php
+php -l app/Http/Controllers/StockController.php
+php -l database/migrations/2026_11_19_130000_link_stock_movements_to_physical_source_lines.php
+php artisan test --filter=StockMovementExactSourceFkContractTest
+php artisan test --filter=StockMovementSourceLinkAuditContractTest
+php artisan test --filter=StockDeletionIntegrityTest
+php artisan migrate --path=database/migrations/2026_11_19_130000_link_stock_movements_to_physical_source_lines.php
+php artisan finance:link-stock-movement-sources
+# Review read-only results first. DO NOT automatically run --apply on ambiguous rows.
+```
