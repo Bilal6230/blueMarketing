@@ -96,7 +96,7 @@ class LabourController extends Controller
 
         // payments grouped by date
         $paymentsByDate = $labour->labourLedgers
-            ->groupBy(fn($item) => $item->created_at->toDateString())
+            ->groupBy(fn($item) => substr((string)$item->date,0,10))
             ->map(fn($items) => $items->sum('amount'));
 
         $x['paymentsByDate'] = $paymentsByDate;
