@@ -425,14 +425,6 @@
         </div>
       </div>
 
-      @if(($legacyStockStatus['unassigned_entries'] ?? null) !== null && ($legacyStockStatus['unassigned_entries'] + $legacyStockStatus['unassigned_bills'] + $legacyStockStatus['unassigned_movements'] + $legacyStockStatus['legacy_balance_rows']) > 0)
-        <div class="alert alert-warning mb-3" role="status">
-          <strong>Legacy stock needs project reconciliation.</strong>
-          {{ $legacyStockStatus['unassigned_entries'] }} entries, {{ $legacyStockStatus['unassigned_bills'] }} bills, and {{ $legacyStockStatus['unassigned_movements'] }} movements could not be safely assigned automatically.
-          {{ $legacyStockStatus['legacy_balance_rows'] }} old global balance rows are preserved separately and are not used as a project's stock balance.
-        </div>
-      @endif
-
       @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
       @if ($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
       @if ($canReconcileLegacyStock && (count($legacyStockCandidates['entries']) + count($legacyStockCandidates['bills']) + count($legacyStockCandidates['movements']) > 0 || $legacyStockAudits->isNotEmpty()))
@@ -464,6 +456,14 @@
         </div>
       @endif
 
+<div id="stockServerFilters" class="d-none" aria-hidden="true">
+<select id="entryFilterFlow"><option value="">All</option><option value="IN">IN</option><option value="OUT">OUT</option></select>
+<select id="entryFilterItem"></select><input id="entrySearch" type="search">
+<select id="billFilterType"><option value="">All</option><option value="purchase">Purchase</option><option value="sale">Sale</option></select>
+<select id="billFilterParty"></select><input id="billSearch" type="search">
+<select id="stockItemFilter"></select><input id="itemSearch" type="search">
+<input id="partySearch" type="search">
+<select id="partyFilterType"><option value="">All</option><option value="Supplier">Supplier</option><option value="Consumer">Consumer</option><option value="Site">Site</option></select></div>
       <!-- Views container -->
       <div id="pvViews">
         <!-- ===================== ENTRY VIEW (Purchase + Stock Out) ===================== -->
@@ -481,7 +481,7 @@
                     </div>
                   </div>
                   <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <span class="pv-chip" id="entryCountChip">0 total</span><button class="btn btn-sm btn-primary" type="button" id="stockNewEntry"><i class="bi bi-plus-lg"></i> New Entry</button>
+                    <span class="pv-chip" id="entryCountChip">0 total</span><button class="btn btn-sm btn-primary" type="button" id="stockNewEntry" data-stock-modal="#stockEntryCreateModal"><i class="bi bi-plus-lg"></i> New Entry</button>
                   </div>
                 </div>
 
@@ -501,7 +501,7 @@
                           <th>Amount</th>
                           <th>Billing</th><th>Actions</th>
                         </tr>
-<tr class="stock-column-filters"><th><input class="form-control" data-stock-table="entry" data-stock-col="0" aria-label="Filter Sr" placeholder="Sr"></th><th><input class="form-control" data-stock-table="entry" data-stock-col="1" aria-label="Filter Date" placeholder="Date"></th><th><select class="form-select" id="entryFilterFlow" aria-label="Filter entryFilterFlow"><option value="">All</option><option value="IN">IN</option><option value="OUT">OUT</option></select></th><th><input class="form-control" id="entrySearch" placeholder="Name / slip" aria-label="Search entry"></th><th><input class="form-control" data-stock-table="entry" data-stock-col="4" aria-label="Filter Details" placeholder="Details"></th><th><select class="form-select" id="entryFilterItem" aria-label="Filter item"></select></th><th><input class="form-control" data-stock-table="entry" data-stock-col="6" aria-label="Filter Qty" placeholder="Qty"></th><th><input class="form-control" data-stock-table="entry" data-stock-col="7" aria-label="Filter Rate" placeholder="Rate"></th><th><input class="form-control" data-stock-table="entry" data-stock-col="8" aria-label="Filter Amount" placeholder="Amount"></th><th><select class="form-select" data-stock-table="entry" data-stock-col="9" aria-label="Billing status"><option value="">All</option><option value="Billed">Billed</option><option value="Unbilled">Unbilled</option></select></th><th></th></tr>
+
                       </thead>
                       <tbody id="entryTbody"></tbody>
                     </table>
@@ -556,7 +556,7 @@
                       Print/Edit/Delete.
                     </div>
                   </div>
-                  <span class="pv-chip" id="billCountChip">0 total</span><button class="btn btn-sm btn-primary" type="button" id="stockNewBill"><i class="bi bi-plus-lg"></i> New Bill</button>
+                  <span class="pv-chip" id="billCountChip">0 total</span><button class="btn btn-sm btn-primary" type="button" id="stockNewBill" data-stock-modal="#stockBillCreateModal"><i class="bi bi-plus-lg"></i> New Bill</button>
                 </div>
 
                 <div class="p-3">
@@ -571,7 +571,7 @@
                           <th>Details</th>
                           <th>Amount</th><th>Actions</th>
                         </tr>
-<tr class="stock-column-filters"><th><input class="form-control" data-stock-table="bill" data-stock-col="0" aria-label="Filter Sr" placeholder="Sr"></th><th><input class="form-control" data-stock-table="bill" data-stock-col="1" aria-label="Filter Date" placeholder="Date"></th><th><select class="form-select" id="billFilterType" aria-label="Filter billFilterType"><option value="">All</option><option value="purchase">Purchase</option><option value="sale">Sale</option></select></th><th><select class="form-select" id="billFilterParty" aria-label="Filter party"></select></th><th><input class="form-control" id="billSearch" placeholder="Bill / Details" aria-label="Search bills"></th><th><input class="form-control" data-stock-table="bill" data-stock-col="5" aria-label="Filter Amount" placeholder="Amount"></th><th></th></tr>
+
                       </thead>
                       <tbody id="billTbody"></tbody>
                     </table>
@@ -694,7 +694,7 @@
                           <th>Sale Qty</th>
                           <th>Available Stock</th>
                         </tr>
-<tr class="stock-column-filters"><th><select class="form-select" id="stockItemFilter" aria-label="Filter stock item"></select></th><th><input class="form-control" data-stock-table="stock" data-stock-col="1" placeholder="Purchase qty" aria-label="Filter Purchase qty"></th><th><input class="form-control" data-stock-table="stock" data-stock-col="2" placeholder="Sale qty" aria-label="Filter Sale qty"></th><th><input class="form-control" data-stock-table="stock" data-stock-col="3" placeholder="Available" aria-label="Filter Available"></th></tr>
+
                       </thead>
                       <tbody id="stockTbody"></tbody>
                     </table>
@@ -717,7 +717,7 @@
                       Used across Entry + Billing + Stock.
                     </div>
                   </div>
-                  <span class="pv-chip" id="itemCountChip">0 total</span><button type="button" class="btn btn-primary btn-sm" id="stockNewItem"><i class="bi bi-plus-lg"></i> New Item</button>
+                  <span class="pv-chip" id="itemCountChip">0 total</span><button type="button" class="btn btn-primary btn-sm" id="stockNewItem" data-stock-modal="#stockItemCreateModal"><i class="bi bi-plus-lg"></i> New Item</button>
                 </div>
                 <div class="p-3">
                   <div class="border rounded-3 bg-light p-3 mb-3">
@@ -745,7 +745,7 @@
                   <div class="mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-2"><strong>Recent import history</strong><span class="pv-small pv-muted">Latest 25 uploads</span></div>
                     <div class="table-responsive pv-scroll"><table class="table table-sm table-bordered align-middle mb-0"><thead><tr><th>Batch</th><th>Date</th><th>By</th><th>Status</th><th>Added / Updated / Errors</th><th></th></tr>
-<tr class="stock-column-filters"><th></th><th><input class="form-control" data-stock-table="item" data-stock-col="1" placeholder="Sr" aria-label="Filter Sr"></th><th><input class="form-control" id="itemSearch" aria-label="Search item" placeholder="Item name"></th><th><input class="form-control" data-stock-table="item" data-stock-col="3" placeholder="Unit" aria-label="Filter Unit"></th><th><input class="form-control" data-stock-table="item" data-stock-col="4" placeholder="Rate" aria-label="Filter Rate"></th><th></th></tr></thead><tbody id="itemImportHistoryBody"><tr><td colspan="6" class="text-muted text-center">Loading history...</td></tr></tbody></table></div>
+</thead><tbody id="itemImportHistoryBody"><tr><td colspan="6" class="text-muted text-center">Loading history...</td></tr></tbody></table></div>
                   </div>
                   <div class="table-responsive pv-scroll">
                     <table class="table table-hover align-middle mb-0">
@@ -780,7 +780,7 @@
                       Used for Purchase/Sale/Stock Out.
                     </div>
                   </div>
-                  <span class="pv-chip" id="partyCountChip">0 total</span><button type="button" class="btn btn-primary btn-sm" id="stockNewParty"><i class="bi bi-plus-lg"></i> New Party</button>
+                  <span class="pv-chip" id="partyCountChip">0 total</span><button type="button" class="btn btn-primary btn-sm" id="stockNewParty" data-stock-modal="#stockPartyCreateModal"><i class="bi bi-plus-lg"></i> New Party</button>
                 </div>
                 <div class="p-3">
                   <div class="table-responsive pv-scroll">
@@ -798,7 +798,7 @@
                           <th>Status</th>
                           <th class="text-end">Actions</th>
                         </tr>
-<tr class="stock-column-filters"><th><input class="form-control" data-stock-table="party" data-stock-col="0" placeholder="Sr" aria-label="Filter Sr"></th><th><input class="form-control" data-stock-table="party" data-stock-col="1" placeholder="Vendor" aria-label="Filter Vendor"></th><th><input class="form-control" id="partySearch" aria-label="Search party" placeholder="Name / Mobile"></th><th><input class="form-control" data-stock-table="party" data-stock-col="3" placeholder="Mobile" aria-label="Filter Mobile"></th><th><input class="form-control" data-stock-table="party" data-stock-col="4" placeholder="Address" aria-label="Filter Address"></th><th><input class="form-control" data-stock-table="party" data-stock-col="5" placeholder="Head" aria-label="Filter Head"></th><th><input class="form-control" data-stock-table="party" data-stock-col="6" placeholder="Subhead" aria-label="Filter Subhead"></th><th><select class="form-select" id="partyFilterType"><option value="">All</option><option value="Supplier">Supplier</option><option value="Consumer">Consumer</option><option value="Site">Site</option></select></th><th><input class="form-control" data-stock-table="party" data-stock-col="8" placeholder="Status" aria-label="Filter Status"></th><th></th></tr>
+
                       </thead>
                       <tbody id="partyTbody"></tbody>
                     </table>
@@ -1624,7 +1624,7 @@
         });
 
         viewToast("success", "Saved", `Entry saved (${res?.data?.slip_no || ""}).`);
-        bootstrap.Modal.getOrCreateInstance($("#stockEntryCreateModal")[0]).hide();
+        stockModal('#stockEntryCreateModal','hide');
 
         entryParty.value = "";
         entryReason.value = "";
@@ -1727,7 +1727,7 @@
           "Saved",
           `${billType.value.toUpperCase()} bill saved (${res?.data?.bill_no || ""}).`
         );
-        bootstrap.Modal.getOrCreateInstance($("#stockBillCreateModal")[0]).hide();
+        stockModal('#stockBillCreateModal','hide');
 
         billEntryNo.value = "";
         $(billLinesWrap).html("");
@@ -1825,7 +1825,7 @@
           default_rate: rate,
         });
         viewToast("success", "Added", "Item created.");
-        bootstrap.Modal.getOrCreateInstance($("#stockItemCreateModal")[0]).hide();
+        stockModal('#stockItemCreateModal','hide');
 
         $('#itemName')[0].value = "";
         $('#itemUnit')[0].value = "";
@@ -1857,7 +1857,7 @@
         });
 
         viewToast("success", "Added", "Party created.");
-        bootstrap.Modal.getOrCreateInstance($("#stockPartyCreateModal")[0]).hide();
+        stockModal('#stockPartyCreateModal','hide');
 
         $('#partyName')[0].value = "";
         $('#partyMobile')[0].value = "";
@@ -2373,10 +2373,40 @@
     /* ===========================
   INIT
   =========================== */
-    $('#stockNewEntry').on('click',function(){setEntryMode('purchase');bootstrap.Modal.getOrCreateInstance($('#stockEntryCreateModal')[0]).show();});
-    $('#stockNewBill').on('click',function(){bootstrap.Modal.getOrCreateInstance($('#stockBillCreateModal')[0]).show();});
-    $('#stockNewItem').on('click',function(){bootstrap.Modal.getOrCreateInstance($('#stockItemCreateModal')[0]).show();});
-    $('#stockNewParty').on('click',function(){bootstrap.Modal.getOrCreateInstance($('#stockPartyCreateModal')[0]).show();});
+    function stockModal(selector, action){
+      var $modal=$(selector);
+      if(!$modal.length)return;
+      if(window.bootstrap && window.bootstrap.Modal){
+        var klass=window.bootstrap.Modal;
+        var instance=$.isFunction(klass.getOrCreateInstance)?klass.getOrCreateInstance($modal[0]):new klass($modal[0]);
+        if(action==='hide')instance.hide();else instance.show();
+      }else if($.fn.modal){
+        $modal.modal(action==='hide'?'hide':'show');
+      }else{
+        // If the Bootstrap CDN is unavailable, keep the forms usable with jQuery.
+        if(action==='hide'){
+          $modal.hide().removeClass('show').attr('aria-hidden','true');
+          $('.stock-modal-fallback-backdrop').remove();$('body').removeClass('modal-open').css('overflow','');
+        }else{
+          $modal.css({display:'block',position:'fixed',inset:0,zIndex:1060,overflowY:'auto'}).addClass('show').attr('aria-hidden','false');
+          $('<div class="modal-backdrop fade show stock-modal-fallback-backdrop">').css('z-index',1050).appendTo('body');
+          $('body').addClass('modal-open').css('overflow','hidden');
+        }
+      }
+    }
+    $(document).on('click','[data-stock-modal]',function(event){
+      event.preventDefault();
+      if($(this).is('#stockNewEntry'))setEntryMode('purchase');
+      stockModal($(this).attr('data-stock-modal'),'show');
+    });
+    $(document).on('click','.stock-create-modal [data-bs-dismiss="modal"]',function(){
+      if(!window.bootstrap || !window.bootstrap.Modal)stockModal('#'+$(this).closest('.stock-create-modal').attr('id'),'hide');
+    });
+    $(document).on('keydown.stockCreateModal',function(event){
+      if(event.key==='Escape' && $('.stock-modal-fallback-backdrop').length){
+        stockModal('#'+$('.stock-create-modal.show').attr('id'),'hide');
+      }
+    });
     async function initUI() {
       entryDate.value = todayISO();
       billDate.value = todayISO();
