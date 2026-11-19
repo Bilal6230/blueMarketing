@@ -1014,6 +1014,8 @@ class JournalVoucherController extends Controller
     public function update(Request $request, $id)
     {
         $data = $request->validate([
+            'detail_ids' => ['required','array','min:2','max:100'],
+            'detail_ids.*' => ['nullable','integer','min:1','distinct'],
             'date' => ['required', 'date_format:Y-m-d'],
             'reference' => ['nullable', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:2000'],
@@ -1029,7 +1031,7 @@ class JournalVoucherController extends Controller
             'line_description.*' => ['nullable', 'string', 'max:1000'],
         ]);
         $keys = array_keys($data['accounts']);
-        foreach (['sub_accounts', 'debit', 'credit'] as $field) {
+        foreach (['detail_ids','sub_accounts', 'debit', 'credit'] as $field) {
             if (array_keys($data[$field]) !== $keys) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     $field => 'Journal line arrays must share identical keys.',
@@ -1059,6 +1061,7 @@ class JournalVoucherController extends Controller
             }
             $totalDebitCents += $debitCents; $totalCreditCents += $creditCents;
             $lines[] = [
+                'detail_id' => $data['detail_ids'][$index] ?? null,
                 'account_id' => $sub,
                 'debit' => $this->centsToMoney($debitCents),
                 'credit' => $this->centsToMoney($creditCents),
