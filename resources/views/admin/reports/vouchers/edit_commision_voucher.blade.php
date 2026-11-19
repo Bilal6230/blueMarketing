@@ -338,8 +338,31 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                 }).done(function(response){
                     if(response && response.status==='success'){
                         if(window.parent!==window&&window.parent.jQuery){
-                            window.parent.jQuery(window.parent.document)
+                            var parentJQ=window.parent.jQuery;
+                            parentJQ(window.parent.document)
                                 .trigger('finance:commission-saved',[response]);
+                            // Do not leave the edited iframe visible after an
+                            // AJAX success, even if an older host page has no
+                            // event listener for the shared voucher event.
+                            var $modals=parentJQ(window.parent.document).find('.modal.show');
+                            $modals.each(function(){
+                                if(parentJQ.fn.modal)parentJQ(this).modal('hide');
+                            });
+                            var refreshed=false;
+                            if(parentJQ.fn.dataTable){
+                                parentJQ(window.parent.document).find('table').each(function(){
+                                    if(parentJQ.fn.dataTable.isDataTable(this)){
+                                        var table=parentJQ(this).DataTable();
+                                        if(table.ajax&&typeof table.ajax.reload==='function'){
+                                            table.ajax.reload(null,false);
+                                        }else{
+                                            table.draw(false);
+                                        }
+                                        refreshed=true;
+                                    }
+                                });
+                            }
+                            if(!refreshed)window.parent.location.reload();
                         }else{
                             if(fvcFeedback)fvcFeedback.toast('success',response.message||'Commission voucher updated.');
                             window.location.assign(response.redirect||@json(route('commision.voucher.index')));
