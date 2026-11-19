@@ -77,7 +77,7 @@ body.jv-directory-active{overflow:hidden!important}
  <div class="jv-head">
   <div><h4>{{ $title }}</h4><small>Selected project records · {{ \App\Services\Finance\FinanceWorkflowAccess::normalErpMode() ? 'Standard voucher register' : 'Approval-aware voucher register' }}</small></div>
   <x-finance.voucher-directory-actions :approvals="true">
-   @if($type==='JV')<button type="button" id="jv-add" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i> New Voucher</button>@endif
+   <button type="button" id="jv-add" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i> New {{ $type }} Voucher</button>
   </x-finance.voucher-directory-actions>
  </div>
  @if(session('success'))<div class="alert alert-success m-0" role="status">{{ session('success') }}</div>@endif
@@ -175,7 +175,7 @@ $(function(){
  fitJournalDirectory();
  $(window).on('resize.journalDirectory',fitJournalDirectory);
  var baseUrl=@json($type==='SV'?route('sales.voucher.index'):route('journal.voucher.index'));
- var createUrl=@json(route('journal.voucher.create'));
+ var createUrl=@json($type==='SV'?route('sales.voucher.create'):route('journal.voucher.create'));
  function esc(value){return $('<div>').text(value==null?'':String(value)).html();}
  function apply(){
   table.ajax.reload(null,true);
@@ -354,7 +354,7 @@ $(function(){
   $('#jv-entry-frame').attr('src',url+separator+'embed=1');
   $('#jv-entry').modal('show');
  }
- $('#jv-add').on('click',function(){openEntry(createUrl,'Add New Journal Voucher');});
+ $('#jv-add').on('click',function(){openEntry(createUrl,@json($type==='SV'?'Add New Sales Voucher':'Add New Journal Voucher'));});
  $table.on('click','a[href*="/journal-vouchers/"],a[href*="/journal-voucher/"]',function(e){
   // The real edit route is /admin/journal-vouchers/{id}/edit (plural).
   // Handle only the JV page; print links remain unchanged.
