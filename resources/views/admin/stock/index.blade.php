@@ -45,6 +45,21 @@
     .stock-create-modal .modal-body{padding:1rem 1.25rem}
     @media(max-width:767.98px){.stock-create-modal .modal-dialog{margin:.5rem}}
 
+
+    /* CR voucher-style column triggers and Excel-like filtering popover. */
+    .stock-module-wrapper .stock-excel-heading{white-space:nowrap;position:sticky;top:0}
+    .stock-module-wrapper .stock-excel-heading>span{vertical-align:middle}
+    .stock-module-wrapper .stock-excel-trigger{float:right;min-width:22px;height:22px;border:1px solid transparent;border-radius:4px;background:transparent;color:#586a82;padding:0 3px}
+    .stock-module-wrapper .stock-excel-trigger:hover,.stock-module-wrapper .stock-excel-trigger[aria-expanded=true],.stock-module-wrapper .stock-excel-trigger.stock-has-filter{background:white;border-color:#2b6cff;color:#175bd6}
+    .stock-excel-popover{position:fixed;z-index:2000;width:288px;max-width:calc(100vw - 20px);background:white;border:1px solid #c9d3de;border-radius:8px;box-shadow:0 14px 38px rgba(13,34,56,.22);padding:10px;color:#273549;font-size:12px}
+    .stock-excel-popover.d-none{display:none!important}
+    .stock-excel-sort{width:100%;border:0;background:white;text-align:left;padding:8px;border-radius:4px;color:#273549;display:block}
+    .stock-excel-sort:hover,.stock-excel-sort:focus-visible{background:#ecf4fc}
+    .stock-excel-values{height:190px;overflow:auto;border:1px solid #dde4ec;border-radius:5px;padding:5px}
+    .stock-excel-choice{display:flex;align-items:center;gap:7px;margin:0;padding:5px 3px;cursor:pointer}
+    .stock-excel-choice:hover{background:#f1f6fc}
+    .stock-excel-choice input{flex:0 0 auto;margin:0}
+    
     /* ERP voucher viewport: card body scrolls, browser document does not. */
     html.stock-page-active,body.stock-page-active{height:100%;overflow:hidden!important}
     body.stock-page-active .main-footer{display:none!important}
@@ -553,16 +568,16 @@
                     <table class="table table-hover align-middle mb-0">
                       <thead>
                         <tr>
-                          <th>Sr</th>
-                          <th>Date</th>
-                          <th>In/Out</th>
-                          <th>Name</th>
-                          <th>Details</th>
-                          <th>Item</th>
-                          <th>Qty</th>
-                          <th>Rate</th>
-                          <th>Amount</th>
-                          <th>Billing</th><th>Actions</th>
+                          <th class="stock-excel-heading"><span>Sr</span><button type="button" class="stock-excel-trigger" data-stock-kind="entry" data-stock-column="0" data-stock-label="Sr" aria-label="Sort and filter Sr" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Sr"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Date</span><button type="button" class="stock-excel-trigger" data-stock-kind="entry" data-stock-column="1" data-stock-label="Date" aria-label="Sort and filter Date" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Date"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>In/Out</span><button type="button" class="stock-excel-trigger" data-stock-kind="entry" data-stock-column="2" data-stock-label="In/Out" aria-label="Sort and filter In/Out" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter In/Out"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Name</span><button type="button" class="stock-excel-trigger" data-stock-kind="entry" data-stock-column="3" data-stock-label="Name" aria-label="Sort and filter Name" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Name"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Details</span><button type="button" class="stock-excel-trigger" data-stock-kind="entry" data-stock-column="4" data-stock-label="Details" aria-label="Sort and filter Details" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Details"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Item</span><button type="button" class="stock-excel-trigger" data-stock-kind="entry" data-stock-column="5" data-stock-label="Item" aria-label="Sort and filter Item" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Item"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Qty</span><button type="button" class="stock-excel-trigger" data-stock-kind="entry" data-stock-column="6" data-stock-label="Qty" aria-label="Sort and filter Qty" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Qty"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Rate</span><button type="button" class="stock-excel-trigger" data-stock-kind="entry" data-stock-column="7" data-stock-label="Rate" aria-label="Sort and filter Rate" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Rate"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Amount</span><button type="button" class="stock-excel-trigger" data-stock-kind="entry" data-stock-column="8" data-stock-label="Amount" aria-label="Sort and filter Amount" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Amount"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Billing</span><button type="button" class="stock-excel-trigger" data-stock-kind="entry" data-stock-column="9" data-stock-label="Billing" aria-label="Sort and filter Billing" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Billing"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th><th>Actions</th>
                         </tr>
 
                       </thead>
@@ -628,12 +643,12 @@
                     <table class="table table-hover align-middle mb-0">
                       <thead>
                         <tr>
-                          <th>Sr</th>
-                          <th>Date</th>
-                          <th>Type</th>
-                          <th>Name</th>
-                          <th>Details</th>
-                          <th>Amount</th><th>Actions</th>
+                          <th class="stock-excel-heading"><span>Sr</span><button type="button" class="stock-excel-trigger" data-stock-kind="bill" data-stock-column="0" data-stock-label="Sr" aria-label="Sort and filter Sr" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Sr"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Date</span><button type="button" class="stock-excel-trigger" data-stock-kind="bill" data-stock-column="1" data-stock-label="Date" aria-label="Sort and filter Date" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Date"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Type</span><button type="button" class="stock-excel-trigger" data-stock-kind="bill" data-stock-column="2" data-stock-label="Type" aria-label="Sort and filter Type" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Type"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Name</span><button type="button" class="stock-excel-trigger" data-stock-kind="bill" data-stock-column="3" data-stock-label="Name" aria-label="Sort and filter Name" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Name"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Details</span><button type="button" class="stock-excel-trigger" data-stock-kind="bill" data-stock-column="4" data-stock-label="Details" aria-label="Sort and filter Details" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Details"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Amount</span><button type="button" class="stock-excel-trigger" data-stock-kind="bill" data-stock-column="5" data-stock-label="Amount" aria-label="Sort and filter Amount" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Amount"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th><th>Actions</th>
                         </tr>
 
                       </thead>
@@ -711,10 +726,10 @@
                     <table class="table table-hover align-middle mb-0">
                       <thead>
                         <tr>
-                          <th>Item</th>
-                          <th>Pur Qty</th>
-                          <th>Sale Qty</th>
-                          <th>Available Stock</th>
+                          <th class="stock-excel-heading"><span>Item</span><button type="button" class="stock-excel-trigger" data-stock-kind="stock" data-stock-column="0" data-stock-label="Item" aria-label="Sort and filter Item" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Item"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Pur Qty</span><button type="button" class="stock-excel-trigger" data-stock-kind="stock" data-stock-column="1" data-stock-label="Pur Qty" aria-label="Sort and filter Pur Qty" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Pur Qty"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Sale Qty</span><button type="button" class="stock-excel-trigger" data-stock-kind="stock" data-stock-column="2" data-stock-label="Sale Qty" aria-label="Sort and filter Sale Qty" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Sale Qty"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Available Stock</span><button type="button" class="stock-excel-trigger" data-stock-kind="stock" data-stock-column="3" data-stock-label="Available Stock" aria-label="Sort and filter Available Stock" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Available Stock"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
                         </tr>
 
                       </thead>
@@ -773,10 +788,10 @@
                       <thead>
                         <tr>
                           <th><input type="checkbox" id="selectAllStockItems" aria-label="Select all listed items"></th>
-                          <th>Sr</th>
-                          <th>Item</th>
-                          <th>Unit</th>
-                          <th>Default Rate</th>
+                          <th class="stock-excel-heading"><span>Sr</span><button type="button" class="stock-excel-trigger" data-stock-kind="item" data-stock-column="1" data-stock-label="Sr" aria-label="Sort and filter Sr" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Sr"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Item</span><button type="button" class="stock-excel-trigger" data-stock-kind="item" data-stock-column="2" data-stock-label="Item" aria-label="Sort and filter Item" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Item"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Unit</span><button type="button" class="stock-excel-trigger" data-stock-kind="item" data-stock-column="3" data-stock-label="Unit" aria-label="Sort and filter Unit" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Unit"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Default Rate</span><button type="button" class="stock-excel-trigger" data-stock-kind="item" data-stock-column="4" data-stock-label="Default Rate" aria-label="Sort and filter Default Rate" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Default Rate"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
                           <th class="text-end">Actions</th>
                         </tr>
                       </thead>
@@ -808,15 +823,15 @@
                     <table class="table table-hover align-middle mb-0">
                       <thead>
                         <tr>
-                          <th>Sr</th>
-                          <th>Vendor Code</th>
-                          <th>Name</th>
-                          <th>Mobile</th>
-                          <th>Address</th>
-                          <th>Head</th>
-                          <th>Sub Head</th>
-                          <th>Type</th>
-                          <th>Status</th>
+                          <th class="stock-excel-heading"><span>Sr</span><button type="button" class="stock-excel-trigger" data-stock-kind="party" data-stock-column="0" data-stock-label="Sr" aria-label="Sort and filter Sr" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Sr"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Vendor Code</span><button type="button" class="stock-excel-trigger" data-stock-kind="party" data-stock-column="1" data-stock-label="Vendor Code" aria-label="Sort and filter Vendor Code" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Vendor Code"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Name</span><button type="button" class="stock-excel-trigger" data-stock-kind="party" data-stock-column="2" data-stock-label="Name" aria-label="Sort and filter Name" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Name"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Mobile</span><button type="button" class="stock-excel-trigger" data-stock-kind="party" data-stock-column="3" data-stock-label="Mobile" aria-label="Sort and filter Mobile" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Mobile"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Address</span><button type="button" class="stock-excel-trigger" data-stock-kind="party" data-stock-column="4" data-stock-label="Address" aria-label="Sort and filter Address" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Address"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Head</span><button type="button" class="stock-excel-trigger" data-stock-kind="party" data-stock-column="5" data-stock-label="Head" aria-label="Sort and filter Head" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Head"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Sub Head</span><button type="button" class="stock-excel-trigger" data-stock-kind="party" data-stock-column="6" data-stock-label="Sub Head" aria-label="Sort and filter Sub Head" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Sub Head"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Type</span><button type="button" class="stock-excel-trigger" data-stock-kind="party" data-stock-column="7" data-stock-label="Type" aria-label="Sort and filter Type" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Type"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+                          <th class="stock-excel-heading"><span>Status</span><button type="button" class="stock-excel-trigger" data-stock-kind="party" data-stock-column="8" data-stock-label="Status" aria-label="Sort and filter Status" aria-haspopup="dialog" aria-expanded="false" title="Sort and filter Status"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
                           <th class="text-end">Actions</th>
                         </tr>
 
@@ -1016,6 +1031,15 @@
                       </button>
                     </div>
                   </form></div></div></div></div>
+<div id="stockExcelPopover" class="stock-excel-popover d-none" role="dialog" aria-label="Stock column sort and filter">
+  <strong id="stockExcelTitle" class="d-block mb-2"></strong>
+  <button type="button" class="stock-excel-sort" data-direction="asc"><i class="fas fa-sort-amount-up me-2"></i>Sort A to Z / Small to Large</button>
+  <button type="button" class="stock-excel-sort" data-direction="desc"><i class="fas fa-sort-amount-down me-2"></i>Sort Z to A / Large to Small</button>
+  <hr class="my-2">
+  <div id="stockExcelDateFields" class="d-none"><label class="small fw-semibold" for="stockExcelFrom">From Date</label><input type="date" id="stockExcelFrom" class="form-control form-control-sm"><label class="small fw-semibold mt-2" for="stockExcelTo">To Date</label><input type="date" id="stockExcelTo" class="form-control form-control-sm"></div>
+  <div id="stockExcelChoicesWrap"><input type="search" id="stockExcelSearch" class="form-control form-control-sm mb-2" placeholder="Search values..." autocomplete="off"><div id="stockExcelValues" class="stock-excel-values" role="group" aria-label="Filter choices"></div></div>
+  <div class="d-flex gap-2 justify-content-end mt-2"><button type="button" class="btn btn-sm btn-light" id="stockExcelClear">Clear</button><button type="button" class="btn btn-sm btn-light" id="stockExcelCancel">Cancel</button><button type="button" class="btn btn-sm btn-primary" id="stockExcelApply">Apply</button></div>
+</div>
 <!-- Modals (edit item/party) -->
   <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-md">
@@ -1996,15 +2020,118 @@
     /* ===========================
   RENDERING
   =========================== */
+    const stockColumnFilters={};
+    const stockTableBodies={entry:'#entryTbody',bill:'#billTbody',stock:'#stockTbody',item:'#itemTbody',party:'#partyTbody'};
+    const stockTableKey=(kind,column)=>kind+':'+column;
+    const stockCellText=($row,column)=>$.trim($row.children('td').eq(column).text());
     function stockFilterRows(kind){
-      var $body=$({entry:'#entryTbody',bill:'#billTbody',item:'#itemTbody',party:'#partyTbody',stock:'#stockTbody'}[kind]);
-      var $filters=$('[data-stock-table="'+kind+'"]');
-      $body.find('tr').each(function(){var $row=$(this),visible=true;
-        $filters.each(function(){var term=$.trim($(this).val()||'').toLowerCase();if(term && $row.children('td').eq(Number($(this).attr('data-stock-col'))).text().toLowerCase().indexOf(term)<0){visible=false;return false;}});
+      const $body=$(stockTableBodies[kind]);
+      $body.children('tr').each(function(){
+        const $row=$(this);let visible=true;
+        $.each(stockColumnFilters,function(key,condition){
+          if(!key.startsWith(kind+':'))return;
+          const column=Number(key.slice(kind.length+1)),value=stockCellText($row,column);
+          if(condition.from || condition.to){
+            const actualDate=value.slice(0,10);
+            if(condition.from && actualDate<condition.from)visible=false;
+            if(condition.to && actualDate>condition.to)visible=false;
+          }else if(condition.values && condition.values.length && $.inArray(value,condition.values)<0){
+            visible=false;
+          }
+        });
         $row.toggle(visible);
       });
+      $('[data-stock-kind="'+kind+'"].stock-excel-trigger').each(function(){
+        $(this).toggleClass('stock-has-filter',!!stockColumnFilters[stockTableKey(kind,$(this).attr('data-stock-column'))]);
+      });
     }
-    $(document).on('input change','.stock-column-filters [data-stock-table]',function(){stockFilterRows($(this).attr('data-stock-table'));});
+    $(function(){
+      const $popover=$('#stockExcelPopover');
+      let activeKind='',activeColumn=0,activeTrigger=null,options=[];
+      function stockClosePopover(){
+        $popover.addClass('d-none');
+        if(activeTrigger)$(activeTrigger).attr('aria-expanded','false');
+        activeTrigger=null;
+      }
+      function stockRenderOptions(){
+        const term=$.trim($('#stockExcelSearch').val()).toLowerCase(),previous=stockColumnFilters[stockTableKey(activeKind,activeColumn)];
+        const selected=previous&&previous.values?previous.values:null;
+        const $list=$('#stockExcelValues').empty();
+        const available=$.grep(options,function(value){return value.toLowerCase().indexOf(term)>=0;});
+        const $all=$('<label class="stock-excel-choice fw-semibold">').append(
+          $('<input type="checkbox" class="stock-excel-all">').prop('checked',!selected || selected.length===options.length),
+          $('<span>').text('(Select All Results)'));
+        $list.append($all);
+        $.each(available,function(_,value){
+          const $choice=$('<label class="stock-excel-choice">').append(
+            $('<input type="checkbox" class="stock-excel-choice-input">').val(value).prop('checked',!selected || $.inArray(value,selected)>=0),
+            $('<span>').text(value||'(Blank)'));
+          $list.append($choice);
+        });
+      }
+      $(document).on('click','.stock-excel-trigger',function(event){
+        event.preventDefault();event.stopPropagation();
+        if(activeTrigger===this && !$popover.hasClass('d-none')){stockClosePopover();return;}
+        stockClosePopover();
+        activeTrigger=this;activeKind=$(this).attr('data-stock-kind');activeColumn=Number($(this).attr('data-stock-column'));
+        const key=stockTableKey(activeKind,activeColumn),previous=stockColumnFilters[key]||{};
+        const isDate=(activeColumn===1 && $.inArray(activeKind,['entry','bill'])>=0);
+        const $body=$(stockTableBodies[activeKind]);
+        options=[];
+        $body.children('tr').each(function(){const value=stockCellText($(this),activeColumn);if($.inArray(value,options)<0)options.push(value);});
+        options.sort(function(a,b){return a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'});});
+        $('#stockExcelTitle').text($(this).attr('data-stock-label')||'Filter');
+        $('#stockExcelSearch').val('');
+        $('#stockExcelDateFields').toggleClass('d-none',!isDate);
+        $('#stockExcelChoicesWrap').toggleClass('d-none',isDate);
+        $('#stockExcelFrom').val(previous.from||'');
+        $('#stockExcelTo').val(previous.to||'');
+        if(!isDate)stockRenderOptions();
+        $(this).attr('aria-expanded','true');
+        $popover.removeClass('d-none');
+        const bounds=$(this).offset(),left=Math.min($(window).width()-300,Math.max(8,bounds.left-$(window).scrollLeft()-245));
+        $popover.css({left:Math.max(8,left)+'px',top:Math.min($(window).height()-Math.min(400,$popover.outerHeight())-8,Math.max(8,bounds.top-$(window).scrollTop()+25))+'px'});
+      });
+      $('#stockExcelSearch').on('input',stockRenderOptions);
+      $('#stockExcelValues').on('change','.stock-excel-all',function(){
+        $('#stockExcelValues .stock-excel-choice-input').prop('checked',$(this).is(':checked'));
+      });
+      $('#stockExcelValues').on('change','.stock-excel-choice-input',function(){
+        $('#stockExcelValues .stock-excel-all').prop('checked',$('#stockExcelValues .stock-excel-choice-input:not(:checked)').length===0);
+      });
+      $('.stock-excel-sort').on('click',function(){
+        const direction=$(this).attr('data-direction')==='asc'?1:-1;
+        const $tbody=$(stockTableBodies[activeKind]);
+        const sorted=$tbody.children('tr').get().sort(function(a,b){
+          const aa=stockCellText($(a),activeColumn),bb=stockCellText($(b),activeColumn);
+          return direction*aa.localeCompare(bb,undefined,{numeric:true,sensitivity:'base'});
+        });
+        $tbody.append(sorted);stockFilterRows(activeKind);stockClosePopover();
+      });
+      $('#stockExcelApply').on('click',function(){
+        const key=stockTableKey(activeKind,activeColumn);
+        const isDate=(activeColumn===1&&$.inArray(activeKind,['entry','bill'])>=0);
+        if(isDate){
+          const from=$('#stockExcelFrom').val(),to=$('#stockExcelTo').val();
+          if(from&&to&&from>to){$('#stockExcelFrom').trigger('focus');return;}
+          if(from||to)stockColumnFilters[key]={from:from,to:to};else delete stockColumnFilters[key];
+        }else{
+          const selected=$('#stockExcelValues .stock-excel-choice-input:checked').map(function(){return $(this).val();}).get();
+          if(selected.length===0){stockColumnFilters[key]={values:['__stock_no_matching_values__']};}
+          else if(selected.length===options.length)delete stockColumnFilters[key];
+          else stockColumnFilters[key]={values:selected};
+        }
+        stockFilterRows(activeKind);stockClosePopover();
+      });
+      $('#stockExcelClear').on('click',function(){
+        delete stockColumnFilters[stockTableKey(activeKind,activeColumn)];
+        stockFilterRows(activeKind);stockClosePopover();
+      });
+      $('#stockExcelCancel').on('click',stockClosePopover);
+      $(document).on('mousedown.stockExcel',function(event){if(!$(event.target).closest('#stockExcelPopover,.stock-excel-trigger').length)stockClosePopover();});
+      $(document).on('keydown.stockExcel',function(event){if(event.key==='Escape')stockClosePopover();});
+      $('.pv-tabbtn').on('click',stockClosePopover);
+    });
     function renderEntryTable() {
       const tbody = $('#entryTbody')[0];
       $(tbody).html("");
