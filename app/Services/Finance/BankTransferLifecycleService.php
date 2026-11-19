@@ -31,6 +31,10 @@ final class BankTransferLifecycleService
                 ->where('transfer.posting_batch_id', $batchId)
                 ->where('transfer.project_id', $projectId)
                 ->where('transfer.transfer_kind', $kind)
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('finance_bank_transfer_sources','is_active'),
+                    fn($q)=>$q->where('transfer.is_active',1))
+                ->when(\Illuminate\Support\Facades\Schema::hasColumn('finance_bank_transfer_sources','deleted_at'),
+                    fn($q)=>$q->whereNull('transfer.deleted_at'))
                 ->where('batch.project_id', $projectId)
                 ->where('batch.voucher_series', $kind === 'deposit' ? 'BD' : 'BW')
                 ->whereNull('batch.reversal_of_batch_id')
