@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Finance\V2IsolatedConnectionGuard;
+use App\Services\Finance\FinanceConnectionGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -8,12 +8,12 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         foreach (['finance_posting_batches', 'finance_posting_source_claims', 'project_bank_accounts', 'projects', 'customer_ledger'] as $table) {
-            if (!Schema::hasTable($table)) { throw new RuntimeException('V2 bank-transfer baseline missing ' . $table); }
+            if (!Schema::hasTable($table)) { throw new RuntimeException('Bank-transfer baseline missing ' . $table); }
         }
         if (Schema::hasTable('finance_bank_transfer_sources')) {
-            throw new RuntimeException('V2 bank-transfer table exists already; refusing overwrite.');
+            throw new RuntimeException('Bank-transfer table exists already; refusing overwrite.');
         }
         Schema::create('finance_bank_transfer_sources', function (Blueprint $table): void {
             $table->unsignedBigInteger('posting_batch_id')->primary();
