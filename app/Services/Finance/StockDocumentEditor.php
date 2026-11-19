@@ -230,7 +230,13 @@ final class StockDocumentEditor
                     ->where('is_active',1)->whereNull('deleted_at')->exists()) {
                     throw new \DomainException('Stock item is missing or inactive in this project.');
                 }
+                if((int)$rate>0 && $qty>intdiv(PHP_INT_MAX,(int)$rate)) {
+                    throw new \DomainException('Stock quantity and rate multiplication would overflow.');
+                }
                 $amount=intdiv($qty*(int)$rate,1000);
+                if($total>PHP_INT_MAX-$amount) {
+                    throw new \DomainException('Stock voucher total would overflow.');
+                }
                 $total+=$amount;
                 $newQty[$item]=($newQty[$item]??0)+$qty;
                 $all[]=['id'=>$id,'item_id'=>$item,'qty'=>$qty,
