@@ -941,3 +941,5 @@ php artisan finance:audit-posting-balances
 php artisan migrate --path=database/migrations/2026_11_19_120000_link_labour_payment_rows_to_customer_source.php
 ```
 Do not run the migration before validating that you're on the intended local test database. Owner does not need to rerun already-accepted browser CV and BD/BW unless there is an actual regression. Explicit posted JV/SV and posted JV/CV Delete browser gate is still pending.
+
+**Legacy fixture rollback safety (2026-11-19):** Historical bank lookup fixture `database/finance_legacy_migrations/2026_10_30_000010_create_finance_bank_lookup.php` now refuses destructive `down()`. Removing its old DB-name allowlist must never make an accidental rollback drop real ERP `banks` master data. The file is not part of normal automatic production migrations. Do not run historical fixture migrations against a populated ERP database.
