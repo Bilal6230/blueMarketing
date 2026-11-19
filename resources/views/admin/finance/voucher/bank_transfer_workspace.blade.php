@@ -58,13 +58,14 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 </style>
 <div class="container-fluid bm-ui bm-voucher-directory bt-page {{ $kind === 'deposit' ? 'bt-credit' : 'bt-debit' }}" style="--voucher-accent:{{ $kind === 'deposit' ? '#128044' : '#bd3140' }};--voucher-tint:{{ $kind === 'deposit' ? '#e9f8ef' : '#fff0f1' }}" id="bankTransferApp" data-kind="{{ $kind }}"
     data-post-url="{{ route('finance.voucher.transfer.post',['kind'=>$kind]) }}"
+    data-update-base="{{ url('admin/finance/voucher/bank-transfer/'.$kind) }}"
     data-history-url="{{ route('finance.voucher.transfer.history',['kind'=>$kind]) }}"
     data-source-url="{{ route('finance.voucher.transfer.sources',['kind'=>$kind]) }}"
     data-print-base="{{ url('admin/finance/voucher/bank-transfer/'.$kind) }}"
     data-reverse-base="{{ url('admin/finance/voucher/bank-transfer/'.$kind) }}">
     <div class="bt-heading d-flex justify-content-between align-items-center">
         <div><h2 class="mb-0">{{ $kind === 'deposit' ? 'BD Vouchers' : 'BW Vouchers' }}</h2>
-            <div class="bt-subtitle">Selected project records · Read-only history</div></div>
+            <div class="bt-subtitle">Selected project records · Correctable manual vouchers</div></div>
         <div class="d-flex align-items-center" style="gap:8px">
             <a class="btn btn-outline-secondary btn-sm" href="{{ route('dashboard') }}">Dashboard</a>
         </div>
@@ -196,7 +197,7 @@ $(function () {
     var $form = $('#bankTransferCreateForm');
     var $save = $('#saveTransfer');
     var allRows = [], page = 1, busy = false, chequeLoading = false;
-    var pendingRequestKey = null;
+    var pendingRequestKey = null, editingBatch=null;
     var columnSort='date',columnDirection='desc',columnFilters=null;
     var columnValue=function(r,field){
         var cash=String(r.cash_account||'').split(' / ');
@@ -286,6 +287,10 @@ $(function () {
             var $actions=$('<td class="blue-actions-cell">');
             $('<button type="button" class="btn btn-sm btn-outline-secondary bt-view" data-blue-action-type="view">View</button>').attr('data-id',batch).appendTo($actions);
             $('<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" data-blue-action-type="print">Print</a>').attr('href',printUrl(batch)).appendTo($actions);
+            if(r.can_edit){
+                $('<button type="button" class="btn btn-sm btn-outline-primary bt-edit" data-blue-action-type="edit">Edit</button>')
+                    .attr('data-id',batch).appendTo($actions);
+            }
             @can('finance bank-'.$kind.' reverse')
             if(r.can_reverse)$('<button type="button" class="btn btn-sm btn-outline-danger bt-reverse" data-blue-action-type="delete">Reverse</button>').attr('data-id',batch).appendTo($actions);
             @endcan
@@ -429,15 +434,47 @@ $(function () {
     });
     $('#bankTransferCreateModal').on('show.bs.modal',function(){
         $form[0].reset();pendingRequestKey=null;
+        $('#bankTransferCreateTitle').text((editingBatch?'Edit ':'Add ')+
+            @json($kind === 'deposit' ? 'Bank Deposit Voucher' : 'Bank Withdrawal Voucher'));
+        $('#saveTransfer').text(editingBatch?'Update Voucher':'Post Voucher');
         syncSelect('#cashAccount,#bankAccount,#chequeSource');
         $('#voucherAmount').prop('readonly',false);
         $('#transferFormError').addClass('d-none');
-        loadCheques();valid();
+        if(editingBatch){
+            $('#chequeSource').prop('disabled',true);
+            $.ajax({url:$root.attr('data-update-base')+'/'+encodeURIComponent(editingBatch)+'/details',
+                dataType:'json',headers:{Accept:'application/json'}})
+            .done(function(json){
+                if(!json.data||!json.data.editable||!json.data.cash_account_id){
+                    showError($('#transferFormError'),'This voucher cannot be edited.','Bank voucher Edit is unavailable.');
+                    $('#saveTransfer').prop('disabled',true);return;
+                }
+                var d=json.data;
+                $('#voucherDate').val(d.date);$('#voucherAmount').val(d.amount);
+                $('#cashAccount').val(String(d.cash_account_id));
+                $('#bankAccount').val(String(d.bank_account_id));
+                $('#voucherReference').val('');
+                $('#voucherDescription').val(d.narration);
+                syncSelect('#cashAccount,#bankAccount');valid();
+            }).fail(function(xhr){showError($('#transferFormError'),xhr,'Unable to open bank voucher');});
+        }else{
+            $('#chequeSource').prop('disabled',false);
+            loadCheques();
+        }
+        valid();
     });
     $('#voucherDate,#voucherAmount,#cashAccount,#bankAccount,#voucherReference,#voucherDescription').on('input change',function(){
         if(!busy) pendingRequestKey=null;
         valid();
     });
+    $('#transferRows').on('click','.bt-edit',function(){
+        var batch=Number($(this).attr('data-id'));
+        if(!batch)return;
+        editingBatch=batch;
+        $('#bankTransferCreateModal').modal('show');
+    });
+    $('#openTransferCreate').on('click',function(){editingBatch=null;});
+    $('#bankTransferCreateModal').on('hidden.bs.modal',function(){editingBatch=null;});
     $form.on('submit',function(event){
         event.preventDefault();
         if(!valid()||busy)return;
@@ -450,13 +487,19 @@ $(function () {
             request_key:pendingRequestKey,cheque_source_id:$('#chequeSource').val()?Number($('#chequeSource').val()):null
         };
         $.ajax({
-            url:$root.attr('data-post-url'),method:'POST',data:JSON.stringify(payload),
+            url:editingBatch?$root.attr('data-update-base')+'/'+encodeURIComponent(editingBatch):$root.attr('data-post-url'),
+            method:editingBatch?'PUT':'POST',data:JSON.stringify(editingBatch?{
+                date:payload.date,amount:payload.amount,
+                cash_account_id:payload.cash_account_id,bank_account_id:payload.bank_account_id,
+                narration:$.trim([payload.reference?('Ref: '+payload.reference+' | '):'',payload.description].join(''))
+            }:payload),
             contentType:'application/json',dataType:'json',
             headers:{'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content'),Accept:'application/json'}
         }).done(function(json){
             pendingRequestKey=null;
             $('#bankTransferCreateModal').modal('hide');
-            notify('success','Voucher posted','Posting batch #'+json.data.posting_batch_id);
+            notify('success',editingBatch?'Voucher updated':'Voucher posted',
+                editingBatch?json.message:'Posting batch #'+json.data.posting_batch_id);
             loadHistory();
         }).fail(function(xhr){
             showError($('#transferFormError'),xhr,'Voucher could not be posted');
