@@ -489,7 +489,7 @@
                                                     @canany(['update voucher', 'delete slip', 'can approve', 'finance extra-charge edit', 'finance extra-charge delete'])
                                                         <td>
                                                             <div class="btn-group">
-                                                                @can('update voucher')
+                                                                @canany(['update voucher','finance extra-charge edit'])
                                                                     <button class="btn btn-sm btn-primary btn-edit"
                                                                         data-id="{{ $i->id }}"><i
                                                                             class="fas fa-pencil-alt"></i></button>
@@ -501,7 +501,7 @@
                                                                         data-name="{{ $i->name }}"><i
                                                                             class="fas fa-eye"></i></button>
                                                                 @endcan
-                                                                @can('delete slip')
+                                                                @canany(['delete slip','finance extra-charge delete'])
                                                                     <button class="btn btn-sm btn-danger btn-delete"
                                                                         data-id="{{ $i->id }}"
                                                                         data-name="{{ $i->name }}"><i
