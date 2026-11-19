@@ -1837,6 +1837,34 @@ class BookingController extends Controller
                     ->exists();
 
             if ($postedToLedger) {
+                // Cash PPR has an exact triple relation. Authorized Delete
+                // archives that one source/ledger/BookingVoucher set without
+                // a customer-facing reversal transaction.
+                if ((int)$ledger->payment_type===1
+                    && (Auth::user()->hasRole('super-admin')
+                        || Auth::user()->hasRole('superadmin')
+                        || Auth::user()->can('direct-update')
+                        || Auth::user()->can('finance ppr delete'))) {
+                    try {
+                        app(\App\Services\Finance\BookingReceiptCashEditor::class)
+                            ->delete((int)$selectedProjectId,(int)$ledger->id);
+                        DB::commit();
+                        if ($expectsJson) {
+                            return response()->json([
+                                'status'=>'success',
+                                'message'=>'Receipt removed from active balances; original IDs and evidence retained.',
+                                'id'=>(int)$ledger->id,
+                            ]);
+                        }
+                        return back()->with('success',
+                            'Receipt removed from active balances; source, booking and ledger history retained.');
+                    } catch (\DomainException $e) {
+                        DB::rollBack();
+                        return $expectsJson
+                            ? response()->json(['status'=>'error','message'=>$e->getMessage()],409)
+                            : back()->withErrors(['voucher'=>$e->getMessage()]);
+                    }
+                }
                 DB::rollBack();
 
                 if ($expectsJson) {
