@@ -77,7 +77,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                 until the approval-aware V2 workflow is configured.
                             </div>
                         @endif
-                        <form id="journalForm" novalidate action="{{ route('journal.voucher.store') }}" method="POST">
+                        <form id="journalForm" novalidate action="{{ $type === 'SV' ? route('sales.voucher.store') : route('journal.voucher.store') }}" method="POST">
                             @csrf
                             {{-- A stable key for this rendered form; browser retries reuse it.
                                  Legacy installs without metadata keep the old no-key path. --}}
@@ -92,7 +92,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                         <div class="input-group">
                                             <input type="text" value="1" name="action" hidden />
                                             <input type="text" class="form-control " name="voucher_number"
-                                                value="{{ $type }}-{{getLastJvVNumber() + 1}}"
+                                                value="{{ $type }}-{{ $previewVoucherNumber ?? (getLastJvVNumber() + 1) }}"
                                                 autocomplete="off" readonly>
                                         </div>
                                     </div>
@@ -208,7 +208,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                             <!-- Submit Button -->
                             <div class="text-center">
                                 <button type="submit" class="btn btn-primary" @disabled($journalPilotApprovalBlocked ?? false)>
-                                    <i class="fas fa-save"></i> Save Journal Voucher
+                                    <i class="fas fa-save"></i> Save {{ $type === 'SV' ? 'Sales' : 'Journal' }} Voucher
                                 </button>
                             </div>
                         </form>
@@ -340,15 +340,15 @@ html body .main-content.page-content > .content-wrapper .card-body{
                         }else{
                             if($.financeVoucherFeedback)
                                 $.financeVoucherFeedback.toast('success',response.message||'Voucher saved.');
-                            window.location.assign(response.redirect||@json(route('journal.voucher.index')));
+                            window.location.assign(response.redirect||@json($type==='SV'?route('sales.voucher.index'):route('journal.voucher.index')));
                         }
                     }else if($.financeVoucherFeedback){
                         $.financeVoucherFeedback.toast('error','Server did not confirm the voucher save.');
                     }
                 }).fail(function(xhr){
                     var message=$.financeVoucherFeedback?
-                        $.financeVoucherFeedback.error(xhr,'Could not save Journal Voucher.'):
-                        'Could not save Journal Voucher.';
+                        $.financeVoucherFeedback.error(xhr,'Could not save {{ $type === 'SV' ? 'Sales' : 'Journal' }} Voucher.'):
+                        'Could not save {{ $type === 'SV' ? 'Sales' : 'Journal' }} Voucher.';
                     if($.financeVoucherFeedback)$.financeVoucherFeedback.toast('error',message);
                     else $('#errorModal').modal('show');
                 }).always(function(){
