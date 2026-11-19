@@ -346,8 +346,20 @@ class CommissionVoucherController extends Controller
     {
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
-        if (\App\Services\Finance\FinanceWorkflowAccess::selected()
-            || $this->isMergedTypedCommission($projectId, (int) $id)) {
+        if ($this->isMergedTypedCommission($projectId,(int)$id)
+            && !request()->boolean('reverse')) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
+            try {
+                app(\App\Services\Finance\PostedVoucherArchiver::class)
+                    ->archive($projectId,'commission',(int)$id);
+            }catch(\DomainException $e){
+                if(request()->expectsJson()||request()->ajax()){
+                    return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+                }
+                return back()->withErrors(['voucher'=>$e->getMessage()]);
+            }
+        } elseif (\App\Services\Finance\FinanceWorkflowAccess::selected()
+            || $this->isMergedTypedCommission($projectId,(int)$id)) {
             \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             $typedDraft = CommisionVoucher::query()->where('project_id', $projectId)
                 ->whereKey((int) $id)->where('status', 'draft')->exists();
