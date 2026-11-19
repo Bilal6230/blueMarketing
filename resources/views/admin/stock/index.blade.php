@@ -34,6 +34,16 @@
     .pv-main .table thead th { background: #f0f5fc; color: #35506f; font-size: .76rem; letter-spacing: .045em; }
     @media (max-width: 767.98px) { .pv-main { padding: 12px 10px 24px; } .pv-topbar { align-items: flex-start; flex-direction: column; } .pv-tabs { justify-content: flex-start; } }
 
+    /* Shared voucher-style table-first layout; stock colors unchanged. */
+    #view-entry>.row,#view-billing>.row{display:block}
+    #view-entry .pv-scroll,#view-billing .pv-scroll{max-height:calc(100dvh - 315px);min-height:280px;overflow:auto}
+    #view-entry>.row>.col-12>.pv-card,#view-billing>.row>.col-12>.pv-card{border-top:3px solid var(--pv-primary)}
+    .stock-column-filters th{padding:.3rem!important;min-width:84px;vertical-align:top}
+    .stock-column-filters .form-control,.stock-column-filters .form-select{min-height:32px!important;height:32px!important;font-size:.76rem!important;padding:.15rem .3rem!important;min-width:72px;border-radius:7px!important}
+    #view-entry thead,#view-billing thead{position:sticky;top:0;z-index:2}
+    .stock-create-modal .modal-content{border-top:3px solid var(--pv-primary);border-radius:16px}
+    .stock-create-modal .modal-body{padding:1rem 1.25rem}
+    @media(max-width:767.98px){.stock-create-modal .modal-dialog{margin:.5rem}}
     /* App shell (labour module-ish) */
     .pv-shell {
       display: flex;
@@ -459,93 +469,8 @@
         <!-- ===================== ENTRY VIEW (Purchase + Stock Out) ===================== -->
         <section id="view-entry" class="pv-view">
           <div class="row g-3">
-            <!-- Left: Entry Form -->
-            <div class="col-lg-5">
-              <div class="pv-card">
-                <div class="pv-cardhead">
-                  <div>
-                    <h2 id="entryTitle">Purchase Entry</h2>
-                    <div class="pv-small pv-muted">
-                      Based on your Excel “Entry” sheet: slip, vehicle,
-                      party/site, reason, items.
-                    </div>
-                  </div>
-                  <div class="pv-subseg">
-                    <button class="btn btn-outline-primary" id="btnPurchaseMode">
-                      <i class="bi bi-plus-circle"></i> Purchase
-                    </button>
-                    <button class="btn btn-outline-secondary" id="btnStockOutMode">
-                      <i class="bi bi-dash-circle"></i> Stock Out
-                    </button>
-                  </div>
-                </div>
-
-                <div class="p-3">
-                  <form id="entryForm" novalidate>
-                    <div class="row g-2">
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Slip No (auto)</label>
-                        <input type="text" class="form-control" id="entrySlipNo" readonly />
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Date</label>
-                        <input type="date" class="form-control" id="entryDate" required />
-                      </div>
-
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Vehicle No</label>
-                        <input type="text" class="form-control" id="entryVehicle" placeholder="e.g., LEE-123" />
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Driver</label>
-                        <input type="text" class="form-control" id="entryDriver" placeholder="e.g., Ali" />
-                      </div>
-
-                      <div class="col-12">
-                        <label class="form-label pv-small" id="entryPartyLabel">Shop / Party</label>
-                        <select class="form-select" id="entryParty" required><option value="">Select a Shop/Party or Site/Customer</option></select>
-                      </div>
-
-                      <div class="col-12">
-                        <label class="form-label pv-small" id="entryReasonLabel">Purchase Reason Details</label>
-                        <textarea class="form-control" id="entryReason" rows="2"
-                          placeholder="Write details..."></textarea>
-                      </div>
-                    </div>
-
-                    <hr class="my-3" />
-
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                      <div class="fw-bold">Items / Material</div>
-                      <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddLine">
-                        <i class="bi bi-plus-lg"></i> Add Row
-                      </button>
-                    </div>
-
-                    <div id="entryLines" class="vstack gap-2"></div>
-
-                    <div class="pv-line mt-3">
-                      <div class="d-flex align-items-center justify-content-between">
-                        <div class="pv-small pv-muted">Total Amount</div>
-                        <div class="fw-bold" id="entryTotal">PKR 0</div>
-                      </div>
-                    </div>
-
-                    <div class="d-grid mt-3">
-                      <button type="submit" class="btn btn-primary btn-lg" id="entrySubmitBtn">
-                        <i class="bi bi-check2-circle me-1"></i> Save Entry
-                      </button>
-                      <div class="pv-small pv-muted mt-2">
-                        Saves to this project's stock records. Entries refresh here without a page reload.
-                      </div>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-
             <!-- Right: Entry List -->
-            <div class="col-lg-7">
+            <div class="col-12">
               <div class="pv-card">
                 <div class="pv-cardhead">
                   <div>
@@ -556,30 +481,11 @@
                     </div>
                   </div>
                   <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <span class="pv-chip" id="entryCountChip">0 total</span>
+                    <span class="pv-chip" id="entryCountChip">0 total</span><button class="btn btn-sm btn-primary" type="button" id="stockNewEntry"><i class="bi bi-plus-lg"></i> New Entry</button>
                   </div>
                 </div>
 
                 <div class="p-3">
-                  <div class="row g-2 mb-3">
-                    <div class="col-md-4">
-                      <label class="form-label pv-small">Filter: Item</label>
-                      <select class="form-select" id="entryFilterItem"></select>
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label pv-small">Filter: In/Out</label>
-                      <select class="form-select" id="entryFilterFlow">
-                        <option value="">All</option>
-                        <option value="IN">IN (Purchase)</option>
-                        <option value="OUT">OUT (Stock Out)</option>
-                      </select>
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label pv-small">Search</label>
-                      <input class="form-control" id="entrySearch" placeholder="Name / details / slip..." />
-                    </div>
-                  </div>
-
                   <div class="table-responsive pv-scroll">
                     <table class="table table-hover align-middle mb-0">
                       <thead>
@@ -595,6 +501,7 @@
                           <th>Amount</th>
                           <th>Billing</th><th>Actions</th>
                         </tr>
+<tr class="stock-column-filters"><th><input class="form-control" data-stock-table="entry" data-stock-col="0" aria-label="Filter Sr" placeholder="Sr"></th><th><input class="form-control" data-stock-table="entry" data-stock-col="1" aria-label="Filter Date" placeholder="Date"></th><th><select class="form-select" id="entryFilterFlow" aria-label="Filter entryFilterFlow"><option value="">All</option><option value="IN">IN</option><option value="OUT">OUT</option></select></th><th><input class="form-control" id="entrySearch" placeholder="Name / slip" aria-label="Search entry"></th><th><input class="form-control" data-stock-table="entry" data-stock-col="4" aria-label="Filter Details" placeholder="Details"></th><th><select class="form-select" id="entryFilterItem" aria-label="Filter item"></select></th><th><input class="form-control" data-stock-table="entry" data-stock-col="6" aria-label="Filter Qty" placeholder="Qty"></th><th><input class="form-control" data-stock-table="entry" data-stock-col="7" aria-label="Filter Rate" placeholder="Rate"></th><th><input class="form-control" data-stock-table="entry" data-stock-col="8" aria-label="Filter Amount" placeholder="Amount"></th><th><select class="form-select" data-stock-table="entry" data-stock-col="9" aria-label="Billing status"><option value="">All</option><option value="Billed">Billed</option><option value="Unbilled">Unbilled</option></select></th><th></th></tr>
                       </thead>
                       <tbody id="entryTbody"></tbody>
                     </table>
@@ -639,78 +546,7 @@
         <!-- ===================== BILLING VIEW ===================== -->
         <section id="view-billing" class="pv-view d-none">
           <div class="row g-3">
-            <div class="col-lg-5">
-              <div class="pv-card">
-                <div class="pv-cardhead">
-                  <div>
-                    <h2>Purchase / Sale Bill</h2>
-                    <div class="pv-small pv-muted">
-                      Excel “Billing” sheet: selection, supplier/site, bill
-                      no, item lines, total.
-                    </div>
-                  </div>
-                  <span class="pv-chip" id="billNoChip">Bill no… auto</span>
-                </div>
-
-                <div class="p-3">
-                  <form id="billForm" novalidate>
-                    <div class="row g-2">
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Selection</label>
-                        <select class="form-select" id="billType" required>
-                          <option value="purchase">Purchase Bill</option>
-                          <option value="sale">Sale Bill</option>
-                        </select>
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Date</label>
-                        <input type="date" class="form-control" id="billDate" required />
-                      </div>
-
-                      <div class="col-12">
-                        <label class="form-label pv-small" id="billPartyLabel">Supplier / Site Name</label>
-                        <select class="form-select" id="billParty" required><option value="">Select a Supplier or Site</option></select>
-                      </div>
-
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Entry No (optional)</label>
-                        <input class="form-control" id="billEntryNo" placeholder="Link to entry..." />
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Bill No (auto)</label>
-                        <input class="form-control" id="billNo" readonly />
-                      </div>
-                    </div>
-
-                    <hr class="my-3" />
-
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                      <div class="fw-bold">Bill Items</div>
-                      <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddBillLine">
-                        <i class="bi bi-plus-lg"></i> Add Row
-                      </button>
-                    </div>
-
-                    <div id="billLines" class="vstack gap-2"></div>
-
-                    <div class="pv-line mt-3">
-                      <div class="d-flex align-items-center justify-content-between">
-                        <div class="pv-small pv-muted">Total</div>
-                        <div class="fw-bold" id="billTotal">PKR 0</div>
-                      </div>
-                    </div>
-
-                    <div class="d-grid gap-2 mt-3">
-                      <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="bi bi-check2-circle me-1"></i> Save Bill
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-lg-7">
+            <div class="col-12">
               <div class="pv-card">
                 <div class="pv-cardhead">
                   <div>
@@ -720,29 +556,10 @@
                       Print/Edit/Delete.
                     </div>
                   </div>
-                  <span class="pv-chip" id="billCountChip">0 total</span>
+                  <span class="pv-chip" id="billCountChip">0 total</span><button class="btn btn-sm btn-primary" type="button" id="stockNewBill"><i class="bi bi-plus-lg"></i> New Bill</button>
                 </div>
 
                 <div class="p-3">
-                  <div class="row g-2 mb-3">
-                    <div class="col-md-4">
-                      <label class="form-label pv-small">Filter: Type</label>
-                      <select class="form-select" id="billFilterType">
-                        <option value="">All</option>
-                        <option value="purchase">Purchase</option>
-                        <option value="sale">Sale</option>
-                      </select>
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label pv-small">Filter: Party</label>
-                      <select class="form-select" id="billFilterParty"></select>
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label pv-small">Search</label>
-                      <input class="form-control" id="billSearch" placeholder="Bill no / name..." />
-                    </div>
-                  </div>
-
                   <div class="table-responsive pv-scroll">
                     <table class="table table-hover align-middle mb-0">
                       <thead>
@@ -754,6 +571,7 @@
                           <th>Details</th>
                           <th>Amount</th><th>Actions</th>
                         </tr>
+<tr class="stock-column-filters"><th><input class="form-control" data-stock-table="bill" data-stock-col="0" aria-label="Filter Sr" placeholder="Sr"></th><th><input class="form-control" data-stock-table="bill" data-stock-col="1" aria-label="Filter Date" placeholder="Date"></th><th><select class="form-select" id="billFilterType" aria-label="Filter billFilterType"><option value="">All</option><option value="purchase">Purchase</option><option value="sale">Sale</option></select></th><th><select class="form-select" id="billFilterParty" aria-label="Filter party"></select></th><th><input class="form-control" id="billSearch" placeholder="Bill / Details" aria-label="Search bills"></th><th><input class="form-control" data-stock-table="bill" data-stock-col="5" aria-label="Filter Amount" placeholder="Amount"></th><th></th></tr>
                       </thead>
                       <tbody id="billTbody"></tbody>
                     </table>
@@ -1122,7 +940,119 @@
     </main>
   </div></div>
 
-  <!-- Modals (edit item/party) -->
+  <div class="modal fade stock-create-modal" id="stockEntryCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title"><span id="entryTitle">Purchase Entry</span></h5><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><div class="d-flex gap-2 mb-3"><button type="button" class="btn btn-outline-primary" id="btnPurchaseMode">Purchase</button><button type="button" class="btn btn-outline-secondary" id="btnStockOutMode">Stock Out</button></div><form id="entryForm" novalidate>
+                    <div class="row g-2">
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Slip No (auto)</label>
+                        <input type="text" class="form-control" id="entrySlipNo" readonly />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Date</label>
+                        <input type="date" class="form-control" id="entryDate" required />
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Vehicle No</label>
+                        <input type="text" class="form-control" id="entryVehicle" placeholder="e.g., LEE-123" />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Driver</label>
+                        <input type="text" class="form-control" id="entryDriver" placeholder="e.g., Ali" />
+                      </div>
+
+                      <div class="col-12">
+                        <label class="form-label pv-small" id="entryPartyLabel">Shop / Party</label>
+                        <select class="form-select" id="entryParty" required><option value="">Select a Shop/Party or Site/Customer</option></select>
+                      </div>
+
+                      <div class="col-12">
+                        <label class="form-label pv-small" id="entryReasonLabel">Purchase Reason Details</label>
+                        <textarea class="form-control" id="entryReason" rows="2"
+                          placeholder="Write details..."></textarea>
+                      </div>
+                    </div>
+
+                    <hr class="my-3" />
+
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <div class="fw-bold">Items / Material</div>
+                      <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddLine">
+                        <i class="bi bi-plus-lg"></i> Add Row
+                      </button>
+                    </div>
+
+                    <div id="entryLines" class="vstack gap-2"></div>
+
+                    <div class="pv-line mt-3">
+                      <div class="d-flex align-items-center justify-content-between">
+                        <div class="pv-small pv-muted">Total Amount</div>
+                        <div class="fw-bold" id="entryTotal">PKR 0</div>
+                      </div>
+                    </div>
+
+                    <div class="d-grid mt-3">
+                      <button type="submit" class="btn btn-primary btn-lg" id="entrySubmitBtn">
+                        <i class="bi bi-check2-circle me-1"></i> Save Entry
+                      </button>
+                      <div class="pv-small pv-muted mt-2">
+                        Saves to this project's stock records. Entries refresh here without a page reload.
+                      </div>
+                    </div>
+                  </form></div></div></div></div>
+<div class="modal fade stock-create-modal" id="stockBillCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">Purchase / Sale Bill <span class="pv-chip" id="billNoChip">Bill no… auto</span></h5><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><form id="billForm" novalidate>
+                    <div class="row g-2">
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Selection</label>
+                        <select class="form-select" id="billType" required>
+                          <option value="purchase">Purchase Bill</option>
+                          <option value="sale">Sale Bill</option>
+                        </select>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Date</label>
+                        <input type="date" class="form-control" id="billDate" required />
+                      </div>
+
+                      <div class="col-12">
+                        <label class="form-label pv-small" id="billPartyLabel">Supplier / Site Name</label>
+                        <select class="form-select" id="billParty" required><option value="">Select a Supplier or Site</option></select>
+                      </div>
+
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Entry No (optional)</label>
+                        <input class="form-control" id="billEntryNo" placeholder="Link to entry..." />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Bill No (auto)</label>
+                        <input class="form-control" id="billNo" readonly />
+                      </div>
+                    </div>
+
+                    <hr class="my-3" />
+
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <div class="fw-bold">Bill Items</div>
+                      <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddBillLine">
+                        <i class="bi bi-plus-lg"></i> Add Row
+                      </button>
+                    </div>
+
+                    <div id="billLines" class="vstack gap-2"></div>
+
+                    <div class="pv-line mt-3">
+                      <div class="d-flex align-items-center justify-content-between">
+                        <div class="pv-small pv-muted">Total</div>
+                        <div class="fw-bold" id="billTotal">PKR 0</div>
+                      </div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-3">
+                      <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check2-circle me-1"></i> Save Bill
+                      </button>
+                    </div>
+                  </form></div></div></div></div>
+<!-- Modals (edit item/party) -->
   <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-md">
       <div class="modal-content pv-card" style="border-radius: 22px">
@@ -1751,6 +1681,7 @@
         });
 
         viewToast("success", "Saved", `Entry saved (${res?.data?.slip_no || ""}).`);
+        bootstrap.Modal.getOrCreateInstance($("#stockEntryCreateModal")[0]).hide();
 
         entryParty.value = "";
         entryReason.value = "";
@@ -1853,6 +1784,7 @@
           "Saved",
           `${billType.value.toUpperCase()} bill saved (${res?.data?.bill_no || ""}).`
         );
+        bootstrap.Modal.getOrCreateInstance($("#stockBillCreateModal")[0]).hide();
 
         billEntryNo.value = "";
         $(billLinesWrap).html("");
@@ -2098,6 +2030,15 @@
     /* ===========================
   RENDERING
   =========================== */
+    function stockFilterRows(kind){
+      var $body=kind==='entry'?$('#entryTbody'):$('#billTbody');
+      var $filters=$('[data-stock-table="'+kind+'"]');
+      $body.find('tr').each(function(){var $row=$(this),visible=true;
+        $filters.each(function(){var term=$.trim($(this).val()||'').toLowerCase();if(term && $row.children('td').eq(Number($(this).attr('data-stock-col'))).text().toLowerCase().indexOf(term)<0){visible=false;return false;}});
+        $row.toggle(visible);
+      });
+    }
+    $(document).on('input change','.stock-column-filters [data-stock-table]',function(){stockFilterRows($(this).attr('data-stock-table'));});
     function renderEntryTable() {
       const tbody = $('#entryTbody')[0];
       $(tbody).html("");
@@ -2134,6 +2075,7 @@
       $('#entryCountChip')[0].textContent = `${state.entries.total || 0
         } total`;
 
+      stockFilterRows("entry");
       const kpi = state.entries.kpi || {};
       $('#kpiInQty')[0].textContent = fmtInt(
         kpi.in_qty || 0
@@ -2172,6 +2114,7 @@
       $('#billCountChip')[0].textContent = `${state.bills.total || 0
         } total`;
 
+      stockFilterRows("bill");
       const kpi = state.bills.kpi || {};
       $('#kpiPurchaseBills')[0].textContent = fmtInt(
         kpi.purchase_count || 0
@@ -2482,6 +2425,8 @@
     /* ===========================
   INIT
   =========================== */
+    $('#stockNewEntry').on('click',function(){setEntryMode('purchase');bootstrap.Modal.getOrCreateInstance($('#stockEntryCreateModal')[0]).show();});
+    $('#stockNewBill').on('click',function(){bootstrap.Modal.getOrCreateInstance($('#stockBillCreateModal')[0]).show();});
     async function initUI() {
       entryDate.value = todayISO();
       billDate.value = todayISO();
