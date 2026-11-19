@@ -94,6 +94,36 @@ class CashPostingWriterTest extends TestCase
         $this->assertSame('CR', $report[0]['voucher_series']);
     }
 
+    public function test_cash_replay_ignores_archived_posting_history_but_checks_current_balanced_legs(): void
+    {
+        Schema::table('finance_posting_lines',function(Blueprint $t){
+            $t->boolean('is_active')->default(true);
+        });
+        $writer=new CashPostingWriter();
+        $key='cash-correction-replay-0001';
+        $legs=[
+            ['account_id'=>101,'debit'=>'250.00','credit'=>'0.00'],
+            ['account_id'=>102,'debit'=>'0.00','credit'=>'250.00'],
+        ];
+        $batch=$writer->post(1,42,$key,$legs);
+        $oldId=DB::table('finance_posting_lines')->where('posting_batch_id',$batch)
+            ->orderBy('id')->value('id');
+        $old=DB::table('finance_posting_lines')->where('id',$oldId)->first();
+        DB::table('finance_posting_lines')->where('id',$oldId)
+            ->update(['is_active'=>0,'updated_at'=>now()]);
+        DB::table('finance_posting_lines')->insert([
+            'posting_batch_id'=>$batch,
+            'project_head_subhead_id'=>$old->project_head_subhead_id,
+            'debit'=>$old->debit,'credit'=>$old->credit,
+            'is_active'=>1,'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        self::assertSame($batch,$writer->post(1,42,$key,$legs));
+        self::assertSame(3,DB::table('finance_posting_lines')->count());
+        self::assertSame(2,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->count());
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+    }
+
     public function test_cash_wrong_project_account_fails_without_any_batch(): void
     {
         $bad = $this->crLegs();
