@@ -171,6 +171,21 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             <a id="transferViewPrint" target="_blank" rel="noopener" class="btn btn-primary">Print voucher</a></div>
     </div></div>
 </div>
+<div class="modal fade fvc-modern-modal bt-modern-modal" id="bankTransferDeleteModal"
+    tabindex="-1" role="dialog" aria-labelledby="bankTransferDeleteTitle" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="bankTransferDeleteTitle">Delete bank voucher</h5>
+   <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <div class="modal-body">
+   <p>This manual bank voucher will be removed from active registers and balances. The original source and posting evidence remain available internally.</p>
+   <div id="btDeleteError" class="alert alert-danger d-none" role="alert"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline-secondary" type="button" data-dismiss="modal">Cancel</button>
+    <button type="button" class="btn btn-danger" id="btDeleteSubmit">Delete voucher</button>
+  </div>
+ </div></div>
+</div>
 @can('finance bank-'.$kind.' reverse')
 <div class="modal fade fvc-modern-modal bt-modern-modal" style="--fvc-modal-accent:{{ $kind === 'deposit' ? '#128044' : '#bd3140' }};--fvc-modal-tint:{{ $kind === 'deposit' ? '#e9f8ef' : '#fff0f1' }}" id="bankTransferReverseModal" tabindex="-1" aria-labelledby="bankTransferReverseTitle" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
@@ -289,6 +304,8 @@ $(function () {
             $('<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" data-blue-action-type="print">Print</a>').attr('href',printUrl(batch)).appendTo($actions);
             if(r.can_edit){
                 $('<button type="button" class="btn btn-sm btn-outline-primary bt-edit" data-blue-action-type="edit">Edit</button>')
+                    .attr('data-id',batch).appendTo($actions);
+                $('<button type="button" class="btn btn-sm btn-outline-danger bt-delete" data-blue-action-type="delete">Delete</button>')
                     .attr('data-id',batch).appendTo($actions);
             }
             @can('finance bank-'.$kind.' reverse')
@@ -466,6 +483,31 @@ $(function () {
     $('#voucherDate,#voucherAmount,#cashAccount,#bankAccount,#voucherReference,#voucherDescription').on('input change',function(){
         if(!busy) pendingRequestKey=null;
         valid();
+    });
+    $('#transferRows').on('click','.bt-delete',function(){
+        var batch=Number($(this).attr('data-id'));
+        var row=$.grep(allRows,function(r){return Number(r.posting_batch_id)===batch;})[0];
+        if(!row||!row.can_edit)return;
+        $('#btDeleteSubmit').data('batch',batch);
+        $('#btDeleteError').addClass('d-none').text('');
+        $('#bankTransferDeleteModal').modal('show');
+    });
+    $('#btDeleteSubmit').on('click',function(){
+        var $button=$(this),batch=Number($button.data('batch'));
+        if(!batch||$button.prop('disabled'))return;
+        $button.prop('disabled',true);
+        $.ajax({
+            url:$root.attr('data-update-base')+'/'+encodeURIComponent(batch),
+            type:'DELETE',dataType:'json',
+            headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest',
+                'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')}
+        }).done(function(response){
+            $('#bankTransferDeleteModal').modal('hide');
+            notify('success','Voucher deleted',response.message||'Bank voucher removed.');
+            loadHistory();
+        }).fail(function(xhr){
+            showError($('#btDeleteError'),xhr,'Unable to delete bank voucher');
+        }).always(function(){$button.prop('disabled',false);});
     });
     $('#transferRows').on('click','.bt-edit',function(){
         var batch=Number($(this).attr('data-id'));
