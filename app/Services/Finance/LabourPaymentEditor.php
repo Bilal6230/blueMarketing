@@ -71,6 +71,16 @@ final class LabourPaymentEditor
         $members=DB::table('labour_ledgers')->where('project_id',$projectId)
             ->where('customer_ledger_id',$sourceId)->where('is_active',1)
             ->whereNull('deleted_at')->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        // A labour member can be posted by the typed labour writer even
+        // when the parent cash CP has no typed cash-source claim. Verify
+        // ownership for every member (including archived rows) before write.
+        if(Schema::hasTable('finance_posting_labour_sources')
+            &&DB::table('finance_posting_labour_sources')
+                ->whereIn('labour_ledger_id',
+                    DB::table('labour_ledgers')->where('customer_ledger_id',$sourceId)
+                        ->pluck('id')->all())->exists()) {
+            throw new \DomainException('Labour payment is owned by a typed payroll posting batch.');
+        }
         if($members->isEmpty()||DB::table('labour_ledgers')
             ->where('customer_ledger_id',$sourceId)->where('project_id','!=',$projectId)->exists()
             ||DB::table('labour_ledgers')->where('project_id',$projectId)
