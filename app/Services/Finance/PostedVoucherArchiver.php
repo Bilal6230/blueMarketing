@@ -114,12 +114,24 @@ final class PostedVoucherArchiver
                     ->count()!==$details->count()) {
                 throw new \DomainException('Posted voucher source/detail/posting FK counts differ.');
             }
-            $legacy=Schema::hasTable('ledgers')
-                ? DB::table('ledgers')
-                    ->where('type',$cv?'CV':(string)$voucher->type)
-                    ->where('type_id',$voucherId)->where('is_active',1)
-                    ->lockForUpdate()->get()->groupBy($detailFK)
-                : collect();
+            $legacy=collect();
+            if(Schema::hasTable('ledgers')) {
+                if(!Schema::hasColumn('ledgers',$detailFK)){
+                    if(DB::table('ledgers')->where('type',$cv?'CV':(string)$voucher->type)
+                        ->where('type_id',$voucherId)->where('is_active',1)->exists()){
+                        throw new \DomainException('Voucher legacy ledger FK column is missing.');
+                    }
+                }else{
+                    $legacy=DB::table('ledgers')->whereIn($detailFK,$details->pluck('id')->all())
+                        ->where('is_active',1)->lockForUpdate()->get()->groupBy($detailFK);
+                    foreach($legacy->flatten(1) as $ledgerLeg){
+                        if((string)$ledgerLeg->type!==($cv?'CV':(string)$voucher->type)
+                            ||(int)$ledgerLeg->type_id!==$voucherId){
+                            throw new \DomainException('Archived voucher detail FK is attributed to another source.');
+                        }
+                    }
+                }
+            }
             $legacyCount=$legacy->flatten(1)->count();
             if(($cv && $legacyCount!==$details->count())
                 ||(!$cv && $legacyCount!==0 && $legacyCount!==$details->count())) {
