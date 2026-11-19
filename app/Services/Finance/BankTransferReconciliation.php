@@ -23,6 +23,10 @@ final class BankTransferReconciliation
             ->leftJoin('finance_posting_batches as batch', 'batch.id', '=', 'transfer.posting_batch_id')
             ->leftJoin('project_bank_accounts as bank', 'bank.id', '=', 'transfer.bank_account_id')
             ->where('transfer.project_id', $projectId)
+            ->when(Schema::hasColumn('finance_bank_transfer_sources','is_active'),
+                fn($q)=>$q->where('transfer.is_active',1))
+            ->when(Schema::hasColumn('finance_bank_transfer_sources','deleted_at'),
+                fn($q)=>$q->whereNull('transfer.deleted_at'))
             ->orderBy('transfer.posting_batch_id')
             ->get([
                 'transfer.posting_batch_id', 'transfer.project_id', 'transfer.bank_account_id',
