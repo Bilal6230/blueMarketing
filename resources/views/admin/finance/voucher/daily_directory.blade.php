@@ -338,6 +338,9 @@
                         <option value="BOR">Bank Receipt Voucher (BOR)</option>
                         <option value="BOP">Bank Payment Voucher (BOP)</option>
                         <option value="JV">Journal Voucher (JV)</option>
+                        @can('finance sv create')
+                        <option value="SV">Sales Voucher (SV)</option>
+                        @endcan
                         <option value="CV">Commission Voucher (CV)</option>
                         <option value="PR">Plot Receive Payment (PR)</option>
                         <option value="PP">Plot Purchase Voucher (PP)</option>
@@ -516,6 +519,7 @@
     const seriesMap={CR:'CR',DR:'DR',CP:'DR',CCR:'CCR',CDR:'CDR',BOR:'BOR',BOP:'BOP'};
     const dedicatedRoutes={
         JV:@json(route('journal.voucher.create')),
+        SV:@json(route('sales.voucher.create')),
         CV:@json(route('commision.voucher.create')),
         PR:@json(route('finance.voucher.plot-receipt.workspace')),
         PP:@json(route('finance.voucher.plot-purchase.workspace')),
