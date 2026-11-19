@@ -115,9 +115,15 @@ final class JournalApprovedVoucherEditor
             }
             // Typed vouchers may have no legacy ledgers at all. Where they
             // exist, require 1:1 FK-linked ownership; never guess by type_id.
-            $legacy=DB::table('ledgers')->where('type',(string)$header->type)
-                ->where('type_id',$voucherId)->where('is_active',1)
-                ->lockForUpdate()->get()->groupBy('journal_voucher_detail_id');
+            $legacy=Schema::hasTable('ledgers')
+                ? DB::table('ledgers')->where('type',(string)$header->type)
+                    ->where('type_id',$voucherId)->where('is_active',1)
+                    ->lockForUpdate()->get()->groupBy('journal_voucher_detail_id')
+                : collect();
+            if ($legacy->flatten(1)->isNotEmpty()
+                && !Schema::hasColumn('ledgers','journal_voucher_detail_id')) {
+                throw new \DomainException('Journal legacy detail FK column is required.');
+            }
             if($legacy->flatten(1)->count()!==0 && $legacy->flatten(1)->count()!==$old->count()) {
                 throw new \DomainException('Journal legacy ledger linkage is incomplete.');
             }
