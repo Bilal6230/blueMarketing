@@ -269,7 +269,34 @@ class CommissionVoucherController extends Controller
                 $projectId, (int) $id, $data['request_key'], (int) Auth::id()
             );
         } catch (\DomainException $e) {
-            abort(409, 'Commission approval rejected to protect accounting history.');
+            // Never render Laravel's debug exception inside the iframe.
+            // Distinguish expected business conflicts from successful posts;
+            // retain the diagnostic code in logs for the developer.
+            report($e);
+            $reason = match ($e->getMessage()) {
+                'V2_CV_SOURCE_NOT_APPROVED', 'V2_CV_NOT_APPROVABLE' =>
+                    'Only an active Commission draft can be approved.',
+                'V2_CV_DETAILS_REQUIRED' =>
+                    'Commission voucher needs at least two active accounting rows.',
+                'V2_CV_NOT_BALANCED', 'V2_CV_INVALID_LEG' =>
+                    'Commission voucher debit and credit must be balanced and valid.',
+                'V2_CV_CROSS_PROJECT_ACCOUNT' =>
+                    'A Commission account belongs to another project.',
+                'V2_CV_REPLAY_CONFLICT','V2_CV_REPLAY_TAMPERED' =>
+                    'This Commission posting already exists with different accounting details.',
+                default => 'Commission approval could not be posted. Please check voucher relationships and contact the administrator.',
+            };
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['status'=>'error','message'=>$reason],409);
+            }
+            return back()->withErrors(['voucher'=>$reason]);
+        }
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'status'=>'success','voucher_id'=>(int)$id,
+                'message'=>'Commission voucher approved and posted.',
+                'redirect'=>route('commision.voucher.index'),
+            ]);
         }
         return redirect()->route(
             $request->boolean('embed') ? 'commision.voucher.edit' : 'commision.voucher.index',
