@@ -23,7 +23,8 @@ final class LinkedVoucherLedgerRetirement
         $detailFk=$type==='CV'?'commision_voucher_id':'journal_voucher_id';
         $header=DB::table($parent)->where('id',$voucherId)
             ->where('project_id',$projectId)->whereNull('deleted_at')->lockForUpdate()->first();
-        if (!$header || ($type!=='CV' && (string)$header->type!==$type))
+        if (!$header || ($type==='SV' && (string)$header->type!=='SV')
+            || ($type==='JV' && !in_array((string)$header->type,['JV',''],true)))
             throw new \DomainException('Voucher is missing, another series, or outside the selected project.');
 
         $activeDetails=DB::table($details)->where($detailFk,$voucherId)
