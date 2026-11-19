@@ -163,6 +163,34 @@ class JournalPostingWriterTest extends TestCase
             ->where('journal_voucher_id',51)->whereNull('deleted_at')->count());
     }
 
+    public function test_posted_journal_ordinary_delete_archives_one_batch_without_reversal(): void
+    {
+        $batch=(new PostingGateway())->postJournal(1,51,'JV-POSTED-DELETE-00001');
+        (new \App\Services\Finance\PostedVoucherArchiver())->archive(1,'journal',51);
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame(2,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->count());
+        self::assertSame(0,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->count());
+        self::assertNotNull(DB::table('journal_vouchers')->where('id',51)->value('deleted_at'));
+        self::assertSame(0,DB::table('journal_voucher_details')
+            ->where('journal_voucher_id',51)->whereNull('deleted_at')->count());
+        self::assertSame([],(new PostingReportReader())->lines(1));
+        self::assertSame([],(new \App\Services\Finance\PostingBatchIntegrityAudit())->audit(1));
+        try {
+            (new \App\Services\Finance\PostedVoucherArchiver())->archive(1,'journal',51);
+            self::fail('Archived JV must not be deleted twice.');
+        }catch(\DomainException $e) {
+            self::assertStringContainsString('currently posted',$e->getMessage());
+        }
+        $retired=DB::table('finance_posting_lines')->where('posting_batch_id',$batch)
+            ->orderBy('id')->value('id');
+        DB::table('finance_posting_lines')->where('id',$retired)->update(['is_active'=>1]);
+        $issues=(new \App\Services\Finance\PostingBatchIntegrityAudit())->audit(1);
+        self::assertNotEmpty($issues);
+        self::assertContains('ARCHIVED_VOUCHER_WITH_ACTIVE_POSTINGS',$issues[0]['issues']);
+    }
+
     public function test_isolated_jv_draft_updates_before_posting_and_locks_after(): void
     {
         $draft = new \App\Services\Finance\JournalDraftWorkflow();
