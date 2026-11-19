@@ -122,7 +122,10 @@ final class JournalPostingWriter
                     throw new \DomainException('V2_IDEMPOTENCY_CONFLICT');
                 }
                 if ((int) DB::table('finance_posting_lines')
-                    ->where('posting_batch_id', $existing->id)->count() !== count($lines)) {
+                    ->where('posting_batch_id', $existing->id)
+                    ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                        fn($q)=>$q->where('is_active',1))
+                    ->count() !== count($lines)) {
                     throw new \DomainException('V2_REPLAY_DETAILS_MISSING');
                 }
                 // A replay must re-verify the actual posted amounts/account
@@ -130,6 +133,8 @@ final class JournalPostingWriter
                 $posted = DB::table('finance_journal_line_sources as src')
                     ->join('finance_posting_lines as line', 'line.id', '=', 'src.posting_line_id')
                     ->where('line.posting_batch_id', $existing->id)
+                    ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                        fn($q)=>$q->where('line.is_active',1))
                     ->get(['src.journal_voucher_detail_id', 'line.project_head_subhead_id',
                         'line.debit', 'line.credit', 'line.description']);
                 if ($posted->count() !== count($lines)) {
