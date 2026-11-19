@@ -346,6 +346,9 @@ class CommissionVoucherController extends Controller
     {
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
+        if (request()->boolean('reverse')) {
+            abort_unless(auth()->user()?->can('finance cv reverse'),403);
+        }
         if ($this->isMergedTypedCommission($projectId,(int)$id)
             && !request()->boolean('reverse')) {
             \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
