@@ -1664,6 +1664,23 @@ class VoucherController extends Controller
             'posting_batch_id'=>$postingBatch]);
     }
 
+    /** Ordinary logical delete of manual BD/BW, not a visible REV voucher. */
+    public function deleteTransferVoucher(string $kind,int $postingBatch)
+    {
+        abort_unless(in_array($kind,['deposit','withdrawal'],true),404);
+        $projectId=(int)getSelectedTown();
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
+        try {
+            app(\App\Services\Finance\BankTransferEditor::class)
+                ->delete($projectId,$kind,$postingBatch);
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success',
+            'message'=>'Bank voucher removed from active records; original evidence retained.',
+            'posting_batch_id'=>$postingBatch]);
+    }
+
     /** Cancel a manual BD/BW by an immutable counter-posting. */
     public function reverseTransferVoucher(Request $request, string $kind, int $postingBatch)
     {
@@ -1714,6 +1731,10 @@ class VoucherController extends Controller
             ->leftJoin('subhead_accountings as cash_child', 'cash_child.id', '=', 'cash_account.subhead_accounting_id')
             ->leftJoin('customer_ledger as cheque', 'cheque.id', '=', 'transfer.linked_customer_ledger_id')
             ->where('transfer.project_id', $projectId)->where('transfer.transfer_kind', $kind)
+            ->when(Schema::hasColumn('finance_bank_transfer_sources','is_active'),
+                fn($q)=>$q->where('transfer.is_active',1))
+            ->when(Schema::hasColumn('finance_bank_transfer_sources','deleted_at'),
+                fn($q)=>$q->whereNull('transfer.deleted_at'))
             ->where(function ($query) {
                 $query->where('cash_head.name', 'LIKE', '%cash%')
                     ->orWhere('cash_child.name', 'LIKE', '%cash%');
@@ -1741,6 +1762,10 @@ class VoucherController extends Controller
             ->join('project_bank_accounts as bank', function ($j) use ($projectId) { $j->on('bank.id', '=', 'transfer.bank_account_id')->where('bank.project_id', '=', $projectId); })
             ->leftJoin('customer_ledger as cheque', 'cheque.id', '=', 'transfer.linked_customer_ledger_id')
             ->where('transfer.project_id', $projectId)->where('transfer.transfer_kind', $kind)->where('transfer.posting_batch_id', $postingBatch)
+            ->when(Schema::hasColumn('finance_bank_transfer_sources','is_active'),
+                fn($q)=>$q->where('transfer.is_active',1))
+            ->when(Schema::hasColumn('finance_bank_transfer_sources','deleted_at'),
+                fn($q)=>$q->whereNull('transfer.deleted_at'))
             ->first(['transfer.*', 'batch.voucher_series', 'batch.voucher_number', 'batch.effective_date', 'bank.bank_name', 'bank.account_title',
                 'cheque.type_id as cheque_number', 'cheque.t_number as cheque_reference']);
         abort_unless($source, 404);
