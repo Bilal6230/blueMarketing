@@ -9,19 +9,16 @@ return new class extends Migration
 {
     private function guard(): void
     {
-        $connection = DB::connection();
-        $name = (string) $connection->getDatabaseName();
-        if (!str_starts_with($name, 'bluemarketing_v2_') &&
-            !($connection->getDriverName() === 'sqlite' && $name === ':memory:')) {
-            throw new RuntimeException('V2 bank schema is isolated-only; refusing current database.');
-        }
+        \App\Services\Finance\FinanceConnectionGuard::assertAllowed();
+        // The default configured connection is the only finance connection.
+        // Refuse to overwrite existing tables in up(), not by database name.
     }
 
     public function up(): void
     {
         $this->guard();
         if (Schema::hasTable('banks')) {
-            throw new RuntimeException('V2 banks table already exists; refusing replacement.');
+            throw new RuntimeException('Banks table already exists; refusing replacement.');
         }
 
         Schema::create('banks', function (Blueprint $table) {
