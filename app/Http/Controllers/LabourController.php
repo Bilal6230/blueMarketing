@@ -426,7 +426,11 @@ class LabourController extends Controller
                         ->where('project_id', getSelectedTown());
                 },
                 'tAttendances',
-                'labourLedgers',
+                'labourLedgers' => fn($q) => $q
+                    ->when(Schema::hasColumn('labour_ledgers','is_active'),
+                        fn($query)=>$query->where('is_active',1))
+                    ->when(Schema::hasColumn('labour_ledgers','deleted_at'),
+                        fn($query)=>$query->whereNull('deleted_at')),
             ])
             ->whereHas('attendances', function ($query) use ($request, $days) {
                 $query->whereIn('date', $days)
