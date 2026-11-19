@@ -173,6 +173,25 @@
     #stockDocumentEditModal .modal-footer,#stockDocumentDeleteModal .modal-footer{display:flex!important;justify-content:flex-end!important}
     @media(max-width:767.98px){.stock-compact-line .stock-line-caption{min-width:45px}}
 
+
+    /* Never let global modal backdrop styles tint Tom Select option menus. */
+    .modal.stock-create-modal .ts-dropdown,.modal#editModal .ts-dropdown,.modal#stockDocumentEditModal .ts-dropdown,
+    .modal.stock-create-modal .ts-dropdown-content,.modal#editModal .ts-dropdown-content{
+      background:#ffffff!important;color:#26364d!important;opacity:1!important;
+      border:1px solid #d7e2f0!important;box-shadow:0 12px 24px rgba(14,38,70,.20)!important;
+    }
+    .modal.stock-create-modal .ts-dropdown,.modal#editModal .ts-dropdown,.modal#stockDocumentEditModal .ts-dropdown{
+      z-index:1068!important;position:absolute!important;
+    }
+    .stock-create-modal .ts-dropdown .option,.stock-create-modal .ts-dropdown .active{
+      background:#fff!important;color:#26364d!important;opacity:1!important;
+    }
+    .stock-create-modal .ts-dropdown .option.active,.stock-create-modal .ts-dropdown .option:hover{
+      background:#eaf2ff!important;color:#175bd6!important
+    }
+    .stock-create-modal .ts-wrapper .ts-control input{color:#26364d!important}
+    .modal.stock-create-modal,.modal#editModal,.modal#stockDocumentEditModal{isolation:isolate}
+
     /* App shell (labour module-ish) */
     .pv-shell {
       display: flex;
@@ -1347,47 +1366,47 @@
         }
       });
     }
-    $(document).on('change', '#accounts_id', function () {
-      const accountID = $(this).val();
-      const subAccountSelect = $('#subaccounts_id');
-
-      if (accountID) {
-        $.ajax({
-          url: '{{ route('get_account') }}',
-          type: 'POST',
-          dataType: 'json',
-          data: {
-            projectID: {{ getSelectedTown() }}, // Replace with the dynamic project ID if applicable
-            accountID: accountID,
-            action: 'get_child',
-            active_only: true,
-            _token: '{{ csrf_token() }}' // CSRF token for Laravel
-          },
-          success: function (response) {
-            // Clear and populate the sub-account dropdown
-            subAccountSelect.empty().append(
-              '<option value="">Select Sub-Account</option>');
-
-            if (response.length > 0) {
-              $.each(response, function (index, item) {
-                if (item.subhead_accounting) {
-                  subAccountSelect.append('<option value="' + item
-                    .id + '">' + item.subhead_accounting
-                      .name + '</option>');
-                }
-              });
-            } else {
-              alert('No sub-accounts found for the selected account.');
-            }
-          },
-          error: function (xhr, status, error) {
-            alert('Error: ' + error);
-          }
-        });
-      } else {
-        // Reset the sub-account dropdown if no account is selected
-        subAccountSelect.empty().append('<option value="">Select Sub-Account</option>');
+    let stockSubheadRequest = null;
+    function stockSetSubheads(items,placeholder){
+      const $select=$('#subaccounts_id'),el=$select[0],selected='';
+      if(!el)return;
+      if(el.tomselect){
+        el.tomselect.clear(true);
+        el.tomselect.clearOptions();
+        el.tomselect.addOption({value:'',text:placeholder||'Select Sub Head'});
+        $.each(items,function(_,item){el.tomselect.addOption({value:String(item.value),text:String(item.name)});});
+        el.tomselect.refreshOptions(false);
+      }else{
+        $select.empty().append($('<option>').val('').text(placeholder||'Select Sub Head'));
+        $.each(items,function(_,item){$select.append($('<option>').val(item.value).text(item.name));});
+        $select.trigger('change');
       }
+    }
+    $(document).on('change', '#accounts_id', function(){
+      const accountID=$(this).val();
+      if(stockSubheadRequest && stockSubheadRequest.readyState!==4)stockSubheadRequest.abort();
+      stockSetSubheads([],accountID?'Loading subheads...':'Select Sub Head');
+      if(!accountID)return;
+      stockSubheadRequest=$.ajax({
+        url: @json(route('get_account')),
+        method:'POST',dataType:'json',
+        headers:{Accept:'application/json','X-CSRF-TOKEN':'{{ csrf_token() }}'},
+        data:{projectID:{{ getSelectedTown() }},accountID:accountID,action:'get_child',active_only:true}
+      }).done(function(response){
+        // Laravel endpoints may return a plain list or a {data:[...]} resource.
+        const list=$.isArray(response)?response:($.isArray(response?.data)?response.data:($.isArray(response?.results)?response.results:[]));
+        const rows=$.map(list,function(item){
+          const nested=item.subhead_accounting||item.subheadAccounting||item.subhead||{};
+          const name=nested.name||item.name||item.subhead_name;
+          const value=item.id??item.project_head_subheads_id??nested.id;
+          return name&&value!=null?{value:String(value),name:String(name)}:null;
+        });
+        stockSetSubheads(rows,rows.length?'Select Sub Head':'No active subheads found');
+      }).fail(function(xhr,status){
+        if(status==='abort')return;
+        stockSetSubheads([],'Unable to load subheads');
+        handleApiError({data:xhr.responseJSON||{}},'Unable to load Sub Head Accounts.');
+      });
     });
     function withId(templateUrl, id) {
       return templateUrl.replace(/\/0$/, `/${id}`);
@@ -1904,6 +1923,7 @@
       );
 
       stockEnhanceDropdowns($('#editModal'));
+      $(form).find('[data-stock-dismiss]').off('click.stockDismiss').on('click.stockDismiss',function(e){e.preventDefault();editModal.hide();});
       $(form).find(".pv-money").toArray().forEach((el) => {
         pvFormatAmountNoDecimal(el);
         $(el).on("input", () => pvFormatAmountNoDecimal(el));
@@ -2613,7 +2633,7 @@
           }
           new window.TomSelect(el,{
             create:false,allowEmptyOption:!!$el.find('option[value=""]').length,
-            dropdownParent:'body',maxOptions:250,searchField:['text'],
+            dropdownParent:$el.closest('.modal')[0] || 'body',maxOptions:250,searchField:['text'],
             placeholder:$el.find('option[value=""]').first().text()||'Select an option',
             onInitialize:function(){$(this.wrapper).addClass('stock-tom-select');}
           });
@@ -2666,10 +2686,26 @@
       var $modal=$($(this).attr('data-stock-modal'));
       setTimeout(function(){stockEnhanceDropdowns($modal);},0);
     });
-    $(document).on('click.stockDismiss','[data-stock-dismiss]',function(event){
-      event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
-      const $modal=$(this).closest('.modal');
-      if($modal.length)stockModal('#'+$modal.attr('id'),'hide');
+    // Direct listeners run even when a vendor modal handler stops delegated events.
+    $(document).find('[data-stock-dismiss]').each(function(){
+      $(this).off('click.stockDismiss').on('click.stockDismiss',function(event){
+        event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+        const $modal=$(this).closest('.modal');
+        if(!$modal.length)return;
+        // Let the same Bootstrap instance own dismissal and its backdrop lifecycle.
+        const node=$modal[0];
+        if(window.bootstrap && window.bootstrap.Modal){
+          try{
+            const modalClass=window.bootstrap.Modal;
+            const active=$.isFunction(modalClass.getInstance)?modalClass.getInstance(node):null;
+            if(active){active.hide();return;}
+          }catch(ignore){}
+        }
+        if($.fn.modal){
+          try{$modal.modal('hide');return;}catch(ignore){}
+        }
+        stockModal('#'+$modal.attr('id'),'hide');
+      });
     });
     $(document).on('keydown.stockCreateModal',function(event){
       if(event.key==='Escape' && $('.stock-modal-fallback-backdrop').length){
