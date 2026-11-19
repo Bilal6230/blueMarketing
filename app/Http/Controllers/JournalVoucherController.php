@@ -608,6 +608,24 @@ class JournalVoucherController extends Controller
             && (bool) app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
                 ->policy((int) $selectedProjectId, 'JV');
 
+        if($isSales){
+            // Read-only display preview. Durable numbering is reserved only
+            // inside OriginalJournalWorkflow's project lock on Save.
+            $highestHeader=(int)DB::table('journal_vouchers')
+                ->where('project_id',(int)$selectedProjectId)
+                ->where('type','SV')->max('voucher_number');
+            $highestLedger=(int)DB::table('ledgers as l')
+                ->join('project_head_subheads as account',
+                    'account.id','=','l.project_head_subheads_id')
+                ->where('account.project_id',(int)$selectedProjectId)
+                ->where('l.type','SV')->max('l.voucher_number');
+            $highestCounter=\Illuminate\Support\Facades\Schema::hasTable('ledger_voucher_counters')
+                ? (int)DB::table('ledger_voucher_counters')
+                    ->where('project_id',(int)$selectedProjectId)
+                    ->where('voucher_type','SV')->value('last_number') : 0;
+            $x['previewVoucherNumber']=max($highestHeader,$highestLedger,$highestCounter)+1;
+        }
+
         $x['restoredSubAccounts'] = ProjectHeadSubhead::with('subheadAccounting')
             ->where('project_id', $selectedProjectId)
             ->whereIn('id', (array) old('sub_accounts', []))->get()->keyBy('id');
