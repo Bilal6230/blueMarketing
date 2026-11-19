@@ -1,12 +1,12 @@
 # BlueMarketing — Current Development Handoff
 
-**Updated:** 2026-11-18  
+**Updated:** 2026-11-19  
 **Branch:** `upgrade/laravel-framework`  
 **Local application:** `C:\laragon\www\blueMarketing`  
 **Database:** whichever database is configured in `.env`. Owner currently uses `bluenew_clean_final`. Never hard-code database names, introduce separate V2 finance, or reinstate V2 isolation.
 **Documentation policy:** Update **this single document after every code batch**. Do not open new milestone/handoff documents. Historic requirements: `docs/BLUEMARKETING_POINT03_DAILY_ENTRIES_REQUIREMENTS_ROMAN_URDU.md`. Earlier superseded handoffs are not authoritative.
 
-## Roadmap — only five milestones
+## Roadmap — six milestones (Activity Audit last)
 
 | # | Milestone | Verified status |
 |---|---|---|
@@ -15,6 +15,7 @@
 | **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. MySQL FK + Plot lifecycle migrations PASS, major CRUD workflows pending; Archived-source guard owner PASS; audited narration-only Edit committed; local tests, new migration and browser acceptance pending |
 | 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **NOT STARTED under new rules** |
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
+| **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
 ## Milestone 03 — Verified work
 
@@ -705,3 +706,12 @@ php artisan finance:audit-posting-balances
 ```
 
 **Browser check:** Open already Approved `CV-2026-0001` from Commission register: modal must show header and posted detail rows as View only, without Laravel error page or Save/Approve actions. Open a Draft CV: existing editable Add/Remove/Save/Approve flow must still work. Party Ledger approved CV entries already accepted by owner; no repeat posting needed. This batch does not permit posted vouchers to be directly re-edited; authorized correction/reversal remains separate.
+
+
+## 2026-11-19 — Owner priority and handoff decision (authoritative)
+
+**Roadmap revision:** six milestones, with Activity Audit as **Milestone 06 LAST**. Owner explicitly wants normal Create/Edit/Update/Delete for staff now, including already-approved CV corrections, not indefinite edit locks; preserve valid account relationships and no duplicate financial effect, but avoid customer-facing unnecessary reversal rows. Detailed user actions and affected table/PK before/after tracking will be implemented in Milestone 06, with proposed three new audit tables; those tables are NOT created now. Handoff/new chats must follow this order, avoid adding V2 isolation or hardcoded project/db names, use jQuery for custom frontend behavior, and keep milestone completion evidence truthful.
+
+**Owner browser evidence (accepted):** CV Draft Create/Edit/Add/Remove with actual FK-linked ledgers works; CV Approve/Post now works; approved CV appears in Party Ledger, and approved CV opens in view-only mode without the earlier iframe 409. JV flow independently browser-accepted. Existing CV approved source is read-only by current implementation; **this does not satisfy the owner’s latest requirement**. Implement full approved CV differential edit/correction including original same CV ID/number, accounts, amounts, add/remove existing details, FK links to ledgers, posting-line source identity and consistent customer-facing balance **without duplicating financial impact**. Do not mark approved correction complete until code/test/browser evidence.
+
+**Milestone 03 STATUS: PARTIAL (do not close prematurely).** Existing completed subdomains and owner validations are documented above. Other modules’ combined accepted CRUD/permission matrix is not established by current evidence; Milestones 04/05 remain pending.
