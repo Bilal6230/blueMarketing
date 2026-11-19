@@ -1618,7 +1618,7 @@ class StockController extends Controller
                         'updated_at' => $now,
                     ]);
 
-                    DB::table('stock_movements')->insert([
+                    DB::table('stock_movements')->insert(array_merge([
                         'project_id' => $projectId,
                         'movement_date' => $data['date'],
                         'direction' => $flow,
@@ -1633,7 +1633,8 @@ class StockController extends Controller
                         'created_by' => auth()->id(),
                         'created_at' => $now,
                         'updated_at' => $now,
-                    ]);
+                    ], Schema::hasColumn('stock_movements','stock_entry_line_id')
+                        ? ['stock_entry_line_id'=>$lineRow->id] : []));
                 }
 
                 $this->postEntryLedger($entry, $flow, $totalMinor, $data['date'], $lines);
@@ -1781,7 +1782,7 @@ class StockController extends Controller
                         'updated_at' => $now,
                     ]);
 
-                    DB::table('stock_movements')->insert([
+                    DB::table('stock_movements')->insert(array_merge([
                         'project_id' => $projectId,
                         'movement_date' => $data['date'],
                         'direction' => $direction,
@@ -1796,7 +1797,8 @@ class StockController extends Controller
                         'created_by' => auth()->id(),
                         'created_at' => $now,
                         'updated_at' => $now,
-                    ]);
+                    ], Schema::hasColumn('stock_movements','stock_bill_line_id')
+                        ? ['stock_bill_line_id'=>$lineRow->id] : []));
                 }
 
                 $this->postBillLedger($bill, $data['type'], $totalMinor, $data['date'], $lines);
