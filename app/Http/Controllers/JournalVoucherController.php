@@ -895,7 +895,7 @@ class JournalVoucherController extends Controller
             ->where('typed.journal_voucher_id', $sourceId)
             ->where('voucher.project_id', $projectId)
             ->where('batch.project_id', $projectId)
-            ->where('voucher.type', 'JV')
+            ->whereIn('voucher.type', ['JV','SV'])
             ->exists();
     }
 
@@ -950,8 +950,14 @@ class JournalVoucherController extends Controller
     public function edit($id)
     {
         $voucher = JournalVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail($id);
-        abort_if($this->isMergedPostedJournal((int) getSelectedTown(), (int) $voucher->id), 409,
-            'This posted Journal Voucher requires reversal before correction.');
+        $posted=$this->isMergedPostedJournal((int)getSelectedTown(),(int)$voucher->id);
+        if($posted){
+            $batchIds=DB::table('finance_posting_journal_sources')
+                ->where('journal_voucher_id',(int)$voucher->id)->pluck('posting_batch_id');
+            abort_if(DB::table('finance_posting_batches')
+                ->whereIn('reversal_of_batch_id',$batchIds)->exists(),409,
+                'A reversed voucher cannot be corrected again.');
+        }
         $voucherType = ($voucher->type === 'SV') ? 'SV' : 'JV';
         $x = $this->getCommonData(
             $voucherType === 'SV' ? 'Sales Voucher Details' : 'Edit Journal Voucher',
@@ -969,7 +975,7 @@ class JournalVoucherController extends Controller
                 || (int)$voucher->created_by===(int)auth()->id(),403);
             $x['rejectionReason']=$approval->rejection_reason;
         }else{
-            app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
+            if(!$posted)app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
                 ->assertLegacyMutationAllowed((int) getSelectedTown(), 'journal_vouchers', (int) $voucher->id);
             // A V2 edit form must not open if updateUnposted() will reject it.
             // The V2 draft writer deliberately forbids changes after posting
@@ -1109,13 +1115,26 @@ class JournalVoucherController extends Controller
             return $this->voucherWriteResponse($request, 'Rejected JV revised and resubmitted for approval. Ledger remains inactive.');
         }
 
-        if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
+        if ($this->isMergedPostedJournal($projectId,(int)$id)) {
+            \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
+            try {
+                app(\App\Services\Finance\JournalApprovedVoucherEditor::class)->update(
+                    $projectId,(int)$id,$data['date'],$lines,
+                    array_intersect_key($data,array_flip(['reference','description'])),
+                    (int)Auth::id()
+                );
+            }catch(\DomainException $e){
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'voucher'=>$e->getMessage(),
+                ]);
+            }
+        } elseif (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
             \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             try {
                 (new \App\Services\Finance\JournalDraftWorkflow())
                     ->updateUnposted($projectId, (int) $id, $data['date'], $lines);
             } catch (\DomainException $exception) {
-                abort(409, 'Journal voucher cannot be edited after posting or legacy ledger attribution.');
+                abort(409, 'Unposted journal draft has conflicting linked accounting records.');
             }
         } else {
             DB::transaction(function () use ($id, $projectId, $data, $lines, $totalDebitCents, $totalCreditCents): void {
