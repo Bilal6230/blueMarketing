@@ -205,7 +205,10 @@ final class DailyVoucherDirectoryController extends Controller
             if (!empty($filters['account'])) {
                 $query->whereExists(function ($sub) use ($filters, $projectId) {
                     $sub->selectRaw('1')->from('ledgers as linked')->join('project_head_subheads as a', 'a.id', '=', 'linked.project_head_subheads_id')
-                        ->whereColumn('linked.customer_ledger_id', 'source.id')->where('a.project_id', $projectId)->where('a.id', (int) $filters['account']);
+                        ->whereColumn('linked.customer_ledger_id', 'source.id')->where('a.project_id', $projectId)->where('a.id', (int) $filters['account'])
+                        // Active source account filters must not match old,
+                        // retired legs left by an approved correction.
+                        ->whereColumn('linked.is_active','source.is_active');
                 });
             }
             if (!empty($filters['search'])) {
@@ -287,6 +290,8 @@ final class DailyVoucherDirectoryController extends Controller
                     ->leftJoin('head_accountings as h', 'h.id', '=', 'a.head_accounting_id')
                     ->leftJoin('subhead_accountings as s', 's.id', '=', 'a.subhead_accounting_id')
                     ->where('linked.customer_ledger_id', $source->id)->where('a.project_id', $projectId)
+                    ->when((int)$source->is_active===1,
+                        fn($q)=>$q->where('linked.is_active',1))
                     ->orderBy('linked.id')->get(['linked.id', 'a.id as account_id', 'h.name as head_name', 's.name as subhead_name', 'linked.amount_in', 'linked.amount_out', 'linked.detail']);
                 $ledgerId = $linkedLines->first()->id ?? null;
                 $pending=$pendingEdits->get($source->id);
