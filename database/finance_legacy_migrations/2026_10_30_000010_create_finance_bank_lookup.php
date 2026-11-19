@@ -31,7 +31,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        $this->guard();
-        Schema::dropIfExists('banks');
+        // A historical fixture may share the ordinary production connection.
+        // Do not permit an automated rollback to delete live bank master data.
+        throw new \LogicException('Bank lookup history cannot be rolled back destructively.');
     }
 };
