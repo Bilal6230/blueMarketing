@@ -1107,9 +1107,6 @@ class JournalVoucherController extends Controller
             ]);
         }
 
-        abort_if($this->isMergedPostedJournal($projectId, (int) $id), 409,
-            'This posted Journal Voucher requires reversal before correction.');
-
         if ($request->routeIs('journal.voucher.resubmit')) {
             abort_if(\App\Services\Finance\FinanceWorkflowAccess::selected(),409,'Rejected JV revision is unavailable in V2 mode.');
             $reason=$request->validate(['revision_reason'=>['required','string','min:3','max:500']])['revision_reason'];
