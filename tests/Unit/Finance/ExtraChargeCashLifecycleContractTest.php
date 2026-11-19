@@ -29,6 +29,10 @@ final class ExtraChargeCashLifecycleContractTest extends TestCase
         self::assertStringContainsString('ExtraChargeBankSettlement::class',$service);
         self::assertStringNotContainsString('PostingReversalWriter',$service);
         self::assertStringContainsString("where('is_active',1)",$settlement);
+        // Typed vs legacy EC ownership depends on actual FK evidence, never
+        // on the currently selected global finance workflow flag.
+        self::assertStringNotContainsString('FinanceWorkflowAccess::selected()',$settlement);
+        self::assertStringContainsString("Schema::hasTable('finance_extra_charge_sources')",$settlement);
     }
 
     public function test_ec_modal_uses_ajax_feedback_and_partial_table_refresh_without_full_page_reload(): void
