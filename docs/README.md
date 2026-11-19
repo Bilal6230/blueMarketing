@@ -1012,3 +1012,79 @@ Continue repo `Bilal6230/blueMarketing` branch `upgrade/laravel-framework` (loca
 - `CashPostingWriterTest::test_cash_replay_ignores_archived_posting_history_but_checks_current_balanced_legs` added: physically archived inactive old line + active replacement must replay idempotently without a second batch. This covers CR/CP/PPR/EC/ECP writer's active-only balance replay.
 - **SV local tests, new integration fixture and browser acceptance are not yet performed**. Before reporting 'SV complete', owner must run `JournalPostingWriterTest`, `LinkedVoucherLedgerRetirementTest`, `SalesVoucherFullLifecycleContractTest`, `JournalApprovedCorrectionContractTest` and `CashPostingWriterTest`, and exercise SV New/Edit/Delete plus approved typed JV Edit in the browser.
 - **This turn is NOT full Milestone 03 closure.** Stock Entry/Bill financial/inventory lifecycle, labour voucher corrections and PPR/EC/ECP linked business corrections still require exact source/ledger/downstream mapping; do not implement blanket hard-delete or silent direct-row amount changes without balancing inventory/booking/cheque evidence. M04 linked cheque/online cascade remains separate; M06 activity audit remains deferred last.
+
+
+## 2026-11-19 — Milestone 03 large additional code batch (LATEST AUTHORITATIVE HANDOFF)
+
+**Owner request:** Continue until ALL remaining M03 original voucher Create/Edit/Update/Delete and source/ledger foreign keys resolved. Never hide financial mutations, hard-delete posted history or create unnecessary customer-facing reversals for a routine staff correction. Activity Audit is M06 LAST and explicitly deferred; no new activity tables added.
+
+**Verified BEFORE this latest code batch:** BD/BW bank transfer feature tests **11 PASS/72 assertions** + contract **2 PASS/30**, six-project read-only posting audit clean; approved CV differential correction **16 PASS/139 assertions plus browser PASS**; previous JV and Plot browser acceptance. No NEW Stock, Labour, EC/ECP, PPR or SV local green acceptance exists yet.
+
+### Newly committed source and UX implementations (code-complete portions only)
+
+**JV/SV:** Removed an unreachable prior HTTP 409 in Journal Update so posted JV/SV can reach `JournalApprovedVoucherEditor`. New independent `sales.voucher.create/store` route and shared jQuery modal creation under `finance sv create`, SV-specific project voucher counter `nextSalesVoucher`, exact journal detail->posting source FKs, typed `postSalesVoucher`, idempotency request key. SV legacy Edit/Update/Delete now use `SV` not mistaken `JV` ledgers in `LinkedVoucherLedgerRetirement` and controller. Added SV feature/contract tests, shared daily directory SV chooser. `CashPostingWriter` and `ApprovedSourcePostingWriter` idempotent replay now compare **active** posting legs only (retired correction legs do not inflate balances).
+
+**Cash PPR / BookingVoucher:** New `BookingReceiptCashEditor` provides same-ID cash PPR Edit and logical Delete under one project-locked transaction; enforces exact one customer_ledger PPR + one linked ledger + one matching BookingVoucher FK/amount/customer/plot. Preserves original identities and amounts orientation: original PPR customer_ledger.amount_out, ledger.amount_in, booking_vouchers.amount. Cash update/delete dispatched from `BookingController::updateCashIn` and `destroy`, with 409 JSON feedback. Noncash existing correction/relink now shares one DB transaction. Typed finance batches/bank custody/unresolved approvals are explicitly excluded. Feature and unit regressions added.
+
+**Cash EC/ECP / Extra Charge:** New `ExtraChargeCashEditor` corrects or logically deletes selected legacy cash EC/ECP using exact two ledger leg IDs, parent charge identity and `ExtraChargeBankSettlement` paid/pending/available caps; no new reversal batch, invalid foreign-account/project and typed postings blocked. `ExtraChargeBankSettlement::linked` now ignores archived ECP payments for live outstanding. New GET/PUT/DELETE `finance.extra-charge.cash.*` JSON API under granular extra-charge view/edit/delete permission; modern jQuery AJAX Edit/Delete modals in `resources/views/admin/booking/extra_charge.blade.php`, toast and partial table+balance refresh. Previous inert unsafe legacy button handlers replaced. SQLite integration and unit contracts added.
+
+**Stock Entry/Stock Bill:** New `StockDocumentEditor` handles legacy cash-posted `stock_entries` and `stock_bills` (not separate typed batch owner). Ensures exact document detail ID -> original stock_movements.source_line_id, direction, item, party, qty/rate/amount; original source `customer_ledger` reference `STOCK-ENTRY:<id>` / `STOCK-BILL:<id>`, two exact balanced legacy JV ledger legs, project/scoped accounts. One transaction corrects source rows and materialized inventory delta, with materialized `stock_project_item_balances` verified against sum of all current active movements and fail-closed negative/overflow guards. Changed/removed movement evidence archived, unchanged FK IDs preserved. Logical Delete archives source/line/movement and exact customer-ledger/ledger rows, adjusts stock and removes current effect without a separate REV voucher. Already-billed entries and typed posted batches rejected until owning workflow can correct them. New GET/PUT/DELETE APIs, jquery Add/Remove/Edit/Delete modal and partial register refresh on stock dashboard; stock listing/reconciliation/report filters now ignore archived movement and detail rows. Non-destructive migration `2026_11_19_150000_add_stock_document_archive_columns.php` adds archived columns to existing Stock tables. SQLite feature + unit tests added.
+
+**Legacy Labour CP:** New `LabourPaymentEditor` locks existing CP customer_ledger + exact one ledger + active labour_ledgers.customer_ledger_id members. Validates each worker belongs to current project and sum of member amounts equals original parent cash CP amount_out. Supports same-ID amount/date/reference update, per-member Add/Remove/Update (retains IDs for unchanged members), logical Delete without REV; typed payroll memberships, typed cash posting and pending approval remain separately owned. New `labours.payment.details/update/delete` APIs with granular CP permissions; Labour History lists exact linked CP sources and has jQuery Edit/Delete modal with member fields/toasts/partial list+balance refresh. Labour history/report active-payment queries exclude archived members; payments group by payment DATE rather than original created_at. Non-destructive migration `2026_11_19_160000_add_labour_payment_archive_columns.php` adds active/archive fields to existing labour_ledgers. SQLite feature + unit tests added.
+
+**No new source table or Activity Audit tables** created in this batch. Two migrations add archive columns to existing stock/labour tables, in addition to earlier owner-applied bank lifecycle migration.
+
+### REQUIRED local owner verification — do this BEFORE claiming Milestone 03 closure
+
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+
+php -l app/Services/Finance/OriginalJournalWorkflow.php
+php -l app/Services/Finance/StockDocumentEditor.php
+php -l app/Services/Finance/BookingReceiptCashEditor.php
+php -l app/Services/Finance/ExtraChargeCashEditor.php
+php -l app/Services/Finance/LabourPaymentEditor.php
+php -l app/Http/Controllers/JournalVoucherController.php
+php -l app/Http/Controllers/StockController.php
+php -l app/Http/Controllers/BookingController.php
+php -l app/Http/Controllers/LabourController.php
+
+php artisan test --filter=JournalPostingWriterTest
+php artisan test --filter=LinkedVoucherLedgerRetirementTest
+php artisan test --filter=JournalApprovedCorrectionContractTest
+php artisan test --filter=SalesVoucherFullLifecycleContractTest
+php artisan test --filter=CashPostingWriterTest
+php artisan test --filter=BookingReceiptCashEditorTest
+php artisan test --filter=BookingReceiptSameSourceContractTest
+php artisan test --filter=ExtraChargeCashEditorTest
+php artisan test --filter=ExtraChargeCashLifecycleContractTest
+php artisan test --filter=StockDocumentEditorTest
+php artisan test --filter=StockDocumentCorrectionContractTest
+php artisan test --filter=LabourPaymentEditorTest
+php artisan test --filter=LabourPaymentCorrectionContractTest
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan test --filter=BankTransferWriterTest
+php artisan finance:audit-posting-balances
+```
+
+**If ALL tests pass**, apply these two additive migrations only on the selected local disposable test DB:
+```powershell
+php artisan migrate --path=database/migrations/2026_11_19_150000_add_stock_document_archive_columns.php
+php artisan migrate --path=database/migrations/2026_11_19_160000_add_labour_payment_archive_columns.php
+php artisan optimize:clear
+php artisan view:cache
+php artisan finance:audit-posting-balances
+```
+
+Avoid `migrate:fresh`, arbitrary DB/project hardcode, or using real customer financial data without backup.
+
+**Targeted browser acceptance after local tests:** Disposable SV Create/Edit/ordinary Delete and approved JV Edit; BD/BW manual Edit/Delete (feature tests already passed); cash PPR Edit/Delete and booking/party balance; cash EC/ECP Edit/Delete and remaining EC outstanding; Stock Entry/Bill Add/Remove/Change/Delete with stock balance and legacy JV ledger; Labour CP worker member add/remove/update/delete with CP ledger and attendance report. Failed operations must show toast+popup and cause zero partial financial/inventory mutations. Reopen unchanged Save should not append duplicate rows.
+
+**Still genuinely unresolved:** Current typed-approved Stock Entry/Bill, typed Payroll/Attendance, BOR/BOP cleared-cheque/online custody source lifecycle and some original CR/DR/CCR/CDR permission/browser matrices are NOT fully accepted in this latest batch. These have different authoritative posting/source claim structures, and are not safe for a generic Edit/Delete that simply changes DB rows. Linked cheque/online cascade is the dedicated Milestone 04; do not accidentally bypass custody; typed-stock/payroll correction needs dedicated source-line attribution for full M03 closure. M02 roles/permissions browser matrix also partial. **M03 remains ACTIVE/PARTIAL, not 100% or CLOSED until test/browser evidence and remaining typed flows.**
+
+### Highest-priority fresh-chat handoff prompt
+
+Continue BlueMarketing repo `Bilal6230/blueMarketing`, `upgrade/laravel-framework`, local `C:\laragon\www\blueMarketing`. Owner insists M03 all voucher CRUD/relationships must be closed, not just docs. Read latest `docs/README.md` section, fetch actual code, run/fix newly added tests from gate. Verified earlier BD/BW 13/102 + all 6 projects posting audit clean, CV 16/139 and approved CV browser PASS. Latest changes this turn: posted JV early 409 removed, SV Create+typed Edit/Delete/legacy retirement fixed, cash PPR same-source Edit/Delete and BookingVoucher FKs, cash EC/ECP same-source CRUD and live balance guard, stock entry/bill same-source + inventory balance exact movement links, original Labour CP Edit/Delete, UI jQuery modals/partial refresh, additive stock/labour archive migrations. New changes NOT tested locally, require owner tests/browser. Pending typed Stock/Payroll correction source attribution and M04 linked cheque/online custody. Do not claim M03 complete without evidence. M06 centralized Activity Audit is LAST and NOT started. Custom frontend jQuery (no standalone vanilla JS), consistent modal/toast/skeleton, no V2 names/isolation, configured default DB/project only. Commit actual fixes; keep docs single authoritative handoff.
