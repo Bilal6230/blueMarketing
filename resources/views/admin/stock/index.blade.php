@@ -1120,9 +1120,9 @@
                         <label>Head Accounts</label>
                         <select class="form-control select2" name="accounts_id" id="accounts_id">
                           <option value="">Select Head</option>
-                          @foreach ($headaccounts as $head)
-                            <option value="{{ $head->head_accounting_id }}">
-                              {{ $head->headAccounting->name }}
+                          @foreach (collect($partyAccountOptions ?? [])->unique('head_id') as $head)
+                            <option value="{{ $head['head_id'] }}">
+                              {{ $head['head_name'] }}
                             </option>
                           @endforeach
                         </select>
@@ -1408,8 +1408,11 @@
         const list=$.isArray(response)?response:($.isArray(response?.data)?response.data:($.isArray(response?.results)?response.results:[]));
         const rows=$.map(list,function(item){
           const nested=item.subhead_accounting||item.subheadAccounting||item.subhead||{};
-          const name=nested.name||item.name||item.subhead_name;
-          const value=item.id??item.project_head_subheads_id??nested.id;
+          // get_child returns ProjectHeadSubhead rows: id is a mapping id,
+          // while StockParty::storeParty expects the subhead_accounting_id.
+          if(item.plot_id!=null || item.customer_id!=null)return null;
+          const name=nested.name||item.subhead_name;
+          const value=item.subhead_accounting_id??nested.id;
           return name&&value!=null?{value:String(value),name:String(name)}:null;
         });
         stockSetSubheads(rows,rows.length?'Select Sub Head':'No active subheads found');
