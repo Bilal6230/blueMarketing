@@ -61,15 +61,12 @@ final class ExtraChargeBankSettlement
      */
     public function balances(CustomerLedger $charge): array
     {
-        // A pre-existing EC source keeps its original posting authority even
-        // after the operator switches the LOCAL UI back to standard ERP mode.
-        // These claims are not represented by legacy ledgers. A global flag
-        // must never make an already-posted V2 charge look unpaid again.
-        if (FinanceWorkflowAccess::selected() || (
-            \Illuminate\Support\Facades\Schema::hasTable('finance_extra_charge_sources')
+        // Posting ownership is determined by the actual linked source row,
+        // not a globally selected workflow flag. Legacy EC/ECP rows remain
+        // readable/editable even when the unified typed workflow is enabled.
+        if (\Illuminate\Support\Facades\Schema::hasTable('finance_extra_charge_sources')
             && DB::table('finance_extra_charge_sources')
-                ->where('customer_ledger_id', (int) $charge->id)->exists()
-        )) {
+                ->where('customer_ledger_id', (int) $charge->id)->exists()) {
             return (new ExtraChargeBalance())->read($charge);
         }
         $due = $this->cents($charge->amount_in);
