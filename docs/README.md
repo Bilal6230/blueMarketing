@@ -865,3 +865,47 @@ php artisan finance:audit-posting-balances
 **Honest Milestone 03 status: ACTIVE — NOT CLOSED.** New typed JV/SV and JV/CV Delete batch has not yet passed owner local tests or browser acceptance. Stock Entry/Stock Bill/SV inventory-linked corrections, labour payment source, PPR/EC/ECP and some approved bank/cheque instrument corrections still require full source-to-ledger/account dependency mapping, user-facing Edit/Delete path and tests. Stock CRUD is not safely addressable by deleting source alone: there are project balances, linked stock movements, inventory lines, stock financial JV/customer ledger source and billed-entry dependencies. Do not mark these complete without coordinated writes and validation. Some cheque/BOR/BOP linked custody corrections are assigned to Milestone 04, not to bypass/disable. Milestone 06 Activity Audit is explicitly last; no new activity audit tables now.
 
 **New-chat handoff:** Continue `Bilal6230/blueMarketing` branch `upgrade/laravel-framework`, configured `C:\laragon\www\blueMarketing`, no V2 database isolation, no hardcoded DB or project ID. Use jQuery for authored browser script, unified AJAX/toast/skeleton/modal conventions. Owner insists *complete actual code* not documentation-only and expects pull/tests per batch. Treat latest owner Bank tests and original CV/Plot/JV acceptance as already passed. First action: run/repair new typed JV & archive regression gates above, then deliver remaining Milestone 03 modules with explicit CRUD matrix and relationship-safe edits, followed by Milestones 04/05. Six-milestone roadmap: 01 complete, 02 partial acceptance, 03 active partial, 04 linked bank custody pending, 05 reversal settings pending, 06 Activity Audit deferred last.
+
+
+## 2026-11-19 — Labour payment exact source FK + remaining legacy migration-name cleanup (LATEST)
+
+**Implemented, owner local verification pending:**
+- `database/migrations/2026_11_19_120000_link_labour_payment_rows_to_customer_source.php` adds nullable enforced `labour_ledgers.customer_ledger_id` FK to `customer_ledger.id` (restrict physical delete). Historic labour ledger rows stay NULL unless their exact source evidence can be established; no amount/date/number-based backfill guessing, no data deletion.
+- Existing `LabourController::labourPayment` now records newly created labour detail row IDs in the original transaction, creates the customer-payment voucher, then binds exactly those IDs to its real `customer_ledger_id` while enforcing the selected project and confirming all rows were linked. If any insert/update fails, the transaction rolls back original labour rows, source and ledger as one. New payment submissions now require this additive migration before writing. `LabourLedger::customerLedger()` relationship provided. Removed exposed PHP `file`/`line` exception metadata from its browser-facing 500 JSON, keeping detailed server log.
+- New `LabourPaymentSourceRelationContractTest` validates the migration, FK link and error JSON no-stack-trace contract. **The complete Labour Payment Edit/Delete lifecycle is STILL NOT DONE**; separate attendance-to-payment/member settlement identities must be reconciled before ordinary correction.
+- Legacy finance fixture migrations using the removed `V2IsolatedConnectionGuard` class (`2026_10_31_000110` commission detail links, `2026_10_31_000120` stock project approvals) now use the configured `FinanceConnectionGuard`; the old finance posting core and bank lookup fixture migrations no longer impose `bluemarketing_v2_*` database-name allowlists. Existing schema requirements and refuse-overwrite checks remain. These fixtures are **NOT** normal production migrations, should never be manually replayed onto an existing populated ERP.
+- The separate historical `2026_10_30_000020_create_finance_legacy_domain_baseline.php` 56-table bootstrap remains **retired/quarantined**, not safe to apply to existing DB, regardless of its isolation/name guard. It must not be part of a normal `php artisan migrate` deployment. Do NOT remove its overwrite protection and run it on live tables.
+- On explicit `reverse=1`, both JV and CV posted Delete endpoints now require independent `finance jv reverse` / `finance cv reverse` permission, not only the route's ordinary Delete grant. New contract assertions added.
+- Updated `JournalPostingWriterTest` local in-memory fixture with real active head/subhead project account relationships so typed JV integration tests exercise the actual account availability gate.
+
+**Do NOT mark Milestone 03 complete:** Bank BD/BW 13 PASS/102 and CV full Edit 16 PASS/139 plus earlier browser acceptance are real owner results, but all new posted JV/SV Edit, JV/CV logical Delete, Labour FK migration and unified migration fixture changes require owner local tests. Remaining Stock Entry/Bill actual full inventory/ledger CRUD, Labour Payment full correction, PPR/EC/ECP charge/payment/receipt semantics and bank-instrument linked custody remain unresolved. Dependencies must be handled by exact FKs, not arbitrary blocking by name or blindly deleting old rows. M04 cheque/online linked cascades and M05 reversal configuration are later; M06 complete Activity Audit LAST and NOT YET STARTED.
+
+**Next local verification (only after pulling latest):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Services/Finance/JournalApprovedVoucherEditor.php
+php -l app/Services/Finance/PostedVoucherArchiver.php
+php -l app/Http/Controllers/JournalVoucherController.php
+php -l app/Http/Controllers/CommissionVoucherController.php
+php -l app/Http/Controllers/LabourController.php
+php -l app/Models/LabourLedger.php
+php -l database/migrations/2026_11_19_120000_link_labour_payment_rows_to_customer_source.php
+php -l tests/Feature/Finance/JournalPostingWriterTest.php
+php artisan test --filter=JournalPostingWriterTest
+php artisan test --filter=JournalApprovedCorrectionContractTest
+php artisan test --filter=PostedVoucherArchiveContractTest
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan test --filter=DailyVoucherDirectoryPostingLifecycleContractTest
+php artisan test --filter=LabourPaymentSourceRelationContractTest
+php artisan test --filter=FinanceCoreMigrationUnifiedConnectionContractTest
+php artisan test --filter=OriginalVoucherWorkflowHttpTest
+php artisan finance:audit-posting-balances
+# ONLY on the intended local TEST DB once tests are clean:
+php artisan migrate --path=database/migrations/2026_11_19_120000_link_labour_payment_rows_to_customer_source.php
+```
+**New local/browser acceptance pending:** test posted JV/SV Add/Remove/Edit, same-ID no-op and no duplicate batch; JV/Approved CV ordinary Delete preserves inactive FK-linked historical evidence without REV and removes current balances; labour source rows link to the payment voucher after migration. Reuse previously accepted CV/Plot/BD/BW tests; don't request unnecessary re-tests.
+
+**Fresh chat priority:** Start from this section in `docs/README.md`, connected repo `Bilal6230/blueMarketing` branch `upgrade/laravel-framework`. Never claim the whole milestone closed. After fixing any new local regression failures, implement remaining Stock Entry/Bill, Labour Payment, PPR/EC/ECP full CRUD with stock balances/movements, source-to-ledger and custody exact relationships. Commit actual code, no docs-only round; preserve six-milestone roadmap and defer Activity Audit to final M06.
