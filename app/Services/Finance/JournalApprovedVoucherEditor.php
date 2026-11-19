@@ -199,7 +199,7 @@ final class JournalApprovedVoucherEditor
                     'journal_voucher_id'=>$voucherId,'account_id'=>$row['account_id'],
                     'debit'=>$row['debit'],'credit'=>$row['credit'],
                     'description'=>$row['description'],
-                    'created_by'=>$actor,'created_at'=>now(),'updated_at'=>now(),
+                    'created_at'=>now(),'updated_at'=>now(),
                 ]);
                 $postId=(int)DB::table('finance_posting_lines')->insertGetId([
                     'posting_batch_id'=>$batchId,'project_head_subhead_id'=>$row['account_id'],
