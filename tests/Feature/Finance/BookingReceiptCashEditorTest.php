@@ -123,6 +123,39 @@ final class BookingReceiptCashEditorTest extends TestCase
         }
     }
 
+    public function test_typed_booking_owner_refuses_legacy_ppr_edit_and_delete_without_mutation(): void
+    {
+        Schema::create('finance_posting_booking_sources',function(Blueprint $t){
+            $t->unsignedBigInteger('booking_voucher_id');
+            $t->unsignedBigInteger('posting_batch_id');
+        });
+        DB::table('finance_posting_booking_sources')->insert([
+            'booking_voucher_id'=>33,'posting_batch_id'=>9001,
+        ]);
+        $editor=new BookingReceiptCashEditor();
+        try {
+            $editor->edit(1,11,[
+                'date'=>'2026-11-19','reference'=>'PPR-NEW',
+                'amount'=>'110.00','description'=>'Incorrect legacy correction',
+            ],7);
+            self::fail('Typed booking owner must refuse legacy PPR edit.');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('typed booking',$e->getMessage());
+        }
+        try {
+            $editor->delete(1,11);
+            self::fail('Typed booking owner must refuse legacy PPR delete.');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('typed booking',$e->getMessage());
+        }
+        self::assertSame(80.0,(float)DB::table('customer_ledger')
+            ->where('id',11)->value('amount_out'));
+        self::assertSame(1,(int)DB::table('booking_vouchers')
+            ->where('id',33)->value('is_active'));
+        self::assertSame(1,(int)DB::table('ledgers')
+            ->where('id',21)->value('is_active'));
+    }
+
     public function test_wrong_project_or_broken_fk_cannot_rewrite_ppr(): void
     {
         $editor=new BookingReceiptCashEditor();
