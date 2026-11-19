@@ -593,7 +593,7 @@
                           <th>Qty</th>
                           <th>Rate</th>
                           <th>Amount</th>
-                          <th>Billing</th>
+                          <th>Billing</th><th>Actions</th>
                         </tr>
                       </thead>
                       <tbody id="entryTbody"></tbody>
@@ -752,7 +752,7 @@
                           <th>Type</th>
                           <th>Name</th>
                           <th>Details</th>
-                          <th>Amount</th>
+                          <th>Amount</th><th>Actions</th>
                         </tr>
                       </thead>
                       <tbody id="billTbody"></tbody>
@@ -1143,6 +1143,46 @@
         </div>
       </div>
     </div>
+  </div>
+  <div class="modal fade" id="stockDocumentEditModal" tabindex="-1" aria-labelledby="stockDocumentEditTitle" aria-hidden="true">
+   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content pv-card">
+     <div class="modal-header"><h5 class="modal-title" id="stockDocumentEditTitle">Edit Stock Voucher</h5>
+       <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div>
+     <form id="stockDocumentEditForm">
+      <div class="modal-body">
+       <div class="alert alert-info small">The original stock document, inventory movements and ledger IDs remain linked.</div>
+       <div class="row g-2">
+        <div class="col-md-4"><label for="stockDocumentDate" class="form-label">Date</label>
+         <input type="date" class="form-control" id="stockDocumentDate" required></div>
+        <div class="col-md-8"><label for="stockDocumentNarration" class="form-label">Description / Narration</label>
+         <input type="text" class="form-control" id="stockDocumentNarration" maxlength="1000"></div>
+       </div>
+       <div id="stockDocumentEditRows" class="mt-3"></div>
+       <button type="button" class="btn btn-sm btn-outline-primary" id="stockDocumentAddRow">Add Item</button>
+       <div id="stockDocumentEditError" class="alert alert-danger d-none mt-2" role="alert"></div>
+      </div>
+      <div class="modal-footer">
+       <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+       <button type="submit" id="stockDocumentSave" class="btn btn-primary">Update Stock Voucher</button>
+      </div>
+     </form>
+    </div>
+   </div>
+  </div>
+  <div class="modal fade" id="stockDocumentDeleteModal" tabindex="-1" aria-labelledby="stockDocumentDeleteTitle" aria-hidden="true">
+   <div class="modal-dialog modal-dialog-centered"><div class="modal-content pv-card">
+    <div class="modal-header"><h5 id="stockDocumentDeleteTitle" class="modal-title">Delete Stock Voucher</h5>
+     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">
+     <p>Archive this stock voucher from active inventory and balances? The original source and movement IDs remain preserved.</p>
+     <div id="stockDocumentDeleteError" class="alert alert-danger d-none" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+     <button type="button" id="stockDocumentDeleteConfirm" class="btn btn-danger">Delete Voucher</button>
+    </div>
+   </div></div>
   </div>
   {{-- Attendance and stock data are loaded from the project-scoped APIs below. --}}
   <script type="application/json" id="initial-attendance">[]</script>
@@ -2084,6 +2124,8 @@
               <td>${fmtPKR(en.rate || 0)}</td>
               <td>${fmtPKR(en.amount || 0)}</td>
               <td>${billingPill}</td>
+              <td><button type="button" class="btn btn-sm btn-outline-primary stock-doc-edit" data-kind="entry" data-id="${Number(en.id)}">Edit</button>
+              <button type="button" class="btn btn-sm btn-outline-danger stock-doc-delete" data-kind="entry" data-id="${Number(en.id)}">Delete</button></td>
             </tr>
           `
         );
@@ -2120,6 +2162,8 @@
               <td class="text-truncate" style="max-width:260px;">${b.bill_no || ""}${b.entry_no ? " • Entry: " + b.entry_no : ""
           }</td>
               <td>${fmtPKR(b.total || 0)}</td>
+              <td><button type="button" class="btn btn-sm btn-outline-primary stock-doc-edit" data-kind="bill" data-id="${Number(b.id)}">Edit</button>
+              <button type="button" class="btn btn-sm btn-outline-danger stock-doc-delete" data-kind="bill" data-id="${Number(b.id)}">Delete</button></td>
             </tr>
           `
         );
@@ -2540,6 +2584,10 @@
       }
     }
 
+    $(document).on('finance:stock-document-saved',function(){
+      $.when(loadEntries(),loadBills(),loadReport())
+        .fail(function(err){handleApiError(err,'Could not refresh stock registers.');});
+    });
     $(function () {
       initUI();
       $(tabBtns).on('click',function(){setView($(this).data('view'));});
