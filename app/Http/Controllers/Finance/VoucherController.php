@@ -1606,6 +1606,10 @@ class VoucherController extends Controller
             ->where('source.posting_batch_id',$postingBatch)
             ->where('source.project_id',$projectId)->where('batch.project_id',$projectId)
             ->where('source.transfer_kind',$kind)
+            ->when(Schema::hasColumn('finance_bank_transfer_sources','is_active'),
+                fn($q)=>$q->where('source.is_active',1))
+            ->when(Schema::hasColumn('finance_bank_transfer_sources','deleted_at'),
+                fn($q)=>$q->whereNull('source.deleted_at'))
             ->first(['source.bank_account_id','source.linked_customer_ledger_id',
                 'source.amount','source.narration','batch.effective_date','batch.reversal_of_batch_id']);
         abort_unless($row,404);
