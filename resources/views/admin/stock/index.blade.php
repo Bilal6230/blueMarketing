@@ -44,6 +44,40 @@
     .stock-create-modal .modal-content{border-top:3px solid var(--pv-primary);border-radius:16px}
     .stock-create-modal .modal-body{padding:1rem 1.25rem}
     @media(max-width:767.98px){.stock-create-modal .modal-dialog{margin:.5rem}}
+
+    /* ERP voucher viewport: card body scrolls, browser document does not. */
+    html.stock-page-active,body.stock-page-active{height:100%;overflow:hidden!important}
+    body.stock-page-active .main-footer{display:none!important}
+    .main-content.page-content:has(> .stock-module-wrapper){min-height:0!important;height:auto!important;overflow:hidden!important;padding-bottom:0!important}
+    .stock-module-wrapper{--stock-page-top:124px;height:calc(100dvh - var(--stock-page-top) - 4px)!important;max-height:calc(100dvh - var(--stock-page-top) - 4px)!important;min-height:0!important;overflow:hidden!important}
+    .stock-module-wrapper .pv-shell{height:100%;min-height:0}
+    .stock-module-wrapper .pv-main{height:100%;display:flex!important;flex-direction:column;padding:8px 12px!important;max-width:none!important;min-height:0;overflow:hidden}
+    .stock-module-wrapper .pv-topbar{flex:0 0 auto;padding:10px 12px!important;margin-bottom:8px!important}
+    .stock-module-wrapper #pvViews{display:flex;flex:1 1 0;min-height:0;overflow:hidden}
+    .stock-module-wrapper .pv-view{display:flex;flex:1 1 0;min-width:0;min-height:0}
+    .stock-module-wrapper .pv-view.d-none{display:none!important}
+    .stock-module-wrapper .pv-view>.row{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;flex:1 1 0;min-height:0;min-width:0;width:100%;margin:0!important;gap:10px}
+    .stock-module-wrapper .pv-view>.row>.col-12{padding:0!important;width:100%;flex:1 1 0;min-height:0;min-width:0;display:flex;flex-direction:column}
+    .stock-module-wrapper .pv-view>.row>.col-12>.pv-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;border-top:3px solid var(--pv-primary)}
+    .stock-module-wrapper .pv-view>.row>.col-12>.pv-card>.p-3{display:flex;flex-direction:column;flex:1 1 0;min-height:0;overflow:hidden;padding:.6rem .8rem!important}
+    .stock-module-wrapper .pv-cardhead{flex:0 0 auto}
+    .stock-module-wrapper .pv-view .pv-scroll{flex:1 1 0;min-height:0;max-height:none!important;overflow:auto}
+    .stock-module-wrapper .pv-view .pv-scroll table{margin-bottom:0}
+    .stock-module-wrapper .stock-kpi-row{flex:0 0 auto;width:100%;margin:0!important;display:flex;flex-wrap:nowrap}
+    .stock-module-wrapper .stock-kpi-row>[class*=col-]{flex:1 1 0;min-width:0;padding:0 4px}
+    .stock-module-wrapper .stock-kpi-row .pv-kpi{height:58px;padding:7px 10px}
+    .stock-module-wrapper #view-stock .pv-cardhead{align-items:center}
+    .stock-module-wrapper .stock-date-controls{display:flex;gap:9px;align-items:end}
+    .stock-module-wrapper .stock-date-controls label{font-size:11px;color:var(--pv-muted);margin:0;font-weight:600}
+    .stock-module-wrapper .stock-date-controls .form-control{min-height:32px;height:32px;padding:3px 7px;font-size:12px}
+    .stock-module-wrapper #view-items .stock-items-side-by-side{display:grid;grid-template-columns:minmax(280px,36%) minmax(0,1fr);gap:12px;flex:1 1 0;min-height:0}
+    .stock-module-wrapper #view-items .stock-import-history,.stock-module-wrapper #view-items .stock-items-register{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+    .stock-module-wrapper #view-items .stock-items-side-by-side .pv-scroll{min-height:0;overflow:auto;flex:1 1 0}
+    .stock-module-wrapper #view-items .stock-import-history>.mb-3{display:flex;flex-direction:column;min-height:0;flex:1 1 0;margin:0!important}
+    .stock-module-wrapper #view-items .stock-import-history>.mb-3>.table-responsive{flex:1 1 0;min-height:0;overflow:auto}
+    .stock-module-wrapper #view-items .border.rounded-3.bg-light{flex:0 0 auto;padding:.6rem!important;margin-bottom:.5rem!important}
+    @media(max-width:850px){.stock-module-wrapper #view-items .stock-items-side-by-side{grid-template-columns:1fr;grid-template-rows:minmax(125px,35%) minmax(0,1fr)}.stock-module-wrapper .stock-date-controls{flex-wrap:wrap}.stock-module-wrapper .stock-kpi-row .pv-kpi{height:auto;min-height:55px}}
+    
     /* App shell (labour module-ish) */
     .pv-shell {
       display: flex;
@@ -469,6 +503,35 @@
         <!-- ===================== ENTRY VIEW (Purchase + Stock Out) ===================== -->
         <section id="view-entry" class="pv-view">
           <div class="row g-3">
+<div class="row g-2 stock-kpi-row">
+                <div class="col-md-4">
+                  <div class="pv-kpi">
+                    <i class="bi bi-box-arrow-in-down"></i>
+                    <div>
+                      <div class="n" id="kpiInQty">0</div>
+                      <div class="l">Total IN Qty</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="pv-kpi">
+                    <i class="bi bi-box-arrow-up"></i>
+                    <div>
+                      <div class="n" id="kpiOutQty">0</div>
+                      <div class="l">Total OUT Qty</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="pv-kpi">
+                    <i class="bi bi-clipboard2-check"></i>
+                    <div>
+                      <div class="n" id="kpiLines">0</div>
+                      <div class="l">Total Lines</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             <!-- Right: Entry List -->
             <div class="col-12">
               <div class="pv-card">
@@ -510,35 +573,7 @@
               </div>
 
               <!-- KPIs -->
-              <div class="row g-3 mt-3">
-                <div class="col-md-4">
-                  <div class="pv-kpi">
-                    <i class="bi bi-box-arrow-in-down"></i>
-                    <div>
-                      <div class="n" id="kpiInQty">0</div>
-                      <div class="l">Total IN Qty</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="pv-kpi">
-                    <i class="bi bi-box-arrow-up"></i>
-                    <div>
-                      <div class="n" id="kpiOutQty">0</div>
-                      <div class="l">Total OUT Qty</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="pv-kpi">
-                    <i class="bi bi-clipboard2-check"></i>
-                    <div>
-                      <div class="n" id="kpiLines">0</div>
-                      <div class="l">Total Lines</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              
             </div>
           </div>
         </section>
@@ -546,6 +581,35 @@
         <!-- ===================== BILLING VIEW ===================== -->
         <section id="view-billing" class="pv-view d-none">
           <div class="row g-3">
+<div class="row g-2 stock-kpi-row">
+                <div class="col-md-4">
+                  <div class="pv-kpi">
+                    <i class="bi bi-cart-plus"></i>
+                    <div>
+                      <div class="n" id="kpiPurchaseBills">0</div>
+                      <div class="l">Purchase Bills</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="pv-kpi">
+                    <i class="bi bi-cart-check"></i>
+                    <div>
+                      <div class="n" id="kpiSaleBills">0</div>
+                      <div class="l">Sale Bills</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="pv-kpi">
+                    <i class="bi bi-cash-coin"></i>
+                    <div>
+                      <div class="n" id="kpiBillTotal">PKR 0</div>
+                      <div class="l">Bills Total</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             <div class="col-12">
               <div class="pv-card">
                 <div class="pv-cardhead">
@@ -579,35 +643,7 @@
                 </div>
               </div>
 
-              <div class="row g-3 mt-3">
-                <div class="col-md-4">
-                  <div class="pv-kpi">
-                    <i class="bi bi-cart-plus"></i>
-                    <div>
-                      <div class="n" id="kpiPurchaseBills">0</div>
-                      <div class="l">Purchase Bills</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="pv-kpi">
-                    <i class="bi bi-cart-check"></i>
-                    <div>
-                      <div class="n" id="kpiSaleBills">0</div>
-                      <div class="l">Sale Bills</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="pv-kpi">
-                    <i class="bi bi-cash-coin"></i>
-                    <div>
-                      <div class="n" id="kpiBillTotal">PKR 0</div>
-                      <div class="l">Bills Total</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              
             </div>
           </div>
         </section>
@@ -615,38 +651,7 @@
         <!-- ===================== STOCK VIEW ===================== -->
         <section id="view-stock" class="pv-view d-none">
           <div class="row g-3">
-            <div class="col-12">
-              <div class="pv-card">
-                <div class="pv-cardhead">
-                  <div>
-                    <h2>Stock (Date Range)</h2>
-                    <div class="pv-small pv-muted">
-                      Excel “Stock” sheet: Item, Purchase Qty, Sale Qty,
-                      Available Stock.
-                    </div>
-                  </div>
-                  <span class="pv-chip" id="stockRangeChip">Range: —</span>
-                </div>
-
-                <div class="p-3">
-                  <div class="row g-2 align-items-end">
-                    <div class="col-md-3">
-                      <label class="form-label pv-small">From</label>
-                      <input type="date" class="form-control" id="stockFrom" />
-                    </div>
-                    <div class="col-md-3">
-                      <label class="form-label pv-small">To</label>
-                      <input type="date" class="form-control" id="stockTo" />
-                    </div>
-                    
-                    <div class="col-md-3 d-grid">
-                      <button class="btn btn-primary" id="btnApplyStock">
-                        <i class="bi bi-funnel"></i> Apply Filters
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="row g-3 mt-2">
+<div class="row g-2 stock-kpi-row">
                     <div class="col-md-3">
                       <div class="pv-kpi">
                         <i class="bi bi-box2"></i>
@@ -684,6 +689,23 @@
                       </div>
                     </div>
                   </div>
+            <div class="col-12">
+              <div class="pv-card">
+                <div class="pv-cardhead">
+                  <div>
+                    <h2>Stock (Date Range)</h2>
+                    <div class="pv-small pv-muted">
+                      Excel “Stock” sheet: Item, Purchase Qty, Sale Qty,
+                      Available Stock.
+                    </div>
+                  </div>
+                  <div class="stock-date-controls"><label>From <input type="date" class="form-control form-control-sm" id="stockFrom" aria-label="Stock report start date"></label><label>To <input type="date" class="form-control form-control-sm" id="stockTo" aria-label="Stock report end date"></label><span class="d-none" id="stockRangeChip">Range: —</span></div>
+                </div>
+
+                <div class="p-3">
+                  
+
+                  
 
                   <div class="table-responsive mt-3">
                     <table class="table table-hover align-middle mb-0">
@@ -742,12 +764,11 @@
                     </form>
                     <div id="itemImportPreview" class="mt-3" hidden></div>
                   </div>
-                  <div class="mb-3">
+                  <div class="stock-items-side-by-side"><div class="stock-import-history"><div class="mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-2"><strong>Recent import history</strong><span class="pv-small pv-muted">Latest 25 uploads</span></div>
                     <div class="table-responsive pv-scroll"><table class="table table-sm table-bordered align-middle mb-0"><thead><tr><th>Batch</th><th>Date</th><th>By</th><th>Status</th><th>Added / Updated / Errors</th><th></th></tr>
 </thead><tbody id="itemImportHistoryBody"><tr><td colspan="6" class="text-muted text-center">Loading history...</td></tr></tbody></table></div>
-                  </div>
-                  <div class="table-responsive pv-scroll">
+                  </div></div><div class="stock-items-register"><div class="table-responsive pv-scroll">
                     <table class="table table-hover align-middle mb-0">
                       <thead>
                         <tr>
@@ -761,7 +782,7 @@
                       </thead>
                       <tbody id="itemTbody"></tbody>
                     </table>
-                  </div>
+                  </div></div></div>
                 </div>
               </div>
             </div>
@@ -2477,9 +2498,9 @@
           loadPartiesTable().catch((err) => handleApiError(err, "Unable to load parties."))
         );
 
-      $('#btnApplyStock').on("click", () =>
-          loadReport().catch((err) => handleApiError(err, "Unable to load report."))
-        );
+      $('#stockFrom,#stockTo').on('change',function(){
+        loadReport().catch((err)=>handleApiError(err,'Unable to refresh stock report.'));
+      });
 
       $(billType).on("change", () =>
         loadNextBill().catch((err) => handleApiError(err, "Unable to load bill no."))
@@ -2514,6 +2535,13 @@
         .fail(function(err){handleApiError(err,'Could not refresh stock registers.');});
     });
     $(function () {
+      $('html,body').addClass('stock-page-active');
+      function syncStockViewport(){
+        var offset=Math.max(0,Math.ceil($('.stock-module-wrapper').offset().top-$(window).scrollTop()));
+        $('.stock-module-wrapper').css('--stock-page-top',offset+'px');
+      }
+      syncStockViewport();
+      $(window).on('resize.stockViewport',syncStockViewport);
       initUI();
       $(tabBtns).on('click',function(){setView($(this).data('view'));});
     });
