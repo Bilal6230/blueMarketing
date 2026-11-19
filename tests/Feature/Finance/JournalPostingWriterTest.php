@@ -720,6 +720,58 @@ class JournalPostingWriterTest extends TestCase
         self::assertSame([], $gateway->postingLines(1));
     }
 
+    public function test_sales_voucher_create_uses_own_counter_and_retries_without_new_source(): void
+    {
+        // Extend only this ephemeral SQLite fixture to exercise the real
+        // SV create workflow, without altering project/customer test data.
+        Schema::table('customer_ledger',function(Blueprint $table){
+            $table->unsignedBigInteger('project_id')->nullable();
+            $table->string('transaction_type')->nullable();
+            $table->unsignedBigInteger('type_id')->nullable();
+        });
+        Schema::create('ledgers',function(Blueprint $table){
+            $table->id();
+            $table->unsignedBigInteger('project_head_subheads_id');
+            $table->string('type');
+            $table->unsignedBigInteger('voucher_number')->nullable();
+        });
+        Schema::table('journal_vouchers',function(Blueprint $table){
+            $table->unsignedBigInteger('created_by')->nullable();
+        });
+        Schema::table('journal_voucher_details',function(Blueprint $table){
+            $table->unsignedBigInteger('created_by')->nullable();
+        });
+        $data=[
+            'date'=>'2026-11-19','reference'=>'SALES-TEST-1',
+            'description'=>'Independent sales voucher',
+            'accounts'=>[1,1],'sub_accounts'=>[101,102],
+            'debit'=>['250.00','0'],'credit'=>['0','250.00'],
+            'line_description'=>['Sales debit','Sales credit'],
+        ];
+        $workflow=new \App\Services\Finance\OriginalJournalWorkflow();
+        $key='sales-voucher-create-2026-0001';
+        $id=$workflow->createAndPost(1,$key,$data,null,'SV');
+        self::assertGreaterThan(51,$id);
+        self::assertSame($id,$workflow->createAndPost(1,$key,$data,null,'SV'));
+        self::assertSame(1,DB::table('journal_vouchers')
+            ->where('type','SV')->where('project_id',1)->count());
+        self::assertSame(2,DB::table('journal_voucher_details')
+            ->where('journal_voucher_id',$id)->count());
+        $batch=DB::table('finance_posting_journal_sources')
+            ->where('journal_voucher_id',$id)->value('posting_batch_id');
+        self::assertNotNull($batch);
+        self::assertSame('SV',DB::table('finance_posting_batches')
+            ->where('id',$batch)->value('voucher_series'));
+        self::assertSame(2,DB::table('finance_journal_line_sources')
+            ->join('finance_posting_lines as line','line.id','=','finance_journal_line_sources.posting_line_id')
+            ->where('line.posting_batch_id',$batch)->count());
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame(250.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->sum('credit'));
+        self::assertSame(250.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->sum('debit'));
+    }
+
     public function test_jv_writer_refuses_sales_document_without_explicit_sv_series(): void
     {
         DB::table('journal_vouchers')->where('id', 51)->update(['type' => 'SV']);
