@@ -681,3 +681,27 @@ php artisan finance:audit-posting-balances
 **Browser acceptance after tests:** In local testing project, open existing Draft CV, click `Approve saved voucher and post` once. Expect success toast, automatic modal close/list refresh; `commision_vouchers.status=approved`, exactly current two detail-linked ledger legs `is_active=1`, old archived legs remain inactive, finance posting batch balanced, Party Ledger can include account only if its account type is part of that report. Failed approval must show toast + popup, leave Draft status and inactive ledgers unchanged. Approval replay with same key must not create duplicates. Neither schema migration nor hardcoded project-specific DB operation is needed.
 
 **Note:** Other JV/CV differential Edit tests were previously confirmed PASS (CommissionLedgerSynchronizerTest 6 PASS/31 assertions; VoucherDifferentialEditContractTest 3 PASS/28), and all-project posting audit found no issues in 6 projects. The approval fix and new test are additional code changes and have not been owner-verified yet.
+
+
+## 2026-11-19 — Approved CV reopened after posting: read-only modal instead of HTTP 409
+
+**Owner confirmed:** Commission approval is now successful; linked legacy `ledgers` active entries and Party Ledger visibility verified via browser. The next issue was opening Approved CV from the Commission Voucher register: `CommissionVoucherController::edit` explicitly aborted HTTP 409 and rendered Laravel's debug exception inside the modal iframe. This was a *read-route UX defect*, not a failure of the approved accounting posting.
+
+**Code fix committed:**
+- `CommissionVoucherController::edit` no longer throws 409 simply because an approved CV is selected; it loads the existing voucher and passes `readOnly=true` into the shared Edit/View Blade template for a posted typed CV. Other project scoping remains unchanged.
+- Approved CV displays an explicit 'View only' explanation. All voucher form fields, row add/remove buttons and enhanced TomSelect dropdowns are disabled, and the Update and Approve buttons are absent. The server-side Draft-only mutation restriction is unchanged: a posted CV cannot be amended by forged PUT requests. Voucher header/detail/ledger records are never modified by merely opening the modal.
+- Added `CommissionApprovedReadOnlyModalContractTest` to prevent reintroducing HTTP 409 in the approved read route and ensure non-editable controls are present in the Blade view. No database migrations or background repair required.
+
+**Owner verification (new local gate pending):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Http/Controllers/CommissionVoucherController.php
+php artisan test --filter=CommissionApprovedReadOnlyModalContractTest
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan finance:audit-posting-balances
+```
+
+**Browser check:** Open already Approved `CV-2026-0001` from Commission register: modal must show header and posted detail rows as View only, without Laravel error page or Save/Approve actions. Open a Draft CV: existing editable Add/Remove/Save/Approve flow must still work. Party Ledger approved CV entries already accepted by owner; no repeat posting needed. This batch does not permit posted vouchers to be directly re-edited; authorized correction/reversal remains separate.
