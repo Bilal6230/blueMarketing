@@ -61,6 +61,10 @@ class BankTransferWriterTest extends TestCase
             $t->foreign(['account_mapping_id', 'project_id'])->references(['id', 'project_id'])->on('project_head_subheads');
         });
         (require base_path('database/finance_legacy_migrations/2026_11_05_000200_create_finance_bank_transfer_sources.php'))->up();
+        Schema::table('finance_bank_transfer_sources',function(Blueprint $table){
+            $table->boolean('is_active')->default(true);
+            $table->softDeletes();
+        });
         DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
         DB::table('head_accountings')->insert([['id' => 10, 'name' => 'Bank Account'], ['id' => 20, 'name' => 'Cash in Hand']]);
         DB::table('subhead_accountings')->insert([['id' => 10], ['id' => 20]]);
@@ -166,6 +170,43 @@ class BankTransferWriterTest extends TestCase
         }
         self::assertSame(20.0,(float)DB::table('finance_bank_transfer_sources')
             ->where('posting_batch_id',$id)->value('amount'));
+    }
+
+    public function test_manual_bank_delete_archives_exact_source_and_keeps_customer_report_and_audit_clean(): void
+    {
+        $writer=new BankTransferWriter();
+        $id=$writer->post(1,1,'deposit','BANK-TRANSFER-DELETE-0001',
+            '2026-11-05','120.00','Manual bank deposit',
+            [['account_id'=>102,'amount'=>'120.00']])['posting_batch_id'];
+        $editor=new \App\Services\Finance\BankTransferEditor();
+        $editor->delete(1,'deposit',$id);
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame(1,DB::table('finance_bank_transfer_sources')->count());
+        self::assertSame(0,(int)DB::table('finance_bank_transfer_sources')
+            ->where('posting_batch_id',$id)->value('is_active'));
+        self::assertNotNull(DB::table('finance_bank_transfer_sources')
+            ->where('posting_batch_id',$id)->value('deleted_at'));
+        self::assertSame(2,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$id)->count());
+        self::assertSame(0,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$id)->where('is_active',1)->count());
+        self::assertSame([],(new PostingReportReader())->lines(1));
+        self::assertSame([],(new \App\Services\Finance\BankTransferReconciliation())->audit(1));
+        self::assertSame([],(new \App\Services\Finance\PostingBatchIntegrityAudit())->audit(1));
+        try {
+            $editor->delete(1,'deposit',$id);
+            self::fail('Archived bank voucher must not be deleted again.');
+        } catch(\DomainException $e) {
+            self::assertStringContainsString('not an active',$e->getMessage());
+        }
+        try {
+            $writer->post(1,1,'deposit','BANK-TRANSFER-DELETE-0001',
+                '2026-11-05','120.00','Manual bank deposit',
+                [['account_id'=>102,'amount'=>'120.00']]);
+            self::fail('Archived bank voucher must not be resurrected by replay.');
+        } catch(\DomainException $e) {
+            self::assertSame('V2_BANK_TRANSFER_IDEMPOTENCY_CONFLICT',$e->getMessage());
+        }
     }
 
     public function test_wrong_project_mapping_and_unbalanced_allocations_fail_without_posting(): void
