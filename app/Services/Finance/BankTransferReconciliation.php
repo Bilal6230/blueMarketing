@@ -3,6 +3,7 @@
 namespace App\Services\Finance;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Read-only audit of isolated V2 Bank Deposit / Withdrawal batches.
@@ -51,6 +52,8 @@ final class BankTransferReconciliation
             $lines = DB::table('finance_posting_lines as line')
                 ->leftJoin('project_head_subheads as account', 'account.id', '=', 'line.project_head_subhead_id')
                 ->where('line.posting_batch_id', $batchId)
+                ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                    fn($query)=>$query->where('line.is_active',1))
                 ->orderBy('line.id')
                 ->get(['line.project_head_subhead_id', 'line.debit', 'line.credit', 'account.project_id as account_project_id']);
 
