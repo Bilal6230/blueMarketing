@@ -1,0 +1,44 @@
+<?php
+
+namespace Tests\Unit\Finance;
+
+use Tests\TestCase;
+
+class StockUnifiedUiParityContractTest extends TestCase
+{
+    public function test_stock_tabs_have_modal_forms_cr_filters_and_internal_scroll(): void
+    {
+        $view = file_get_contents(resource_path('views/admin/stock/index.blade.php'));
+        self::assertIsString($view);
+
+        foreach (['entry', 'billing', 'stock', 'items', 'parties'] as $tab) {
+            self::assertStringContainsString('id="view-'.$tab.'"', $view);
+            $kind = match ($tab) {
+                'billing' => 'bill',
+                'items' => 'item',
+                'parties' => 'party',
+                default => $tab,
+            };
+            self::assertStringContainsString('data-stock-kind="'.$kind.'"', $view);
+        }
+
+        foreach (['stockEntryCreateModal', 'stockBillCreateModal', 'stockItemCreateModal', 'stockPartyCreateModal'] as $modal) {
+            self::assertSame(1, substr_count($view, 'id="'.$modal.'"'));
+        }
+        foreach (['entryForm', 'billForm', 'itemForm', 'partyForm'] as $form) {
+            self::assertSame(1, substr_count($view, 'id="'.$form.'"'));
+        }
+
+        self::assertStringContainsString('stock-excel-trigger', $view);
+        self::assertStringContainsString('stockExcelPopover', $view);
+        self::assertStringContainsString('stock-items-side-by-side', $view);
+        self::assertStringContainsString('stock-kpi-row', $view);
+        self::assertStringContainsString('height:calc(100dvh - var(--stock-page-top)', $view);
+        self::assertStringContainsString("$('#stockFrom,#stockTo').on('change'", $view);
+        self::assertStringContainsString('function stockModal(selector, action)', $view);
+
+        self::assertStringNotContainsString('Legacy stock needs project reconciliation.', $view);
+        self::assertStringNotContainsString('id="btnApplyStock"', $view);
+        self::assertStringNotContainsString('class="stock-column-filters"', $view);
+    }
+}
