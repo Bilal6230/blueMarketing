@@ -15,8 +15,8 @@ final class BankTransferCorrectionContractTest extends TestCase
         $routes=file_get_contents($root.'/routes/web.php');
         $report=file_get_contents($root.'/app/Services/Finance/BankTransferReconciliation.php');
         foreach([$editor,$controller,$routes,$report] as $code)self::assertIsString($code);
-        self::assertStringContainsString("where('id',$batchId)",$editor);
-        self::assertStringContainsString("where('project_id',$projectId)",$editor);
+        self::assertStringContainsString("where('id',\$batchId)",$editor);
+        self::assertStringContainsString("where('project_id',\$projectId)",$editor);
         self::assertStringContainsString('linked_customer_ledger_id!==null',$editor);
         self::assertStringContainsString("where('is_active',1)",$editor);
         self::assertStringContainsString("'is_active'=>0",$editor);
