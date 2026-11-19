@@ -18,7 +18,7 @@ final class StockDocumentLifecycleContractTest extends TestCase
         self::assertStringContainsString("->name('stocks.documents.delete')",$routes);
         self::assertStringContainsString('function updateStockDocument(',$controller);
         self::assertStringContainsString('function deleteStockDocument(',$controller);
-        self::assertStringContainsString("where('project_id',$projectId)",$editor);
+        self::assertMatchesRegularExpression("/where\(\s*\x27project_id\x27\s*,\s*\\\$projectId\s*\)/",$editor);
         self::assertStringContainsString('source_line_id',$editor);
         self::assertStringContainsString('stock_project_item_balances',$editor);
         self::assertStringContainsString("'is_active'=>0",$editor);
