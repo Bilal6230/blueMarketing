@@ -100,6 +100,14 @@ class LabourController extends Controller
             ->map(fn($items) => $items->sum('amount'));
 
         $x['paymentsByDate'] = $paymentsByDate;
+        $sourceIds=$labour->labourLedgers->pluck('customer_ledger_id')
+            ->filter()->unique()->values()->all();
+        $x['labourPaymentSources']=count($sourceIds)
+            ? DB::table('customer_ledger')->where('project_id',$selectedProjectId)
+                ->whereIn('id',$sourceIds)->where('transaction_type','CP')
+                ->where('is_active',1)->orderByDesc('id')
+                ->get(['id','date','reference','description','amount_out'])
+            : collect();
 
         $x['summary'] = [
             'total_days'   => $labourAttendances->count(),
