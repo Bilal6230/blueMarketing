@@ -1147,8 +1147,12 @@ class JournalVoucherController extends Controller
                     }
                     $submitted[$detailId]=true;
                 }
+                // Previously corrected rows remain as inactive history.
+                // Validate only currently active ledger legs against the
+                // currently active voucher details, not historical rows.
                 $linked=DB::table('ledgers')->where('type','JV')
-                    ->where('type_id',$voucher->id)->lockForUpdate()->get();
+                    ->where('type_id',$voucher->id)->where('is_active',1)
+                    ->lockForUpdate()->get();
                 $byDetail=$linked->groupBy('journal_voucher_detail_id');
                 if($linked->count()!==$oldDetails->count()){
                     throw new \DomainException('Journal ledger/detail cardinality mismatch.');
