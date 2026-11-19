@@ -29,9 +29,18 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         <h4 class="mb-0">{{ $title }}</h4>
                     </div>
                     <div class="card-body">
+                        @if($readOnly ?? false)
+                            <div class="alert alert-info mb-3" role="status">
+                                <strong>Approved Commission Voucher — View only.</strong>
+                                The voucher has been posted to the ledgers. Its accounting entries are
+                                protected from direct editing; use the authorized correction/reversal
+                                workflow to change a posted voucher.
+                            </div>
+                        @endif
                         <form id="journalForm" action="{{ route('commision.voucher.update', request()->boolean('embed') ? ['id'=>$voucher->id,'embed'=>1] : ['id'=>$voucher->id]) }}" method="POST">
                             @csrf
                             @method('PUT')
+                            <fieldset @if($readOnly ?? false) disabled @endif>
                             <!-- Voucher Details -->
                             <div class="row mb-4">
                                 <div class="col-sm-4">
@@ -176,13 +185,16 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                             </div>
 
                             <!-- Submit Button -->
+                            @unless($readOnly ?? false)
                             <div class="text-center">
                                 <button type="submit" class="btn btn-warning">
                                     <i class="fas fa-save"></i> Update Commision Voucher
                                 </button>
                             </div>
+                            @endunless
+                            </fieldset>
                         </form>
-                        @if(\App\Services\Finance\FinanceWorkflowAccess::enabled() && $voucher->status === 'draft')
+                        @if(!($readOnly ?? false) && \App\Services\Finance\FinanceWorkflowAccess::enabled() && $voucher->status === 'draft')
                             @can('can approve')
                                 <form id="commissionApproveForm" action="{{ route('commision.voucher.approve', request()->boolean('embed') ? ['id'=>$voucher->id,'embed'=>1] : ['id'=>$voucher->id]) }}" method="POST" class="text-center mt-3">
                                     @csrf
@@ -248,6 +260,14 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                 if(fvcFeedback)fvcFeedback.enhanceSelects($scope.find('select.fvc-tom-select'));
             }
             updateSelects($('#journalForm'));
+            @if($readOnly ?? false)
+            // Dynamic TomSelect controls also need explicit disabling. This
+            // is UX-only; the server still rejects posted voucher mutations.
+            $('#journalForm').find('select.fvc-tom-select').each(function(){
+                $(this).prop('disabled',true);
+                if(this.tomselect)this.tomselect.disable();
+            });
+            @endif
             // Add a new row to the table
             $(document).on('click', '.add-row', function() {
                 const newRow = `
