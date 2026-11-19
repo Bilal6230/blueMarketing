@@ -222,6 +222,9 @@ final class FinanceActionPermission
             'finance.voucher.transfer.sources'=>'view',
             'finance.voucher.transfer.history'=>'history',
             'finance.voucher.transfer.post'=>'create',
+            'finance.voucher.transfer.details'=>'details',
+            'finance.voucher.transfer.update'=>'edit',
+            'finance.voucher.transfer.delete'=>'delete',
             'finance.voucher.transfer.reverse'=>'reverse',
             'finance.voucher.transfer.print'=>'print',
         ];
