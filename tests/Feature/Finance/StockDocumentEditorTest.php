@@ -161,6 +161,42 @@ final class StockDocumentEditorTest extends TestCase
         self::assertNotNull(DB::table('stock_entries')->where('id',11)->value('deleted_at'));
     }
 
+    public function test_stock_correction_rejects_negative_inventory_and_foreign_detail_atomically(): void
+    {
+        $editor=new StockDocumentEditor();
+        $before=DB::table('stock_project_item_balances')
+            ->where('project_id',1)->where('item_id',31)->value('on_hand_qty');
+        // Another stock issue already consumed all received units. Reducing
+        // the original IN quantity must not make inventory negative.
+        DB::table('stock_project_item_balances')->where('project_id',1)
+            ->where('item_id',31)->update(['on_hand_qty'=>'0.000']);
+        try {
+            $editor->update(1,'entry',11,'2026-11-19',[
+                ['detail_id'=>21,'item_id'=>31,'qty'=>'1.000','rate'=>1000],
+            ],'Unsafe reduced receipt');
+            self::fail('Insufficient stock must abort transaction.');
+        }catch(\DomainException $e) {
+            self::assertStringContainsString('negative inventory',$e->getMessage());
+        }
+        self::assertSame('5.000',(string)DB::table('stock_entry_lines')
+            ->where('id',21)->value('qty'));
+        self::assertSame(50.0,(float)DB::table('customer_ledger')
+            ->where('id',51)->value('amount_out'));
+        DB::table('stock_project_item_balances')->where('project_id',1)
+            ->where('item_id',31)->update(['on_hand_qty'=>$before]);
+        try {
+            $editor->update(1,'entry',11,'2026-11-19',[
+                ['detail_id'=>999,'item_id'=>31,'qty'=>'6.000','rate'=>1000],
+            ],'Foreign identity');
+            self::fail('Unknown detail ID must be refused.');
+        }catch(\DomainException $e) {
+            self::assertStringContainsString('another voucher',$e->getMessage());
+        }
+        self::assertSame(1,DB::table('stock_movements')->count());
+        self::assertSame(5.0,(float)DB::table('stock_project_item_balances')
+            ->where('project_id',1)->where('item_id',31)->value('on_hand_qty'));
+    }
+
     public function test_foreign_project_or_billed_entry_refuses_without_inventory_mutation(): void
     {
         $editor=new StockDocumentEditor();
