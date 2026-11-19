@@ -264,9 +264,12 @@ final class CommissionDraftWorkflow
             // accounting record. Ownership is proven exclusively by the
             // enforced CV detail FK and exact source/project links below.
             // A legacy JV type_id coincidence must never block CV approval.
-            app(CommissionLedgerSynchronizer::class)
-                ->assertDraftCanReplace($projectId,$sourceId);
             if ($source->status === 'draft') {
+                // Only a draft needs pre-posting inactive ledger integrity
+                // verification. Approved retries validate the existing
+                // posting and active leg links further below.
+                app(CommissionLedgerSynchronizer::class)
+                    ->assertDraftCanReplace($projectId,$sourceId);
                 DB::table('commision_vouchers')->where('id', $sourceId)
                     ->update(['status' => 'approved', 'updated_at' => now()]);
             }
