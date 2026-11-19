@@ -15,15 +15,16 @@ final class LinkedVoucherLedgerRetirement
 {
     public function retire(int $projectId, string $type, int $voucherId): int
     {
-        if ($projectId < 1 || $voucherId < 1 || !in_array($type,['JV','CV'],true)) {
+        if ($projectId < 1 || $voucherId < 1 || !in_array($type,['JV','SV','CV'],true)) {
             throw new \DomainException('Invalid linked voucher scope.');
         }
-        $parent=$type==='JV'?'journal_vouchers':'commision_vouchers';
-        $details=$type==='JV'?'journal_voucher_details':'commision_voucher_details';
-        $detailFk=$type==='JV'?'journal_voucher_id':'commision_voucher_id';
+        $parent=$type==='CV'?'commision_vouchers':'journal_vouchers';
+        $details=$type==='CV'?'commision_voucher_details':'journal_voucher_details';
+        $detailFk=$type==='CV'?'commision_voucher_id':'journal_voucher_id';
         $header=DB::table($parent)->where('id',$voucherId)
             ->where('project_id',$projectId)->whereNull('deleted_at')->lockForUpdate()->first();
-        if (!$header) throw new \DomainException('Voucher is missing or outside the selected project.');
+        if (!$header || ($type!=='CV' && (string)$header->type!==$type))
+            throw new \DomainException('Voucher is missing, another series, or outside the selected project.');
 
         $activeDetails=DB::table($details)->where($detailFk,$voucherId)
             ->whereNull('deleted_at')->lockForUpdate()->get(['id','account_id','debit','credit']);
@@ -46,7 +47,7 @@ final class LinkedVoucherLedgerRetirement
         if ($validAccounts!==count($accountIds)) {
             throw new \DomainException('Linked voucher has cross-project or missing accounts; no rows modified.');
         }
-        if ($type==='JV') {
+        if ($type==='JV'||$type==='SV') {
             $detailIds=$activeDetails->pluck('id')->map(fn($id)=>(int)$id)->all();
             foreach ($active as $leg) {
                 $detail=(int)($leg->journal_voucher_detail_id??0);
