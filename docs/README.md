@@ -909,3 +909,35 @@ php artisan migrate --path=database/migrations/2026_11_19_120000_link_labour_pay
 **New local/browser acceptance pending:** test posted JV/SV Add/Remove/Edit, same-ID no-op and no duplicate batch; JV/Approved CV ordinary Delete preserves inactive FK-linked historical evidence without REV and removes current balances; labour source rows link to the payment voucher after migration. Reuse previously accepted CV/Plot/BD/BW tests; don't request unnecessary re-tests.
 
 **Fresh chat priority:** Start from this section in `docs/README.md`, connected repo `Bilal6230/blueMarketing` branch `upgrade/laravel-framework`. Never claim the whole milestone closed. After fixing any new local regression failures, implement remaining Stock Entry/Bill, Labour Payment, PPR/EC/ECP full CRUD with stock balances/movements, source-to-ledger and custody exact relationships. Commit actual code, no docs-only round; preserve six-milestone roadmap and defer Activity Audit to final M06.
+
+
+### Final exact-FK hardening — posted JV/SV and JV/CV logical Delete
+
+- The posted `JournalApprovedVoucherEditor` now discovers any historical active `ledgers` by their **real `journal_voucher_detail_id` FK**, not merely matching `ledgers.type_id` numeric values. A different JV/SV sharing an integer `type_id` is not proof of ownership; if a row actually has this detail FK but the wrong voucher type/header, the correction fails without writes.
+- `PostedVoucherArchiver` uses the same exact-FK approach for JV/SV and enforced `commision_voucher_detail_id` for CV. Unrelated numeric collisions are not archived; incorrectly attributed real FKs fail closed.
+- Typed Posted JV/SV / ordinary Posted JV/CV Delete / migration normalization / new Labour source FK tests in the above commands remain **locally unverified**, so no milestone closure claim yet.
+
+**Verification gate for this latest set (run tests before applying the new labour FK migration to the configured local TEST DB):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Services/Finance/JournalApprovedVoucherEditor.php
+php -l app/Services/Finance/PostedVoucherArchiver.php
+php -l app/Http/Controllers/JournalVoucherController.php
+php -l app/Http/Controllers/CommissionVoucherController.php
+php -l app/Http/Controllers/LabourController.php
+php -l database/migrations/2026_11_19_120000_link_labour_payment_rows_to_customer_source.php
+php artisan test --filter=JournalPostingWriterTest
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan test --filter=JournalApprovedCorrectionContractTest
+php artisan test --filter=PostedVoucherArchiveContractTest
+php artisan test --filter=DailyVoucherDirectoryPostingLifecycleContractTest
+php artisan test --filter=LabourPaymentSourceRelationContractTest
+php artisan test --filter=FinanceCoreMigrationUnifiedConnectionContractTest
+php artisan test --filter=OriginalVoucherWorkflowHttpTest
+php artisan finance:audit-posting-balances
+php artisan migrate --path=database/migrations/2026_11_19_120000_link_labour_payment_rows_to_customer_source.php
+```
+Do not run the migration before validating that you're on the intended local test database. Owner does not need to rerun already-accepted browser CV and BD/BW unless there is an actual regression. Explicit posted JV/SV and posted JV/CV Delete browser gate is still pending.
