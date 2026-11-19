@@ -40,5 +40,13 @@ class StockUnifiedUiParityContractTest extends TestCase
         self::assertStringNotContainsString('Legacy stock needs project reconciliation.', $view);
         self::assertStringNotContainsString('id="btnApplyStock"', $view);
         self::assertStringNotContainsString('class="stock-column-filters"', $view);
+        self::assertStringNotContainsString('id="stockExcelApply"', $view);
+        self::assertStringContainsString('function stockApplyLiveFilter()', $view);
+        self::assertStringContainsString('new window.TomSelect(el', $view);
+        self::assertStringContainsString('stockEnhanceDropdowns($modal)', $view);
+        self::assertStringContainsString('class="stock-modal-close"', $view);
+        self::assertStringContainsString('grid-template-columns:minmax(0,1fr) minmax(0,1fr)', $view);
+        self::assertStringContainsString('width:185px!important', $view);
+        self::assertStringContainsString('stock-entry-mode d-flex gap-3', $view);
     }
 }
