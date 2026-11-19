@@ -380,6 +380,17 @@ class CommissionVoucherController extends Controller
 
     public function update(Request $request, $id)
     {
+        // New editor rows have one empty amount input. Normalize it to zero
+        // before validation, exactly as Journal Create does.
+        foreach (['debit','credit'] as $side) {
+            $amounts=$request->input($side);
+            if (is_array($amounts)) {
+                $request->merge([$side=>array_map(
+                    fn($value)=>$value===null||(is_string($value)&&trim($value)==='')
+                        ? '0' : $value,$amounts
+                )]);
+            }
+        }
         $data = $request->validate([
             'reference' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
