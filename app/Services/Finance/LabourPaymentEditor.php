@@ -28,6 +28,12 @@ final class LabourPaymentEditor
 
     private function state(int $projectId,int $sourceId): array
     {
+        if(!Schema::hasTable('labour_ledgers')
+            ||!Schema::hasColumn('labour_ledgers','customer_ledger_id')
+            ||!Schema::hasColumn('labour_ledgers','is_active')
+            ||!Schema::hasColumn('labour_ledgers','deleted_at')) {
+            throw new \DomainException('Labour payment source and archive migrations are required.');
+        }
         $source=DB::table('customer_ledger')
             ->where('id',$sourceId)->where('project_id',$projectId)
             ->where('transaction_type','CP')->where('payment_type',1)
