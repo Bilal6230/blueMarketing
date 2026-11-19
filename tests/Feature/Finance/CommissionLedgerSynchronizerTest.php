@@ -356,6 +356,33 @@ final class CommissionLedgerSynchronizerTest extends TestCase
             ->where('type_id',$id)->where('is_active',1)->count());
     }
 
+    public function test_approved_commission_ordinary_delete_archives_only_active_evidence(): void
+    {
+        $workflow=new CommissionDraftWorkflow();
+        $id=$workflow->createDraft(1,'CV-ARCHIVE-ONE','2026-11-18',$this->lines(),1);
+        $batch=$workflow->approveAndPost(1,$id,'commission-archive-0001',1);
+        (new \App\Services\Finance\PostedVoucherArchiver())->archive(1,'commission',$id);
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame(2,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->count());
+        self::assertSame(0,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->count());
+        self::assertSame(0,DB::table('ledgers')->where('type','CV')
+            ->where('type_id',$id)->where('is_active',1)->count());
+        self::assertNotNull(DB::table('commision_vouchers')
+            ->where('id',$id)->value('deleted_at'));
+        self::assertSame(0,DB::table('commision_voucher_details')
+            ->where('commision_voucher_id',$id)->whereNull('deleted_at')->count());
+        self::assertSame([],(new \App\Services\Finance\PostingReportReader())->lines(1));
+        self::assertSame([],(new \App\Services\Finance\PostingBatchIntegrityAudit())->audit(1));
+        try {
+            $workflow->approveAndPost(1,$id,'commission-archive-0001',1);
+            self::fail('Archived Commission voucher must not be re-approved.');
+        }catch(\DomainException $error){
+            self::assertNotEmpty($error->getMessage());
+        }
+    }
+
     public function test_existing_draft_backfills_only_missing_fk_linked_ledger_rows(): void
     {
         DB::table('commision_vouchers')->insert([
