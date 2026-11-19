@@ -52,6 +52,12 @@ class StockUnifiedUiParityContractTest extends TestCase
         self::assertStringContainsString('stock-line-field', $view);
         self::assertStringContainsString('stock-line-caption', $view);
         self::assertStringContainsString('stock-line-remove', $view);
+        self::assertStringContainsString("dropdownParent:$el.closest('.modal')[0] || 'body'", $view);
+        self::assertStringContainsString('function stockSetSubheads(items,placeholder)', $view);
+        self::assertStringContainsString('el.tomselect.clearOptions()', $view);
+        self::assertStringContainsString('stockSetSubheads(rows,rows.length', $view);
+        self::assertStringContainsString('function stockDismissNow(modal)', $view);
+        self::assertStringContainsString("button.addEventListener('click'", $view);
         self::assertSame(5, substr_count($view, 'class="stock-modal-actions mt-2"'));
         self::assertStringNotContainsString('data-bs-dismiss="modal"', $view);
     }
