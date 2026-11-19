@@ -40,7 +40,7 @@
     #view-entry>.row>.col-12>.pv-card,#view-billing>.row>.col-12>.pv-card{border-top:3px solid var(--pv-primary)}
     .stock-column-filters th{padding:.3rem!important;min-width:84px;vertical-align:top}
     .stock-column-filters .form-control,.stock-column-filters .form-select{min-height:32px!important;height:32px!important;font-size:.76rem!important;padding:.15rem .3rem!important;min-width:72px;border-radius:7px!important}
-    #view-entry thead,#view-billing thead{position:sticky;top:0;z-index:2}
+    #view-entry thead,#view-billing thead,#view-items thead,#view-parties thead,#view-stock thead{position:sticky;top:0;z-index:2}
     .stock-create-modal .modal-content{border-top:3px solid var(--pv-primary);border-radius:16px}
     .stock-create-modal .modal-body{padding:1rem 1.25rem}
     @media(max-width:767.98px){.stock-create-modal .modal-dialog{margin:.5rem}}
@@ -638,10 +638,7 @@
                       <label class="form-label pv-small">To</label>
                       <input type="date" class="form-control" id="stockTo" />
                     </div>
-                    <div class="col-md-3">
-                      <label class="form-label pv-small">Item</label>
-                      <select class="form-select" id="stockItemFilter"></select>
-                    </div>
+                    
                     <div class="col-md-3 d-grid">
                       <button class="btn btn-primary" id="btnApplyStock">
                         <i class="bi bi-funnel"></i> Apply Filters
@@ -697,6 +694,7 @@
                           <th>Sale Qty</th>
                           <th>Available Stock</th>
                         </tr>
+<tr class="stock-column-filters"><th><select class="form-select" id="stockItemFilter" aria-label="Filter stock item"></select></th><th><input class="form-control" data-stock-table="stock" data-stock-col="1" placeholder="Purchase qty" aria-label="Filter Purchase qty"></th><th><input class="form-control" data-stock-table="stock" data-stock-col="2" placeholder="Sale qty" aria-label="Filter Sale qty"></th><th><input class="form-control" data-stock-table="stock" data-stock-col="3" placeholder="Available" aria-label="Filter Available"></th></tr>
                       </thead>
                       <tbody id="stockTbody"></tbody>
                     </table>
@@ -1859,6 +1857,7 @@
         });
 
         viewToast("success", "Added", "Party created.");
+        bootstrap.Modal.getOrCreateInstance($("#stockPartyCreateModal")[0]).hide();
 
         $('#partyName')[0].value = "";
         $('#partyMobile')[0].value = "";
@@ -1977,7 +1976,7 @@
   RENDERING
   =========================== */
     function stockFilterRows(kind){
-      var $body=$({entry:'#entryTbody',bill:'#billTbody',item:'#itemTbody',party:'#partyTbody'}[kind]);
+      var $body=$({entry:'#entryTbody',bill:'#billTbody',item:'#itemTbody',party:'#partyTbody',stock:'#stockTbody'}[kind]);
       var $filters=$('[data-stock-table="'+kind+'"]');
       $body.find('tr').each(function(){var $row=$(this),visible=true;
         $filters.each(function(){var term=$.trim($(this).val()||'').toLowerCase();if(term && $row.children('td').eq(Number($(this).attr('data-stock-col'))).text().toLowerCase().indexOf(term)<0){visible=false;return false;}});
@@ -2096,6 +2095,7 @@
         );
       });
 
+      stockFilterRows("stock");
       const kpi = state.report.kpi || {};
       $('#kpiStockItems')[0].textContent = fmtInt(
         kpi.items || 0
