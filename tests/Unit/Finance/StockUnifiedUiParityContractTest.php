@@ -48,7 +48,7 @@ class StockUnifiedUiParityContractTest extends TestCase
         self::assertStringContainsString('grid-template-columns:minmax(0,1fr) minmax(0,1fr)', $view);
         self::assertStringContainsString('width:185px!important', $view);
         self::assertStringContainsString('stock-entry-mode d-flex gap-3', $view);
-        self::assertStringContainsString("$(document).on('click.stockDismiss','[data-stock-dismiss]'", $view);
+        self::assertStringContainsString("$(document).find('[data-stock-dismiss]').each(function()", $view);
         self::assertStringContainsString('stock-line-field', $view);
         self::assertStringContainsString('stock-line-caption', $view);
         self::assertStringContainsString('stock-line-remove', $view);
