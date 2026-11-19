@@ -403,11 +403,15 @@ class CommissionVoucherController extends Controller
     public function edit($id)
     {
         $voucher = CommisionVoucher::with('details')->where('project_id', getSelectedTown())->findOrFail($id);
-        if ($this->isMergedTypedCommission((int) getSelectedTown(), (int) $id)
-            && (string) $voucher->status !== 'draft') {
-            abort(409, 'Posted Commission Voucher requires reversal before correction.');
-        }
-        $x = $this->getCommonData('Edit Commision Voucher', 'CV');
+        // The register's action opens this route for both Draft and Approved
+        // vouchers. Approval must not turn the iframe into an HTTP 409 debug
+        // page: show approved posting as read-only while the Update service
+        // continues to reject attempts to amend immutable financial history.
+        $readOnly=$this->isMergedTypedCommission((int)getSelectedTown(),(int)$id)
+            && (string)$voucher->status!=='draft';
+        $x = $this->getCommonData($readOnly
+            ? 'View Approved Commission Voucher' : 'Edit Commision Voucher', 'CV');
+        $x['readOnly'] = $readOnly;
         $x['voucher'] = $voucher;
 
         // Get selected town's project_id
