@@ -72,6 +72,12 @@ final class JournalApprovedVoucherEditor
             if (!$header||!in_array((string)$header->type,['JV','SV'],true)) {
                 throw new \DomainException('Journal source is not an active JV/SV voucher.');
             }
+            if (Schema::hasTable('daily_voucher_approvals')
+                && DB::table('daily_voucher_approvals')->where('project_id',$projectId)
+                    ->where('source_table','journal_vouchers')->where('source_id',$voucherId)
+                    ->where('status','pending')->exists()) {
+                throw new \DomainException('Journal voucher has an approval decision pending.');
+            }
             $sources=DB::table('finance_posting_journal_sources as src')
                 ->join('finance_posting_batches as batch','batch.id','=','src.posting_batch_id')
                 ->where('src.journal_voucher_id',$voucherId)
