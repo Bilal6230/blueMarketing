@@ -1,27 +1,27 @@
 <?php
 
-use App\Services\Finance\V2IsolatedConnectionGuard;
+use App\Services\Finance\FinanceConnectionGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * Add exact CV detail identity without altering historical source tables.
- * Must be applied to a NEW empty isolated V2 target or a vetted V2 test DB.
+ * Run only when the existing finance source schema is present and the target tables are absent.
  */
 return new class extends Migration
 {
     public function up(): void
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         foreach (['commision_voucher_details', 'finance_posting_lines',
             'finance_posting_commission_sources'] as $table) {
             if (!Schema::hasTable($table)) {
-                throw new RuntimeException('V2 commission FK baseline missing: ' . $table);
+                throw new RuntimeException('Commission FK baseline missing: ' . $table);
             }
         }
         if (Schema::hasTable('finance_commission_line_sources')) {
-            throw new RuntimeException('V2 commission line FK already exists');
+            throw new RuntimeException('Commission line FK already exists');
         }
         Schema::create('finance_commission_line_sources', function (Blueprint $table): void {
             $table->foreignId('posting_line_id')->primary()
@@ -39,7 +39,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         Schema::dropIfExists('finance_commission_line_sources');
     }
 };
