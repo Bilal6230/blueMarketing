@@ -12,7 +12,7 @@
 |---|---|---|
 | 01 | Nonblocking loading and voucher-tinted skeletons | **COMPLETE** — owner browser + PHP tests PASS |
 | 02 | Action-specific permissions, Roles page and backend enforcement | **PARTIAL ACCEPTANCE** — implemented, tests PASS, owner confirmed CR Edit visibly works; complete cross-module browser permission matrix not yet accepted |
-| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. Plot/JV/CV full differential correction verified by owner; Approved CV browser PASS, local 16 tests PASS / 139 assertions. Bank Deposit/Withdrawal manual same-ID Edit + logical Delete committed **LOCAL/BROWSER VERIFICATION PENDING**. CR/DR, CCR/CDR, BOR/BOP, PPR, EC/ECP, SV, labour/stock still need an explicit CRUD acceptance matrix. |
+| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. Plot/JV/CV differential correction owner-accepted; Approved CV browser PASS, 16 tests PASS / 139 assertions. BD/BW same-batch Edit/Delete local **13 tests PASS / 102 assertions**, posting audit 6 projects clean (BD/BW browser still pending). SV production Create/Post and exact typed/legacy Edit/Delete now committed, **SV tests/browser pending**. PPR/EC/ECP and Stock/Labour remaining source-domain lifecycle acceptance incomplete. |
 | 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **NOT STARTED under new rules** |
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
@@ -964,3 +964,43 @@ php artisan migrate --path=database/migrations/2026_11_19_130000_link_stock_move
 php artisan finance:link-stock-movement-sources
 # Review read-only results first. DO NOT automatically run --apply on ambiguous rows.
 ```
+
+
+## 2026-11-19 — Milestone 03 continuation after Bank tests PASS: JV/SV route and source lifecycle repairs
+
+**Owner confirmed green new bank test gate:** `BankTransferWriterTest` **11 PASS / 72 assertions**, `BankTransferCorrectionContractTest` **2 PASS / 30 assertions**. READ-ONLY all-project posting integrity audit on all 6 projects: **zero issues**. The earlier legacy bank fixture migration `database/finance_legacy_migrations/2026_11_05_000200_create_finance_bank_transfer_sources.php` still referenced deleted `V2IsolatedConnectionGuard` and failed all 11 tests; this was fixed in commit `d129702c` by switching to `FinanceConnectionGuard`. **BD/BW browser acceptance is not documented as PASS**, do not claim it passed.
+
+**Actual additional code changes in this turn:**
+- Fixed a production JV/posted SV Update contradiction: `JournalVoucherController::update` had an unconditional 409 `abort_if(isMergedPostedJournal)` *before* its existing safe `JournalApprovedVoucherEditor::update` branch. Removed the unreachable 409 so posted JV/SV can actually use same-ID, exact-detail FK, original posting batch correction. Extended `JournalApprovedCorrectionContractTest` to assert that no early 409 precedes the editor. This change requires **fresh local tests/browser check on an approved typed JV**, even though prior owner accepted legacy JV.
+- **SV production Create/Save**: Added `sales.voucher.create` and `sales.voucher.store` routes. Sales listing now shows its New Voucher button to users with `finance sv create`; shared modern journal form uses the SV action, preview and return URL. `JournalVoucherController::store` uses validated balanced journal lines, durable request key, project-scoped auth, refuses unsupported direct-post approval configuration, dispatches `OriginalJournalWorkflow::createAndPost(...,'SV')`. `OriginalJournalWorkflow` now supports both JV (default unchanged) and SV: project-locked `nextSalesVoucher()`, actual `journal_vouchers.type='SV'` parent and `journal_voucher_details` rows, `ProjectVoucherDisplayIdentity::assign`, `PostingGateway::postSalesVoucher` exact typed link and idempotent replay. Added `SalesVoucherFullLifecycleContractTest` and an actual in-memory SQLite `JournalPostingWriterTest::test_sales_voucher_create_uses_own_counter_and_retries_without_new_source`.
+- **SV Update/Delete for existing legacy sources**: `JournalVoucherController::update/destroy` now keeps the actual legacy voucher series for `SV` instead of restricting to `JV` or constructing `ledgers.type='JV'`. `LinkedVoucherLedgerRetirement` supports `SV`, while strict `journal_vouchers.type='SV'` owner verification refuses cross-series collisions. A new SQLite regression checks both JV/SV/CV retirement and refuses a JV-header pretending to own an SV ledger. The safe posted typed SV path already uses `JournalApprovedVoucherEditor` and `PostedVoucherArchiver`; added integration test for posted SV correction and delete without a second financial batch.
+- **Cash/PPR/EC/ECP replay reader**: `CashPostingWriter` now checks only active financial legs on idempotent replay, so historical inactive correction lines cannot be mistaken for current posting rows. No new migrations for SV/JV/cash code.
+
+**Owner verification gate (new changes UNVERIFIED locally):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Http/Controllers/JournalVoucherController.php
+php -l app/Services/Finance/OriginalJournalWorkflow.php
+php -l app/Services/Finance/LinkedVoucherLedgerRetirement.php
+php -l app/Services/Finance/CashPostingWriter.php
+php -l tests/Feature/Finance/JournalPostingWriterTest.php
+php -l tests/Feature/Finance/LinkedVoucherLedgerRetirementTest.php
+php artisan test --filter=JournalPostingWriterTest
+php artisan test --filter=LinkedVoucherLedgerRetirementTest
+php artisan test --filter=JournalApprovedCorrectionContractTest
+php artisan test --filter=SalesVoucherFullLifecycleContractTest
+php artisan test --filter=CashPostingWriterTest
+php artisan test --filter=BankTransferWriterTest
+php artisan finance:audit-posting-balances
+```
+
+**Targeted browser check after local green:** New SV form -> Save balanced lines -> one SV row in sales list and two real posting lines; Edit amount and add/remove rows -> same source/batch and correct report balance; Delete -> archive original source/posting legs without customer-facing REV document. Typed posted JV Edit must open and Save rather than HTTP 409; no-op Edit shouldn't add rows. Repeat-safe requests must not create duplicate SV. All changes must operate only under configured project and account relations. Do not use production customer data for exploratory correction.
+
+**Milestone 03 still NOT CLOSED as of this turn:** PPR/EC/ECP original-source CRUD and downstream booking/extra-charge relationships remain unimplemented/partially implemented; Stock Entry/Bill amount/quantity correction and Delete, labour payment correction, approved BOR/BOP custody changes (Milestone 04 linked-source dependency), and full browser/permission matrix acceptance not proven. Owner requested the entire milestone complete; it would be inaccurate to claim completion based on these partial paths. **Milestone 06 centralized user activity audit remains LAST, NOT started.** Project source of truth is this `docs/README.md`; follow this last entry in fresh conversations.
+
+### Next-chat handoff continuation prompt
+
+Continue repo `Bilal6230/blueMarketing` branch `upgrade/laravel-framework` (local `C:\laragon\www\blueMarketing`). Owner demands actual complete Milestone 03 with every voucher's Create/Edit/Delete and exact FK/accounting relationships; do not stop at docs. The latest verified output is BD/BW 13 PASS/102 assertions and six-project audit clean; previous JV/Plot/CV browser accepted. New code added SV production Create, SV legacy and typed Update/Delete, and removed a real unreachable posted JV 409; tests/browser still need local verification. Run exact gate in last docs section and fix any failures. Remaining PPR/EC/ECP, Stock Entry/Bill, labour, CR/DR/CCR/CDR/BOR/BOP end-to-end acceptance still missing; check existing `SameSourceCashVoucherEdit` before duplicating functionality, and handle cheque/online custody (Milestone 04) without corrupting linked sources. Use existing unified DB and jQuery AJAX/toasts/skeleton, no separate V2 names or hardcoded project/database. Roadmap is six milestones; activity audit is Milestone 06 LAST and deferred. Do not claim done without test/browser evidence.
