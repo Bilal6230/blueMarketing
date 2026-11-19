@@ -2598,6 +2598,70 @@ class BookingController extends Controller
     }
 
 
+    public function extraChargeCashDetails(int $source)
+    {
+        abort_unless(auth()->user()?->can('finance extra-charge view'),403);
+        $projectId=(int)getSelectedTown();
+        abort_unless($projectId>0,403);
+        $row=DB::table('customer_ledger')->where('id',$source)
+            ->where('project_id',$projectId)->whereIn('transaction_type',['EC','ECP'])
+            ->first(['id','transaction_type','payment_type','date','reference',
+                'amount_in','amount_out','description','is_active']);
+        abort_unless($row,404);
+        $isTyped=(\Illuminate\Support\Facades\Schema::hasTable('finance_posting_cash_sources')
+            &&DB::table('finance_posting_cash_sources')->where('customer_ledger_id',$source)->exists())
+            ||(\Illuminate\Support\Facades\Schema::hasTable(
+                $row->transaction_type==='EC'?'finance_extra_charge_sources':'finance_extra_charge_payment_sources')
+                &&DB::table($row->transaction_type==='EC'
+                    ?'finance_extra_charge_sources':'finance_extra_charge_payment_sources')
+                    ->where('customer_ledger_id',$source)->exists());
+        return response()->json(['status'=>'success','data'=>[
+            'id'=>(int)$row->id,'type'=>(string)$row->transaction_type,
+            'date'=>(string)$row->date,'reference'=>(string)$row->reference,
+            'amount'=>(string)$row->amount_in,
+            'description'=>(string)$row->description,
+            'editable'=>(int)$row->is_active===1&&!$isTyped
+                &&($row->transaction_type==='EC'||(int)$row->payment_type===1),
+        ]]);
+    }
+
+    public function updateExtraChargeCash(Request $request,int $source)
+    {
+        abort_unless(auth()->user()?->can('finance extra-charge edit'),403);
+        $projectId=(int)getSelectedTown();
+        abort_unless($projectId>0,403);
+        $data=$request->validate([
+            'date'=>['required','date_format:Y-m-d'],
+            'amount'=>['required','regex:/^(0|[1-9][0-9]{0,12})(?:\\.[0-9]{1,2})?$/D'],
+            'description'=>['nullable','string','max:1000'],
+        ]);
+        try {
+            app(\App\Services\Finance\ExtraChargeCashEditor::class)->update(
+                $projectId,$source,$data['date'],$data['amount'],$data['description']??'');
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success',
+            'message'=>'Extra Charge updated under the original voucher and ledger IDs.',
+            'source_id'=>$source]);
+    }
+
+    public function deleteExtraChargeCash(int $source)
+    {
+        abort_unless(auth()->user()?->can('finance extra-charge delete'),403);
+        $projectId=(int)getSelectedTown();
+        abort_unless($projectId>0,403);
+        try {
+            app(\App\Services\Finance\ExtraChargeCashEditor::class)
+                ->delete($projectId,$source);
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success',
+            'message'=>'Extra Charge archived; original source and ledger history retained.',
+            'source_id'=>$source]);
+    }
+
     public function extraCharge()
     {
         $power = Auth::user()->roles[0]->name;
