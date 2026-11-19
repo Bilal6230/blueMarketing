@@ -308,6 +308,15 @@ $(function(){
             ||($.isFunction(feedback.error)?feedback.error(xhr,'Labour payment failed.'):'Labour payment failed.');
         $target.text(text).removeClass('d-none');toast('error',text);
     };
+    var refreshHistory=function(){
+        $.get(window.location.href).done(function(html){
+            var $screen=$('<div>').append($.parseHTML(html,document,false));
+            var $new=$screen.find('#labourCpPaymentsTable tbody');
+            if($new.length)$('#labourCpPaymentsTable tbody').html($new.html());
+            var $newStats=$screen.find('.labour-history-wrap .grid-4');
+            if($newStats.length)$('.labour-history-wrap .grid-4').html($newStats.html());
+        }).fail(function(){toast('error','Could not refresh payment list.');});
+    };
     var addMember=function(row){
         row=row||{};
         var $tr=$('<tr>').attr('data-detail-id',row.detail_id||'');
@@ -356,7 +365,7 @@ $(function(){
             data:{date:$('#labourCpDate').val(),reference:$('#labourCpReference').val(),
                 description:$('#labourCpNarration').val(),members:rows}})
          .done(function(response){$('#labourCpEditModal').modal('hide');
-            toast('success',response.message);window.location.reload();})
+            toast('success',response.message);refreshHistory();})
          .fail(function(xhr){error($('#labourCpEditError'),xhr);})
          .always(function(){$button.prop('disabled',false);});
     });
@@ -371,7 +380,7 @@ $(function(){
         $.ajax({url:base+'/'+id,type:'DELETE',dataType:'json',
             headers:{Accept:'application/json','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')}})
          .done(function(response){$('#labourCpDeleteModal').modal('hide');
-            toast('success',response.message);window.location.reload();})
+            toast('success',response.message);refreshHistory();})
          .fail(function(xhr){error($('#labourCpDeleteError'),xhr);})
          .always(function(){$button.prop('disabled',false);});
     });
