@@ -44,7 +44,12 @@ final class BankTransferEditor
                 ->where('project_id',$projectId)->lockForUpdate()->first();
             $source=DB::table('finance_bank_transfer_sources')
                 ->where('posting_batch_id',$batchId)->where('project_id',$projectId)
-                ->where('transfer_kind',$kind)->lockForUpdate()->first();
+                ->where('transfer_kind',$kind)
+                ->when(Schema::hasColumn('finance_bank_transfer_sources','is_active'),
+                    fn($q)=>$q->where('is_active',1))
+                ->when(Schema::hasColumn('finance_bank_transfer_sources','deleted_at'),
+                    fn($q)=>$q->whereNull('deleted_at'))
+                ->lockForUpdate()->first();
             if (!$batch||!$source||$batch->posted_at===null
                 ||$batch->reversal_of_batch_id!==null
                 ||(string)$batch->voucher_series!==($kind==='deposit'?'BD':'BW')
@@ -138,4 +143,75 @@ final class BankTransferEditor
                 ->update(['effective_date'=>$date,'payload_sha256'=>$hash,'updated_at'=>now()]);
         },3);
     }
+    /** Ordinary logical Delete; preserve original batch and every retired leg. */
+    public function delete(int $projectId,string $kind,int $batchId): void
+    {
+        FinanceConnectionGuard::assertAllowed();
+        if ($projectId<1||$batchId<1||!in_array($kind,['deposit','withdrawal'],true)) {
+            throw new \DomainException('Bank voucher deletion identity is invalid.');
+        }
+        if (!Schema::hasColumn('finance_bank_transfer_sources','is_active')
+            ||!Schema::hasColumn('finance_bank_transfer_sources','deleted_at')
+            ||!Schema::hasColumn('finance_posting_lines','is_active')) {
+            throw new \DomainException('Bank voucher lifecycle migration is required.');
+        }
+        DB::transaction(function()use($projectId,$kind,$batchId):void {
+            DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
+            $source=DB::table('finance_bank_transfer_sources')
+                ->where('posting_batch_id',$batchId)->where('project_id',$projectId)
+                ->where('transfer_kind',$kind)->where('is_active',1)
+                ->whereNull('deleted_at')->lockForUpdate()->first();
+            $batch=DB::table('finance_posting_batches')
+                ->where('id',$batchId)->where('project_id',$projectId)
+                ->lockForUpdate()->first();
+            if (!$source||!$batch||!$batch->posted_at
+                ||$batch->reversal_of_batch_id!==null
+                ||(string)$batch->voucher_series!==($kind==='deposit'?'BD':'BW')
+                ||DB::table('finance_posting_batches')
+                    ->where('reversal_of_batch_id',$batchId)->exists()
+                ||!DB::table('finance_posting_source_claims')
+                    ->where('posting_batch_id',$batchId)->where('source_kind','bank_transfer')->exists()) {
+                throw new \DomainException('Bank voucher is not an active un-reversed source.');
+            }
+            if ($source->linked_customer_ledger_id!==null) {
+                throw new \DomainException('Linked cheque bank voucher requires custody release before deleting.');
+            }
+            $bank=DB::table('project_bank_accounts')
+                ->where('id',$source->bank_account_id)
+                ->where('project_id',$projectId)->first();
+            $legs=DB::table('finance_posting_lines')
+                ->where('posting_batch_id',$batchId)->where('is_active',1)
+                ->orderBy('id')->lockForUpdate()->get();
+            $bankLeg=$bank?$legs->first(fn($l)=>
+                (int)$l->project_head_subhead_id===(int)$bank->account_mapping_id):null;
+            $cashLeg=$legs->first(fn($l)=>(int)$l->id!==(int)($bankLeg->id??0));
+            $value=$this->cents($source->amount);
+            if (!$bank||!$bankLeg||!$cashLeg||$legs->count()!==2||$value<1
+                ||$this->cents($bankLeg->{$kind==='deposit'?'debit':'credit'})!==$value
+                ||$this->cents($bankLeg->{$kind==='deposit'?'credit':'debit'})!==0
+                ||$this->cents($cashLeg->{$kind==='deposit'?'credit':'debit'})!==$value
+                ||$this->cents($cashLeg->{$kind==='deposit'?'debit':'credit'})!==0) {
+                throw new \DomainException('Bank voucher cannot be deleted with inconsistent posting legs.');
+            }
+            $fingerprint=hash('sha256',json_encode([
+                $projectId,(int)$source->bank_account_id,$kind,
+                (string)$batch->effective_date,$this->money($value),
+                (string)$source->narration,
+                [['account_id'=>(int)$cashLeg->project_head_subhead_id,
+                  'amount'=>$this->money($value)]],null,
+            ],JSON_THROW_ON_ERROR));
+            if (!hash_equals((string)$batch->payload_sha256,$fingerprint)) {
+                throw new \DomainException('Bank voucher cannot be deleted with altered source fingerprint.');
+            }
+            DB::table('finance_posting_lines')->where('posting_batch_id',$batchId)
+                ->whereIn('id',$legs->pluck('id')->all())->where('is_active',1)
+                ->update(['is_active'=>0,'updated_at'=>now()]);
+            DB::table('finance_bank_transfer_sources')
+                ->where('posting_batch_id',$batchId)->where('project_id',$projectId)
+                ->where('is_active',1)->update([
+                    'is_active'=>0,'deleted_at'=>now(),'updated_at'=>now(),
+                ]);
+        },3);
+    }
+
 }
