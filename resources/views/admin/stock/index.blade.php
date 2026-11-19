@@ -35,8 +35,8 @@
     @media (max-width: 767.98px) { .pv-main { padding: 12px 10px 24px; } .pv-topbar { align-items: flex-start; flex-direction: column; } .pv-tabs { justify-content: flex-start; } }
 
     /* Shared voucher-style table-first layout; stock colors unchanged. */
-    #view-entry>.row,#view-billing>.row{display:block}
-    #view-entry .pv-scroll,#view-billing .pv-scroll{max-height:calc(100dvh - 315px);min-height:280px;overflow:auto}
+    #view-entry>.row,#view-billing>.row,#view-items>.row,#view-parties>.row{display:block}
+    #view-entry .pv-scroll,#view-billing .pv-scroll,#view-items .pv-scroll,#view-parties .pv-scroll{max-height:calc(100dvh - 315px);min-height:280px;overflow:auto}
     #view-entry>.row>.col-12>.pv-card,#view-billing>.row>.col-12>.pv-card{border-top:3px solid var(--pv-primary)}
     .stock-column-filters th{padding:.3rem!important;min-width:84px;vertical-align:top}
     .stock-column-filters .form-control,.stock-column-filters .form-select{min-height:32px!important;height:32px!important;font-size:.76rem!important;padding:.15rem .3rem!important;min-width:72px;border-radius:7px!important}
@@ -710,45 +710,7 @@
         <!-- ===================== ITEMS VIEW ===================== -->
         <section id="view-items" class="pv-view d-none">
           <div class="row g-3">
-            <div class="col-lg-5">
-              <div class="pv-card">
-                <div class="pv-cardhead">
-                  <div>
-                    <h2>Add Item / Material</h2>
-                    <div class="pv-small pv-muted">
-                      Simple master list: Item name + Unit + default rate.
-                    </div>
-                  </div>
-                </div>
-                <div class="p-3">
-                  <form id="itemForm" novalidate>
-                    <div class="row g-2">
-                      <div class="col-12">
-                        <label class="form-label pv-small">Item Name</label>
-                        <input class="form-control" id="itemName" placeholder="e.g., Cement" required />
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Unit</label>
-                        <input class="form-control" id="itemUnit" placeholder="e.g., bag, kg, pcs" required />
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Default Rate (PKR)</label>
-                        <input class="form-control pv-money" id="itemRate" placeholder="e.g., 1,250"
-                          inputmode="numeric" />
-                      </div>
-                    </div>
-
-                    <div class="d-grid mt-3">
-                      <button class="btn btn-primary btn-lg" type="submit">
-                        <i class="bi bi-plus-circle me-1"></i> Add Item
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-lg-7">
+            <div class="col-12">
               <div class="pv-card">
                 <div class="pv-cardhead">
                   <div>
@@ -757,7 +719,7 @@
                       Used across Entry + Billing + Stock.
                     </div>
                   </div>
-                  <span class="pv-chip" id="itemCountChip">0 total</span>
+                  <span class="pv-chip" id="itemCountChip">0 total</span><button type="button" class="btn btn-primary btn-sm" id="stockNewItem"><i class="bi bi-plus-lg"></i> New Item</button>
                 </div>
                 <div class="p-3">
                   <div class="border rounded-3 bg-light p-3 mb-3">
@@ -784,17 +746,9 @@
                   </div>
                   <div class="mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-2"><strong>Recent import history</strong><span class="pv-small pv-muted">Latest 25 uploads</span></div>
-                    <div class="table-responsive pv-scroll"><table class="table table-sm table-bordered align-middle mb-0"><thead><tr><th>Batch</th><th>Date</th><th>By</th><th>Status</th><th>Added / Updated / Errors</th><th></th></tr></thead><tbody id="itemImportHistoryBody"><tr><td colspan="6" class="text-muted text-center">Loading history...</td></tr></tbody></table></div>
+                    <div class="table-responsive pv-scroll"><table class="table table-sm table-bordered align-middle mb-0"><thead><tr><th>Batch</th><th>Date</th><th>By</th><th>Status</th><th>Added / Updated / Errors</th><th></th></tr>
+<tr class="stock-column-filters"><th></th><th><input class="form-control" data-stock-table="item" data-stock-col="1" placeholder="Sr" aria-label="Filter Sr"></th><th><input class="form-control" id="itemSearch" aria-label="Search item" placeholder="Item name"></th><th><input class="form-control" data-stock-table="item" data-stock-col="3" placeholder="Unit" aria-label="Filter Unit"></th><th><input class="form-control" data-stock-table="item" data-stock-col="4" placeholder="Rate" aria-label="Filter Rate"></th><th></th></tr></thead><tbody id="itemImportHistoryBody"><tr><td colspan="6" class="text-muted text-center">Loading history...</td></tr></tbody></table></div>
                   </div>
-                  <div class="row g-2 mb-3">
-                    <div class="col-md-8">
-                      <input class="form-control" id="itemSearch" placeholder="Search items..." />
-                    </div>
-                    <div class="col-md-4 d-grid">
-                      <div class="d-none"></div>
-                    </div>
-                  </div>
-
                   <div class="table-responsive pv-scroll">
                     <table class="table table-hover align-middle mb-0">
                       <thead>
@@ -819,70 +773,7 @@
         <!-- ===================== PARTIES VIEW ===================== -->
         <section id="view-parties" class="pv-view d-none">
           <div class="row g-3">
-            <div class="col-lg-5">
-              <div class="pv-card">
-                <div class="pv-cardhead">
-                  <div>
-                    <h2>Add Party</h2>
-                    <div class="pv-small pv-muted">
-                      Excel “Add Party Name”: selection, supplier/consumer,
-                      name, mobile, address, head/subhead.
-                    </div>
-                  </div>
-                </div>
-                <div class="p-3">
-                  <form id="partyForm" novalidate>
-                    <div class="row g-2">
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Supplier / Consumer</label>
-                        <select class="form-select" id="partyType" required>
-                          <option value="Supplier">Supplier</option>
-                          <option value="Consumer">Consumer</option>
-                          <option value="Site">Site</option>
-                        </select>
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label pv-small">Mobile</label>
-                        <input class="form-control" id="partyMobile" placeholder="03xx...." />
-                      </div>
-                      <div class="col-12">
-                        <label class="form-label pv-small">Name</label>
-                        <input class="form-control" id="partyName" placeholder="e.g., ABC Supplier" required />
-                      </div>
-                      <div class="col-12">
-                        <label class="form-label pv-small">Address</label>
-                        <input class="form-control" id="partyAddress" placeholder="Address..." />
-                      </div>
-                      <div class="col-md-6">
-                        <label>Head Accounts</label>
-                        <select class="form-control select2" name="accounts_id" id="accounts_id">
-                          <option value="">Select Head</option>
-                          @foreach ($headaccounts as $head)
-                            <option value="{{ $head->head_accounting_id }}">
-                              {{ $head->headAccounting->name }}
-                            </option>
-                          @endforeach
-                        </select>
-                      </div>
-                      <div class="col-md-6">
-                        <label>Sub Head Accounts</label>
-                        <select class="form-control select2" name="subaccounts_id" id="subaccounts_id">
-                          <option value="">Select Sub Head</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div class="d-grid mt-3">
-                      <button class="btn btn-primary btn-lg" type="submit">
-                        <i class="bi bi-person-plus me-1"></i> Add Party
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-lg-7">
+            <div class="col-12">
               <div class="pv-card">
                 <div class="pv-cardhead">
                   <div>
@@ -891,26 +782,9 @@
                       Used for Purchase/Sale/Stock Out.
                     </div>
                   </div>
-                  <span class="pv-chip" id="partyCountChip">0 total</span>
+                  <span class="pv-chip" id="partyCountChip">0 total</span><button type="button" class="btn btn-primary btn-sm" id="stockNewParty"><i class="bi bi-plus-lg"></i> New Party</button>
                 </div>
                 <div class="p-3">
-                  <div class="row g-2 mb-3">
-                    <div class="col-md-6">
-                      <input class="form-control" id="partySearch" placeholder="Search name/mobile..." />
-                    </div>
-                    <div class="col-md-3">
-                      <select class="form-select" id="partyFilterType">
-                        <option value="">All types</option>
-                        <option value="Supplier">Supplier</option>
-                        <option value="Consumer">Consumer</option>
-                        <option value="Site">Site</option>
-                      </select>
-                    </div>
-                    <div class="col-md-3 d-grid">
-                      <div class="d-none"></div>
-                    </div>
-                  </div>
-
                   <div class="table-responsive pv-scroll">
                     <table class="table table-hover align-middle mb-0">
                       <thead>
@@ -926,6 +800,7 @@
                           <th>Status</th>
                           <th class="text-end">Actions</th>
                         </tr>
+<tr class="stock-column-filters"><th><input class="form-control" data-stock-table="party" data-stock-col="0" placeholder="Sr" aria-label="Filter Sr"></th><th><input class="form-control" data-stock-table="party" data-stock-col="1" placeholder="Vendor" aria-label="Filter Vendor"></th><th><input class="form-control" id="partySearch" aria-label="Search party" placeholder="Name / Mobile"></th><th><input class="form-control" data-stock-table="party" data-stock-col="3" placeholder="Mobile" aria-label="Filter Mobile"></th><th><input class="form-control" data-stock-table="party" data-stock-col="4" placeholder="Address" aria-label="Filter Address"></th><th><input class="form-control" data-stock-table="party" data-stock-col="5" placeholder="Head" aria-label="Filter Head"></th><th><input class="form-control" data-stock-table="party" data-stock-col="6" placeholder="Subhead" aria-label="Filter Subhead"></th><th><select class="form-select" id="partyFilterType"><option value="">All</option><option value="Supplier">Supplier</option><option value="Consumer">Consumer</option><option value="Site">Site</option></select></th><th><input class="form-control" data-stock-table="party" data-stock-col="8" placeholder="Status" aria-label="Filter Status"></th><th></th></tr>
                       </thead>
                       <tbody id="partyTbody"></tbody>
                     </table>
@@ -1049,6 +924,76 @@
                     <div class="d-grid gap-2 mt-3">
                       <button type="submit" class="btn btn-primary btn-lg">
                         <i class="bi bi-check2-circle me-1"></i> Save Bill
+                      </button>
+                    </div>
+                  </form></div></div></div></div>
+<div class="modal fade stock-create-modal" id="stockItemCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Item / Material</h5><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><form id="itemForm" novalidate>
+                    <div class="row g-2">
+                      <div class="col-12">
+                        <label class="form-label pv-small">Item Name</label>
+                        <input class="form-control" id="itemName" placeholder="e.g., Cement" required />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Unit</label>
+                        <input class="form-control" id="itemUnit" placeholder="e.g., bag, kg, pcs" required />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Default Rate (PKR)</label>
+                        <input class="form-control pv-money" id="itemRate" placeholder="e.g., 1,250"
+                          inputmode="numeric" />
+                      </div>
+                    </div>
+
+                    <div class="d-grid mt-3">
+                      <button class="btn btn-primary btn-lg" type="submit">
+                        <i class="bi bi-plus-circle me-1"></i> Add Item
+                      </button>
+                    </div>
+                  </form></div></div></div></div>
+<div class="modal fade stock-create-modal" id="stockPartyCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Stock Party</h5><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><form id="partyForm" novalidate>
+                    <div class="row g-2">
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Supplier / Consumer</label>
+                        <select class="form-select" id="partyType" required>
+                          <option value="Supplier">Supplier</option>
+                          <option value="Consumer">Consumer</option>
+                          <option value="Site">Site</option>
+                        </select>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label pv-small">Mobile</label>
+                        <input class="form-control" id="partyMobile" placeholder="03xx...." />
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label pv-small">Name</label>
+                        <input class="form-control" id="partyName" placeholder="e.g., ABC Supplier" required />
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label pv-small">Address</label>
+                        <input class="form-control" id="partyAddress" placeholder="Address..." />
+                      </div>
+                      <div class="col-md-6">
+                        <label>Head Accounts</label>
+                        <select class="form-control select2" name="accounts_id" id="accounts_id">
+                          <option value="">Select Head</option>
+                          @foreach ($headaccounts as $head)
+                            <option value="{{ $head->head_accounting_id }}">
+                              {{ $head->headAccounting->name }}
+                            </option>
+                          @endforeach
+                        </select>
+                      </div>
+                      <div class="col-md-6">
+                        <label>Sub Head Accounts</label>
+                        <select class="form-control select2" name="subaccounts_id" id="subaccounts_id">
+                          <option value="">Select Sub Head</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="d-grid mt-3">
+                      <button class="btn btn-primary btn-lg" type="submit">
+                        <i class="bi bi-person-plus me-1"></i> Add Party
                       </button>
                     </div>
                   </form></div></div></div></div>
@@ -1882,6 +1827,7 @@
           default_rate: rate,
         });
         viewToast("success", "Added", "Item created.");
+        bootstrap.Modal.getOrCreateInstance($("#stockItemCreateModal")[0]).hide();
 
         $('#itemName')[0].value = "";
         $('#itemUnit')[0].value = "";
@@ -2031,7 +1977,7 @@
   RENDERING
   =========================== */
     function stockFilterRows(kind){
-      var $body=kind==='entry'?$('#entryTbody'):$('#billTbody');
+      var $body=$({entry:'#entryTbody',bill:'#billTbody',item:'#itemTbody',party:'#partyTbody'}[kind]);
       var $filters=$('[data-stock-table="'+kind+'"]');
       $body.find('tr').each(function(){var $row=$(this),visible=true;
         $filters.each(function(){var term=$.trim($(this).val()||'').toLowerCase();if(term && $row.children('td').eq(Number($(this).attr('data-stock-col'))).text().toLowerCase().indexOf(term)<0){visible=false;return false;}});
@@ -2278,6 +2224,7 @@
           }
         });
       });
+      stockFilterRows("item");
     }
 
     function renderParties() {
@@ -2420,6 +2367,7 @@
           }
         });
       });
+      stockFilterRows("party");
     }
 
     /* ===========================
@@ -2427,6 +2375,8 @@
   =========================== */
     $('#stockNewEntry').on('click',function(){setEntryMode('purchase');bootstrap.Modal.getOrCreateInstance($('#stockEntryCreateModal')[0]).show();});
     $('#stockNewBill').on('click',function(){bootstrap.Modal.getOrCreateInstance($('#stockBillCreateModal')[0]).show();});
+    $('#stockNewItem').on('click',function(){bootstrap.Modal.getOrCreateInstance($('#stockItemCreateModal')[0]).show();});
+    $('#stockNewParty').on('click',function(){bootstrap.Modal.getOrCreateInstance($('#stockPartyCreateModal')[0]).show();});
     async function initUI() {
       entryDate.value = todayISO();
       billDate.value = todayISO();
