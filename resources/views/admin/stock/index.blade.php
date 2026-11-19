@@ -2540,10 +2540,8 @@
       if($.fn.modal){
         try{$modal.modal(action==='hide'?'hide':'show');return;}catch(error){}
       }
+      // If the Bootstrap CDN is unavailable, keep the forms usable with jQuery.
       {
-        $modal.modal(action==='hide'?'hide':'show');
-      }else{
-        // If the Bootstrap CDN is unavailable, keep the forms usable with jQuery.
         if(action==='hide'){
           $modal.hide().removeClass('show').attr('aria-hidden','true');
           $('.stock-modal-fallback-backdrop').remove();$('body').removeClass('modal-open').css('overflow','');
