@@ -178,7 +178,7 @@ final class StockDocumentEditorTest extends TestCase
         }catch(\DomainException $e) {
             self::assertStringContainsString('negative inventory',$e->getMessage());
         }
-        self::assertSame('5.000',(string)DB::table('stock_entry_lines')
+        self::assertSame(5.0,(float)DB::table('stock_entry_lines')
             ->where('id',21)->value('qty'));
         self::assertSame(50.0,(float)DB::table('customer_ledger')
             ->where('id',51)->value('amount_out'));
