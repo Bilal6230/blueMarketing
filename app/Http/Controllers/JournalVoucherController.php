@@ -1119,6 +1119,12 @@ class JournalVoucherController extends Controller
                 // have exactly one FK-linked active ledger leg; never infer
                 // ownership using type_id alone or row position.
                 $existing=$oldDetails->keyBy('id');
+                $sameSubmittedIds=$oldDetails->sortBy('id')->pluck('id')->map(fn($v)=>(int)$v)
+                    ->values()->all()===array_map(fn($row)=>(int)($row['detail_id']??0),$lines);
+                if($sameSubmittedIds && app(\App\Services\Finance\VoucherUnchangedUpdateDetector::class)
+                    ->same($voucher,$oldDetails,$data,$lines)){
+                    return; // A true no-change Save preserves all source and ledger IDs.
+                }
                 $submitted=[];
                 foreach($lines as $line){
                     $detailId=(int)($line['detail_id']??0);
