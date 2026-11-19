@@ -58,6 +58,9 @@ class StockUnifiedUiParityContractTest extends TestCase
         self::assertStringContainsString('function stockSetSubheads(items,placeholder)', $view);
         self::assertStringContainsString('el.tomselect.clearOptions()', $view);
         self::assertStringContainsString('stockSetSubheads(rows,rows.length', $view);
+        self::assertStringContainsString('collect($partyAccountOptions ?? [])->unique(\'head_id\')', $view);
+        self::assertStringContainsString('item.subhead_accounting_id??nested.id', $view);
+        self::assertStringContainsString('item.plot_id!=null || item.customer_id!=null', $view);
         self::assertStringContainsString('function stockDismissNow(modal)', $view);
         self::assertStringContainsString("button.addEventListener('click'", $view);
         self::assertSame(5, substr_count($view, 'class="stock-modal-actions mt-2"'));
