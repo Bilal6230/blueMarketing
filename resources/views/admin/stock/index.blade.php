@@ -154,6 +154,25 @@
       .stock-module-wrapper .stock-date-controls .form-control{width:140px!important;min-width:140px}
     }
 
+
+    /* Unified finance modal finishing styles. */
+    .stock-create-modal .stock-modal-actions,#editModal .stock-modal-actions{display:flex!important;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}
+    .stock-create-modal .stock-modal-actions .pv-small{width:100%;text-align:right;margin:0!important}
+    .stock-create-modal .stock-compact-line{padding:7px 9px!important}
+    .stock-create-modal .stock-compact-line .row{--bs-gutter-x:8px!important;--bs-gutter-y:5px!important}
+    .stock-compact-line .stock-line-field{display:flex;align-items:stretch;border:1px solid #dce5f2;border-radius:8px;background:#fff;min-width:0;height:34px}
+    .stock-compact-line .stock-line-caption{display:flex;align-items:center;justify-content:center;flex:0 0 auto;padding:0 8px;background:#edf2f8;color:#718198;border-right:1px solid #dce5f2;border-radius:7px 0 0 7px;font-size:10px;font-weight:700;min-width:36px}
+    .stock-compact-line .stock-line-field>.form-control,.stock-compact-line .stock-line-field>.form-select{flex:1 1 auto;min-width:0;width:100%;border:0!important;border-radius:0 7px 7px 0!important;box-shadow:none!important;height:32px!important;min-height:32px!important}
+    .stock-compact-line .stock-line-field>.form-control[readonly]{background:#f5f7fa;color:#64748b}
+    .stock-compact-line .stock-line-field>.ts-wrapper{flex:1 1 0;min-width:0;width:100%;height:32px}
+    .stock-compact-line .stock-line-field .ts-control{border:0!important;height:32px!important;min-height:32px!important;border-radius:0 7px 7px 0!important;padding:4px 8px!important}
+    .stock-compact-line .stock-line-summary{display:flex;align-items:center;justify-content:space-between;padding:3px 3px 0;margin-top:3px;line-height:1.2}
+    .stock-compact-line .stock-line-summary .line-amount{font-size:11px;font-weight:700}
+    .stock-compact-line .stock-line-remove,#stockDocumentEditModal .stock-doc-remove{height:26px!important;width:26px!important;min-height:26px!important;min-width:26px!important;padding:0!important;border:1px solid #f4c5ca!important;border-radius:8px!important;background:#fff4f5!important;color:#d14252!important;display:inline-flex!important;align-items:center;justify-content:center;font-size:11px!important;box-shadow:none!important}
+    .stock-compact-line .stock-line-remove:hover,#stockDocumentEditModal .stock-doc-remove:hover{background:#d14252!important;color:#fff!important;border-color:#d14252!important}
+    #stockDocumentEditModal .modal-footer,#stockDocumentDeleteModal .modal-footer{display:flex!important;justify-content:flex-end!important}
+    @media(max-width:767.98px){.stock-compact-line .stock-line-caption{min-width:45px}}
+
     /* App shell (labour module-ish) */
     .pv-shell {
       display: flex;
@@ -910,7 +929,7 @@
     </main>
   </div></div>
 
-  <div class="modal fade stock-create-modal" id="stockEntryCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title"><span id="entryTitle">Purchase Entry</span></h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><div class="stock-entry-mode d-flex gap-3 mb-2"><button type="button" class="btn btn-outline-primary" id="btnPurchaseMode">Purchase</button><button type="button" class="btn btn-outline-secondary" id="btnStockOutMode">Stock Out</button></div><form id="entryForm" novalidate>
+  <div class="modal fade stock-create-modal" id="stockEntryCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title"><span id="entryTitle">Purchase Entry</span></h5><button class="stock-modal-close" type="button" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><div class="stock-entry-mode d-flex gap-3 mb-2"><button type="button" class="btn btn-outline-primary" id="btnPurchaseMode">Purchase</button><button type="button" class="btn btn-outline-secondary" id="btnStockOutMode">Stock Out</button></div><form id="entryForm" novalidate>
                     <div class="row g-2">
                       <div class="col-md-6">
                         <label class="form-label pv-small">Slip No (auto)</label>
@@ -960,7 +979,7 @@
                       </div>
                     </div>
 
-                    <div class="d-grid mt-3">
+                    <div class="stock-modal-actions mt-2">
                       <button type="submit" class="btn btn-primary btn-lg" id="entrySubmitBtn">
                         <i class="bi bi-check2-circle me-1"></i> Save Entry
                       </button>
@@ -969,7 +988,7 @@
                       </div>
                     </div>
                   </form></div></div></div></div>
-<div class="modal fade stock-create-modal" id="stockBillCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">Purchase / Sale Bill <span class="pv-chip" id="billNoChip">Bill no… auto</span></h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="billForm" novalidate>
+<div class="modal fade stock-create-modal" id="stockBillCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">Purchase / Sale Bill <span class="pv-chip" id="billNoChip">Bill no… auto</span></h5><button class="stock-modal-close" type="button" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="billForm" novalidate>
                     <div class="row g-2">
                       <div class="col-md-6">
                         <label class="form-label pv-small">Selection</label>
@@ -1016,13 +1035,13 @@
                       </div>
                     </div>
 
-                    <div class="d-grid gap-2 mt-3">
+                    <div class="stock-modal-actions mt-2">
                       <button type="submit" class="btn btn-primary btn-lg">
                         <i class="bi bi-check2-circle me-1"></i> Save Bill
                       </button>
                     </div>
                   </form></div></div></div></div>
-<div class="modal fade stock-create-modal" id="stockItemCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Item / Material</h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="itemForm" novalidate>
+<div class="modal fade stock-create-modal" id="stockItemCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Item / Material</h5><button class="stock-modal-close" type="button" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="itemForm" novalidate>
                     <div class="row g-2">
                       <div class="col-12">
                         <label class="form-label pv-small">Item Name</label>
@@ -1039,13 +1058,13 @@
                       </div>
                     </div>
 
-                    <div class="d-grid mt-3">
+                    <div class="stock-modal-actions mt-2">
                       <button class="btn btn-primary btn-lg" type="submit">
                         <i class="bi bi-plus-circle me-1"></i> Add Item
                       </button>
                     </div>
                   </form></div></div></div></div>
-<div class="modal fade stock-create-modal" id="stockPartyCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Stock Party</h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="partyForm" novalidate>
+<div class="modal fade stock-create-modal" id="stockPartyCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Stock Party</h5><button class="stock-modal-close" type="button" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="partyForm" novalidate>
                     <div class="row g-2">
                       <div class="col-md-6">
                         <label class="form-label pv-small">Supplier / Consumer</label>
@@ -1086,7 +1105,7 @@
                       </div>
                     </div>
 
-                    <div class="d-grid mt-3">
+                    <div class="stock-modal-actions mt-2">
                       <button class="btn btn-primary btn-lg" type="submit">
                         <i class="bi bi-person-plus me-1"></i> Add Party
                       </button>
@@ -1112,7 +1131,7 @@
               Edit this project's record. Existing linked history is preserved.
             </div>
           </div>
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal" aria-label="Close"
+          <button type="button" class="btn btn-light" data-stock-dismiss="1" aria-label="Close"
             style="border-radius: 14px">
             <i class="bi bi-x-lg"></i>
           </button>
@@ -1127,7 +1146,7 @@
    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content pv-card">
      <div class="modal-header"><h5 class="modal-title" id="stockDocumentEditTitle">Edit Stock Voucher</h5>
-       <button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+       <button class="stock-modal-close" type="button" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
      <form id="stockDocumentEditForm">
       <div class="modal-body">
        <div class="alert alert-info small">The original stock document, inventory movements and ledger IDs remain linked.</div>
@@ -1142,7 +1161,7 @@
        <div id="stockDocumentEditError" class="alert alert-danger d-none mt-2" role="alert"></div>
       </div>
       <div class="modal-footer">
-       <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+       <button type="button" class="btn btn-outline-secondary" data-stock-dismiss="1">Cancel</button>
        <button type="submit" id="stockDocumentSave" class="btn btn-primary">Update Stock Voucher</button>
       </div>
      </form>
@@ -1152,13 +1171,13 @@
   <div class="modal fade" id="stockDocumentDeleteModal" tabindex="-1" aria-labelledby="stockDocumentDeleteTitle" aria-hidden="true">
    <div class="modal-dialog modal-dialog-centered"><div class="modal-content pv-card">
     <div class="modal-header"><h5 id="stockDocumentDeleteTitle" class="modal-title">Delete Stock Voucher</h5>
-     <button type="button" class="stock-modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+     <button type="button" class="stock-modal-close" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
     <div class="modal-body">
      <p>Archive this stock voucher from active inventory and balances? The original source and movement IDs remain preserved.</p>
      <div id="stockDocumentDeleteError" class="alert alert-danger d-none" role="alert"></div>
     </div>
     <div class="modal-footer">
-     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+     <button type="button" class="btn btn-outline-secondary" data-stock-dismiss="1">Cancel</button>
      <button type="button" id="stockDocumentDeleteConfirm" class="btn btn-danger">Delete Voucher</button>
     </div>
    </div></div>
@@ -1566,37 +1585,17 @@
         .toString(16)
         .slice(2)}`;
       const html = `
-          <div class="pv-line" data-line="${lineId}">
-            <div class="row g-2 align-items-end">
-              <div class="col-md-5">
-                <label class="form-label pv-small">Item</label>
-                <select class="form-select line-item" required></select>
-              </div>
-              <div class="col-md-2">
-                <label class="form-label pv-small">Unit</label>
-                <input class="form-control line-unit" readonly value="—">
-              </div>
-              <div class="col-md-2">
-                <label class="form-label pv-small">Qty</label>
-                <input class="form-control line-qty" inputmode="numeric" placeholder="0" required>
-              </div>
-              <div class="col-md-2">
-                <label class="form-label pv-small">Rate</label>
-                <input class="form-control line-rate pv-money" inputmode="numeric" placeholder="0">
-              </div>
-              <div class="col-md-1 d-grid">
-                <button type="button" class="btn btn-outline-danger" title="Remove">
-                  <i class="bi bi-x-lg"></i>
-                </button>
-              </div>
-            </div>
-            <div class="d-flex align-items-center justify-content-between mt-2">
-              <div class="pv-small pv-muted">Line Amount</div>
-              <div class="fw-bold line-amount">PKR 0</div>
-            </div>
+        <div class="pv-line stock-compact-line" data-line="${lineId}">
+          <div class="row g-2 align-items-center">
+            <div class="col-md-5"><div class="stock-line-field"><span class="stock-line-caption">Item</span><select class="form-select line-item" aria-label="Item" required></select></div></div>
+            <div class="col-md-2"><div class="stock-line-field"><span class="stock-line-caption">Unit</span><input class="form-control line-unit" aria-label="Unit" readonly value="—"></div></div>
+            <div class="col-md-2"><div class="stock-line-field"><span class="stock-line-caption">Qty</span><input class="form-control line-qty" aria-label="Quantity" inputmode="numeric" placeholder="0" required></div></div>
+            <div class="col-md-2"><div class="stock-line-field"><span class="stock-line-caption">Rate</span><input class="form-control line-rate pv-money" aria-label="Rate" inputmode="numeric" placeholder="0"></div></div>
+            <div class="col-md-1 d-flex align-items-center justify-content-center"><button type="button" class="stock-line-remove" title="Remove row" aria-label="Remove item row"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
           </div>
-        `;
-
+          <div class="stock-line-summary"><span class="pv-small pv-muted">Line Amount</span><strong class="line-amount">PKR 0</strong></div>
+        </div>
+      `;
       const temp = $('<div>')[0];
       $(temp).html(html.trim());
       const row = temp.firstElementChild;
@@ -1769,7 +1768,7 @@
     function makeBillLineRow(idx) {
       const row = makeLineRow("bill", idx);
       // tweak labels a bit
-      $(row).find('.line-amount').closest('.d-flex').find('.pv-muted').text('Line Amount');
+      $(row).find('.stock-line-summary .pv-muted').text('Line Amount');
       return row;
     }
 
@@ -1890,14 +1889,14 @@
 
       $(form).append(
         `
-          <div class="d-grid gap-2 mt-3">
+          <div class="stock-modal-actions mt-2">
             ${onSave
           ? `<button type="button" class="btn btn-primary btn-lg" id="editSaveBtn">
               <i class="bi bi-check2-circle me-1"></i> Save
             </button>`
           : ""
         }
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <button type="button" class="btn btn-outline-secondary" data-stock-dismiss="1">
               ${onSave ? "Cancel" : "Close"}
             </button>
           </div>
@@ -2667,8 +2666,10 @@
       var $modal=$($(this).attr('data-stock-modal'));
       setTimeout(function(){stockEnhanceDropdowns($modal);},0);
     });
-    $(document).on('click','.stock-create-modal [data-bs-dismiss="modal"],#editModal [data-bs-dismiss="modal"]',function(){
-      stockModal('#'+$(this).closest('.modal').attr('id'),'hide');
+    $(document).on('click.stockDismiss','[data-stock-dismiss]',function(event){
+      event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+      const $modal=$(this).closest('.modal');
+      if($modal.length)stockModal('#'+$modal.attr('id'),'hide');
     });
     $(document).on('keydown.stockCreateModal',function(event){
       if(event.key==='Escape' && $('.stock-modal-fallback-backdrop').length){
