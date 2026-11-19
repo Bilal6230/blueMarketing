@@ -30,9 +30,19 @@ class CashPostingWriterTest extends TestCase
         ] as $name) {
             Schema::create($name, function (Blueprint $t): void { $t->id(); });
         }
+        Schema::create('head_accountings', function (Blueprint $t): void {
+            $t->id();
+            $t->boolean('is_active')->default(true);
+        });
+        Schema::create('subhead_accountings', function (Blueprint $t): void {
+            $t->id();
+            $t->boolean('is_active')->default(true);
+        });
         Schema::create('project_head_subheads', function (Blueprint $t): void {
             $t->id();
             $t->unsignedBigInteger('project_id');
+            $t->unsignedBigInteger('head_accounting_id');
+            $t->unsignedBigInteger('subhead_accounting_id');
         });
         Schema::create('customer_ledger', function (Blueprint $t): void {
             $t->id();
@@ -48,10 +58,12 @@ class CashPostingWriterTest extends TestCase
         $migration->up();
 
         DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
+        DB::table('head_accountings')->insert([['id' => 1, 'is_active' => 1]]);
+        DB::table('subhead_accountings')->insert([['id' => 1, 'is_active' => 1]]);
         DB::table('project_head_subheads')->insert([
-            ['id' => 101, 'project_id' => 1],
-            ['id' => 102, 'project_id' => 1],
-            ['id' => 201, 'project_id' => 2],
+            ['id' => 101, 'project_id' => 1, 'head_accounting_id' => 1, 'subhead_accounting_id' => 1],
+            ['id' => 102, 'project_id' => 1, 'head_accounting_id' => 1, 'subhead_accounting_id' => 1],
+            ['id' => 201, 'project_id' => 2, 'head_accounting_id' => 1, 'subhead_accounting_id' => 1],
         ]);
         DB::table('customer_ledger')->insert([
             ['id' => 42, 'project_id' => 1, 'transaction_type' => 'CR',
