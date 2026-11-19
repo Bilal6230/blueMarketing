@@ -50,6 +50,11 @@ class BankTransferWriterTest extends TestCase
             $t->unsignedBigInteger('subhead_accounting_id'); $t->unique(['id', 'project_id']);
         });
         (require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php'))->up();
+        if (!Schema::hasColumn('finance_posting_lines','is_active')) {
+            Schema::table('finance_posting_lines',function(Blueprint $table){
+                $table->boolean('is_active')->default(true);
+            });
+        }
         Schema::create('project_bank_accounts', function (Blueprint $t): void {
             $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('account_mapping_id');
             $t->boolean('is_active')->default(true); $t->unique(['id', 'project_id']);
@@ -98,6 +103,67 @@ class BankTransferWriterTest extends TestCase
         $ledgerRows = (new \App\Services\Finance\OriginalLedgerReport())->rows(1, null, null);
         $this->assertSame(5, count($ledgerRows));
         $this->assertContains('bank_transfer', array_column($ledgerRows, 'source_kind'));
+    }
+
+    public function test_manual_bank_transfer_can_be_corrected_on_same_batch_with_no_duplicate_active_posting(): void
+    {
+        $writer=new BankTransferWriter();
+        $original=$writer->post(1,1,'deposit','BANK-TRANSFER-EDIT-0001',
+            '2026-11-05','100.00','Original',
+            [['account_id'=>102,'amount'=>'100.00']]);
+        $id=$original['posting_batch_id'];
+        $editor=new \App\Services\Finance\BankTransferEditor();
+        $editor->update(1,'deposit',$id,1,102,'2026-11-06','150.00','Corrected');
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame(4,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$id)->count());
+        self::assertSame(2,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$id)->where('is_active',1)->count());
+        self::assertSame(150.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$id)->where('is_active',1)->sum('debit'));
+        self::assertSame(150.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$id)->where('is_active',1)->sum('credit'));
+        self::assertSame(150.0,(float)DB::table('finance_bank_transfer_sources')
+            ->where('posting_batch_id',$id)->value('amount'));
+        self::assertCount(2,(new PostingReportReader())->lines(1));
+        self::assertSame([],array_filter((new \App\Services\Finance\BankTransferReconciliation())->audit(1),
+            fn($row)=>!$row['ok']));
+
+        $editor->update(1,'deposit',$id,1,102,'2026-11-06','150.00','Corrected');
+        self::assertSame(4,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$id)->count());
+        $editor->update(1,'deposit',$id,1,102,'2026-11-07','90.00','Changed again');
+        self::assertSame(6,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$id)->count());
+        self::assertSame(90.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$id)->where('is_active',1)->sum('debit'));
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+    }
+
+    public function test_manual_bank_correction_rejects_foreign_project_and_reversed_source(): void
+    {
+        $writer=new BankTransferWriter();
+        $id=$writer->post(1,1,'withdrawal','BANK-TRANSFER-EDIT-0002',
+            '2026-11-05','20.00','Cash withdrawal',
+            [['account_id'=>102,'amount'=>'20.00']])['posting_batch_id'];
+        $editor=new \App\Services\Finance\BankTransferEditor();
+        try{
+            $editor->update(2,'withdrawal',$id,2,201,'2026-11-06','30.00','Foreign');
+            self::fail('Cross-project update must be blocked.');
+        }catch(\Throwable $e){self::assertTrue($e instanceof \DomainException
+            ||$e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException);}
+        self::assertSame('20.00',number_format((float)DB::table('finance_bank_transfer_sources')
+            ->where('posting_batch_id',$id)->value('amount'),2,'.',''));
+        (new PostingReversalWriter())->reverse(1,$id,'BANK-TRANSFER-EDIT-REV-0002',
+            '2026-11-06','Reversed');
+        try {
+            $editor->update(1,'withdrawal',$id,1,102,'2026-11-07','30.00','Wrong');
+            self::fail('Reversed bank transfer must not be editable.');
+        }catch(\DomainException $e){
+            self::assertStringContainsString('invalid',$e->getMessage());
+        }
+        self::assertSame(20.0,(float)DB::table('finance_bank_transfer_sources')
+            ->where('posting_batch_id',$id)->value('amount'));
     }
 
     public function test_wrong_project_mapping_and_unbalanced_allocations_fail_without_posting(): void
