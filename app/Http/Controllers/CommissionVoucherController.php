@@ -282,12 +282,31 @@ class CommissionVoucherController extends Controller
                     'Commission voucher debit and credit must be balanced and valid.',
                 'V2_CV_CROSS_PROJECT_ACCOUNT' =>
                     'A Commission account belongs to another project.',
+                'Commission ledger detail foreign key migration is required.',
+                'Commission ledger foreign key is not enforced.' =>
+                    'Commission accounting relationship is not configured correctly. Contact the administrator.',
+                'Commission detail-to-ledger account or amount mismatch.',
+                'Duplicate Commission ledger detail foreign key.',
+                'Commission ledger references another voucher detail.',
+                'Unlinked legacy Commission ledger exists; manual reconciliation required.' =>
+                    'Commission ledger links do not match this voucher. Contact the administrator before approving.',
+                'Commission voucher requires two active details.' =>
+                    'Add at least two balanced accounting rows before approval.',
+                'Commission ledger cannot activate without posted financial batch.' =>
+                    'Commission financial posting could not be confirmed. No ledger entries were activated.',
                 'V2_CV_REPLAY_CONFLICT','V2_CV_REPLAY_TAMPERED' =>
                     'This Commission posting already exists with different accounting details.',
                 default => 'Commission approval could not be posted. Please check voucher relationships and contact the administrator.',
             };
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json(['status'=>'error','message'=>$reason],409);
+            }
+            return back()->withErrors(['voucher'=>$reason]);
+        } catch (\Throwable $e) {
+            report($e);
+            $reason='Commission approval encountered a server error. No partial posting was saved; contact the administrator.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['status'=>'error','message'=>$reason],500);
             }
             return back()->withErrors(['voucher'=>$reason]);
         }
