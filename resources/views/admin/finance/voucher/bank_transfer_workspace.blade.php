@@ -303,10 +303,14 @@ $(function () {
             $('<button type="button" class="btn btn-sm btn-outline-secondary bt-view" data-blue-action-type="view">View</button>').attr('data-id',batch).appendTo($actions);
             $('<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" data-blue-action-type="print">Print</a>').attr('href',printUrl(batch)).appendTo($actions);
             if(r.can_edit){
+                @can('finance bank-'.$kind.' edit')
                 $('<button type="button" class="btn btn-sm btn-outline-primary bt-edit" data-blue-action-type="edit">Edit</button>')
                     .attr('data-id',batch).appendTo($actions);
+                @endcan
+                @can('finance bank-'.$kind.' delete')
                 $('<button type="button" class="btn btn-sm btn-outline-danger bt-delete" data-blue-action-type="delete">Delete</button>')
                     .attr('data-id',batch).appendTo($actions);
+                @endcan
             }
             @can('finance bank-'.$kind.' reverse')
             if(r.can_reverse)$('<button type="button" class="btn btn-sm btn-outline-danger bt-reverse" data-blue-action-type="delete">Reverse</button>').attr('data-id',batch).appendTo($actions);
