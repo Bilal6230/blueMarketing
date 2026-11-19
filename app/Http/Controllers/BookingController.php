@@ -2487,7 +2487,11 @@ class BookingController extends Controller
             }
             },3);
         } catch (\DomainException $e) {
-            return back()->withErrors(['msg' => 'Receipt correction rejected to protect accounting history.'])->withInput();
+            $message=$e->getMessage();
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['status'=>'error','message'=>$message],409);
+            }
+            return back()->withErrors(['msg'=>$message])->withInput();
         }
         return back()->with('success', 'Receipt corrected; original posting and reversal preserved.');
 
