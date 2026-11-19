@@ -2411,6 +2411,7 @@ class BookingController extends Controller
                 return back()->withErrors(['msg' => 'Receipt posting is unavailable for correction.'])->withInput();
             }
             $cash = (string) $validated['payment_type'] === '1';
+            DB::transaction(function () use ($projectId, $source, $oldLedger, $validated, $cash): void {
             $result = app(\App\Services\Finance\LegacyCashVoucherCorrection::class)->correct(
                 $projectId, (int) $source->id, (int) $oldLedger->project_head_subheads_id,
                 [
@@ -2433,6 +2434,7 @@ class BookingController extends Controller
                     'passing_date' => $result['source']->passing_date, 'update_by' => Auth::id(),
                 ]);
             }
+            },3);
         } catch (\DomainException $e) {
             return back()->withErrors(['msg' => 'Receipt correction rejected to protect accounting history.'])->withInput();
         }
