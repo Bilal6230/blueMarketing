@@ -42,6 +42,12 @@ final class CommissionLedgerSynchronizer
         }
     }
 
+    /** Fail closed if the database does not enforce actual CV detail FK. */
+    public function assertEnforcedDetailForeignKey(): void
+    {
+        $this->schema();
+    }
+
     private function money(mixed $value): string
     {
         if (!preg_match('/^(0|[1-9][0-9]{0,13})(?:\.([0-9]{1,2}))?$/D',(string)$value,$m)) {
