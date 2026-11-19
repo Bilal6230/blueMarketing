@@ -24,9 +24,17 @@ final class PostingBatchIntegrityAudit
     {
         if ($projectId < 1) throw new \InvalidArgumentException('Project ID must be positive.');
         FinanceConnectionGuard::assertAllowed();
-        $batches=DB::table('finance_posting_batches')
-            ->where('project_id',$projectId)->whereNotNull('posted_at')
-            ->orderBy('id')->get(['id','voucher_series','voucher_number','reversal_of_batch_id']);
+        $query=DB::table('finance_posting_batches')
+            ->where('project_id',$projectId)->whereNotNull('posted_at');
+        if (Schema::hasTable('finance_bank_transfer_sources')
+            && Schema::hasColumn('finance_bank_transfer_sources','is_active')) {
+            $query->whereNotExists(fn($q)=>$q->selectRaw('1')
+                ->from('finance_bank_transfer_sources as archived_bank')
+                ->whereColumn('archived_bank.posting_batch_id','finance_posting_batches.id')
+                ->where('archived_bank.is_active',0));
+        }
+        $batches=$query->orderBy('id')
+            ->get(['id','voucher_series','voucher_number','reversal_of_batch_id']);
         if ($batches->isEmpty()) return [];
         $lines=DB::table('finance_posting_lines as line')
             ->leftJoin('project_head_subheads as account','account.id','=','line.project_head_subhead_id')
