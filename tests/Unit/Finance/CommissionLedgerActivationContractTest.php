@@ -6,6 +6,31 @@ use PHPUnit\Framework\TestCase;
 
 final class CommissionLedgerActivationContractTest extends TestCase
 {
+    public function test_approval_uses_fk_identity_not_jv_numeric_overlap_and_returns_json_feedback(): void
+    {
+        $root=dirname(__DIR__,3);
+        $workflow=file_get_contents($root.'/app/Services/Finance/CommissionDraftWorkflow.php');
+        $controller=file_get_contents($root.'/app/Http/Controllers/CommissionVoucherController.php');
+        $view=file_get_contents($root.'/resources/views/admin/reports/vouchers/edit_commision_voucher.blade.php');
+        self::assertIsString($workflow);
+        self::assertIsString($controller);
+        self::assertIsString($view);
+        $approval=substr($workflow,strpos($workflow,'public function approveAndPost('));
+        self::assertStringNotContainsString("where('type', 'JV')",$approval);
+        self::assertStringContainsString('->assertDraftCanReplace($projectId,$sourceId)',$approval);
+        $controllerApproval=substr($controller,strpos($controller,'public function approve('),
+            strpos($controller,'private function isMergedTypedCommission(')
+                - strpos($controller,'public function approve('));
+        self::assertStringContainsString("response()->json(['status'=>'error','message'=>\$reason],409)",$controllerApproval);
+        self::assertStringContainsString("'status'=>'success'",$controllerApproval);
+        self::assertStringNotContainsString('abort(409,',$controllerApproval);
+        self::assertStringContainsString('id="commissionApproveForm"',$view);
+        self::assertStringContainsString("submit.fvcCommissionApprove",$view);
+        self::assertStringContainsString("headers:{Accept:'application/json'}",$view);
+        self::assertStringContainsString("$('#errorModal').modal('show')",$view);
+        self::assertStringNotContainsString("projectID: 3",$view);
+    }
+
     public function test_draft_create_edit_approval_and_reverse_share_fk_linked_ledger_lifecycle(): void
     {
         $root=dirname(__DIR__,3);
