@@ -92,6 +92,13 @@ final class PostingReportReader
                                     ->orWhere('batch.voucher_series', '!=', 'REV');
                             });
                     });
+                if (Schema::hasTable('finance_bank_transfer_sources')
+                    && Schema::hasColumn('finance_bank_transfer_sources','is_active')) {
+                    $query->orWhereExists(fn($q)=>$q->selectRaw('1')
+                        ->from('finance_bank_transfer_sources as archived_bank')
+                        ->whereColumn('archived_bank.posting_batch_id','batch.id')
+                        ->where('archived_bank.is_active',0));
+                }
             })->exists();
         if ($inconsistent) {
             throw new \DomainException('V2_REPORT_SOURCE_OR_PROJECT_INTEGRITY_FAILURE');
