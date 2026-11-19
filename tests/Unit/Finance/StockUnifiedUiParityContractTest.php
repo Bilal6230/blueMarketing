@@ -52,6 +52,13 @@ class StockUnifiedUiParityContractTest extends TestCase
         self::assertStringContainsString('stock-line-field', $view);
         self::assertStringContainsString('stock-line-caption', $view);
         self::assertStringContainsString('stock-line-remove', $view);
+        self::assertStringContainsString('CR voucher-style bordered directory tables', $view);
+        self::assertStringContainsString('border-right:1px solid #d5e0ec!important', $view);
+        self::assertStringContainsString('id="stockActionsPopover"', $view);
+        self::assertStringContainsString('function stockActionsCell(sourceButtons)', $view);
+        self::assertStringContainsString("original.click();", $view);
+        self::assertStringContainsString('stock-action-trigger', $view);
+        self::assertStringContainsString('stock-act-status', $view);
         self::assertStringContainsString("dropdownParent:'body'", $view);
         self::assertStringContainsString('function stockPositionTomDropdown(instance)', $view);
         self::assertStringContainsString("menu.style.setProperty('position','fixed','important')", $view);
