@@ -203,6 +203,42 @@
     body>.ts-dropdown.stock-modal-dropdown .option.active,
     body>.ts-dropdown.stock-modal-dropdown .option:hover{background:#eaf2ff!important;color:#175bd6!important}
 
+
+    /* CR voucher-style bordered directory tables and compact action menu. */
+    .stock-module-wrapper .pv-view .pv-scroll > table.table,
+    .stock-module-wrapper .stock-items-side-by-side table.table{
+      border-collapse:separate!important;border-spacing:0!important;width:100%;
+      border-top:1px solid #d5e0ec!important;border-left:1px solid #d5e0ec!important
+    }
+    .stock-module-wrapper .pv-view .pv-scroll > table.table > thead > tr > th,
+    .stock-module-wrapper .pv-view .pv-scroll > table.table > tbody > tr > td,
+    .stock-module-wrapper .stock-items-side-by-side table.table > thead > tr > th,
+    .stock-module-wrapper .stock-items-side-by-side table.table > tbody > tr > td{
+      border-right:1px solid #d5e0ec!important;border-bottom:1px solid #d5e0ec!important;
+      border-left:0!important;border-top:0!important;vertical-align:middle;padding:8px 10px
+    }
+    .stock-module-wrapper .pv-view .pv-scroll > table.table > tbody > tr:nth-child(even),
+    .stock-module-wrapper .stock-items-side-by-side table.table > tbody > tr:nth-child(even){background:#f8fbff}
+    .stock-module-wrapper .pv-view .pv-scroll > table.table > tbody > tr:hover,
+    .stock-module-wrapper .stock-items-side-by-side table.table > tbody > tr:hover{background:#eef5ff}
+    .stock-module-wrapper .stock-action-cell{width:74px;min-width:74px;max-width:74px;text-align:center!important;padding:4px!important;white-space:nowrap}
+    .stock-module-wrapper .stock-action-trigger{width:32px;height:32px;padding:0!important;display:inline-flex;justify-content:center;align-items:center;
+      background:#fff;border:1px solid #c7d8e8;border-radius:10px;color:#138055;
+      box-shadow:0 2px 7px rgba(15,38,75,.09);font-size:19px;line-height:1;cursor:pointer}
+    .stock-module-wrapper .stock-action-trigger:hover,.stock-module-wrapper .stock-action-trigger[aria-expanded="true"]{
+      background:#ddf8ec;border-color:#64be99;color:#087946
+    }
+    .stock-actions-popover{position:fixed;z-index:2090;width:170px;max-width:calc(100vw - 18px);display:flex;flex-direction:column;
+      gap:6px;border-radius:13px;background:transparent;padding:4px;filter:drop-shadow(0 7px 11px rgba(25,38,60,.18))}
+    .stock-actions-popover.d-none{display:none!important}
+    .stock-actions-popover button{display:flex;align-items:center;gap:8px;border:0;border-radius:999px;color:#fff;
+      padding:8px 12px;font-size:12px;font-weight:650;width:100%;white-space:nowrap;text-align:left;cursor:pointer}
+    .stock-actions-popover button i{width:15px;text-align:center}
+    .stock-actions-popover .stock-act-details{background:#586f88}
+    .stock-actions-popover .stock-act-edit{background:#2785ca}
+    .stock-actions-popover .stock-act-del{background:#dd4051}
+    .stock-actions-popover .stock-act-status{background:#5e51ab}
+    .stock-actions-popover button:hover{filter:brightness(.89)}
     /* App shell (labour module-ish) */
     .pv-shell {
       display: flex;
@@ -1141,6 +1177,7 @@
                       </button>
                     </div>
                   </form></div></div></div></div>
+<div id="stockActionsPopover" class="stock-actions-popover d-none" role="menu" aria-label="Stock record actions"></div>
 <div id="stockExcelPopover" class="stock-excel-popover d-none" role="dialog" aria-label="Stock column sort and filter">
   <strong id="stockExcelTitle" class="d-block mb-2"></strong>
   <button type="button" class="stock-excel-sort" data-direction="asc"><i class="fas fa-sort-amount-up me-2"></i>Sort A to Z / Small to Large</button>
@@ -2245,6 +2282,52 @@
       $(document).on('keydown.stockExcel',function(event){if(event.key==='Escape')stockClosePopover();});
       $('.pv-tabbtn').on('click',stockClosePopover);
     });
+
+    function stockActionsCell(sourceButtons){
+      return '<td class="stock-action-cell"><button type="button" class="stock-action-trigger" aria-label="Show record actions" title="Actions" aria-haspopup="menu" aria-expanded="false"><i class="bi bi-plus-lg" aria-hidden="true"></i></button><div class="stock-action-source d-none">'+sourceButtons+'</div></td>';
+    }
+    $(function(){
+      let actionTrigger=null;
+      const $popover=$('#stockActionsPopover');
+      const actionClasses={edit:'stock-act-edit',del:'stock-act-del',status:'stock-act-status',details:'stock-act-details'};
+      const actionIcons={edit:'bi-pencil-square',del:'bi-trash3',status:'bi-arrow-repeat',details:'bi-eye'};
+      function closeActions(){
+        $popover.empty().addClass('d-none');
+        if(actionTrigger)$(actionTrigger).attr('aria-expanded','false');
+        actionTrigger=null;
+      }
+      $(document).on('click','.stock-action-trigger',function(e){
+        e.preventDefault();e.stopPropagation();
+        if(actionTrigger===this&&!$popover.hasClass('d-none')){closeActions();return;}
+        closeActions();actionTrigger=this;
+        $(this).siblings('.stock-action-source').find('button').each(function(){
+          const original=this;
+          const act=$(original).attr('data-act')||
+            ($(original).hasClass('stock-doc-edit')?'edit':($(original).hasClass('stock-doc-delete')?'del':''));
+          if(!act)return;
+          const label=act==='status'?$(original).text().trim():(act==='del'?'Delete':(act==='edit'?'Edit':'Details'));
+          const $action=$('<button type="button" role="menuitem">')
+            .addClass(actionClasses[act]||'stock-act-details')
+            .append($('<i>').addClass('bi '+(actionIcons[act]||'bi-eye')))
+            .append(document.createTextNode(label));
+          $action.on('click',function(evt){evt.preventDefault();closeActions();original.click();});
+          $popover.append($action);
+        });
+        if(!$popover.children().length){closeActions();return;}
+        $(this).attr('aria-expanded','true');
+        $popover.removeClass('d-none');
+        const rect=this.getBoundingClientRect(),width=170,height=$popover.outerHeight();
+        const left=window.innerWidth-rect.right>=width+12?rect.right+7:Math.max(8,rect.left-width-7);
+        const top=Math.max(8,Math.min(rect.top,window.innerHeight-height-8));
+        $popover.css({left:left+'px',top:top+'px'});
+      });
+      $(document).on('mousedown.stockActions',function(e){
+        if(!$(e.target).closest('#stockActionsPopover,.stock-action-trigger').length)closeActions();
+      });
+      $(document).on('keydown.stockActions',function(e){if(e.key==='Escape')closeActions();});
+      $('.pv-tabbtn').on('click',closeActions);
+      $('.pv-scroll').on('scroll.stockActions',closeActions);
+    });
     function renderEntryTable() {
       const tbody = $('#entryTbody')[0];
       $(tbody).html("");
@@ -2271,8 +2354,7 @@
               <td>${fmtPKR(en.rate || 0)}</td>
               <td>${fmtPKR(en.amount || 0)}</td>
               <td>${billingPill}</td>
-              <td><button type="button" class="btn btn-sm btn-outline-primary stock-doc-edit" data-kind="entry" data-id="${Number(en.id)}">Edit</button>
-              <button type="button" class="btn btn-sm btn-outline-danger stock-doc-delete" data-kind="entry" data-id="${Number(en.id)}">Delete</button></td>
+              ${stockActionsCell(`<button type="button" class="stock-doc-edit" data-kind="entry" data-id="${Number(en.id)}">Edit</button><button type="button" class="stock-doc-delete" data-kind="entry" data-id="${Number(en.id)}">Delete</button>`)}
             </tr>
           `
         );
@@ -2310,8 +2392,7 @@
               <td class="text-truncate" style="max-width:260px;">${b.bill_no || ""}${b.entry_no ? " • Entry: " + b.entry_no : ""
           }</td>
               <td>${fmtPKR(b.total || 0)}</td>
-              <td><button type="button" class="btn btn-sm btn-outline-primary stock-doc-edit" data-kind="bill" data-id="${Number(b.id)}">Edit</button>
-              <button type="button" class="btn btn-sm btn-outline-danger stock-doc-delete" data-kind="bill" data-id="${Number(b.id)}">Delete</button></td>
+              ${stockActionsCell(`<button type="button" class="stock-doc-edit" data-kind="bill" data-id="${Number(b.id)}">Edit</button><button type="button" class="stock-doc-delete" data-kind="bill" data-id="${Number(b.id)}">Delete</button>`)}
             </tr>
           `
         );
@@ -2387,14 +2468,7 @@
               <td>${it.name}</td>
               <td>${it.unit}</td>
               <td>${fmtPKR(it.default_rate || 0)}</td>
-              <td class="text-end pv-actions">
-                <button class="btn btn-outline-secondary btn-sm" data-act="edit">
-                  <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn btn-outline-danger btn-sm" data-act="del">
-                  <i class="bi bi-trash3"></i>
-                </button>
-              </td>
+              ${stockActionsCell(`<button type="button" data-act="edit">Edit</button><button type="button" data-act="del">Delete</button>`)}
             </tr>
           `
         );
@@ -2505,17 +2579,7 @@
               <td>${p.subhead || "—"}</td>
               <td><span class="pv-pill">${p.type}</span></td>
               <td><span class="pv-pill ${p.is_active ? "ok" : "bad"}">${p.is_active ? "Active" : "Inactive"}</span></td>
-              <td class="text-end pv-actions">
-                <button class="btn btn-outline-secondary btn-sm" data-act="edit">
-                  <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn btn-outline-danger btn-sm" data-act="del">
-                  <i class="bi bi-trash3"></i>
-                </button>
-                <button class="btn btn-outline-primary btn-sm" data-act="status" title="Change active status">
-                  ${p.is_active ? "Deactivate" : "Activate"}
-                </button>
-              </td>
+              ${stockActionsCell(`<button type="button" data-act="edit">Edit</button><button type="button" data-act="del">Delete</button><button type="button" data-act="status">${p.is_active ? "Deactivate" : "Activate"}</button>`)}
             </tr>
           `
         );
