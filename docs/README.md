@@ -610,3 +610,39 @@ php artisan finance:audit-posting-balances
 **Browser acceptance to follow after green local tests:** On a disposable CV draft, Create should generate exactly two inactive FK-linked ledger legs; repeated unchanged Edit should not add rows; changed Edit should archive old details and create two new inactive ledger legs; after approval exactly current two become `is_active=1`, and repeating approval with the original request key must not add new rows. Existing Drafts can be synchronized via the opt-in command. A posted CV's *full amendment Edit* is still protected by the separate approved-posting reversal workflow; this batch aligns Draft Edit + Approve/Post + Reverse, not arbitrary mutation of an immutable posted financial batch.
 
 **Milestone 03:** This targeted CV three-table lifecycle and FK requirement is code-implemented but owner-local tests/browser acceptance are still pending. Other voucher-family lifecycle completion and permission acceptance should not be marked complete based on these tests. Do not re-run the already accepted Plot browser gates.
+
+
+## 2026-11-19 — JV/CV differential detail editing + Commission AJAX modal lifecycle (implementation; owner tests pending)
+
+**Owner observation:** CV `type_id=1` accumulated 8 inactive `ledgers` rows across repeated Edit, with historical details 13/14,17/18,19/20 and current details 21/22. Existing changed Draft Update archived all old detail IDs and created replacements on every edit. The Commission edit iframe used a native `form.submit()` which left the modal open until manual page refresh. Owner supplied previous JV row-differential `detail_ids[]` Update/Destroy source as a design reference; its `saveQuietly()` existing-posting overwrite was intentionally NOT copied.
+
+**Code implemented and committed:**
+- Both JV and CV Edit forms now submit one hidden `detail_ids[]` per existing row, and a blank ID for each newly added row (inside the correct table cell). Both Update controllers validate ID array key alignment, nullable distinct positive IDs and normalize the empty debit/credit side to zero before validation. Non-owned/duplicate detail IDs are refused instead of guessed by account or row position.
+- `CommissionDraftWorkflow::updateDraft()` now performs a **true row-identity differential** for unposted drafts only: unchanged existing rows keep exact detail + ledger IDs, changed existing rows update their still-inactive detail and FK-linked ledger in place, removed rows are soft-archived and old FK-linked ledger evidence remains inactive, new rows create new details and new inactive ledgers. All changes remain inside the project-locked DB transaction; `CommissionLedgerSynchronizer` validates the enforced FK and relationships before and after. Existing idempotent Draft Create/Approve/Reversal behavior unchanged.
+- Legacy JV Update now validates strict same-voucher detail FK ownership, correct debit/credit and account for **only current active** ledger rows, skips identical rows and preserves their original detail/ledger IDs, archives changed/deleted source-detail+active-ledger rows, and creates fresh FK-linked detail+ledger rows for truly new or changed posting lines. Old accounting amounts are NEVER overwritten with `saveQuietly()`. Archived historical legs do not falsely block repeated edits. A whole voucher-header date/reference change replaces affected ledger evidence, preserving history.
+- Commission Edit confirmation now submits via guarded jQuery AJAX, uses the existing `finance:commission-saved` parent event, automatically closes the parent modal, reloads available DataTables via AJAX, and falls back to automatic parent refresh if no AJAX table is present. Errors are shown via existing finance toast helper; no native form navigation on Save.
+- New isolated `CommissionLedgerSynchronizerTest` cases cover existing detail-ID stability despite amount changes, adding new allocations, soft-archiving removed rows, correct inactive ledger FK, and rejection of foreign voucher detail IDs without mutation. New `VoucherDifferentialEditContractTest` verifies both forms/controllers and CV AJAX response; existing JV no-op contract was preserved.
+
+**Previous verified owner gate:** `CommissionLedgerSynchronizerTest` 4 PASS / 22 assertions, `CommissionLedgerActivationContractTest` 1 PASS / 14 assertions, `CommissionVoucherDetailRelationContractTest` 2 PASS / 20 assertions, 3/3 local drafts synced, all six projects clean on read-only posting balance audit. THESE RESULTS PRECEDE THE CODE IN THIS SECTION.
+
+**New owner verification (NOT executed for changes above):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/CommissionDraftWorkflow.php
+php -l app/Http/Controllers/JournalVoucherController.php
+php -l app/Http/Controllers/CommissionVoucherController.php
+php -l tests/Feature/Finance/CommissionLedgerSynchronizerTest.php
+php -l tests/Unit/Finance/VoucherDifferentialEditContractTest.php
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan test --filter=VoucherDifferentialEditContractTest
+php artisan test --filter=VoucherUnchangedUpdateDetectorTest
+php artisan test --filter=CommissionLedgerActivationContractTest
+php artisan test --filter=LinkedVoucherLedgerRetirementTest
+php artisan finance:audit-posting-balances
+```
+
+**Browser acceptance:** On a disposable JV and CV, Edit existing row amount with balanced other-side correction (existing IDs unaffected for unchanged rows), add one row, remove another, Save. Ensure only intended detail IDs remain active, new ledger FK identifies the actual created detail, old rows preserved where archival applies, and no cross-voucher mutation. Commission Edit modal must close automatically after success and the listing must refresh without manual reload. No new migration required: previous `commision_voucher_detail_id` FK migration already applied and validated. Posted CV remains immutable under the existing approval/reversal workflow.
+
+**Milestone 03 overall remains partial until owner browser gates and remaining cash/bank/etc lifecycle acceptance.** Do not claim all modules complete based on this focused JV/CV batch.
