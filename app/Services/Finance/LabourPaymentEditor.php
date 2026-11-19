@@ -69,7 +69,7 @@ final class LabourPaymentEditor
             ->where('customer_ledger_id',$sourceId)->where('project_id','!=',$projectId)->exists()
             ||DB::table('labour_ledgers')->where('project_id',$projectId)
                 ->where('customer_ledger_id',$sourceId)
-                ->where('is_active',0)->exists()) {
+                ->where('is_active',0)->whereNull('deleted_at')->exists()) {
             throw new \DomainException('Labour payment membership is missing or historically corrected.');
         }
         $total=0;
@@ -117,7 +117,7 @@ final class LabourPaymentEditor
         DB::transaction(function()use($projectId,$sourceId,$date,$reference,$description,$submitted):void{
             DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
             [$source,$leg,$old]=$this->state($projectId,$sourceId);
-            $used=[];$workers=[];$total=0;
+            $used=[];$workers=[];$total=0;$all=[];
             foreach($submitted as $row) {
                 $detailId=(int)($row['detail_id']??0);
                 $labourId=(int)($row['labour_id']??0);
