@@ -33,6 +33,21 @@ final class PostingBatchIntegrityAudit
                 ->whereColumn('archived_bank.posting_batch_id','finance_posting_batches.id')
                 ->where('archived_bank.is_active',0));
         }
+        // Normally deleted JV/SV/CV vouchers keep their original posting
+        // batches as immutable evidence, but are absent from active balances.
+        foreach([
+            ['journal_vouchers','finance_posting_journal_sources','journal_voucher_id'],
+            ['commision_vouchers','finance_posting_commission_sources','commision_voucher_id'],
+        ] as [$headerTable,$linkTable,$fk]) {
+            if (!Schema::hasTable($headerTable)||!Schema::hasTable($linkTable)
+                ||!Schema::hasColumn($headerTable,'deleted_at')) continue;
+            $query->whereNotExists(fn($sub)=>$sub->selectRaw('1')
+                ->from($linkTable.' as archived_link')
+                ->join($headerTable.' as archived_header',
+                    'archived_header.id','=','archived_link.'.$fk)
+                ->whereColumn('archived_link.posting_batch_id','finance_posting_batches.id')
+                ->whereNotNull('archived_header.deleted_at'));
+        }
         $batches=$query->orderBy('id')
             ->get(['id','voucher_series','voucher_number','reversal_of_batch_id']);
         $lines=DB::table('finance_posting_lines as line')
@@ -115,6 +130,40 @@ final class PostingBatchIntegrityAudit
                     'reversal_of_batch_id'=>null,
                     'active_line_count'=>(int)$leak->active_leg_count,
                     'issues'=>['ARCHIVED_BANK_WITH_ACTIVE_POSTINGS'],
+                ];
+            }
+        }
+        // A deleted posted source with ACTIVE financial lines is corrupt.
+        // Do not silently exclude this condition from integrity checks.
+        foreach([
+            ['journal_vouchers','finance_posting_journal_sources','journal_voucher_id'],
+            ['commision_vouchers','finance_posting_commission_sources','commision_voucher_id'],
+        ] as [$headerTable,$linkTable,$fk]) {
+            if(!Schema::hasTable($headerTable)||!Schema::hasTable($linkTable)
+                ||!Schema::hasColumn($headerTable,'deleted_at')
+                ||!Schema::hasColumn('finance_posting_lines','is_active'))continue;
+            $leaks=DB::table($linkTable.' as archived_link')
+                ->join($headerTable.' as archived_header',
+                    'archived_header.id','=','archived_link.'.$fk)
+                ->join('finance_posting_batches as batch',
+                    'batch.id','=','archived_link.posting_batch_id')
+                ->join('finance_posting_lines as leg',function($join){
+                    $join->on('leg.posting_batch_id','=','batch.id')
+                        ->where('leg.is_active',1);
+                })
+                ->where('batch.project_id',$projectId)
+                ->where('archived_header.project_id',$projectId)
+                ->whereNotNull('archived_header.deleted_at')
+                ->groupBy('batch.id','batch.voucher_series','batch.voucher_number')
+                ->get(['batch.id','batch.voucher_series','batch.voucher_number',
+                    DB::raw('COUNT(leg.id) AS active_leg_count')]);
+            foreach($leaks as $leak){
+                $findings[]=[
+                    'batch_id'=>(int)$leak->id,'series'=>(string)$leak->voucher_series,
+                    'voucher_number'=>(string)$leak->voucher_number,
+                    'reversal_of_batch_id'=>null,
+                    'active_line_count'=>(int)$leak->active_leg_count,
+                    'issues'=>['ARCHIVED_VOUCHER_WITH_ACTIVE_POSTINGS'],
                 ];
             }
         }
