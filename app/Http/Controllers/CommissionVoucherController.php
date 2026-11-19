@@ -407,8 +407,15 @@ class CommissionVoucherController extends Controller
         // vouchers. Approval must not turn the iframe into an HTTP 409 debug
         // page: show approved posting as read-only while the Update service
         // continues to reject attempts to amend immutable financial history.
-        $readOnly=$this->isMergedTypedCommission((int)getSelectedTown(),(int)$id)
-            && (string)$voucher->status!=='draft';
+        $isPosted=$this->isMergedTypedCommission((int)getSelectedTown(),(int)$id);
+        $readOnly=$isPosted
+            && !in_array((string)$voucher->status,['draft','approved'],true);
+        if ($isPosted && (string)$voucher->status==='approved') {
+            $batchIds=DB::table('finance_posting_commission_sources')
+                ->where('commision_voucher_id',(int)$id)->pluck('posting_batch_id');
+            $readOnly=DB::table('finance_posting_batches')
+                ->whereIn('reversal_of_batch_id',$batchIds)->exists();
+        }
         $x = $this->getCommonData($readOnly
             ? 'View Approved Commission Voucher' : 'Edit Commision Voucher', 'CV');
         $x['readOnly'] = $readOnly;
@@ -506,12 +513,19 @@ class CommissionVoucherController extends Controller
             || $this->isMergedTypedCommission($projectId, (int) $id)) {
             \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             try {
-                (new \App\Services\Finance\CommissionDraftWorkflow())
-                    ->updateDraft($projectId, (int) $id, $data['date'], $lines,
-                        array_intersect_key($data, array_flip(['reference', 'description'])));
+                $source=CommisionVoucher::query()->where('project_id',$projectId)
+                    ->whereKey((int)$id)->firstOrFail();
+                $meta=array_intersect_key($data,array_flip(['reference','description']));
+                if ((string)$source->status==='approved') {
+                    app(\App\Services\Finance\CommissionApprovedVoucherEditor::class)
+                        ->update($projectId,(int)$id,$data['date'],$lines,$meta,(int)Auth::id());
+                } else {
+                    (new \App\Services\Finance\CommissionDraftWorkflow())
+                        ->updateDraft($projectId,(int)$id,$data['date'],$lines,$meta);
+                }
             } catch (\DomainException $e) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'voucher' => 'Commission draft update rejected: ' . $e->getMessage(),
+                    'voucher' => 'Commission update rejected: '.$e->getMessage(),
                 ]);
             }
         } else {
