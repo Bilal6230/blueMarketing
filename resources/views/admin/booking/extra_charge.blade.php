@@ -352,7 +352,7 @@
                                                 <th>Approve</th>
 
 
-                                                @canany(['delete slip', 'can approve'])
+                                                @canany(['delete slip', 'can approve', 'finance extra-charge edit', 'finance extra-charge delete'])
                                                     <th>Action</th>
                                                 @endcanany
                                             </tr>
@@ -486,7 +486,7 @@
                                                     </td>
 
 
-                                                    @canany(['update voucher', 'delete slip', 'can approve'])
+                                                    @canany(['update voucher', 'delete slip', 'can approve', 'finance extra-charge edit', 'finance extra-charge delete'])
                                                         <td>
                                                             <div class="btn-group">
                                                                 @can('update voucher')
@@ -605,6 +605,36 @@
 @endsection
 
 @section('modal')
+<div class="modal fade fvc-modern-modal" id="fvcExtraCashEditModal" tabindex="-1" aria-labelledby="fvcExtraCashEditTitle" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+  <div class="modal-header"><h5 id="fvcExtraCashEditTitle" class="modal-title">Edit Extra Charge</h5>
+   <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <form id="fvcExtraCashEditForm"><div class="modal-body">
+   <div class="alert alert-info small">The original EC/ECP voucher number and ledger links remain unchanged.</div>
+   <div class="form-group"><label for="fvcExtraCashDate">Date</label><input type="date" class="form-control" id="fvcExtraCashDate" required></div>
+   <div class="form-group"><label for="fvcExtraCashAmount">Amount</label><input type="number" min="0.01" step="0.01" class="form-control" id="fvcExtraCashAmount" required></div>
+   <div class="form-group"><label for="fvcExtraCashDescription">Description</label><textarea class="form-control" id="fvcExtraCashDescription" rows="3" maxlength="1000"></textarea></div>
+   <div id="fvcExtraCashEditError" class="alert alert-danger d-none" role="alert"></div>
+  </div><div class="modal-footer">
+   <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+   <button type="submit" id="fvcExtraCashEditSubmit" class="btn btn-primary">Update Voucher</button>
+  </div></form>
+ </div></div>
+</div>
+<div class="modal fade fvc-modern-modal" id="fvcExtraCashDeleteModal" tabindex="-1" aria-labelledby="fvcExtraCashDeleteTitle" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+  <div class="modal-header"><h5 id="fvcExtraCashDeleteTitle" class="modal-title">Delete Extra Charge</h5>
+   <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <div class="modal-body">
+   <p>Remove this cash EC/ECP from active balances? Original IDs and inactive ledger evidence will remain. Linked payments cannot be silently deleted.</p>
+   <div id="fvcExtraCashDeleteError" class="alert alert-danger d-none" role="alert"></div>
+  </div>
+  <div class="modal-footer">
+   <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+   <button type="button" id="fvcExtraCashDeleteSubmit" class="btn btn-danger">Delete Voucher</button>
+  </div>
+ </div></div>
+</div>
     {{-- Modal Update --}}
     <div class="modal fade" id="modal-charge-type">
         <div class="modal-dialog modal-md">
@@ -1055,16 +1085,90 @@
                 convertToWords();
             });
 
-            // Extra Charge is an EC source. The historic Delete handler used
-            // booking.customer.destroy (PPR-only), and Edit used ledger.update.
-            // Neither is an audited EC update/delete endpoint. Do not submit
-            // unrelated voucher types through those financial writers.
-            $(document).on('click.fvcExtraLegacy','#example1 .btn-edit,#example1 .btn-delete',function(event){
+            var extraCashBase=@json(url('admin/finance/extra-charge/cash'));
+            var extraCashFeedback=$.financeVoucherFeedback||{};
+            var extraCashNotify=function(type,message){
+                if($.isFunction(extraCashFeedback.toast))extraCashFeedback.toast(type,message);
+                else if(window.toastr&&$.isFunction(window.toastr[type]))window.toastr[type](message);
+            };
+            var extraCashError=function($box,xhr){
+                var text=(xhr.responseJSON&&xhr.responseJSON.message)
+                    ||($.isFunction(extraCashFeedback.error)?extraCashFeedback.error(xhr,'Voucher change failed.'):'Voucher change failed.');
+                $box.text(text).removeClass('d-none');
+                extraCashNotify('error',text);
+            };
+            // Refresh table rows through jQuery GET without a full document
+            // navigation; the server remains authoritative for EC outstanding.
+            var refreshExtraCashTable=function(){
+                $.get(window.location.href).done(function(html){
+                    var $page=$('<div>').append($.parseHTML(html,document,false)),
+                        $new=$page.find('#example1 tbody'),$table=$('#example1');
+                    if(!$new.length)return;
+                    var hasDataTable=$.fn.dataTable&&$.fn.dataTable.isDataTable('#example1');
+                    if(hasDataTable)$table.DataTable().destroy();
+                    $table.find('tbody').html($new.html());
+                    if(hasDataTable)$table.DataTable();
+                    if($.blueActionMenu)$.blueActionMenu.enhance($table.find('td.blue-actions-cell'));
+                });
+            };
+            $(document).on('click.fvcExtraCash','#example1 .btn-edit',function(event){
+                event.preventDefault();event.stopImmediatePropagation();
+                var source=Number($(this).data('id')),$button=$(this);
+                if(!source)return;
+                $button.prop('disabled',true);
+                $.ajax({url:extraCashBase+'/'+source,type:'GET',dataType:'json',
+                    headers:{Accept:'application/json'}})
+                .done(function(result){
+                    var d=result.data||{};
+                    if(!d.editable){
+                        extraCashNotify('error','This voucher is linked to bank custody or a typed posting; use its source workflow.');
+                        return;
+                    }
+                    $('#fvcExtraCashEditForm').data('source',source);
+                    $('#fvcExtraCashEditTitle').text('Edit '+d.type+' Voucher');
+                    $('#fvcExtraCashDate').val(d.date);
+                    $('#fvcExtraCashAmount').val(d.amount);
+                    $('#fvcExtraCashDescription').val(d.description);
+                    $('#fvcExtraCashEditError').addClass('d-none').text('');
+                    $('#fvcExtraCashEditModal').modal('show');
+                }).fail(function(xhr){extraCashError($('#fvcExtraCashEditError'),xhr);})
+                .always(function(){$button.prop('disabled',false);});
+            });
+            $('#fvcExtraCashEditForm').on('submit.fvcExtraCash',function(event){
                 event.preventDefault();
-                var action=$(this).hasClass('btn-edit')?'editing':'deleting';
-                if($.financeVoucherFeedback)
-                    $.financeVoucherFeedback.toast('error',
-                        'Extra Charge '+action+' requires the dedicated audited EC workflow; this legacy action cannot modify an EC voucher.');
+                var source=Number($(this).data('source')),$button=$('#fvcExtraCashEditSubmit');
+                if(!source||$button.prop('disabled'))return;
+                $button.prop('disabled',true);
+                $.ajax({url:extraCashBase+'/'+source,type:'PUT',dataType:'json',
+                    headers:{Accept:'application/json','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+                    data:{date:$('#fvcExtraCashDate').val(),amount:$('#fvcExtraCashAmount').val(),
+                        description:$('#fvcExtraCashDescription').val()}})
+                .done(function(result){
+                    $('#fvcExtraCashEditModal').modal('hide');
+                    extraCashNotify('success',result.message||'Extra Charge updated.');
+                    refreshExtraCashTable();
+                }).fail(function(xhr){extraCashError($('#fvcExtraCashEditError'),xhr);})
+                .always(function(){$button.prop('disabled',false);});
+            });
+            $(document).on('click.fvcExtraCash','#example1 .btn-delete',function(event){
+                event.preventDefault();event.stopImmediatePropagation();
+                var source=Number($(this).data('id'));if(!source)return;
+                $('#fvcExtraCashDeleteSubmit').data('source',source);
+                $('#fvcExtraCashDeleteError').addClass('d-none').text('');
+                $('#fvcExtraCashDeleteModal').modal('show');
+            });
+            $('#fvcExtraCashDeleteSubmit').on('click.fvcExtraCash',function(){
+                var $button=$(this),source=Number($button.data('source'));
+                if(!source||$button.prop('disabled'))return;
+                $button.prop('disabled',true);
+                $.ajax({url:extraCashBase+'/'+source,type:'DELETE',dataType:'json',
+                    headers:{Accept:'application/json','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')}})
+                .done(function(result){
+                    $('#fvcExtraCashDeleteModal').modal('hide');
+                    extraCashNotify('success',result.message||'Extra Charge deleted.');
+                    refreshExtraCashTable();
+                }).fail(function(xhr){extraCashError($('#fvcExtraCashDeleteError'),xhr);})
+                .always(function(){$button.prop('disabled',false);});
             });
 
             $(document).on('click.fvcExtraView','#example1 .btn-view',function(event){
