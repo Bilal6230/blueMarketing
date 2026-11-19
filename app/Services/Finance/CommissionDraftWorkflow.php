@@ -259,14 +259,13 @@ final class CommissionDraftWorkflow
                 || !in_array($source->status, ['draft', 'approved'], true)) {
                 throw new \DomainException('V2_CV_NOT_APPROVABLE');
             }
-            if (Schema::hasTable('ledgers') && DB::table('ledgers')->where('type', 'JV')
-                ->where(function ($query) use ($sourceId): void {
-                    $query->where('type_id', $sourceId)->orWhereIn('type_id',
-                        DB::table('commision_voucher_details')->select('id')->where('commision_voucher_id', $sourceId));
-                })->exists()) {
-                // A collision is a reason to refuse, never proof of ownership.
-                throw new \DomainException('V2_CV_AMBIGUOUS_LEGACY_POSTING');
-            }
+            // Numeric IDs are local to their source tables: a JV header or
+            // detail may have the same integer as this CV without sharing an
+            // accounting record. Ownership is proven exclusively by the
+            // enforced CV detail FK and exact source/project links below.
+            // A legacy JV type_id coincidence must never block CV approval.
+            app(CommissionLedgerSynchronizer::class)
+                ->assertDraftCanReplace($projectId,$sourceId);
             if ($source->status === 'draft') {
                 DB::table('commision_vouchers')->where('id', $sourceId)
                     ->update(['status' => 'approved', 'updated_at' => now()]);
