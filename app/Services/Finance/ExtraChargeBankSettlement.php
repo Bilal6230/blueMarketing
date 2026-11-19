@@ -21,6 +21,7 @@ final class ExtraChargeBankSettlement
         return CustomerLedger::query()
             ->where('project_id', $projectId)
             ->where('transaction_type', 'ECP')
+            ->where('is_active',1)
             ->where('reference', 'like', 'EC_PAYMENT#' . $chargeId . '#%')
             ->lockForUpdate()->get()
             ->each(function ($row) use ($chargeId) {
