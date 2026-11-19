@@ -200,6 +200,9 @@ final class CommissionApprovedVoucherEditor
                     'debit'=>$line['debit'],'credit'=>$line['credit'],
                     'description'=>$line['description']];
             }
+            // The posting writer fingerprints source detail rows ordered
+            // by their physical PK, not user-supplied display order.
+            usort($final,static fn($a,$b)=>$a['detail_id']<=>$b['detail_id']);
             // CommissionPostingWriter validates this exact fingerprint on
             // idempotent Approve replay. Keep batch identity/key unchanged,
             // but refresh its payload to describe the corrected active legs.
