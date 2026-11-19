@@ -209,6 +209,21 @@ class BankTransferWriterTest extends TestCase
         }
     }
 
+    public function test_archived_bank_active_leg_tamper_is_reported_not_silently_ignored(): void
+    {
+        $id=(new BankTransferWriter())->post(1,1,'withdrawal',
+            'BANK-TRANSFER-TAMPER-DELETE-0001','2026-11-05',
+            '45.00','Manual',[['account_id'=>102,'amount'=>'45.00']])['posting_batch_id'];
+        (new \App\Services\Finance\BankTransferEditor())->delete(1,'withdrawal',$id);
+        DB::table('finance_posting_lines')->where('posting_batch_id',$id)
+            ->orderBy('id')->limit(1)->update(['is_active'=>1]);
+        $findings=(new \App\Services\Finance\PostingBatchIntegrityAudit())->audit(1);
+        self::assertCount(1,$findings);
+        self::assertContains('ARCHIVED_BANK_WITH_ACTIVE_POSTINGS',$findings[0]['issues']);
+        $this->expectException(\DomainException::class);
+        (new PostingReportReader())->lines(1);
+    }
+
     public function test_wrong_project_mapping_and_unbalanced_allocations_fail_without_posting(): void
     {
         $writer = new BankTransferWriter();
