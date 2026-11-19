@@ -93,6 +93,66 @@
     .stock-module-wrapper #view-items .border.rounded-3.bg-light{flex:0 0 auto;padding:.6rem!important;margin-bottom:.5rem!important}
     @media(max-width:850px){.stock-module-wrapper #view-items .stock-items-side-by-side{grid-template-columns:1fr;grid-template-rows:minmax(125px,35%) minmax(0,1fr)}.stock-module-wrapper .stock-date-controls{flex-wrap:wrap}.stock-module-wrapper .stock-kpi-row .pv-kpi{height:auto;min-height:55px}}
     
+
+    /* Unified compact finance-style stock modals; visible close buttons in both Bootstrap 4/5 shells. */
+    .stock-create-modal .modal-dialog{max-width:min(950px,calc(100vw - 32px));margin:1.25rem auto}
+    .stock-create-modal .modal-content,
+    #editModal .modal-content,#stockDocumentEditModal .modal-content,#stockDocumentDeleteModal .modal-content{
+      border:1px solid #dce6f5;border-top:3px solid var(--pv-primary);border-radius:14px!important;overflow:hidden;
+    }
+    .stock-create-modal .modal-header,#editModal .pv-cardhead,
+    #stockDocumentEditModal .modal-header,#stockDocumentDeleteModal .modal-header{
+      padding:10px 16px!important;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+      background:#fff;border-bottom:1px solid #e7ecf5;
+    }
+    .stock-create-modal .modal-header h5,#stockDocumentEditModal .modal-header h5,#stockDocumentDeleteModal .modal-header h5{
+      font-size:16px;font-weight:650;margin:0;color:#21314e
+    }
+    .stock-modal-close{appearance:none;display:inline-flex;align-items:center;justify-content:center;flex:0 0 34px;
+      width:34px;height:34px;border:1px solid #d6e0ed;background:#f8fbff;color:#405470;
+      border-radius:9px;cursor:pointer;font-size:17px;opacity:1;line-height:1;transition:background .15s}
+    .stock-modal-close:hover{background:#ffe9ea;border-color:#efb8bd;color:#ba2634}
+    .stock-modal-close:focus-visible{outline:2px solid var(--pv-primary);outline-offset:2px}
+    .stock-create-modal .modal-body{padding:12px 16px!important;max-height:calc(100dvh - 145px);overflow-y:auto}
+    .stock-create-modal .modal-body hr{margin:9px 0!important}
+    .stock-create-modal .modal-body .row{--bs-gutter-x:12px;--bs-gutter-y:7px}
+    .stock-create-modal .form-label,.stock-create-modal label{font-size:11px!important;font-weight:600;margin-bottom:3px!important}
+    .stock-create-modal .form-control,.stock-create-modal .form-select,.stock-create-modal .ts-control{
+      min-height:34px!important;height:34px;font-size:12px!important;padding:5px 9px!important;border-radius:8px!important;
+      border:1px solid #dce5f2!important;box-shadow:none!important;
+    }
+    .stock-create-modal textarea.form-control{height:48px!important;min-height:48px!important;resize:vertical}
+    .stock-create-modal .stock-entry-mode{gap:12px!important;align-items:center}
+    .stock-create-modal .stock-entry-mode button{min-width:104px;border-radius:8px;padding:5px 12px;font-size:12px;height:34px}
+    .stock-create-modal .pv-line{padding:8px 10px!important;margin:0!important;border-radius:10px!important}
+    .stock-create-modal #entryLines,.stock-create-modal #billLines{gap:6px!important}
+    .stock-create-modal .pv-line .row{align-items:end}
+    .stock-create-modal .pv-line .d-flex.mt-2{margin-top:4px!important}
+    .stock-create-modal .pv-line .d-flex.mt-2 .pv-small{font-size:10px}
+    .stock-create-modal .btn-lg{padding:7px 16px!important;font-size:12px!important;min-height:36px}
+    .stock-create-modal .d-grid.mt-3,.stock-create-modal .d-grid.gap-2.mt-3{margin-top:10px!important}
+    .stock-create-modal .pv-line.mt-3{margin-top:8px!important}
+    .stock-create-modal .pv-line button.btn-outline-danger{padding:5px 8px;font-size:12px;min-height:34px}
+    .stock-create-modal .ts-wrapper{width:100%;min-width:0;font-size:12px}
+    .stock-create-modal .ts-wrapper.single .ts-control{display:flex;align-items:center;padding-right:26px!important}
+    .stock-create-modal .select2-container{width:100%!important;min-width:0}
+    .stock-create-modal .select2-container .select2-selection--single{height:34px!important;min-height:34px!important;border:1px solid #dce5f2;border-radius:8px}
+    .stock-create-modal .select2-selection__rendered{font-size:12px;line-height:32px!important;padding-left:9px!important}
+    .stock-create-modal .select2-selection__arrow{height:32px!important}
+    .stock-module-wrapper .stock-date-controls{display:flex;gap:22px!important;align-items:center!important}
+    .stock-module-wrapper .stock-date-controls label{display:flex;align-items:center;gap:9px!important;font-size:12px!important;white-space:nowrap}
+    .stock-module-wrapper .stock-date-controls .form-control{width:185px!important;min-width:185px;height:36px!important}
+    .stock-module-wrapper #view-items .stock-items-side-by-side{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;align-items:stretch;min-height:0;height:100%}
+    .stock-module-wrapper #view-items .stock-import-history,.stock-module-wrapper #view-items .stock-items-register{
+      height:100%;min-height:0;overflow:hidden;border:1px solid #dfe7f3;border-radius:10px;background:#fff;padding:8px;display:flex;flex-direction:column
+    }
+    .stock-module-wrapper #view-items .stock-items-side-by-side .table-responsive{flex:1 1 0;min-height:0;max-height:none!important;overflow:auto}
+    .stock-module-wrapper #view-items .stock-import-history>.mb-3{height:100%;flex:1 1 0}
+    @media(max-width:850px){
+      .stock-module-wrapper #view-items .stock-items-side-by-side{grid-template-columns:1fr!important;grid-template-rows:minmax(130px,1fr) minmax(130px,1fr)}
+      .stock-module-wrapper .stock-date-controls .form-control{width:140px!important;min-width:140px}
+    }
+
     /* App shell (labour module-ish) */
     .pv-shell {
       display: flex;
@@ -714,7 +774,7 @@
                       Available Stock.
                     </div>
                   </div>
-                  <div class="stock-date-controls"><label>From <input type="date" class="form-control form-control-sm" id="stockFrom" aria-label="Stock report start date"></label><label>To <input type="date" class="form-control form-control-sm" id="stockTo" aria-label="Stock report end date"></label><span class="d-none" id="stockRangeChip">Range: —</span></div>
+                  <div class="stock-date-controls"><label for="stockFrom"><span>From</span><input type="date" class="form-control form-control-sm" id="stockFrom" aria-label="Stock report start date"></label><label for="stockTo"><span>To</span><input type="date" class="form-control form-control-sm" id="stockTo" aria-label="Stock report end date"></label><span class="d-none" id="stockRangeChip">Range: —</span></div>
                 </div>
 
                 <div class="p-3">
@@ -849,7 +909,7 @@
     </main>
   </div></div>
 
-  <div class="modal fade stock-create-modal" id="stockEntryCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title"><span id="entryTitle">Purchase Entry</span></h5><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><div class="d-flex gap-2 mb-3"><button type="button" class="btn btn-outline-primary" id="btnPurchaseMode">Purchase</button><button type="button" class="btn btn-outline-secondary" id="btnStockOutMode">Stock Out</button></div><form id="entryForm" novalidate>
+  <div class="modal fade stock-create-modal" id="stockEntryCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title"><span id="entryTitle">Purchase Entry</span></h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><div class="stock-entry-mode d-flex gap-3 mb-2"><button type="button" class="btn btn-outline-primary" id="btnPurchaseMode">Purchase</button><button type="button" class="btn btn-outline-secondary" id="btnStockOutMode">Stock Out</button></div><form id="entryForm" novalidate>
                     <div class="row g-2">
                       <div class="col-md-6">
                         <label class="form-label pv-small">Slip No (auto)</label>
@@ -908,7 +968,7 @@
                       </div>
                     </div>
                   </form></div></div></div></div>
-<div class="modal fade stock-create-modal" id="stockBillCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">Purchase / Sale Bill <span class="pv-chip" id="billNoChip">Bill no… auto</span></h5><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><form id="billForm" novalidate>
+<div class="modal fade stock-create-modal" id="stockBillCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">Purchase / Sale Bill <span class="pv-chip" id="billNoChip">Bill no… auto</span></h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="billForm" novalidate>
                     <div class="row g-2">
                       <div class="col-md-6">
                         <label class="form-label pv-small">Selection</label>
@@ -961,7 +1021,7 @@
                       </button>
                     </div>
                   </form></div></div></div></div>
-<div class="modal fade stock-create-modal" id="stockItemCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Item / Material</h5><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><form id="itemForm" novalidate>
+<div class="modal fade stock-create-modal" id="stockItemCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Item / Material</h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="itemForm" novalidate>
                     <div class="row g-2">
                       <div class="col-12">
                         <label class="form-label pv-small">Item Name</label>
@@ -984,7 +1044,7 @@
                       </button>
                     </div>
                   </form></div></div></div></div>
-<div class="modal fade stock-create-modal" id="stockPartyCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Stock Party</h5><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><form id="partyForm" novalidate>
+<div class="modal fade stock-create-modal" id="stockPartyCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Stock Party</h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="partyForm" novalidate>
                     <div class="row g-2">
                       <div class="col-md-6">
                         <label class="form-label pv-small">Supplier / Consumer</label>
@@ -1066,7 +1126,7 @@
    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content pv-card">
      <div class="modal-header"><h5 class="modal-title" id="stockDocumentEditTitle">Edit Stock Voucher</h5>
-       <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button></div>
+       <button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
      <form id="stockDocumentEditForm">
       <div class="modal-body">
        <div class="alert alert-info small">The original stock document, inventory movements and ledger IDs remain linked.</div>
@@ -1091,7 +1151,7 @@
   <div class="modal fade" id="stockDocumentDeleteModal" tabindex="-1" aria-labelledby="stockDocumentDeleteTitle" aria-hidden="true">
    <div class="modal-dialog modal-dialog-centered"><div class="modal-content pv-card">
     <div class="modal-header"><h5 id="stockDocumentDeleteTitle" class="modal-title">Delete Stock Voucher</h5>
-     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+     <button type="button" class="stock-modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
     <div class="modal-body">
      <p>Archive this stock voucher from active inventory and balances? The original source and movement IDs remain preserved.</p>
      <div id="stockDocumentDeleteError" class="alert alert-danger d-none" role="alert"></div>
@@ -1721,8 +1781,8 @@
 
     $(billLinesWrap).on("input", (e) => {
       if (
-        e.$(target).hasClass("line-qty") ||
-        e.$(target).hasClass("line-rate")
+        $(e.target).hasClass("line-qty") ||
+        $(e.target).hasClass("line-rate")
       ) {
         recalcBillTotal();
       }
