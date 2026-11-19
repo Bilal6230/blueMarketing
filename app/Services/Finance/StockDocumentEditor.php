@@ -169,6 +169,18 @@ final class StockDocumentEditor
         foreach($ids as $id){
             $current=$balances->get($id);
             $was=$current?$this->qty($current->on_hand_qty):0;
+            // Before applying a delta, verify the materialized project stock
+            // balance still agrees with *all* active movements for this item.
+            // Never compound a pre-existing inconsistency by editing a voucher.
+            $sum=DB::table('stock_movements')
+                ->where('project_id',$projectId)->where('item_id',$id)
+                ->where('is_active',1)
+                ->selectRaw("COALESCE(SUM(CASE WHEN direction='IN' THEN qty ELSE -qty END),0) AS net_qty")
+                ->value('net_qty');
+            $expected=(int)round((float)$sum*1000);
+            if($expected!==$was) {
+                throw new \DomainException('Stock balance and active movement totals disagree for item '.$id.'.');
+            }
             $shift=($direction==='IN'?1:-1)
                 *(($newQty[$id]??0)-($oldQty[$id]??0));
             if($was+$shift<0) {
@@ -295,7 +307,8 @@ final class StockDocumentEditor
             $narration=$narration===null?(string)($customer->description??'')
                 : trim($narration);
             $money=$this->money($total);
-            $headerUpdate=[$entry?'entry_date':'bill_date'=>$date,'updated_at'=>$now];
+            $dateField=$entry?'entry_date':'bill_date';
+            $headerUpdate=[$dateField=>$date,'updated_at'=>$now];
             if($entry){
                 if($narration!==null)$headerUpdate['reason']=$narration;
             }else $headerUpdate['total_minor']=$total;
