@@ -1038,7 +1038,7 @@
   <hr class="my-2">
   <div id="stockExcelDateFields" class="d-none"><label class="small fw-semibold" for="stockExcelFrom">From Date</label><input type="date" id="stockExcelFrom" class="form-control form-control-sm"><label class="small fw-semibold mt-2" for="stockExcelTo">To Date</label><input type="date" id="stockExcelTo" class="form-control form-control-sm"></div>
   <div id="stockExcelChoicesWrap"><input type="search" id="stockExcelSearch" class="form-control form-control-sm mb-2" placeholder="Search values..." autocomplete="off"><div id="stockExcelValues" class="stock-excel-values" role="group" aria-label="Filter choices"></div></div>
-  <div class="d-flex gap-2 justify-content-end mt-2"><button type="button" class="btn btn-sm btn-light" id="stockExcelClear">Clear</button><button type="button" class="btn btn-sm btn-light" id="stockExcelCancel">Cancel</button><button type="button" class="btn btn-sm btn-primary" id="stockExcelApply">Apply</button></div>
+  <div class="d-flex gap-2 justify-content-end mt-2"><button type="button" class="btn btn-sm btn-light" id="stockExcelClear">Clear</button><button type="button" class="btn btn-sm btn-light" id="stockExcelCancel">Cancel</button></div>
 </div>
 <!-- Modals (edit item/party) -->
   <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
@@ -2034,7 +2034,8 @@
         $.each(stockColumnFilters,function(key,condition){
           if(!key.startsWith(kind+':'))return;
           const column=Number(key.slice(kind.length+1)),value=stockCellText($row,column);
-          if(condition.from || condition.to){
+          if(condition.search){if(value.toLowerCase().indexOf(condition.search)<0)visible=false;
+          }else if(condition.from || condition.to){
             const actualDate=value.slice(0,10);
             if(condition.from && actualDate<condition.from)visible=false;
             if(condition.to && actualDate>condition.to)visible=false;
@@ -2095,11 +2096,13 @@
         const bounds=$(this).offset(),left=Math.min($(window).width()-300,Math.max(8,bounds.left-$(window).scrollLeft()-245));
         $popover.css({left:Math.max(8,left)+'px',top:Math.min($(window).height()-Math.min(400,$popover.outerHeight())-8,Math.max(8,bounds.top-$(window).scrollTop()+25))+'px'});
       });
-      $('#stockExcelSearch').on('input',stockRenderOptions);
+      $('#stockExcelSearch').on('input',function(){stockRenderOptions();stockApplyLiveFilter();});
       $('#stockExcelValues').on('change','.stock-excel-all',function(){
+        $('#stockExcelSearch').val('');
         $('#stockExcelValues .stock-excel-choice-input').prop('checked',$(this).is(':checked'));
       });
       $('#stockExcelValues').on('change','.stock-excel-choice-input',function(){
+        $('#stockExcelSearch').val('');
         $('#stockExcelValues .stock-excel-all').prop('checked',$('#stockExcelValues .stock-excel-choice-input:not(:checked)').length===0);
       });
       $('.stock-excel-sort').on('click',function(){
@@ -2111,21 +2114,30 @@
         });
         $tbody.append(sorted);stockFilterRows(activeKind);stockClosePopover();
       });
-      $('#stockExcelApply').on('click',function(){
+      function stockApplyLiveFilter(){
+        if(!activeKind)return;
         const key=stockTableKey(activeKind,activeColumn);
         const isDate=(activeColumn===1&&$.inArray(activeKind,['entry','bill'])>=0);
         if(isDate){
           const from=$('#stockExcelFrom').val(),to=$('#stockExcelTo').val();
-          if(from&&to&&from>to){$('#stockExcelFrom').trigger('focus');return;}
+          if(from&&to&&from>to)return;
           if(from||to)stockColumnFilters[key]={from:from,to:to};else delete stockColumnFilters[key];
         }else{
+          const term=$.trim($('#stockExcelSearch').val()).toLowerCase();
           const selected=$('#stockExcelValues .stock-excel-choice-input:checked').map(function(){return $(this).val();}).get();
-          if(selected.length===0){stockColumnFilters[key]={values:['__stock_no_matching_values__']};}
-          else if(selected.length===options.length)delete stockColumnFilters[key];
-          else stockColumnFilters[key]={values:selected};
+          // Search applies instantly, even when this column is empty of choices.
+          if(term){
+            stockColumnFilters[key]={search:term};
+          }else if(selected.length===0 && options.length){
+            stockColumnFilters[key]={values:['__stock_no_matching_values__']};
+          }else if(selected.length===options.length){
+            delete stockColumnFilters[key];
+          }else stockColumnFilters[key]={values:selected};
         }
-        stockFilterRows(activeKind);stockClosePopover();
-      });
+        stockFilterRows(activeKind);
+      }
+      $('#stockExcelFrom,#stockExcelTo').on('input change',stockApplyLiveFilter);
+      $('#stockExcelValues').on('change','.stock-excel-all,.stock-excel-choice-input',stockApplyLiveFilter);
       $('#stockExcelClear').on('click',function(){
         delete stockColumnFilters[stockTableKey(activeKind,activeColumn)];
         stockFilterRows(activeKind);stockClosePopover();
