@@ -575,6 +575,12 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::any('booking/plot/voucher/update/{id}', 'updateCashIn')->middleware(['permission:read slip'])->name('payment_schedule.cash.update');
         Route::get('booking/plot/voucher/print/{id}', 'printCashIn')->name('booking.customer.print');
         Route::get('extra_charge/', 'extraCharge')->name('payment_schedule.extra_charge');
+        Route::get('finance/extra-charge/cash/{source}', 'extraChargeCashDetails')
+            ->whereNumber('source')->name('finance.extra-charge.cash.details');
+        Route::put('finance/extra-charge/cash/{source}', 'updateExtraChargeCash')
+            ->whereNumber('source')->name('finance.extra-charge.cash.update');
+        Route::delete('finance/extra-charge/cash/{source}', 'deleteExtraChargeCash')
+            ->whereNumber('source')->name('finance.extra-charge.cash.delete');
         Route::get('booking/customer/report/form', 'customer_report_form')->middleware(['permission:view booking report'])->name('booking.customer.report.form');
         Route::post('booking/customer/report/display', 'customer_report_display')->middleware(['permission:view booking report'])->name('booking.customer.report.display');
 
