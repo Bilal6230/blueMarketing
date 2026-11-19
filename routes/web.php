@@ -359,6 +359,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::get('finance/voucher/bank-transfer/{kind}/sources', 'transferVoucherSources')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.sources');
         Route::get('finance/voucher/bank-transfer/{kind}/history', 'transferVoucherHistory')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.history');
         Route::post('finance/voucher/bank-transfer/{kind}', 'postTransferVoucher')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.post');
+        Route::get('finance/voucher/bank-transfer/{kind}/{postingBatch}/details', 'transferVoucherDetails')->where(['kind'=>'deposit|withdrawal','postingBatch'=>'[0-9]+'])->name('finance.voucher.transfer.details');
+        Route::put('finance/voucher/bank-transfer/{kind}/{postingBatch}', 'updateTransferVoucher')->where(['kind'=>'deposit|withdrawal','postingBatch'=>'[0-9]+'])->name('finance.voucher.transfer.update');
         Route::post('finance/voucher/bank-transfer/{kind}/{postingBatch}/reverse', 'reverseTransferVoucher')
             ->where(['kind' => 'deposit|withdrawal', 'postingBatch' => '[0-9]+'])
             ->middleware(['throttle:10,1'])->name('finance.voucher.transfer.reverse');
