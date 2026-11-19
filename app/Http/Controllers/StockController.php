@@ -916,6 +916,8 @@ class StockController extends Controller
                 'l.amount_minor',
             ])
             ->whereNull('e.deleted_at')
+            ->when(Schema::hasColumn('stock_entry_lines','deleted_at'),
+                fn($q)=>$q->whereNull('l.deleted_at'))
             ->where('e.project_id', (int) getSelectedTown())
             ->orderByDesc('e.id')
             ->orderByDesc('l.id');
@@ -1023,7 +1025,11 @@ class StockController extends Controller
         $q = DB::table('stock_bills as b')
             ->join('stock_parties as p', 'p.id', '=', 'b.party_id')
             ->leftJoin('stock_entries as e', 'e.id', '=', 'b.entry_id')
-            ->leftJoin('stock_bill_lines as l', 'l.bill_id', '=', 'b.id')
+            ->leftJoin('stock_bill_lines as l',function($join){
+                $join->on('l.bill_id','=','b.id');
+                if(Schema::hasColumn('stock_bill_lines','deleted_at'))
+                    $join->whereNull('l.deleted_at');
+            })
             ->leftJoin('stock_items as i', 'i.id', '=', 'l.item_id')
             ->select([
                 'b.id',
@@ -1165,6 +1171,8 @@ class StockController extends Controller
         // IN/OUT in range from movements
         $movQ = DB::table('stock_movements as m')
             ->join('stock_items as i', 'i.id', '=', 'm.item_id')
+            ->when(Schema::hasColumn('stock_movements','is_active'),
+                fn($q)=>$q->where('m.is_active',1))
             ->select([
                 'm.item_id',
                 'i.name as item_name',
@@ -1486,6 +1494,8 @@ class StockController extends Controller
         }
 
         $rows = DB::table('stock_movements')->where('project_id', $projectId)
+            ->when(Schema::hasColumn('stock_movements','is_active'),
+                fn($q)=>$q->where('is_active',1))
             ->select([
                 'item_id',
                 DB::raw("SUM(CASE WHEN direction='IN' THEN qty ELSE 0 END) as in_qty"),
