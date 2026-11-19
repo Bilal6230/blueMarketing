@@ -999,13 +999,13 @@ class JournalVoucherController extends Controller
             ]);
             DB::transaction(function () use ($id, $projectId, $data): void {
                 $voucher = JournalVoucher::whereKey((int) $id)->where('project_id', $projectId)
-                    ->where(fn ($q) => $q->where('type', 'JV')->orWhereNull('type'))
+                    ->where(fn ($q) => $q->whereIn('type',['JV','SV'])->orWhereNull('type'))
                     ->lockForUpdate()->firstOrFail();
                 app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
                     ->assertLegacyMutationAllowed($projectId, 'journal_vouchers', (int) $voucher->id);
                 // All source-linked ledger legs are retired by exact voucher identity.
                 app(\App\Services\Finance\LinkedVoucherLedgerRetirement::class)
-                    ->retire($projectId, 'JV', (int)$voucher->id);
+                    ->retire($projectId, $voucher->type==='SV'?'SV':'JV', (int)$voucher->id);
                 JournalVoucherDetail::where('journal_voucher_id', $voucher->id)->get()->each->delete();
                 $voucher->delete();
             });
@@ -1205,7 +1205,7 @@ class JournalVoucherController extends Controller
         } else {
             DB::transaction(function () use ($id, $projectId, $data, $lines, $totalDebitCents, $totalCreditCents): void {
                 $voucher = JournalVoucher::whereKey((int) $id)->where('project_id', $projectId)
-                    ->where(function ($query) { $query->where('type', 'JV')->orWhereNull('type'); })
+                    ->where(function ($query) { $query->whereIn('type',['JV','SV'])->orWhereNull('type'); })
                     ->lockForUpdate()->firstOrFail();
                 app(\App\Services\Finance\VoucherApprovalMutationGuard::class)
                     ->assertLegacyMutationAllowed($projectId, 'journal_vouchers', (int) $voucher->id);
@@ -1235,7 +1235,8 @@ class JournalVoucherController extends Controller
                 // Previously corrected rows remain as inactive history.
                 // Validate only currently active ledger legs against the
                 // currently active voucher details, not historical rows.
-                $linked=DB::table('ledgers')->where('type','JV')
+                $sourceSeries=$voucher->type==='SV'?'SV':'JV';
+                $linked=DB::table('ledgers')->where('type',$sourceSeries)
                     ->where('type_id',$voucher->id)->where('is_active',1)
                     ->lockForUpdate()->get();
                 $byDetail=$linked->groupBy('journal_voucher_detail_id');
@@ -1287,7 +1288,7 @@ class JournalVoucherController extends Controller
                         'description'=>$line['description'],'created_by'=>Auth::id(),
                     ]);
                     $ledger=Ledger::create([
-                        'voucher_number'=>$voucher->voucher_number,'type'=>'JV',
+                        'voucher_number'=>$voucher->voucher_number,'type'=>$sourceSeries,
                         'type_id'=>$voucher->id,'journal_voucher_detail_id'=>$detail->id,
                         'project_head_subheads_id'=>$line['account_id'],
                         'reference'=>$data['reference']??null,
