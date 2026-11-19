@@ -200,9 +200,18 @@ final class CommissionApprovedVoucherEditor
                     'debit'=>$line['debit'],'credit'=>$line['credit'],
                     'description'=>$line['description']];
             }
-            // The posting writer fingerprints source detail rows ordered
-            // by their physical PK, not user-supplied display order.
-            usort($final,static fn($a,$b)=>$a['detail_id']<=>$b['detail_id']);
+            // Rebuild fingerprint from persisted active detail rows. This
+            // preserves nullable descriptions and the precise PK order used
+            // by CommissionPostingWriter, even when UI rows are reordered.
+            $final=DB::table('commision_voucher_details')
+                ->where('commision_voucher_id',$voucherId)->whereNull('deleted_at')
+                ->orderBy('id')->get()->map(fn($detail)=>[
+                    'detail_id'=>(int)$detail->id,
+                    'account_id'=>(int)$detail->account_id,
+                    'debit'=>$this->money($this->cents($detail->debit)),
+                    'credit'=>$this->money($this->cents($detail->credit)),
+                    'description'=>$detail->description,
+                ])->all();
             // CommissionPostingWriter validates this exact fingerprint on
             // idempotent Approve replay. Keep batch identity/key unchanged,
             // but refresh its payload to describe the corrected active legs.
