@@ -35,7 +35,6 @@ final class PostingBatchIntegrityAudit
         }
         $batches=$query->orderBy('id')
             ->get(['id','voucher_series','voucher_number','reversal_of_batch_id']);
-        if ($batches->isEmpty()) return [];
         $lines=DB::table('finance_posting_lines as line')
             ->leftJoin('project_head_subheads as account','account.id','=','line.project_head_subhead_id')
             ->whereIn('line.posting_batch_id',$batches->pluck('id')->all())
@@ -92,6 +91,32 @@ final class PostingBatchIntegrityAudit
                 'active_line_count'=>$legs->count(),
                 'issues'=>array_values(array_unique($issues)),
             ];
+        }
+        // Archived bank vouchers are omitted from live posting totals but
+        // MUST be flagged if even one posting leg was left active by tampering.
+        if (Schema::hasTable('finance_bank_transfer_sources')
+            && Schema::hasColumn('finance_bank_transfer_sources','is_active')
+            && Schema::hasColumn('finance_posting_lines','is_active')) {
+            $leaks=DB::table('finance_bank_transfer_sources as source')
+                ->join('finance_posting_batches as batch','batch.id','=','source.posting_batch_id')
+                ->join('finance_posting_lines as leg',function($join){
+                    $join->on('leg.posting_batch_id','=','batch.id')
+                        ->where('leg.is_active',1);
+                })
+                ->where('source.project_id',$projectId)
+                ->where('batch.project_id',$projectId)->where('source.is_active',0)
+                ->groupBy('batch.id','batch.voucher_series','batch.voucher_number')
+                ->get(['batch.id as id','batch.voucher_series','batch.voucher_number',
+                    DB::raw('COUNT(leg.id) as active_leg_count')]);
+            foreach($leaks as $leak) {
+                $findings[]=[
+                    'batch_id'=>(int)$leak->id,'series'=>(string)$leak->voucher_series,
+                    'voucher_number'=>(string)$leak->voucher_number,
+                    'reversal_of_batch_id'=>null,
+                    'active_line_count'=>(int)$leak->active_leg_count,
+                    'issues'=>['ARCHIVED_BANK_WITH_ACTIVE_POSTINGS'],
+                ];
+            }
         }
         return $findings;
     }
