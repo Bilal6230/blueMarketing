@@ -383,6 +383,8 @@ class CommissionVoucherController extends Controller
         $data = $request->validate([
             'reference' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
+            'detail_ids' => ['required','array','min:2','max:100'],
+            'detail_ids.*' => ['nullable','integer','min:1','distinct'],
             'date' => ['required', 'date_format:Y-m-d'],
             'accounts' => ['required', 'array', 'min:2', 'max:100'],
             'accounts.*' => ['required', 'integer', 'min:1'],
@@ -396,7 +398,7 @@ class CommissionVoucherController extends Controller
             'line_description.*' => ['nullable', 'string', 'max:1000'],
         ]);
         $keys = array_keys($data['accounts']);
-        foreach (['sub_accounts', 'debit', 'credit'] as $field) {
+        foreach (['detail_ids','sub_accounts', 'debit', 'credit'] as $field) {
             if (array_keys($data[$field]) !== $keys) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     $field => 'Commission voucher line keys must match.',
@@ -426,6 +428,7 @@ class CommissionVoucherController extends Controller
             }
             $totalDebitCents += $debitCents; $totalCreditCents += $creditCents;
             $lines[] = [
+                'detail_id' => $data['detail_ids'][$index] ?? null,
                 'account_id' => $sub,
                 'debit' => $this->centsToMoney($debitCents),
                 'credit' => $this->centsToMoney($creditCents),
