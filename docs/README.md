@@ -12,7 +12,7 @@
 |---|---|---|
 | 01 | Nonblocking loading and voucher-tinted skeletons | **COMPLETE** — owner browser + PHP tests PASS |
 | 02 | Action-specific permissions, Roles page and backend enforcement | **PARTIAL ACCEPTANCE** — implemented, tests PASS, owner confirmed CR Edit visibly works; complete cross-module browser permission matrix not yet accepted |
-| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. MySQL FK + Plot lifecycle migrations PASS, major CRUD workflows pending; Archived-source guard owner PASS; audited narration-only Edit committed; local tests, new migration and browser acceptance pending |
+| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. Existing Plot/JV/CV draft/approval flows owner-verified, all-project posting audit clean for 6 projects. Approved CV differential correction + active-only reports committed **but owner local tests/browser acceptance PENDING**. Other voucher-family full CRUD still not comprehensively accepted. |
 | 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **NOT STARTED under new rules** |
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
@@ -715,3 +715,45 @@ php artisan finance:audit-posting-balances
 **Owner browser evidence (accepted):** CV Draft Create/Edit/Add/Remove with actual FK-linked ledgers works; CV Approve/Post now works; approved CV appears in Party Ledger, and approved CV opens in view-only mode without the earlier iframe 409. JV flow independently browser-accepted. Existing CV approved source is read-only by current implementation; **this does not satisfy the owner’s latest requirement**. Implement full approved CV differential edit/correction including original same CV ID/number, accounts, amounts, add/remove existing details, FK links to ledgers, posting-line source identity and consistent customer-facing balance **without duplicating financial impact**. Do not mark approved correction complete until code/test/browser evidence.
 
 **Milestone 03 STATUS: PARTIAL (do not close prematurely).** Existing completed subdomains and owner validations are documented above. Other modules’ combined accepted CRUD/permission matrix is not established by current evidence; Milestones 04/05 remain pending.
+
+
+## 2026-11-19 — Approved CV Full Edit/Update implementation (CURRENT CODE BATCH — owner local tests pending)
+
+**Owner decision:** Activity Audit is the new sixth and LAST milestone, no activity tables/migrations now. Within current Milestone 03, the owner requires normal Create/Edit/Update/Delete even for Approved vouchers, avoiding needless customer-visible reversal documents for staff corrections. The owner confirmed CV approval, FK-linked active ledgers and Party Ledger display work, as did earlier JV/Plot owner browser checks.
+
+**Actual code changes on upgrade/laravel-framework branch:**
+- New `CommissionApprovedVoucherEditor` applies **same CV ID, same voucher number, same financial posting batch ID** corrections after project/source/batch locks, verified `commision_voucher_detail_id` actual enforced FK, exact source detail to active ledger and typed posting-line links, per-leg account/amount checks, positive balanced totals, and reversal-source conflict check. Existing unchanged rows preserve IDs; changed/removed rows are archived/inactivated and replacement detail+ledger+typed posting lines are inserted with exact FK identity. No new reversal batch and no duplicate active accounting amounts. This is a **controlled mutation of the current posted batch** (fingerprint and date updated), preserving old retired line evidence; it is not an immutable-posting reversal workflow.
+- Original `CommissionVoucherController::edit` now allows Approved CV to open editable; already-reversed documents remain view-only. `update()` dispatches Approved CV to the new editor; Draft CV still uses `CommissionDraftWorkflow`. Existing jQuery AJAX modal Save, toast, auto close/refresh remain in place.
+- `CommissionPostingWriter` idempotent replay now verifies **active** posting lines only and the corrected source fingerprint. Fingerprint is recalculated using persisted, PK-ordered active details (including nullable description values), matching replay format.
+- `PostingReportReader` integrity validation, account statement/trial balance line query, original reversed-leg verification and empty-batch scan now correctly ignore archived posting lines, so customer-facing financial balances see only current active effects. Existing `PostingBatchIntegrityAudit` and Daily Voucher Directory already filter active legs.
+- New SQLite integration coverage in `CommissionLedgerSynchronizerTest`: approved Edit changes amount/adds a row and retains unchanged IDs, preserves one posting batch and balanced current legs; no-change Save and approve idempotent replay add nothing; foreign detail ID refusal leaves records unchanged. `CommissionApprovedCorrectionContractTest` and revised previous `CommissionApprovedReadOnlyModalContractTest` guard controller dispatch, FK evidence, report read semantics and allowed Approved editing. **No owner green test results yet for this new batch**.
+
+**Correction semantics deliberately chosen:** Draft rows can be edited in place while inactive. Approved posted changes archive the old leg evidence and create corrected FK-linked active legs; users see current corrected amount without a separate reversal transaction. This is a current-business correction, not global activity auditing, which is Milestone 06. Follow existing permission checks and keep the operation restricted to the selected project and original voucher; never use hardcoded project ID/database, hard deletes, or blanket foreign-ID guesses.
+
+**Owner verification commands (NEXT REQUIRED GATE):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Services/Finance/CommissionApprovedVoucherEditor.php
+php -l app/Http/Controllers/CommissionVoucherController.php
+php -l app/Services/Finance/CommissionLedgerSynchronizer.php
+php -l app/Services/Finance/CommissionPostingWriter.php
+php -l app/Services/Finance/PostingReportReader.php
+php -l tests/Feature/Finance/CommissionLedgerSynchronizerTest.php
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan test --filter=CommissionApprovedCorrectionContractTest
+php artisan test --filter=CommissionApprovedReadOnlyModalContractTest
+php artisan test --filter=CommissionLedgerActivationContractTest
+php artisan test --filter=VoucherDifferentialEditContractTest
+php artisan finance:audit-posting-balances
+```
+
+**Owner focused browser acceptance after green tests:** Choose a disposable Approved CV, open Edit, update a debit/credit pair with balanced total, add a new leg, remove an old leg, Save. Verify modal closes and list/Party Ledger reflect new net amount, exactly one source voucher ID and one posting batch remain, all current ledger legs active with exact detail FK, old legs inactive, unrelated vouchers untouched. Reopen and no-op Save must not increase records. No additional migration required on the already-migrated local CV FK + posting line lifecycle schema. DO NOT run this against real customer financial records without a controlled backup/acceptance window.
+
+**Remaining Milestone 03 not yet accepted:** Cash CR/DR, CCR/CDR, BOR/BOP, SV, PPR, EC/ECP, labour/stock and other source families must get explicit project-scoped Add/Edit/Delete/approval/ledger accuracy reviews and owner browser acceptance; the all-project balance audit checks posted batches only, not every business workflow. Milestone 02 browser permission matrix is also not fully signed off. Milestones 04/05 are not started under latest rules. Do NOT declare entire Milestone 03 100% yet; close only after its actual remaining modules pass acceptance.
+
+### New-chat handoff prompt
+
+Continue BlueMarketing GitHub `Bilal6230/blueMarketing` branch `upgrade/laravel-framework`, configured local project `C:\laragon\www\blueMarketing`. Follow `docs/README.md` as sole authoritative handoff, and this last section as the latest code/verification batch. User wants **actual committed/pushed code, not docs-only work**; deliver complete batches and exact PowerShell pull/tests. Custom frontend JS must use jQuery, global consistent AJAX/skeleton/toasts/modals, no V2 names/isolation or hardcoded project/database. Roadmap is SIX milestones: M01 complete; M02 partial permission acceptance; M03 currently active remaining voucher lifecycle, approved CV correction newly implemented **not yet locally verified**; M04 bank/cheque linked cascade pending; M05 reversal settings/regression pending; M06 centralized activity audit LAST and NOT started (proposed 3 audit tables). Owner verified CV approval/Party Ledger, existing CV draft and JV tests, 6-project posting audit. Next action: request/interpret local test and browser gate above, fix any failures, then finish remaining M03 modules with genuine code and coverage; do not misstate completion.
