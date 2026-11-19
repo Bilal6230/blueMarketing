@@ -24,8 +24,8 @@ class JournalVoucherController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
-        $x['type'] = 'JV';
-        $x['class'] = 'Journal voucher';
+        $x['type'] = $isSales ? 'SV' : 'JV';
+        $x['class'] = $isSales ? 'Sales voucher' : 'Journal voucher';
         $x['bg_voucher'] = 'info-cash-in';
 
         // Get selected town's project_id
@@ -562,8 +562,12 @@ class JournalVoucherController extends Controller
 
     public function create()
     {
+        $isSales=request()->routeIs('sales.voucher.create');
+        if($isSales){
+            abort_unless(auth()->user()?->can('finance sv create'),403);
+        }
         $power = Auth::user()->roles[0]->name;
-        $x['title'] = 'Create General Journal Voucher';
+        $x['title'] = $isSales ? 'Create General Sales Voucher' : 'Create General Journal Voucher';
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
@@ -703,6 +707,37 @@ class JournalVoucherController extends Controller
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'debit' => 'Total debit and credit must be equal and greater than zero.',
             ]);
+        }
+
+        // Sales vouchers are their own journal source family, not a JV alias.
+        // Reuse the validated balanced lines but allocate SV identity and
+        // persist exact typed detail -> posting links in one transaction.
+        if($request->routeIs('sales.voucher.store')){
+            abort_unless(auth()->user()?->can('finance sv create'),403);
+            \App\Services\Finance\FinanceWorkflowAccess::authorize((int)$selectedProjectId);
+            $key=$request->input('idempotency_key');
+            if(!is_string($key)||!preg_match('/^[A-Za-z0-9_-]{16,128}$/D',$key)){
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'idempotency_key'=>'A durable Save request key is required.',
+                ]);
+            }
+            if(app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+                ->policy((int)$selectedProjectId,'SV')){
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'voucher'=>'Sales voucher requires approval; direct posting is unavailable.',
+                ]);
+            }
+            try{
+                $id=app(\App\Services\Finance\OriginalJournalWorkflow::class)
+                    ->createAndPost((int)$selectedProjectId,$key,$validated,
+                        (int)Auth::id(),'SV');
+            }catch(\DomainException $e){
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'voucher'=>$e->getMessage(),
+                ]);
+            }
+            return $this->voucherWriteResponse($request,'Sales voucher posted successfully.',
+                route('sales.voucher.index'));
         }
 
         if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
