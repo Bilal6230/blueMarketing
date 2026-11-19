@@ -1609,22 +1609,26 @@ class VoucherController extends Controller
             ->first(['source.bank_account_id','source.linked_customer_ledger_id',
                 'source.amount','source.narration','batch.effective_date','batch.reversal_of_batch_id']);
         abort_unless($row,404);
-        $cash=DB::table('finance_posting_lines as line')
+        $mappedBank=DB::table('project_bank_accounts')
+            ->where('id',$row->bank_account_id)->where('project_id',$projectId)
+            ->value('account_mapping_id');
+        $activeLegs=DB::table('finance_posting_lines as line')
             ->join('project_head_subheads as account','account.id','=','line.project_head_subhead_id')
-            ->join('project_bank_accounts as bank','bank.account_mapping_id','!=','line.project_head_subhead_id')
-            ->where('bank.id',$row->bank_account_id)->where('bank.project_id',$projectId)
             ->where('line.posting_batch_id',$postingBatch)
             ->where('account.project_id',$projectId)
             ->when(Schema::hasColumn('finance_posting_lines','is_active'),
                 fn($q)=>$q->where('line.is_active',1))
-            ->orderBy('line.id')->pluck('line.project_head_subhead_id')->all();
+            ->orderBy('line.id')->get(['line.project_head_subhead_id']);
+        $cash=$activeLegs->filter(fn($leg)=>
+            (int)$leg->project_head_subhead_id!==(int)$mappedBank)->values();
         return response()->json(['status'=>'success','data'=>[
             'posting_batch_id'=>$postingBatch,'bank_account_id'=>(int)$row->bank_account_id,
-            'cash_account_id'=>count($cash)===1?(int)$cash[0]:null,
+            'cash_account_id'=>$cash->count()===1?(int)$cash[0]->project_head_subhead_id:null,
             'date'=>substr((string)$row->effective_date,0,10),
             'amount'=>(string)$row->amount,'narration'=>(string)$row->narration,
             'editable'=>$row->linked_customer_ledger_id===null
-                && $row->reversal_of_batch_id===null && count($cash)===1
+                && $row->reversal_of_batch_id===null && $mappedBank!==null
+                && $cash->count()===1 && $activeLegs->count()===2
                 &&!DB::table('finance_posting_batches')
                     ->where('reversal_of_batch_id',$postingBatch)->exists(),
         ]]);
