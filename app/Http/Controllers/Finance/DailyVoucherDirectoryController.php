@@ -534,7 +534,11 @@ final class DailyVoucherDirectoryController extends Controller
         if (Schema::hasTable('finance_bank_transfer_sources') && Schema::hasTable('finance_posting_batches')) {
             $query = DB::table('finance_bank_transfer_sources as source')
                 ->join('finance_posting_batches as batch', 'batch.id', '=', 'source.posting_batch_id')
-                ->where('source.project_id', $projectId);
+                ->where('source.project_id', $projectId)
+                ->when(Schema::hasColumn('finance_bank_transfer_sources','is_active'),
+                    fn($q)=>$q->where('source.is_active',1))
+                ->when(Schema::hasColumn('finance_bank_transfer_sources','deleted_at'),
+                    fn($q)=>$q->whereNull('source.deleted_at'));
             if (!empty($filters['from'])) $query->whereDate('batch.effective_date', '>=', $filters['from']);
             if (!empty($filters['to'])) $query->whereDate('batch.effective_date', '<=', $filters['to']);
             if (!empty($filters['type'])) $query->where('batch.voucher_series', $filters['type']);
@@ -616,6 +620,8 @@ final class DailyVoucherDirectoryController extends Controller
                     $allocations = DB::table('finance_plot_receipt_allocations as allocation')
                         ->join('plots as plot', 'plot.id', '=', 'allocation.plot_id')
                         ->where('allocation.receipt_id', $source->id)
+                        ->when(Schema::hasColumn('finance_plot_receipt_allocations','is_active'),
+                            fn($q)=>$q->where('allocation.is_active',1))
                         ->orderBy('allocation.id')->get(['allocation.plot_id', 'allocation.amount', 'plot.name as plot_name']);
                     foreach ($allocations as $allocation) {
                         $row['prints'][] = [
