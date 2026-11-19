@@ -1595,6 +1595,67 @@ class VoucherController extends Controller
         return response()->json(['status' => 'success', 'data' => $result], $result['replayed'] ? 200 : 201);
     }
 
+    /** Current editable bank voucher details; never infer a cash account by row order. */
+    public function transferVoucherDetails(string $kind,int $postingBatch)
+    {
+        abort_unless(in_array($kind,['deposit','withdrawal'],true),404);
+        $projectId=(int)getSelectedTown();
+        \App\Services\Finance\FinanceWorkflowAccess::authorizeRead($projectId);
+        $row=DB::table('finance_bank_transfer_sources as source')
+            ->join('finance_posting_batches as batch','batch.id','=','source.posting_batch_id')
+            ->where('source.posting_batch_id',$postingBatch)
+            ->where('source.project_id',$projectId)->where('batch.project_id',$projectId)
+            ->where('source.transfer_kind',$kind)
+            ->first(['source.bank_account_id','source.linked_customer_ledger_id',
+                'source.amount','source.narration','batch.effective_date','batch.reversal_of_batch_id']);
+        abort_unless($row,404);
+        $cash=DB::table('finance_posting_lines as line')
+            ->join('project_head_subheads as account','account.id','=','line.project_head_subhead_id')
+            ->join('project_bank_accounts as bank','bank.account_mapping_id','!=','line.project_head_subhead_id')
+            ->where('bank.id',$row->bank_account_id)->where('bank.project_id',$projectId)
+            ->where('line.posting_batch_id',$postingBatch)
+            ->where('account.project_id',$projectId)
+            ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                fn($q)=>$q->where('line.is_active',1))
+            ->orderBy('line.id')->pluck('line.project_head_subhead_id')->all();
+        return response()->json(['status'=>'success','data'=>[
+            'posting_batch_id'=>$postingBatch,'bank_account_id'=>(int)$row->bank_account_id,
+            'cash_account_id'=>count($cash)===1?(int)$cash[0]:null,
+            'date'=>substr((string)$row->effective_date,0,10),
+            'amount'=>(string)$row->amount,'narration'=>(string)$row->narration,
+            'editable'=>$row->linked_customer_ledger_id===null
+                && $row->reversal_of_batch_id===null && count($cash)===1
+                &&!DB::table('finance_posting_batches')
+                    ->where('reversal_of_batch_id',$postingBatch)->exists(),
+        ]]);
+    }
+
+    public function updateTransferVoucher(Request $request,string $kind,int $postingBatch)
+    {
+        abort_unless(in_array($kind,['deposit','withdrawal'],true),404);
+        $projectId=(int)getSelectedTown();
+        \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
+        $data=$request->validate([
+            'bank_account_id'=>['required','integer','min:1'],
+            'cash_account_id'=>['required','integer','min:1'],
+            'date'=>['required','date_format:Y-m-d'],
+            'amount'=>['required','regex:/^(0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,2})?$/D'],
+            'narration'=>['required','string','max:2000'],
+        ]);
+        try {
+            app(\App\Services\Finance\BankTransferEditor::class)->update(
+                $projectId,$kind,$postingBatch,(int)$data['bank_account_id'],
+                (int)$data['cash_account_id'],$data['date'],$data['amount'],
+                $data['narration'],auth()->id()
+            );
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success',
+            'message'=>'Bank voucher updated; posting history preserved.',
+            'posting_batch_id'=>$postingBatch]);
+    }
+
     /** Cancel a manual BD/BW by an immutable counter-posting. */
     public function reverseTransferVoucher(Request $request, string $kind, int $postingBatch)
     {
