@@ -2593,4 +2593,136 @@
       $(tabBtns).on('click',function(){setView($(this).data('view'));});
     });
   </script>
+  <script>
+  $(function(){
+      'use strict';
+      var stockDocBase=@json(url('admin/stocks/documents')),
+          stockMetaUrl=@json(route('stocks.meta')),
+          stockDocItems=[],stockDocFeedback=$.financeVoucherFeedback||{};
+      var stockDocNotify=function(type,message){
+          if($.isFunction(stockDocFeedback.toast))stockDocFeedback.toast(type,message);
+          else if(window.toastr&&$.isFunction(window.toastr[type]))window.toastr[type](message);
+      };
+      var stockDocError=function($box,xhr,fallback){
+          var text=(xhr.responseJSON&&xhr.responseJSON.message)
+              ||($.isFunction(stockDocFeedback.error)
+                  ? stockDocFeedback.error(xhr,fallback):fallback);
+          $box.text(text).removeClass('d-none');stockDocNotify('error',text);
+      };
+      var stockDocHide=function(selector){
+          $(selector).modal('hide');
+      };
+      var stockDocAddLine=function(line){
+          line=line||{};
+          var $wrap=$('<div class="row g-2 align-items-end mb-2 stock-doc-line">')
+              .attr('data-detail-id',line.detail_id||'');
+          var $item=$('<select class="form-control stock-doc-item">');
+          $('<option>').val('').text('Choose item').appendTo($item);
+          $.each(stockDocItems,function(_,item){
+              $('<option>').val(item.id).text(item.name+' / '+(item.unit||''))
+                  .appendTo($item);
+          });
+          $item.val(line.item_id?String(line.item_id):'');
+          $('<div class="col-md-5">').append(
+              $('<label class="form-label small">Item</label>'),$item).appendTo($wrap);
+          $('<div class="col-md-3">').append(
+              $('<label class="form-label small">Qty</label>'),
+              $('<input type="number" class="form-control stock-doc-qty" min="0.001" step="0.001" required>')
+                  .val(line.qty||'')).appendTo($wrap);
+          $('<div class="col-md-3">').append(
+              $('<label class="form-label small">Rate (minor units)</label>'),
+              $('<input type="number" class="form-control stock-doc-rate" min="0" step="1" required>')
+                  .val(line.rate==null?'':line.rate)).appendTo($wrap);
+          $('<div class="col-md-1">').append(
+              $('<button class="btn btn-sm btn-outline-danger stock-doc-remove" type="button">Remove</button>'))
+              .appendTo($wrap);
+          $('#stockDocumentEditRows').append($wrap);
+      };
+      $('#stockDocumentEditRows').on('click','.stock-doc-remove',function(){
+          if($('#stockDocumentEditRows .stock-doc-line').length<2){
+              stockDocNotify('error','Stock voucher requires at least one item.');return;
+          }
+          $(this).closest('.stock-doc-line').remove();
+      });
+      $('#stockDocumentAddRow').on('click',function(){stockDocAddLine();});
+      $(document).on('click','.stock-doc-edit',function(){
+          var kind=$(this).attr('data-kind'),id=Number($(this).attr('data-id')),
+              $button=$(this);
+          if(!id||$.inArray(kind,['entry','bill'])<0)return;
+          $button.prop('disabled',true);
+          $.when(
+              $.ajax({url:stockMetaUrl,dataType:'json',headers:{Accept:'application/json'}}),
+              $.ajax({url:stockDocBase+'/'+kind+'/'+id,dataType:'json',
+                  headers:{Accept:'application/json'}})
+          ).done(function(metaResponse,documentResponse){
+              stockDocItems=(metaResponse[0].data||{}).items||[];
+              var data=documentResponse[0].data||{};
+              if(!data.editable){
+                  stockDocNotify('error','This stock voucher is linked to a bill or typed posting and needs its owning workflow.');
+                  return;
+              }
+              $('#stockDocumentEditForm').data('kind',kind).data('source',id);
+              $('#stockDocumentEditTitle').text('Edit '+(kind==='entry'?'Stock Entry':'Stock Bill')+' '+(data.number||''));
+              $('#stockDocumentDate').val(data.date);
+              $('#stockDocumentNarration').val(data.narration||'');
+              $('#stockDocumentEditRows').empty();
+              $.each(data.lines||[],function(_,line){stockDocAddLine(line);});
+              $('#stockDocumentEditError').addClass('d-none').text('');
+              $('#stockDocumentEditModal').modal('show');
+          }).fail(function(xhr){
+              stockDocError($('#stockDocumentEditError'),xhr,'Could not load stock voucher.');
+          }).always(function(){$button.prop('disabled',false);});
+      });
+      $('#stockDocumentEditForm').on('submit',function(event){
+          event.preventDefault();
+          var kind=$(this).data('kind'),source=Number($(this).data('source')),
+              $button=$('#stockDocumentSave'),lines=[];
+          if(!source||$button.prop('disabled'))return;
+          $('#stockDocumentEditRows .stock-doc-line').each(function(){
+              var $line=$(this);
+              lines.push({
+                  detail_id:$line.attr('data-detail-id')||'',
+                  item_id:$line.find('.stock-doc-item').val(),
+                  qty:$line.find('.stock-doc-qty').val(),
+                  rate:$line.find('.stock-doc-rate').val()
+              });
+          });
+          $button.prop('disabled',true);
+          $.ajax({
+              url:stockDocBase+'/'+kind+'/'+source,type:'PUT',dataType:'json',
+              headers:{Accept:'application/json',
+                  'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+              data:{date:$('#stockDocumentDate').val(),
+                  narration:$('#stockDocumentNarration').val(),lines:lines}
+          }).done(function(result){
+              stockDocHide('#stockDocumentEditModal');
+              stockDocNotify('success',result.message||'Stock voucher updated.');
+              $(document).trigger('finance:stock-document-saved');
+          }).fail(function(xhr){
+              stockDocError($('#stockDocumentEditError'),xhr,'Stock voucher could not be updated.');
+          }).always(function(){$button.prop('disabled',false);});
+      });
+      $(document).on('click','.stock-doc-delete',function(){
+          var kind=$(this).attr('data-kind'),source=Number($(this).attr('data-id'));
+          if(!source||$.inArray(kind,['entry','bill'])<0)return;
+          $('#stockDocumentDeleteConfirm').data('kind',kind).data('source',source);
+          $('#stockDocumentDeleteError').addClass('d-none').text('');
+          $('#stockDocumentDeleteModal').modal('show');
+      });
+      $('#stockDocumentDeleteConfirm').on('click',function(){
+          var $button=$(this),kind=$button.data('kind'),source=Number($button.data('source'));
+          if(!source||$button.prop('disabled'))return;
+          $button.prop('disabled',true);
+          $.ajax({url:stockDocBase+'/'+kind+'/'+source,type:'DELETE',dataType:'json',
+              headers:{Accept:'application/json','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')}})
+          .done(function(result){
+              stockDocHide('#stockDocumentDeleteModal');
+              stockDocNotify('success',result.message||'Stock voucher deleted.');
+              $(document).trigger('finance:stock-document-saved');
+          }).fail(function(xhr){
+              stockDocError($('#stockDocumentDeleteError'),xhr,'Stock voucher could not be deleted.');
+          }).always(function(){$button.prop('disabled',false);});
+      });
+  });
+  </script>
 @endsection
