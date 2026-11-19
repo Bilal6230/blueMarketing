@@ -904,7 +904,8 @@ class JournalVoucherController extends Controller
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
         if (request()->boolean('reverse')) {
-            abort_unless(auth()->user()?->can('finance jv reverse'),403);
+            $seriesModule=\App\Support\Finance\FinanceActionPermission::journalModule((int)$id);
+            abort_unless(auth()->user()?->can('finance '.$seriesModule.' reverse'),403);
         }
         if ($this->isMergedPostedJournal($projectId,(int)$id)
             && !request()->boolean('reverse')) {
