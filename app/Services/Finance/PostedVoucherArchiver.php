@@ -55,6 +55,12 @@ final class PostedVoucherArchiver
                 ||(!$cv&&!in_array((string)$voucher->type,['JV','SV'],true))) {
                 throw new \DomainException('Only a currently posted source may be deleted.');
             }
+            if (Schema::hasTable('daily_voucher_approvals')
+                && DB::table('daily_voucher_approvals')->where('project_id',$projectId)
+                    ->where('source_table',$headerTable)->where('source_id',$voucherId)
+                    ->where('status','pending')->exists()) {
+                throw new \DomainException('Posted voucher has a pending approval decision.');
+            }
             $batchIds=DB::table($sourceTable)->where($sourceColumn,$voucherId)
                 ->pluck('posting_batch_id');
             if($batchIds->count()!==1) {
