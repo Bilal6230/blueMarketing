@@ -85,7 +85,9 @@ final class CommissionApprovedVoucherEditor
                     'line.debit','line.credit','line.description','src.commision_voucher_detail_id'])
                 ->groupBy('commision_voucher_detail_id');
             if ($ledgerRows->flatten(1)->count()!==$old->count()
-                ||$sourceRows->flatten(1)->count()!==$old->count()) {
+                ||$sourceRows->flatten(1)->count()!==$old->count()
+                ||DB::table('finance_posting_lines')->where('posting_batch_id',$batchId)
+                    ->where('is_active',1)->count()!==$old->count()) {
                 throw new \DomainException('Commission current detail, ledger and posting cardinalities do not match.');
             }
             foreach ($old as $detailId=>$detail) {
