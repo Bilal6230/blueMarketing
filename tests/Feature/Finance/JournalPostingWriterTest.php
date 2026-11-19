@@ -30,9 +30,16 @@ class JournalPostingWriterTest extends TestCase
         ] as $name) {
             Schema::create($name, function (Blueprint $table): void { $table->id(); });
         }
+        Schema::create('head_accountings',function(Blueprint $table): void {
+            $table->id();$table->boolean('is_active')->default(true);
+        });
+        Schema::create('subhead_accountings',function(Blueprint $table): void {
+            $table->id();$table->boolean('is_active')->default(true);
+        });
         Schema::create('project_head_subheads', function (Blueprint $table): void {
-            $table->id();
-            $table->unsignedBigInteger('project_id');
+            $table->id();$table->unsignedBigInteger('project_id');
+            $table->unsignedBigInteger('head_accounting_id');
+            $table->unsignedBigInteger('subhead_accounting_id');
         });
         Schema::create('journal_vouchers', function (Blueprint $table): void {
             $table->id();
@@ -67,10 +74,12 @@ class JournalPostingWriterTest extends TestCase
         }
 
         DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
+        DB::table('head_accountings')->insert([['id'=>1],['id'=>2]]);
+        DB::table('subhead_accountings')->insert([['id'=>1],['id'=>2]]);
         DB::table('project_head_subheads')->insert([
-            ['id' => 101, 'project_id' => 1],
-            ['id' => 102, 'project_id' => 1],
-            ['id' => 201, 'project_id' => 2],
+            ['id'=>101,'project_id'=>1,'head_accounting_id'=>1,'subhead_accounting_id'=>1],
+            ['id'=>102,'project_id'=>1,'head_accounting_id'=>1,'subhead_accounting_id'=>2],
+            ['id'=>201,'project_id'=>2,'head_accounting_id'=>2,'subhead_accounting_id'=>1],
         ]);
         $this->makeJournal(51, 101, 102);
     }
