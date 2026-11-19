@@ -86,6 +86,7 @@ final class CommissionLedgerSynchronizerTest extends TestCase
             $t->unsignedBigInteger('project_head_subhead_id');
             $t->decimal('debit',16,2);$t->decimal('credit',16,2);
             $t->string('description')->nullable();
+            $t->boolean('is_active')->default(1);
             $t->timestamps();
         });
         Schema::create('finance_posting_source_claims',function(Blueprint $t) {
