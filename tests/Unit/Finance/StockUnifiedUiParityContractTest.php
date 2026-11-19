@@ -52,7 +52,9 @@ class StockUnifiedUiParityContractTest extends TestCase
         self::assertStringContainsString('stock-line-field', $view);
         self::assertStringContainsString('stock-line-caption', $view);
         self::assertStringContainsString('stock-line-remove', $view);
-        self::assertStringContainsString('dropdownParent:$el.closest(\'.modal\')[0] || \'body\'', $view);
+        self::assertStringContainsString("dropdownParent:'body'", $view);
+        self::assertStringContainsString('function stockPositionTomDropdown(instance)', $view);
+        self::assertStringContainsString("menu.style.setProperty('position','fixed','important')", $view);
         self::assertStringContainsString('function stockSetSubheads(items,placeholder)', $view);
         self::assertStringContainsString('el.tomselect.clearOptions()', $view);
         self::assertStringContainsString('stockSetSubheads(rows,rows.length', $view);
