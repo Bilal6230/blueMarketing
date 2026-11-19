@@ -501,6 +501,12 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
     Route::post('stocks/parties', [StockController::class, 'storeParty'])->name('stocks.parties.store');
     Route::post('stocks/entries', [StockController::class, 'storeEntry'])->name('stocks.entries.store');
     Route::post('stocks/bills', [StockController::class, 'storeBill'])->name('stocks.bills.store');
+    Route::get('stocks/documents/{kind}/{id}', [StockController::class, 'stockDocumentDetails'])
+        ->where(['kind'=>'entry|bill','id'=>'[0-9]+'])->name('stocks.documents.details');
+    Route::put('stocks/documents/{kind}/{id}', [StockController::class, 'updateStockDocument'])
+        ->where(['kind'=>'entry|bill','id'=>'[0-9]+'])->name('stocks.documents.update');
+    Route::delete('stocks/documents/{kind}/{id}', [StockController::class, 'deleteStockDocument'])
+        ->where(['kind'=>'entry|bill','id'=>'[0-9]+'])->name('stocks.documents.delete');
     Route::post('stocks/legacy-reconciliation', [StockController::class, 'reconcileLegacyStock'])->name('stocks.legacy.reconcile');
     Route::post('stocks/finance/{kind}/{id}/approve', [StockController::class, 'approveFinance'])
         ->where('kind', 'stock_entry|stock_bill')->whereNumber('id')
