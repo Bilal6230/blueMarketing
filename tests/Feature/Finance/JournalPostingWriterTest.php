@@ -692,6 +692,34 @@ class JournalPostingWriterTest extends TestCase
         $this->assertSame('51', $gateway->voucherRegister(1)[0]['source_reference']);
     }
 
+    public function test_sv_same_batch_correction_and_ordinary_delete_preserve_exact_fk_history(): void
+    {
+        DB::table('journal_vouchers')->where('id',51)->update(['type'=>'SV']);
+        $key='SV-CORRECTION-LIFECYCLE-0001';
+        $gateway=new PostingGateway();
+        $batch=$gateway->postSalesVoucher(1,51,$key);
+        $editor=new \App\Services\Finance\JournalApprovedVoucherEditor();
+        $editor->update(1,51,'2026-10-30',[
+            ['detail_id'=>511,'account_id'=>101,'debit'=>'150.50','credit'=>'0.00',
+                'description'=>'Corrected sales debit'],
+            ['detail_id'=>512,'account_id'=>102,'debit'=>'0.00','credit'=>'150.50',
+                'description'=>'Corrected sales credit'],
+        ],[],null);
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame(2,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->count());
+        self::assertSame(150.5,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->sum('debit'));
+        self::assertSame($batch,$gateway->postSalesVoucher(1,51,$key));
+        (new \App\Services\Finance\PostedVoucherArchiver())->archive(1,'journal',51);
+        self::assertNotNull(DB::table('journal_vouchers')->where('id',51)
+            ->value('deleted_at'));
+        self::assertSame(0,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->count());
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame([], $gateway->postingLines(1));
+    }
+
     public function test_jv_writer_refuses_sales_document_without_explicit_sv_series(): void
     {
         DB::table('journal_vouchers')->where('id', 51)->update(['type' => 'SV']);
