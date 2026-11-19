@@ -146,8 +146,10 @@ final class ExtraChargeCashEditorTest extends TestCase
         }catch(\DomainException|\Illuminate\Database\RecordNotFoundException $e){
             self::assertNotEmpty($e->getMessage());
         }
-        DB::table('ledgers')->where('customer_ledger_id',20)->orderBy('id')
-            ->limit(1)->update(['project_head_subheads_id'=>201]);
+        $legId=DB::table('ledgers')->where('customer_ledger_id',20)
+            ->orderBy('id')->value('id');
+        DB::table('ledgers')->where('id',$legId)
+            ->update(['project_head_subheads_id'=>201]);
         try {
             $editor->update(1,20,'2026-11-19','110.00','Corrupt');
             self::fail('Foreign ledger should block correction.');
