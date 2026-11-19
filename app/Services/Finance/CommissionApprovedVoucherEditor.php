@@ -43,6 +43,7 @@ final class CommissionApprovedVoucherEditor
             || !Schema::hasColumn('ledgers','commision_voucher_detail_id')) {
             throw new \DomainException('Commission correction requires the ledger and posting lifecycle migrations.');
         }
+        app(CommissionLedgerSynchronizer::class)->assertEnforcedDetailForeignKey();
         DB::transaction(function()use($projectId,$voucherId,$date,$submitted,$metadata,$actorId):void {
             DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
             $header=DB::table('commision_vouchers')->where('id',$voucherId)
