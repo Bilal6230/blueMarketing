@@ -119,7 +119,14 @@ final class CommissionLedgerSynchronizerTest extends TestCase
         self::assertSame([0,0],$ledger->pluck('is_active')->map(fn($v)=>(int)$v)->all());
         $ids=$ledger->pluck('id')->all();
 
-        $draft->updateDraft(1,$id,'2026-11-18',$this->lines(),
+        // Differential Edit requires the persisted detail identities.
+        // Blank/missing IDs intentionally represent NEW rows, not a no-op.
+        $sameLines=$this->lines();
+        foreach ($sameLines as $index=>&$line) {
+            $line['detail_id']=(int)$details[$index];
+        }
+        unset($line);
+        $draft->updateDraft(1,$id,'2026-11-18',$sameLines,
             ['reference'=>'REF','description'=>'Draft']);
         self::assertSame($ids,DB::table('ledgers')->where('type','CV')
             ->where('type_id',$id)->orderBy('id')->pluck('id')->all());
