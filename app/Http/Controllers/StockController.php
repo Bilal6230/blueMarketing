@@ -72,6 +72,10 @@ class StockController extends Controller
             ->with(['headAccounting:id,name', 'subheadAccounting:id,name'])->get()
             ->map(fn ($account) => [
                 'id' => (int) $account->id,
+                'head_id' => (int) $account->head_accounting_id,
+                'head_name' => (string) ($account->headAccounting->name ?? 'Head'),
+                'subhead_id' => (int) $account->subhead_accounting_id,
+                'subhead_name' => (string) ($account->subheadAccounting->name ?? 'Sub-account'),
                 'label' => ($account->headAccounting->name ?? 'Head').' / '.($account->subheadAccounting->name ?? 'Sub-account'),
             ])->values();
         return view('admin.stock.index', $x);
