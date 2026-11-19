@@ -814,3 +814,54 @@ Run migration only against the intended configured local TEST database, after te
 ### Updated fresh-chat handoff (highest priority)
 
 Continue the same BlueMarketing development on GitHub `Bilal6230/blueMarketing`, branch `upgrade/laravel-framework` and local `C:\laragon\www\blueMarketing`. Configured DB comes exclusively from `.env`; no project 3 hardcode, no V2 isolation/names, no custom vanilla JS (use jQuery), consistent AJAX + toast/modals/skeleton/filters. **Owner verified CV approved Edit and Party Ledger, JV and Plot browser checks, and all-six-project audit.** Latest bank transfer same-ID Edit/Delete is code-committed but has unverified local tests and new additive lifecycle migration; read the last section and run its exact commands, fix failures, get focused browser PASS. Then finish remaining Milestone 03 voucher families (CR/DR/CCR/CDR/BOR/BOP/PPR/EC/ECP/stock/labour), not just Plot/JV/CV, and only mark COMPLETE after verified matrix. Roadmap: M01 complete, M02 permission browser partial, M03 active partial, M04 linked bank cascade pending, M05 reversal setting pending, M06 Activity Audit LAST, explicitly deferred. Keep a single authoritative `docs/README.md` and commit/push real changes; never promise future/background work. 
+
+
+## 2026-11-19 — Milestone 03 continuation after owner BD/BW green gate: posted JV/SV correction, ordinary JV/CV Delete, active source filters (LATEST HANDOFF)
+
+**Owner-confirmed local PASS before this new batch:**
+- `BankTransferWriterTest`: **11 PASS / 72 assertions**, including BD/BW same batch Edit, ordinary archive/Delete, remnant integrity, reconciliation and linked-cheque refusal.
+- `BankTransferCorrectionContractTest`: **2 PASS / 30 assertions**.
+- Finance posting read-only audit: **all 6 projects clean**.
+- Previously confirmed: Approved CV differential full Edit 16 PASS / 139 assertions and browser PASS, along with JV legacy and Plot full Edit browser acceptance.
+- `database/migrations/2026_11_19_110000_add_bank_transfer_lifecycle_columns.php`: owner local migration successfully applied.
+- Old `database/finance_legacy_migrations/2026_11_05_000200_create_finance_bank_transfer_sources.php` fixture was corrected to use `FinanceConnectionGuard`; **all 11 test failures resolved and rerun PASS**. No further V2 class reference in that fixture.
+
+**Additional real application code committed THIS BATCH — LOCAL TESTS/BROWSER PENDING:**
+
+1. **Global Cash active ledger account/detail correctness:** `DailyVoucherDirectoryController` now matches active `customer_ledger` records only to active `ledgers` legs when reading current details and filtering by account. Archived historical legs from previous edits cannot cause an old account to appear as the voucher's current account. Inactive rejected/pending source history is still readable. Added tests to `DailyVoucherDirectoryPostingLifecycleContractTest` to cover this, plus deleted BD/BW visibility.
+2. **Posted JV/SV full differential Edit:** New `JournalApprovedVoucherEditor` verifies source/project/posting-batch uniqueness, enforced posted-line-to-detail IDs, original posting SHA256, exact account and debit/credit values, optional legacy JV ledger FK ownership, absence of a reversal and pending approval, and prevents foreign detail IDs. Unchanged rows preserve detail and posting line IDs; changed/removed rows archive old evidence, new current lines are inserted with source FK within the SAME batch and voucher ID/number. Same-ID no-op adds nothing. The typed `JournalPostingWriter` idempotent replay now checks only active posted lines, so old retired legs do not cause duplicates. `JournalVoucherController::edit/update` routes already-posted JV/SV through this editor instead of an iframe 409/immutable-source rejection. Already-reversed sources still reject corrections. Added integration regressions to `JournalPostingWriterTest` and new `JournalApprovedCorrectionContractTest`.
+3. **Approved JV/SV/CV ordinary Delete (separate from Reverse action):** New `PostedVoucherArchiver` validates the original source's SHA256 fingerprint, owned typed batch, active financial lines, per-detail FK ownership, account amounts and optional/current ledger FKs. On normal Delete it sets active posting/legacy ledger lines inactive and soft-archives original header and details, all inside one transaction. It creates NO separate REV batch; exact historical rows and original batch remain stored. `JournalVoucherController::destroy` and `CommissionVoucherController::destroy` default to ordinary logical Delete for posted vouchers; explicit `reverse=1` retains the older reversal path when legitimately required. Pending approval decisions and unrelated/cross-project IDs refuse this transition. Added `PostedVoucherArchiveContractTest` and JV/CV integration tests.
+4. **Customer-report integrity:** `PostingReportReader` and `PostingBatchIntegrityAudit` exclude intentionally archived source batches from live balances/empty-batch errors, but detect and reject any active posting leg left attached to an archived JV/SV/CV source. For BD/BW the previously verified active-only/archived lifecycle remains unchanged. All report endpoints sourced through `PostingReportReader` inherit this behavior.
+5. **No additional database migration added in this newest batch**. The existing finance posting and JV/CV detail linkage migrations are prerequisites.
+
+**Owner next verification (new code NOT YET RUN on their local environment):**
+
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Services/Finance/JournalApprovedVoucherEditor.php
+php -l app/Services/Finance/PostedVoucherArchiver.php
+php -l app/Http/Controllers/JournalVoucherController.php
+php -l app/Http/Controllers/CommissionVoucherController.php
+php -l app/Services/Finance/JournalPostingWriter.php
+php -l app/Services/Finance/PostingReportReader.php
+php -l app/Services/Finance/PostingBatchIntegrityAudit.php
+php -l tests/Feature/Finance/JournalPostingWriterTest.php
+php -l tests/Feature/Finance/CommissionLedgerSynchronizerTest.php
+php artisan test --filter=JournalPostingWriterTest
+php artisan test --filter=JournalApprovedCorrectionContractTest
+php artisan test --filter=PostedVoucherArchiveContractTest
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan test --filter=DailyVoucherDirectoryPostingLifecycleContractTest
+php artisan test --filter=VoucherDifferentialEditContractTest
+php artisan test --filter=BankTransferWriterTest
+php artisan finance:audit-posting-balances
+```
+
+**Focused new browser acceptance after GREEN tests:** On a disposable/local posted JV (and any typed SV), Edit an amount/line/account with balanced totals, Add and Remove a detail row and Save, confirm same voucher number and corrected account statements and unchanged row IDs; re-open/no-op Save should add no posting legs. Delete a disposable Approved CV or posted JV and confirm active register/Party Ledger/Trial Balance no longer includes its amount, but historical source/ledger/posting rows remain archived and no REV voucher appears. Confirm no cross-project writes and proper permission-denied JSON/toast. The previously accepted CV full Edit and BD/BW unit tests do not require re-testing unless regression is observed.
+
+**Honest Milestone 03 status: ACTIVE — NOT CLOSED.** New typed JV/SV and JV/CV Delete batch has not yet passed owner local tests or browser acceptance. Stock Entry/Stock Bill/SV inventory-linked corrections, labour payment source, PPR/EC/ECP and some approved bank/cheque instrument corrections still require full source-to-ledger/account dependency mapping, user-facing Edit/Delete path and tests. Stock CRUD is not safely addressable by deleting source alone: there are project balances, linked stock movements, inventory lines, stock financial JV/customer ledger source and billed-entry dependencies. Do not mark these complete without coordinated writes and validation. Some cheque/BOR/BOP linked custody corrections are assigned to Milestone 04, not to bypass/disable. Milestone 06 Activity Audit is explicitly last; no new activity audit tables now.
+
+**New-chat handoff:** Continue `Bilal6230/blueMarketing` branch `upgrade/laravel-framework`, configured `C:\laragon\www\blueMarketing`, no V2 database isolation, no hardcoded DB or project ID. Use jQuery for authored browser script, unified AJAX/toast/skeleton/modal conventions. Owner insists *complete actual code* not documentation-only and expects pull/tests per batch. Treat latest owner Bank tests and original CV/Plot/JV acceptance as already passed. First action: run/repair new typed JV & archive regression gates above, then deliver remaining Milestone 03 modules with explicit CRUD matrix and relationship-safe edits, followed by Milestones 04/05. Six-milestone roadmap: 01 complete, 02 partial acceptance, 03 active partial, 04 linked bank custody pending, 05 reversal settings pending, 06 Activity Audit deferred last.
