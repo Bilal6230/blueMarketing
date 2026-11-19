@@ -1115,43 +1115,82 @@ class JournalVoucherController extends Controller
                     ->assertLegacyMutationAllowed($projectId, 'journal_vouchers', (int) $voucher->id);
                 $oldDetails = JournalVoucherDetail::where('journal_voucher_id', $voucher->id)
                     ->lockForUpdate()->get();
-                // Identical re-save must not retire/recreate related details
-                // and ledger rows. Preserve their IDs and audit history.
-                if (app(\App\Services\Finance\VoucherUnchangedUpdateDetector::class)
-                    ->same($voucher,$oldDetails,$data,$lines)) {
-                    return;
-                }
-                $typed = app(\App\Services\Finance\FinancePostingSchemaGate::class)->mode() === 'typed';
-                // Preserve old detail/ledger history; only retire legs attached to
-                // the same source ID, then create corrected details and active legs.
-                app(\App\Services\Finance\LinkedVoucherLedgerRetirement::class)
-                    ->retire($projectId, 'JV', (int)$voucher->id);
-
-                foreach ($oldDetails as $detail) $detail->delete();
-                $voucher->update([
-                    'reference' => $data['reference'] ?? null, 'description' => $data['description'],
-                    'date' => $data['date'], 'total_debit' => $this->centsToMoney($totalDebitCents),
-                    'total_credit' => $this->centsToMoney($totalCreditCents), 'updated_by' => Auth::id(),
-                ]);
-                foreach ($lines as $line) {
-                    $detail = JournalVoucherDetail::create([
-                        'journal_voucher_id' => $voucher->id, 'account_id' => $line['account_id'],
-                        'debit' => $line['debit'], 'credit' => $line['credit'],
-                        'description' => $line['description'], 'created_by' => Auth::id(),
-                    ]);
-                    $attributes = [
-                        'voucher_number' => $voucher->voucher_number, 'type' => 'JV', 'type_id' => $voucher->id,
-                        'project_head_subheads_id' => $line['account_id'], 'reference' => $data['reference'] ?? null,
-                        'amount_in' => $line['debit'], 'amount_out' => $line['credit'],
-                        'detail' => $line['description'], 'create_by' => Auth::id(), 'is_active' => 1,
-                        'status' => '0', 'date' => $data['date'],
-                    ];
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('ledgers', 'journal_voucher_detail_id')) {
-                        $attributes['journal_voucher_detail_id'] = $detail->id;
+                // Differential identity-first edit. All existing details must
+                // have exactly one FK-linked active ledger leg; never infer
+                // ownership using type_id alone or row position.
+                $existing=$oldDetails->keyBy('id');
+                $submitted=[];
+                foreach($lines as $line){
+                    $detailId=(int)($line['detail_id']??0);
+                    if(!$detailId)continue;
+                    if(isset($submitted[$detailId])||!$existing->has($detailId)){
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'detail_ids'=>'Journal detail ID is duplicated or belongs to another voucher.',
+                        ]);
                     }
-                    $ledger = Ledger::create($attributes);
-                    if ($typed) app(\App\Services\Finance\LedgerSourceAttributionWriter::class)
-                        ->recordNewPosting((int) $ledger->id, $projectId, 'journal_voucher', (int) $voucher->id);
+                    $submitted[$detailId]=true;
+                }
+                $linked=DB::table('ledgers')->where('type','JV')
+                    ->where('type_id',$voucher->id)->lockForUpdate()->get();
+                $byDetail=$linked->groupBy('journal_voucher_detail_id');
+                if($linked->count()!==$oldDetails->count()){
+                    throw new \DomainException('Journal ledger/detail cardinality mismatch.');
+                }
+                foreach($oldDetails as $detail){
+                    $legs=$byDetail->get($detail->id,collect());
+                    if($legs->count()!==1||(int)$legs[0]->is_active!==1
+                        ||(int)$legs[0]->project_head_subheads_id!==(int)$detail->account_id
+                        ||number_format((float)$legs[0]->amount_in,2,'.','')!==number_format((float)$detail->debit,2,'.','')
+                        ||number_format((float)$legs[0]->amount_out,2,'.','')!==number_format((float)$detail->credit,2,'.','')){
+                        throw new \DomainException('Journal detail-to-ledger FK or amount mismatch.');
+                    }
+                }
+                $headerChanged=(string)$voucher->date!==(string)$data['date']
+                    ||(string)($voucher->reference??'')!==(string)($data['reference']??'')
+                    ||(string)($voucher->description??'')!==(string)($data['description']??'');
+                $typed=app(\App\Services\Finance\FinancePostingSchemaGate::class)->mode()==='typed';
+                foreach($oldDetails as $detail){
+                    if(isset($submitted[$detail->id]))continue;
+                    DB::table('ledgers')->where('id',$byDetail[$detail->id][0]->id)
+                        ->where('is_active',1)->update(['is_active'=>0,'updated_at'=>now()]);
+                    $detail->delete();
+                }
+                $voucher->update([
+                    'reference'=>$data['reference']??null,'description'=>$data['description'],
+                    'date'=>$data['date'],'total_debit'=>$this->centsToMoney($totalDebitCents),
+                    'total_credit'=>$this->centsToMoney($totalCreditCents),'updated_by'=>Auth::id(),
+                ]);
+                foreach($lines as $line){
+                    $priorId=(int)($line['detail_id']??0);
+                    $prior=$priorId?$existing->get($priorId):null;
+                    if($prior&&!$headerChanged
+                        &&(int)$prior->account_id===(int)$line['account_id']
+                        &&number_format((float)$prior->debit,2,'.','')===$line['debit']
+                        &&number_format((float)$prior->credit,2,'.','')===$line['credit']
+                        &&(string)($prior->description??'')===(string)($line['description']??'')){
+                        continue;
+                    }
+                    if($prior){
+                        DB::table('ledgers')->where('id',$byDetail[$prior->id][0]->id)
+                            ->where('is_active',1)->update(['is_active'=>0,'updated_at'=>now()]);
+                        $prior->delete();
+                    }
+                    $detail=JournalVoucherDetail::create([
+                        'journal_voucher_id'=>$voucher->id,'account_id'=>$line['account_id'],
+                        'debit'=>$line['debit'],'credit'=>$line['credit'],
+                        'description'=>$line['description'],'created_by'=>Auth::id(),
+                    ]);
+                    $ledger=Ledger::create([
+                        'voucher_number'=>$voucher->voucher_number,'type'=>'JV',
+                        'type_id'=>$voucher->id,'journal_voucher_detail_id'=>$detail->id,
+                        'project_head_subheads_id'=>$line['account_id'],
+                        'reference'=>$data['reference']??null,
+                        'amount_in'=>$line['debit'],'amount_out'=>$line['credit'],
+                        'detail'=>$line['description'],'create_by'=>Auth::id(),
+                        'is_active'=>1,'status'=>'0','date'=>$data['date'],
+                    ]);
+                    if($typed)app(\App\Services\Finance\LedgerSourceAttributionWriter::class)
+                        ->recordNewPosting((int)$ledger->id,$projectId,'journal_voucher',(int)$voucher->id);
                 }
             });
         }
