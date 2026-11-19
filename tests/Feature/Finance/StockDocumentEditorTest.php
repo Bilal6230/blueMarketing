@@ -168,6 +168,15 @@ final class StockDocumentEditorTest extends TestCase
             ->where('project_id',1)->where('item_id',31)->value('on_hand_qty');
         // Another stock issue already consumed all received units. Reducing
         // the original IN quantity must not make inventory negative.
+        // Record actual consumption alongside the lower materialized balance.
+        // The stock editor correctly rejects inconsistent balances before
+        // checking whether the proposed correction would go negative.
+        DB::table('stock_movements')->insert([
+            'id'=>99,'project_id'=>1,'party_id'=>3,'source_type'=>'consumption',
+            'source_id'=>99,'source_line_id'=>99,'item_id'=>31,'qty'=>'5.000',
+            'rate_minor'=>1000,'amount_minor'=>5000,'direction'=>'OUT',
+            'movement_date'=>'2026-11-18','is_active'=>1,
+        ]);
         DB::table('stock_project_item_balances')->where('project_id',1)
             ->where('item_id',31)->update(['on_hand_qty'=>'0.000']);
         try {
@@ -182,6 +191,7 @@ final class StockDocumentEditorTest extends TestCase
             ->where('id',21)->value('qty'));
         self::assertSame(50.0,(float)DB::table('customer_ledger')
             ->where('id',51)->value('amount_out'));
+        DB::table('stock_movements')->where('id',99)->delete();
         DB::table('stock_project_item_balances')->where('project_id',1)
             ->where('item_id',31)->update(['on_hand_qty'=>$before]);
         try {
