@@ -159,8 +159,12 @@ final class CashPostingWriter
                     !hash_equals((string) $existing->payload_sha256, $fingerprint)) {
                     throw new \DomainException('V2_CASH_IDEMPOTENCY_CONFLICT');
                 }
+                // Ordinary same-batch corrections retain retired historical
+                // lines; replay must verify CURRENT posting effect only.
                 $persisted = DB::table('finance_posting_lines')
                     ->where('posting_batch_id', $existing->id)
+                    ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                        fn($q)=>$q->where('is_active',1))
                     ->get(['project_head_subhead_id', 'debit', 'credit']);
                 if ($persisted->count() !== count($lines)) {
                     throw new \DomainException('V2_CASH_REPLAY_LINE_COUNT_MISMATCH');
