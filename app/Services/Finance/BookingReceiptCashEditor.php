@@ -23,6 +23,72 @@ final class BookingReceiptCashEditor
         return intdiv($cents,100).'.'.str_pad((string)($cents%100),2,'0',STR_PAD_LEFT);
     }
 
+    public function delete(int $projectId,int $sourceId): void
+    {
+        FinanceConnectionGuard::assertAllowed();
+        if($projectId<1||$sourceId<1)
+            throw new \DomainException('Receipt deletion identity is invalid.');
+        DB::transaction(function()use($projectId,$sourceId):void {
+            DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
+            $source=DB::table('customer_ledger')->where('id',$sourceId)
+                ->where('project_id',$projectId)->where('transaction_type','PPR')
+                ->where('is_active',1)->lockForUpdate()->first();
+            if(!$source||(int)$source->payment_type!==1
+                ||(float)$source->amount_in!==0.0
+                ||(float)$source->amount_out<=0.0) {
+                throw new \DomainException('Only an active cash PPR can be deleted.');
+            }
+            if(Schema::hasTable('finance_posting_cash_sources')
+                &&DB::table('finance_posting_cash_sources')
+                    ->where('customer_ledger_id',$sourceId)->exists()) {
+                throw new \DomainException('Typed PPR posting requires its own source lifecycle.');
+            }
+            if(Schema::hasTable('finance_bank_voucher_allocations')
+                &&DB::table('finance_bank_voucher_allocations')
+                    ->where('voucher_id',$sourceId)->where('project_id',$projectId)->exists()) {
+                throw new \DomainException('PPR is linked to bank custody.');
+            }
+            if(Schema::hasTable('daily_voucher_approvals')
+                &&DB::table('daily_voucher_approvals')
+                    ->where('project_id',$projectId)->where('source_table','customer_ledger')
+                    ->where('source_id',$sourceId)->whereIn('status',['pending','rejected'])->exists()) {
+                throw new \DomainException('PPR has an unresolved approval.');
+            }
+            $ledgers=DB::table('ledgers as leg')
+                ->join('project_head_subheads as account','account.id','=','leg.project_head_subheads_id')
+                ->where('leg.customer_ledger_id',$sourceId)->where('leg.type','PPR')
+                ->where('leg.is_active',1)->where('account.project_id',$projectId)
+                ->lockForUpdate()->get(['leg.id','leg.voucher_number','leg.amount_in',
+                    'leg.amount_out']);
+            if($ledgers->count()!==1||DB::table('ledgers')
+                ->where('customer_ledger_id',$sourceId)->count()!==1
+                ||(float)$ledgers[0]->amount_in!==(float)$source->amount_out
+                ||(float)$ledgers[0]->amount_out!==0.0) {
+                throw new \DomainException('PPR ledger link or amount does not match.');
+            }
+            $bookings=DB::table('booking_vouchers')
+                ->where('project_id',$projectId)->where('customer_ledger_id',$sourceId)
+                ->where('voucher_series','PPR')->lockForUpdate()->get();
+            if($bookings->count()!==1
+                ||(int)$bookings[0]->ledger_id!==(int)$ledgers[0]->id
+                ||(int)$bookings[0]->voucher_number!==(int)$ledgers[0]->voucher_number
+                ||(int)$bookings[0]->is_active!==1
+                ||(float)$bookings[0]->amount!==(float)$source->amount_out) {
+                throw new \DomainException('PPR BookingVoucher FK or amount does not match.');
+            }
+            DB::table('ledgers')->where('id',$ledgers[0]->id)
+                ->where('customer_ledger_id',$sourceId)->where('is_active',1)
+                ->update(['is_active'=>0,'updated_at'=>now()]);
+            DB::table('booking_vouchers')->where('id',$bookings[0]->id)
+                ->where('project_id',$projectId)->where('customer_ledger_id',$sourceId)
+                ->where('ledger_id',$ledgers[0]->id)->where('is_active',1)
+                ->update(['is_active'=>0,'updated_at'=>now()]);
+            DB::table('customer_ledger')->where('id',$sourceId)
+                ->where('project_id',$projectId)->where('is_active',1)
+                ->update(['is_active'=>0,'updated_at'=>now()]);
+        },3);
+    }
+
     public function edit(int $projectId,int $sourceId,array $changes,int $userId): void
     {
         FinanceConnectionGuard::assertAllowed();
