@@ -15,6 +15,15 @@ final class JournalApprovedCorrectionContractTest extends TestCase
         $report=file_get_contents($root.'/app/Services/Finance/PostingReportReader.php');
         foreach([$controller,$editor,$writer,$report] as $text)self::assertIsString($text);
         self::assertStringContainsString('JournalApprovedVoucherEditor::class',$controller);
+        $update=substr($controller,strpos($controller,'public function update(Request $request'));
+        self::assertStringNotContainsString(
+            "abort_if(\$this->isMergedPostedJournal(\$projectId, (int) \$id), 409",
+            $update
+        );
+        self::assertStringContainsString(
+            "if (\$this->isMergedPostedJournal(\$projectId,(int)\$id))",
+            $update
+        );
         self::assertStringContainsString("whereIn('voucher.type', ['JV','SV'])",$controller);
         self::assertStringContainsString('finance_journal_line_sources',$editor);
         self::assertStringContainsString('journal_voucher_detail_id',$editor);
