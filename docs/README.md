@@ -12,7 +12,7 @@
 |---|---|---|
 | 01 | Nonblocking loading and voucher-tinted skeletons | **COMPLETE** — owner browser + PHP tests PASS |
 | 02 | Action-specific permissions, Roles page and backend enforcement | **PARTIAL ACCEPTANCE** — implemented, tests PASS, owner confirmed CR Edit visibly works; complete cross-module browser permission matrix not yet accepted |
-| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. Existing Plot/JV/CV draft/approval flows owner-verified, all-project posting audit clean for 6 projects. Approved CV differential correction + active-only reports committed **but owner local tests/browser acceptance PENDING**. Other voucher-family full CRUD still not comprehensively accepted. |
+| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. Plot/JV/CV full differential correction verified by owner; Approved CV browser PASS, local 16 tests PASS / 139 assertions. Bank Deposit/Withdrawal manual same-ID Edit + logical Delete committed **LOCAL/BROWSER VERIFICATION PENDING**. CR/DR, CCR/CDR, BOR/BOP, PPR, EC/ECP, SV, labour/stock still need an explicit CRUD acceptance matrix. |
 | 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **NOT STARTED under new rules** |
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
@@ -764,3 +764,53 @@ Continue BlueMarketing GitHub `Bilal6230/blueMarketing` branch `upgrade/laravel-
 - Approved CV editor now rejects any existing active financial batch with a mismatched original SHA-256 source fingerprint, date or voucher series **before** mutating source/detail/ledger/posting rows; this prevents silently overwriting pre-existing tampered history.
 - It also rejects any unmapped active posting lines in the source batch, even if the mapped detail count otherwise looks correct. It requires the real database-enforced `ledgers.commision_voucher_detail_id` FK and project scoping. The old posting rows are deactivated, never hard-deleted.
 - Local PHP lint, feature tests, owner browser acceptance and full remaining milestone 03 multi-voucher completion are STILL outstanding as of this commit. Code-review-only and contract tests are not proof of browser acceptance.
+
+
+## 2026-11-19 — Latest owner PASS and remaining Milestone 03 bank voucher CRUD implementation (THIS IS THE CURRENT HANDOFF)
+
+**Owner acceptance already confirmed for approved CV full differential Edit:** local `CommissionLedgerSynchronizerTest` **9 PASS / 51 assertions**, `CommissionApprovedCorrectionContractTest` **1 PASS / 17**, `CommissionApprovedReadOnlyModalContractTest` **1 PASS / 16**, `CommissionLedgerActivationContractTest` **2 PASS / 27**, `VoucherDifferentialEditContractTest` **3 PASS / 28**. Total **16 PASS / 139 assertions**, all PHP lint and Blade view caching successful. Owner also explicitly confirmed approved CV full Edit **browser PASS**. All-project posting audit checked 6 projects and returned zero findings. Plot/JV earlier browser checks accepted; **do not require them again without code changes**.
+
+**Actual new code committed for Milestone 03 this turn (LOCAL TESTS AND BROWSER ACCEPTANCE STILL PENDING):**
+
+1. **BD/BW manual bank voucher same-ID Edit:** new `BankTransferEditor` updates the selected project's existing `finance_bank_transfer_sources` and `finance_posting_batches` without a second batch. It locks the source, batch and exact two active bank/cash posting legs, checks account/project mapping, bank direction, balances, original source SHA256 fingerprint, and absence of a posted reversal. Changed active legs are archived with `is_active=0` and two corrected active legs are inserted under the same batch; no-op Edit preserves all IDs. Multi-allocation historical transfers are refused until they have stable per-line source FKs; no index guessing or unrelated mutation.
+2. **BD/BW independent ordinary Delete:** New non-destructive migration `database/migrations/2026_11_19_110000_add_bank_transfer_lifecycle_columns.php` adds `is_active` and `deleted_at` to the **existing** `finance_bank_transfer_sources` table; no new table or hard deletion. `BankTransferEditor::delete()` locks and validates the exact source, amounts and fingerprint; logically archives it and retires its two active legs without a customer-visible REV batch. Original batch, source, FK links and retired posting legs remain in the database. Idempotent Create replay and separate Reverse reject archived sources.
+3. **Project-scoped UI/API:** new GET Details, PUT Update and DELETE endpoints for `finance/voucher/bank-transfer/{kind}/{postingBatch}`; registered with `FinanceActionPermission` as Edit/Delete. `bank_transfer_workspace.blade.php` now offers Edit and Delete for eligible manual bank transactions using the existing modal, jQuery AJAX, toast/error display, confirmation, no full-page refresh, and live history reload. Action-specific bank Edit/Delete permissions are checked server-side; linking cleared cheque/source remains a separate Milestone 04 custody process.
+4. **Correct reports and lifecycle:** Bank history, printed vouchers, typed/unified Daily Voucher Directory, `BankTransferReconciliation`, `PostingReportReader`, and `PostingBatchIntegrityAudit` now use only active posting legs and exclude logically deleted bank source roots. All-project audit separately reports `ARCHIVED_BANK_WITH_ACTIVE_POSTINGS` when archived bank evidence is corrupt (unexpected active legs); customer report fails closed instead of displaying wrong amount. Plot Receipt shared-directory print options now ignore archived allocations.
+5. **Regression tests:** `BankTransferWriterTest` now has same-batch Edit/re-edit/no-op, project isolation, reversed-source refusal, ordinary Delete preserving source/posting history and hiding customer statement, archive replay refusal, and archived source tamper detection. `BankTransferCorrectionContractTest` guards routes, granular permissions, modal jQuery AJAX and active-only bank reporting. Older tests are retained. **Never claim these passed without local owner output.**
+
+**Owner verification:**
+
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+
+php -l app/Services/Finance/BankTransferEditor.php
+php -l app/Services/Finance/BankTransferReconciliation.php
+php -l app/Services/Finance/PostingReportReader.php
+php -l app/Services/Finance/PostingBatchIntegrityAudit.php
+php -l app/Http/Controllers/Finance/VoucherController.php
+php -l database/migrations/2026_11_19_110000_add_bank_transfer_lifecycle_columns.php
+php -l tests/Feature/Finance/BankTransferWriterTest.php
+php -l tests/Unit/Finance/BankTransferCorrectionContractTest.php
+
+php artisan test --filter=BankTransferWriterTest
+php artisan test --filter=BankTransferCorrectionContractTest
+php artisan test --filter=DailyVoucherDirectoryPostingLifecycleContractTest
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan test --filter=PlotEntryWriterTest
+
+php artisan migrate --path=database/migrations/2026_11_19_110000_add_bank_transfer_lifecycle_columns.php
+php artisan finance:audit-posting-balances
+```
+
+Run migration only against the intended configured local TEST database, after tests pass; do not use `migrate:fresh`, and don't hardcode a database or project ID.
+
+**Browser acceptance still required for NEW BANK changes:** On disposable manual Bank Deposit and manual Bank Withdrawal vouchers, Edit existing amount/date/cash/bank/narration, confirm modal closes, refreshed history/print and account balance reflect corrected amount. Reopen and Save unchanged (no extra posting). Ordinary Delete -> disappears from active lists and balances, no REV voucher, original rows remain archived. Test linked-cheque withdrawal Edit/Delete refusal without touching custody; that linked-cascade workflow is intentionally Milestone 04. Do not re-test approved CV/Plot/JV if nothing relevant changed there.
+
+**Milestone 03 honest status:** **NOT YET CLOSED.** All-project posting integrity checks alone do not prove end-to-end CRUD. Remaining work includes comprehensive original CR/DR/CCR/CDR/BOR/BOP, PPR, EC/ECP, stock entry/bill/SV and labour payment CRUD/corrections, relationship-safe customer ledger effects and permission/browser acceptance. Some of these have existing partial routes; inspect the exact active endpoints before changes. User wants this work completed as rapidly as safely possible; deliver real code, not docs-only updates. Milestone 04 = cheque/online linked cascade; Milestone 05 = optional reversal settings; **Milestone 06 = centralized app Activity Audit LAST, deferred** (no audit tables yet).
+
+### Updated fresh-chat handoff (highest priority)
+
+Continue the same BlueMarketing development on GitHub `Bilal6230/blueMarketing`, branch `upgrade/laravel-framework` and local `C:\laragon\www\blueMarketing`. Configured DB comes exclusively from `.env`; no project 3 hardcode, no V2 isolation/names, no custom vanilla JS (use jQuery), consistent AJAX + toast/modals/skeleton/filters. **Owner verified CV approved Edit and Party Ledger, JV and Plot browser checks, and all-six-project audit.** Latest bank transfer same-ID Edit/Delete is code-committed but has unverified local tests and new additive lifecycle migration; read the last section and run its exact commands, fix failures, get focused browser PASS. Then finish remaining Milestone 03 voucher families (CR/DR/CCR/CDR/BOR/BOP/PPR/EC/ECP/stock/labour), not just Plot/JV/CV, and only mark COMPLETE after verified matrix. Roadmap: M01 complete, M02 permission browser partial, M03 active partial, M04 linked bank cascade pending, M05 reversal setting pending, M06 Activity Audit LAST, explicitly deferred. Keep a single authoritative `docs/README.md` and commit/push real changes; never promise future/background work. 
