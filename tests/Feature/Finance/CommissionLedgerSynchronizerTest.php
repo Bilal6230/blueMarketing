@@ -59,7 +59,7 @@ final class CommissionLedgerSynchronizerTest extends TestCase
         });
         Schema::create('ledgers',function(Blueprint $t) {
             $t->id();$t->string('type');$t->unsignedBigInteger('type_id');
-            $t->unsignedBigInteger('commision_voucher_detail_id');
+            $t->unsignedBigInteger('commision_voucher_detail_id')->nullable();
             $t->foreign('commision_voucher_detail_id')
                 ->references('id')->on('commision_voucher_details')->restrictOnDelete();
             $t->unsignedBigInteger('project_head_subheads_id');
@@ -71,12 +71,34 @@ final class CommissionLedgerSynchronizerTest extends TestCase
         });
         Schema::create('finance_posting_batches',function(Blueprint $t) {
             $t->id();$t->unsignedBigInteger('project_id');
+            $t->string('voucher_series')->nullable();
+            $t->unsignedBigInteger('voucher_number')->nullable();
+            $t->string('request_key')->nullable();
+            $t->string('payload_sha256')->nullable();
+            $t->date('effective_date')->nullable();
+            $t->unsignedBigInteger('posted_by')->nullable();
             $t->timestamp('posted_at')->nullable();
             $t->unsignedBigInteger('reversal_of_batch_id')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('finance_posting_lines',function(Blueprint $t) {
+            $t->id();$t->unsignedBigInteger('posting_batch_id');
+            $t->unsignedBigInteger('project_head_subhead_id');
+            $t->decimal('debit',16,2);$t->decimal('credit',16,2);
+            $t->string('description')->nullable();
+            $t->timestamps();
+        });
+        Schema::create('finance_posting_source_claims',function(Blueprint $t) {
+            $t->unsignedBigInteger('posting_batch_id');
+            $t->string('source_kind');
         });
         Schema::create('finance_posting_commission_sources',function(Blueprint $t) {
             $t->unsignedBigInteger('posting_batch_id');
             $t->unsignedBigInteger('commision_voucher_id');
+        });
+        Schema::create('finance_commission_line_sources',function(Blueprint $t) {
+            $t->unsignedBigInteger('posting_line_id');
+            $t->unsignedBigInteger('commision_voucher_detail_id');
         });
         DB::table('projects')->insert([['id'=>1],['id'=>2]]);
         DB::table('head_accountings')->insert(['id'=>1,'is_active'=>1]);
@@ -228,6 +250,32 @@ final class CommissionLedgerSynchronizerTest extends TestCase
             self::assertStringContainsString('belongs to another voucher',$e->getMessage());
         }
         self::assertSame($before,DB::table('ledgers')->count());
+    }
+
+    public function test_approve_succeeds_despite_unrelated_jv_numeric_identity_collision(): void
+    {
+        $workflow=new CommissionDraftWorkflow();
+        $id=$workflow->createDraft(1,'CV-JV-COLLISION','2026-11-18',$this->lines(),1);
+        // A separate JV is allowed to use the same numeric header ID or
+        // a matching numeric detail ID. Neither proves CV ownership.
+        DB::table('ledgers')->insert([
+            'type'=>'JV','type_id'=>$id,'commision_voucher_detail_id'=>null,
+            'project_head_subheads_id'=>101,'voucher_number'=>'JV-1',
+            'amount_in'=>'50.00','amount_out'=>'0.00','date'=>'2026-11-18',
+            'status'=>'0','is_active'=>1,
+        ]);
+        $key='commission-jv-overlap-0001';
+        $batch=$workflow->approveAndPost(1,$id,$key,1);
+        self::assertGreaterThan(0,$batch);
+        self::assertSame('approved',DB::table('commision_vouchers')
+            ->where('id',$id)->value('status'));
+        self::assertSame(2,DB::table('ledgers')->where('type','CV')
+            ->where('type_id',$id)->where('is_active',1)->count());
+        self::assertSame(2,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->count());
+        self::assertSame($batch,$workflow->approveAndPost(1,$id,$key,1));
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame(3,DB::table('ledgers')->count());
     }
 
     public function test_existing_draft_backfills_only_missing_fk_linked_ledger_rows(): void
