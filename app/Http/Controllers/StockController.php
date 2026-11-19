@@ -1525,6 +1525,99 @@ class StockController extends Controller
         }
     }
 
+    private function authorizeStockDocumentAction(string $action): void
+    {
+        $actor=auth()->user();
+        abort_unless($actor && (
+            $actor->hasRole('superadmin')||$actor->hasRole('super-admin')
+            ||$actor->can('direct-update')
+            ||$actor->can($action.' stock')
+        ),403);
+        abort_unless((int)getSelectedTown()>0,403);
+    }
+
+    public function stockDocumentDetails(string $kind,int $id)
+    {
+        abort_unless(in_array($kind,['entry','bill'],true),404);
+        $this->authorizeStockDocumentAction('read');
+        $projectId=(int)getSelectedTown();
+        $entry=$kind==='entry';
+        $table=$entry?'stock_entries':'stock_bills';
+        $detailTable=$entry?'stock_entry_lines':'stock_bill_lines';
+        $fk=$entry?'entry_id':'bill_id';
+        $source=DB::table($table)->where('id',$id)->where('project_id',$projectId)
+            ->whereNull('deleted_at')->first();
+        abort_unless($source,404);
+        $details=DB::table($detailTable)->where($fk,$id)
+            ->where('project_id',$projectId)
+            ->when(Schema::hasColumn($detailTable,'deleted_at'),
+                fn($q)=>$q->whereNull('deleted_at'))
+            ->orderBy('id')->get(['id','item_id','qty','rate_minor','amount_minor']);
+        $typed=$entry?'finance_posting_stock_entry_sources':'finance_posting_stock_bill_sources';
+        $typedKey=$entry?'stock_entry_id':'stock_bill_id';
+        $typedClaim=Schema::hasTable($typed)
+            &&DB::table($typed)->where($typedKey,$id)->exists();
+        $linked=$entry
+            &&($source->billed_at!==null
+                ||DB::table('stock_bills')->where('entry_id',$id)
+                    ->where('project_id',$projectId)->whereNull('deleted_at')->exists());
+        return response()->json(['status'=>'success','data'=>[
+            'id'=>$id,'kind'=>$kind,'number'=>(string)($entry?$source->slip_no:$source->bill_no),
+            'date'=>(string)($entry?$source->entry_date:$source->bill_date),
+            'narration'=>(string)($entry?$source->reason:''),
+            'type'=>(string)($entry?$source->flow:$source->type),
+            'party_id'=>(int)$source->party_id,
+            'editable'=>!$typedClaim&&!$linked,
+            'lines'=>$details->map(fn($line)=>[
+                'detail_id'=>(int)$line->id,
+                'item_id'=>(int)$line->item_id,
+                'qty'=>(string)$line->qty,
+                'rate'=>(int)$line->rate_minor,
+                'amount_minor'=>(int)$line->amount_minor,
+            ])->all(),
+        ]]);
+    }
+
+    public function updateStockDocument(Request $request,string $kind,int $id)
+    {
+        abort_unless(in_array($kind,['entry','bill'],true),404);
+        $this->authorizeStockDocumentAction('update');
+        $data=$request->validate([
+            'date'=>['required','date_format:Y-m-d'],
+            'narration'=>['nullable','string','max:1000'],
+            'lines'=>['required','array','min:1','max:100'],
+            'lines.*.detail_id'=>['nullable','integer','min:1','distinct'],
+            'lines.*.item_id'=>['required','integer','min:1'],
+            'lines.*.qty'=>['required','regex:/^(0|[1-9][0-9]{0,9})(?:\\.[0-9]{1,3})?$/D'],
+            'lines.*.rate'=>['required','integer','min:0','max:9999999999'],
+        ]);
+        try {
+            app(\App\Services\Finance\StockDocumentEditor::class)->update(
+                (int)getSelectedTown(),$kind,$id,$data['date'],$data['lines'],
+                $data['narration']??null);
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success',
+            'message'=>'Stock voucher updated with exact movement and ledger links.',
+            'source_id'=>$id]);
+    }
+
+    public function deleteStockDocument(string $kind,int $id)
+    {
+        abort_unless(in_array($kind,['entry','bill'],true),404);
+        $this->authorizeStockDocumentAction('delete');
+        try{
+            app(\App\Services\Finance\StockDocumentEditor::class)
+                ->delete((int)getSelectedTown(),$kind,$id);
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success',
+            'message'=>'Stock voucher archived; financial and inventory history preserved.',
+            'source_id'=>$id]);
+    }
+
     public function storeEntry(Request $request)
     {
         if (\App\Services\Finance\FinanceWorkflowAccess::selected()) {
