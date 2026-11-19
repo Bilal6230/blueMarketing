@@ -72,6 +72,8 @@ final class PostingReportReader
             ->leftJoin('project_head_subheads as account',
                 'account.id', '=', 'line.project_head_subhead_id')
             ->where('batch.project_id', $projectId)
+            ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                fn($query)=>$query->where('line.is_active',1))
             ->where(function ($query) use ($projectId) {
                 $query->whereNull('account.id')
                     ->orWhere('account.project_id', '!=', $projectId)
@@ -95,7 +97,12 @@ final class PostingReportReader
             throw new \DomainException('V2_REPORT_SOURCE_OR_PROJECT_INTEGRITY_FAILURE');
         }
         $emptyBatch = DB::table('finance_posting_batches as batch')
-            ->leftJoin('finance_posting_lines as pl', 'pl.posting_batch_id', '=', 'batch.id')
+            ->leftJoin('finance_posting_lines as pl', function($join) {
+                $join->on('pl.posting_batch_id','=','batch.id');
+                if (Schema::hasColumn('finance_posting_lines','is_active')) {
+                    $join->where('pl.is_active',1);
+                }
+            })
             ->where('batch.project_id', $projectId)->whereNull('pl.id')->exists();
         if ($emptyBatch) {
             throw new \DomainException('V2_REPORT_EMPTY_POSTING_BATCH');
@@ -111,7 +118,9 @@ final class PostingReportReader
             ->join('project_head_subheads as account',
                 'account.id', '=', 'line.project_head_subhead_id')
             ->where('batch.project_id', $projectId)
-            ->where('account.project_id', $projectId);
+            ->where('account.project_id', $projectId)
+            ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                fn($query)=>$query->where('line.is_active',1));
         if ($from !== null) {
             $q->where('batch.effective_date', '>=', $from);
         }
@@ -184,6 +193,8 @@ final class PostingReportReader
             $originalLegs = [];
             $originRows = DB::table('finance_posting_lines')
                 ->whereIn('posting_batch_id', array_keys($originalIds))
+                ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                    fn($query)=>$query->where('is_active',1))
                 ->get(['posting_batch_id', 'project_head_subhead_id', 'debit', 'credit']);
             foreach ($originRows as $origin) {
                 $index = (int) $origin->posting_batch_id;
