@@ -162,6 +162,67 @@ final class CommissionLedgerSynchronizerTest extends TestCase
             ->where('type_id',$id)->where('is_active',1)->count());
     }
 
+    public function test_differential_draft_edit_add_remove_and_update_keeps_existing_detail_and_ledger_ids(): void
+    {
+        $workflow=new CommissionDraftWorkflow();
+        $id=$workflow->createDraft(1,'CV-DIFF-1','2026-11-18',$this->lines(),1);
+        $details=DB::table('commision_voucher_details')->where('commision_voucher_id',$id)
+            ->whereNull('deleted_at')->orderBy('id')->get();
+        $debit=$details[0];$credit=$details[1];
+        $originalLedgers=DB::table('ledgers')->where('type','CV')->where('type_id',$id)
+            ->orderBy('commision_voucher_detail_id')->pluck('id','commision_voucher_detail_id');
+
+        $workflow->updateDraft(1,$id,'2026-11-18',[
+            ['detail_id'=>$debit->id,'account_id'=>101,'debit'=>'1200.00',
+                'credit'=>'0.00','description'=>'Updated debit'],
+            ['detail_id'=>$credit->id,'account_id'=>102,'debit'=>'0.00',
+                'credit'=>'1000.00','description'=>'Credit'],
+            ['detail_id'=>null,'account_id'=>102,'debit'=>'0.00',
+                'credit'=>'200.00','description'=>'Added credit'],
+        ]);
+        self::assertSame(3,DB::table('ledgers')->where('type','CV')->where('type_id',$id)->count());
+        self::assertSame((int)$originalLedgers[$debit->id],
+            (int)DB::table('ledgers')->where('commision_voucher_detail_id',$debit->id)->value('id'));
+        self::assertSame('1200.00',number_format((float)DB::table('ledgers')
+            ->where('commision_voucher_detail_id',$debit->id)->value('amount_in'),2,'.',''));
+
+        $workflow->updateDraft(1,$id,'2026-11-18',[
+            ['detail_id'=>$debit->id,'account_id'=>101,'debit'=>'1200.00',
+                'credit'=>'0.00','description'=>'Updated debit'],
+            ['detail_id'=>null,'account_id'=>102,'debit'=>'0.00',
+                'credit'=>'1200.00','description'=>'Replacement credit'],
+        ]);
+        self::assertSame(4,DB::table('ledgers')->where('type','CV')->where('type_id',$id)->count());
+        self::assertSame(2,DB::table('commision_voucher_details')
+            ->where('commision_voucher_id',$id)->whereNull('deleted_at')->count());
+        self::assertNotNull(DB::table('commision_voucher_details')
+            ->where('id',$credit->id)->value('deleted_at'));
+        self::assertSame(0,DB::table('ledgers')->where('type','CV')
+            ->where('type_id',$id)->where('is_active',1)->count());
+    }
+
+    public function test_differential_draft_edit_rejects_foreign_detail_id_without_writes(): void
+    {
+        $workflow=new CommissionDraftWorkflow();
+        $first=$workflow->createDraft(1,'CV-DIFF-1','2026-11-18',$this->lines(),1);
+        $other=$workflow->createDraft(1,'CV-DIFF-2','2026-11-18',$this->lines(),1);
+        $foreignId=DB::table('commision_voucher_details')
+            ->where('commision_voucher_id',$other)->value('id');
+        $before=DB::table('ledgers')->count();
+        try {
+            $workflow->updateDraft(1,$first,'2026-11-18',[
+                ['detail_id'=>$foreignId,'account_id'=>101,'debit'=>'1000.00',
+                    'credit'=>'0.00','description'=>'Debit'],
+                ['detail_id'=>null,'account_id'=>102,'debit'=>'0.00',
+                    'credit'=>'1000.00','description'=>'Credit'],
+            ]);
+            self::fail('Foreign CV detail ID must not be allowed.');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('belongs to another voucher',$e->getMessage());
+        }
+        self::assertSame($before,DB::table('ledgers')->count());
+    }
+
     public function test_existing_draft_backfills_only_missing_fk_linked_ledger_rows(): void
     {
         DB::table('commision_vouchers')->insert([
