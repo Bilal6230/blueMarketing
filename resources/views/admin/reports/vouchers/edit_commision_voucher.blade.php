@@ -322,9 +322,38 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                 }
             });
 
-            // Confirm and Submit the Form
-            $('#confirmSubmit').on('click', function() {
-                $('#journalForm')[0].submit();
+            // AJAX only: show toast, close parent modal and refresh listing
+            // through the same event contract as the CV Create form.
+            var cvUpdateBusy=false;
+            $('#confirmSubmit').on('click.fvcCommissionEdit', function() {
+                if(cvUpdateBusy)return;
+                var $form=$('#journalForm'),$button=$(this),$body=$form.closest('.card-body');
+                cvUpdateBusy=true;$button.prop('disabled',true);
+                $('#confirmationModal').modal('hide');
+                if(fvcFeedback)fvcFeedback.skeleton($body,true);
+                $.ajax({
+                    url:$form.attr('action'),type:'POST',
+                    data:$form.serialize(),dataType:'json',
+                    headers:{Accept:'application/json'}
+                }).done(function(response){
+                    if(response && response.status==='success'){
+                        if(window.parent!==window&&window.parent.jQuery){
+                            window.parent.jQuery(window.parent.document)
+                                .trigger('finance:commission-saved',[response]);
+                        }else{
+                            if(fvcFeedback)fvcFeedback.toast('success',response.message||'Commission voucher updated.');
+                            window.location.assign(response.redirect||@json(route('commision.voucher.index')));
+                        }
+                    }else if(fvcFeedback){
+                        fvcFeedback.toast('error','Commission update was not confirmed.');
+                    }
+                }).fail(function(xhr){
+                    if(fvcFeedback)fvcFeedback.toast('error',
+                        fvcFeedback.error(xhr,'Commission voucher could not be updated.'));
+                }).always(function(){
+                    cvUpdateBusy=false;$button.prop('disabled',false);
+                    if(fvcFeedback)fvcFeedback.skeleton($body,false);
+                });
             });
 
             // Fetch Sub-Accounts dynamically via AJAX when account is selected
