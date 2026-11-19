@@ -34,19 +34,16 @@ return new class extends Migration
         'finance_posting_labour_sources' => 'labour',
     ];
 
-    private function assertIsolatedV2(): void
+    private function assertFinanceBaseline(): void
     {
-        $connection = DB::connection();
-        $database = (string) $connection->getDatabaseName();
-        $driver = $connection->getDriverName();
-        if (!str_starts_with($database, 'bluemarketing_v2_') &&
-            !($driver === 'sqlite' && $database === ':memory:')) {
-            throw new RuntimeException('V2 migrations require bluemarketing_v2_* isolated DB or disposable SQLite memory.');
-        }
+        // Normal ERP connection only. Neither schema deployment nor runtime
+        // functionality depends on a database name or an isolated environment.
+        \App\Services\Finance\FinanceConnectionGuard::assertAllowed();
+        $driver = DB::connection()->getDriverName();
 
         foreach (self::REQUIRED as $table) {
             if (!Schema::hasTable($table)) {
-                throw new RuntimeException('V2 baseline must exist first: missing ' . $table);
+                throw new RuntimeException('Finance baseline must exist first: missing ' . $table);
             }
         }
 
@@ -62,7 +59,7 @@ return new class extends Migration
                 if (!$row || strtolower((string) $row->column_type) !== 'bigint(20) unsigned') {
                     // MySQL 8.4 may report "bigint unsigned" without display width.
                     if (!$row || !preg_match('/^bigint(?:\(\d+\))? unsigned$/i', (string) $row->column_type)) {
-                        throw new RuntimeException('V2 needs BIGINT UNSIGNED primary key: ' . $table . '.id');
+                        throw new RuntimeException('Finance needs BIGINT UNSIGNED primary key: ' . $table . '.id');
                     }
                 }
             }
@@ -70,14 +67,14 @@ return new class extends Migration
 
         foreach (array_merge(['finance_posting_batches', 'finance_posting_lines', 'finance_posting_source_claims', 'finance_journal_line_sources'], array_keys(self::SOURCE_TABLES)) as $table) {
             if (Schema::hasTable($table)) {
-                throw new RuntimeException('V2 table exists already; no partial overwrite: ' . $table);
+                throw new RuntimeException('Finance table exists already; no partial overwrite: ' . $table);
             }
         }
     }
 
     public function up(): void
     {
-        $this->assertIsolatedV2();
+        $this->assertFinanceBaseline();
 
         Schema::create('finance_posting_batches', function (Blueprint $table) {
             $table->id();
