@@ -145,6 +145,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                     <tbody>
                                         @foreach($voucher->details as $index => $detail)
                                             <tr>
+                                                <input type="hidden" name="detail_ids[]" value="{{ $detail->id }}">
                                                 <td>
                                                     <select name="accounts[]" class="form-control select2 account-select"
                                                         required>
@@ -285,6 +286,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
             $(document).on('click', '.add-row', function () {
                 const newRow = `
                             <tr>
+                                    <input type="hidden" name="detail_ids[]" value="">
                                 <td>
                                     <select name="accounts[]" class="form-control select2 account-select" required>
                                         <option value="">Select Account</option>
