@@ -121,14 +121,25 @@ final class JournalApprovedVoucherEditor
             }
             // Typed vouchers may have no legacy ledgers at all. Where they
             // exist, require 1:1 FK-linked ownership; never guess by type_id.
-            $legacy=Schema::hasTable('ledgers')
-                ? DB::table('ledgers')->where('type',(string)$header->type)
-                    ->where('type_id',$voucherId)->where('is_active',1)
-                    ->lockForUpdate()->get()->groupBy('journal_voucher_detail_id')
-                : collect();
-            if ($legacy->flatten(1)->isNotEmpty()
-                && !Schema::hasColumn('ledgers','journal_voucher_detail_id')) {
-                throw new \DomainException('Journal legacy detail FK column is required.');
+            $legacy=collect();
+            if(Schema::hasTable('ledgers')) {
+                if(!Schema::hasColumn('ledgers','journal_voucher_detail_id')){
+                    if(DB::table('ledgers')->where('type',(string)$header->type)
+                        ->where('type_id',$voucherId)->where('is_active',1)->exists()){
+                        throw new \DomainException('Journal legacy detail FK column is required.');
+                    }
+                }else{
+                    $legacy=DB::table('ledgers')
+                        ->whereIn('journal_voucher_detail_id',$old->keys()->all())
+                        ->where('is_active',1)->lockForUpdate()
+                        ->get()->groupBy('journal_voucher_detail_id');
+                    foreach($legacy->flatten(1) as $leg){
+                        if((string)$leg->type!==(string)$header->type
+                            ||(int)$leg->type_id!==$voucherId){
+                            throw new \DomainException('Journal detail FK is attributed to a different voucher.');
+                        }
+                    }
+                }
             }
             if($legacy->flatten(1)->count()!==0 && $legacy->flatten(1)->count()!==$old->count()) {
                 throw new \DomainException('Journal legacy ledger linkage is incomplete.');
