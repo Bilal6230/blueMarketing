@@ -76,6 +76,27 @@ final class CommissionApprovedVoucherEditor
             if ($old->count()<2||count($submitted)<2||count($submitted)>100) {
                 throw new \DomainException('Commission correction requires 2–100 rows.');
             }
+            // Refuse to overwrite a previously tampered posting fingerprint:
+            // correction is allowed only from a verified approved source.
+            $priorRows=$old->values()->map(fn($detail)=>[
+                'detail_id'=>(int)$detail->id,
+                'account_id'=>(int)$detail->account_id,
+                'debit'=>$this->money($this->cents($detail->debit)),
+                'credit'=>$this->money($this->cents($detail->credit)),
+                'description'=>$detail->description,
+            ])->all();
+            $priorHash=hash('sha256',json_encode([
+                'source_kind'=>'commission','project_id'=>$projectId,
+                'source_id'=>$voucherId,
+                'source_number_text'=>(string)$header->voucher_number,
+                'source_date'=>(string)$header->date,
+                'source_status'=>'approved','legs'=>$priorRows,
+            ],JSON_THROW_ON_ERROR));
+            if ((string)$batch->voucher_series!=='CV'
+                ||(string)$batch->effective_date!==(string)$header->date
+                ||!hash_equals((string)$batch->payload_sha256,$priorHash)) {
+                throw new \DomainException('Commission original financial posting fingerprint mismatch.');
+            }
             $ledgerRows=DB::table('ledgers')->where('type','CV')->where('type_id',$voucherId)
                 ->where('is_active',1)->lockForUpdate()->get()->groupBy('commision_voucher_detail_id');
             $sourceRows=DB::table('finance_commission_line_sources as src')
