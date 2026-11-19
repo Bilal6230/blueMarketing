@@ -1398,7 +1398,7 @@
                                     showConfirmButton: false
                                 });
                                 // 🗑 Remove container completely
-                                window.location.reload();
+                                refreshExtraCashTable();
 
                             },
                             error: function(xhr) {
@@ -1452,7 +1452,7 @@
                                     showConfirmButton: false
                                 });
                                 // 🗑 Remove container completely
-                                window.location.reload();
+                                refreshExtraCashTable();
                             },
                             error: function(xhr) {
                                 const error = xhr.responseJSON?.message ||
