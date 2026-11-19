@@ -1367,7 +1367,7 @@ class LedgerController extends Controller
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
         $ledger = Ledger::query()->whereKey((int) $data['id'])
-            ->whereIn('type', ['CR', 'CP'])->whereNotNull('customer_ledger_id')
+            ->whereIn('type', ['CR','CP','CCR','CDR'])->whereNotNull('customer_ledger_id')
             ->whereHas('projectHeadSubhead', fn ($q) => $q->where('project_id', $projectId))->firstOrFail();
         if ($paymentType !== null) {
             abort_unless((int) $data['payment_type'] === $paymentType
