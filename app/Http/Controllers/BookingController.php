@@ -2417,7 +2417,10 @@ class BookingController extends Controller
                 [
                     'reference' => $validated['reference'].'-CORR-'.now()->format('YmdHisu'),
                     'date' => $validated['date'], 'description' => $validated['description'] ?? '',
-                    'amount_in' => str_replace(',', '', $validated['amount_out']), 'amount_out' => 0,
+                    'amount_in' => (string)$source->transaction_type==='PPR'
+                        ? '0.00' : str_replace(',', '', $validated['amount_out']),
+                    'amount_out' => (string)$source->transaction_type==='PPR'
+                        ? str_replace(',', '', $validated['amount_out']) : '0.00',
                     'payment_type' => $validated['payment_type'], 't_number' => $cash ? null : $validated['t_number'],
                     'bank_id' => $cash ? null : $validated['bank_id'], 'passing_date' => $cash ? null : $validated['passing_date'],
                     'cheque_purpose' => $cash ? null : ($validated['cheque_purpose'] ?? null),
@@ -2428,7 +2431,9 @@ class BookingController extends Controller
                 $source->bookingVoucher->update([
                     'customer_ledger_id' => $result['source']->id, 'ledger_id' => $result['ledger']->id,
                     'voucher_number' => $result['source']->type_id, 'slip_reference' => $result['source']->reference,
-                    'amount' => $result['source']->amount_in, 'receipt_date' => $result['source']->date,
+                    'amount' => (string)$result['source']->transaction_type==='PPR'
+                        ? $result['source']->amount_out : $result['source']->amount_in,
+                    'receipt_date' => $result['source']->date,
                     'description' => $result['source']->description, 'payment_type' => $result['source']->payment_type,
                     'bank_id' => $result['source']->bank_id, 't_number' => $result['source']->t_number,
                     'passing_date' => $result['source']->passing_date, 'update_by' => Auth::id(),
