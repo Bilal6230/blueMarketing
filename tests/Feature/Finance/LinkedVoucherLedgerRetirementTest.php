@@ -32,6 +32,9 @@ final class LinkedVoucherLedgerRetirementTest extends TestCase
         foreach (['journal_vouchers','commision_vouchers'] as $table) {
             Schema::create($table,function(Blueprint $t){$t->id();$t->unsignedBigInteger('project_id');$t->softDeletes();});
         }
+        Schema::table('journal_vouchers',function(Blueprint $t){
+            $t->string('type')->nullable();
+        });
         Schema::create('journal_voucher_details',function(Blueprint $t){
             $t->id();$t->unsignedBigInteger('journal_voucher_id');
             $t->unsignedBigInteger('account_id');$t->decimal('debit');$t->decimal('credit');$t->softDeletes();
@@ -62,21 +65,22 @@ final class LinkedVoucherLedgerRetirementTest extends TestCase
 
     private function seedVoucher(string $series): void
     {
-        $head=$series==='JV'?'journal_vouchers':'commision_vouchers';
-        $details=$series==='JV'?'journal_voucher_details':'commision_voucher_details';
-        $fk=$series==='JV'?'journal_voucher_id':'commision_voucher_id';
-        DB::table($head)->insert(['id'=>33,'project_id'=>5]);
+        $head=$series==='CV'?'commision_vouchers':'journal_vouchers';
+        $details=$series==='CV'?'commision_voucher_details':'journal_voucher_details';
+        $fk=$series==='CV'?'commision_voucher_id':'journal_voucher_id';
+        DB::table($head)->insert(['id'=>33,'project_id'=>5]
+            + ($series==='CV'?[]:['type'=>$series]));
         DB::table($details)->insert([
             ['id'=>101,$fk=>33,'account_id'=>10,'debit'=>50,'credit'=>0],
             ['id'=>102,$fk=>33,'account_id'=>11,'debit'=>0,'credit'=>50],
         ]);
         DB::table('ledgers')->insert([
             ['id'=>201,'type'=>$series,'type_id'=>33,'project_head_subheads_id'=>10,
-                'journal_voucher_detail_id'=>$series==='JV'?101:null,
+                'journal_voucher_detail_id'=>$series!=='CV'?101:null,
                 'commision_voucher_detail_id'=>$series==='CV'?101:null,
                 'amount_in'=>50,'amount_out'=>0,'is_active'=>1],
             ['id'=>202,'type'=>$series,'type_id'=>33,'project_head_subheads_id'=>11,
-                'journal_voucher_detail_id'=>$series==='JV'?102:null,
+                'journal_voucher_detail_id'=>$series!=='CV'?102:null,
                 'commision_voucher_detail_id'=>$series==='CV'?102:null,
                 'amount_in'=>0,'amount_out'=>50,'is_active'=>1],
         ]);
@@ -84,16 +88,30 @@ final class LinkedVoucherLedgerRetirementTest extends TestCase
 
     public function test_jv_and_cv_retire_exact_ledgers_without_adding_reversals_or_deleting_rows(): void
     {
-        foreach (['JV','CV'] as $series) {
+        foreach (['JV','SV','CV'] as $series) {
             $this->seedVoucher($series);
             $count=DB::transaction(fn()=>app(LinkedVoucherLedgerRetirement::class)->retire(5,$series,33));
             self::assertSame(2,$count);
             self::assertSame(2,DB::table('ledgers')->where('type',$series)->where('type_id',33)->count());
             self::assertSame(0,DB::table('ledgers')->where('type',$series)->where('type_id',33)->where('is_active',1)->count());
             DB::table('ledgers')->delete();
-            DB::table($series==='JV'?'journal_voucher_details':'commision_voucher_details')->delete();
-            DB::table($series==='JV'?'journal_vouchers':'commision_vouchers')->delete();
+            DB::table($series==='CV'?'commision_voucher_details':'journal_voucher_details')->delete();
+            DB::table($series==='CV'?'commision_vouchers':'journal_vouchers')->delete();
         }
+    }
+
+    public function test_sv_retirement_rejects_wrong_journal_header_series_without_touching_ledger(): void
+    {
+        $this->seedVoucher('SV');
+        DB::table('journal_vouchers')->where('id',33)->update(['type'=>'JV']);
+        try {
+            DB::transaction(fn()=>app(LinkedVoucherLedgerRetirement::class)->retire(5,'SV',33));
+            self::fail('A JV header cannot be retired through an SV source identity.');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('another series',$e->getMessage());
+        }
+        self::assertSame(2,DB::table('ledgers')->where('type','SV')
+            ->where('type_id',33)->where('is_active',1)->count());
     }
 
     public function test_cross_project_leg_aborts_without_changing_any_ledgers(): void
