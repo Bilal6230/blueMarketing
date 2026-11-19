@@ -192,6 +192,17 @@
     .stock-create-modal .ts-wrapper .ts-control input{color:#26364d!important}
     .modal.stock-create-modal,.modal#editModal,.modal#stockDocumentEditModal{isolation:isolate}
 
+    /* Stock Tom Select menus are body-level overlays anchored to the input rect. */
+    body>.ts-dropdown.stock-modal-dropdown{
+      position:fixed!important;background:#fff!important;color:#26364d!important;
+      opacity:1!important;border:1px solid #d7e2f0!important;border-radius:8px!important;
+      box-shadow:0 12px 24px rgba(14,38,70,.20)!important;z-index:2100!important;
+      overflow:auto!important;
+    }
+    body>.ts-dropdown.stock-modal-dropdown .option{background:#fff!important;color:#26364d!important}
+    body>.ts-dropdown.stock-modal-dropdown .option.active,
+    body>.ts-dropdown.stock-modal-dropdown .option:hover{background:#eaf2ff!important;color:#175bd6!important}
+
     /* App shell (labour module-ish) */
     .pv-shell {
       display: flex;
@@ -2620,6 +2631,34 @@
     /* ===========================
   INIT
   =========================== */
+    // Tom Select uses document coordinates for non-body dropdown parents. Stock modals
+    // are transformed/scrollable; anchor the menu to the actual input viewport rect.
+    function stockPositionTomDropdown(instance){
+      if(!instance || !instance.dropdown || !instance.wrapper)return;
+      const rect=instance.wrapper.getBoundingClientRect(),menu=instance.dropdown;
+      const viewportHeight=window.innerHeight||$(window).height();
+      const availableBelow=Math.max(0,viewportHeight-rect.bottom-8);
+      const availableAbove=Math.max(0,rect.top-8);
+      const above=availableBelow<180 && availableAbove>availableBelow;
+      const maxHeight=Math.min(280,Math.max(90,above?availableAbove:availableBelow));
+      menu.classList.add('stock-modal-dropdown');
+      menu.style.setProperty('position','fixed','important');
+      menu.style.setProperty('left',Math.max(8,rect.left)+'px','important');
+      menu.style.setProperty('width',Math.max(120,rect.width)+'px','important');
+      menu.style.setProperty('right','auto','important');
+      menu.style.setProperty('bottom','auto','important');
+      menu.style.setProperty('top',(above?Math.max(8,rect.top-maxHeight):rect.bottom)+'px','important');
+      menu.style.setProperty('max-height',maxHeight+'px','important');
+      menu.style.setProperty('z-index','2100','important');
+      menu.style.setProperty('opacity','1','important');
+      menu.style.setProperty('background','#fff','important');
+      $(menu).find('.ts-dropdown-content').css('max-height',(maxHeight-8)+'px');
+    }
+    $(document).on('scroll.stockTom', '.stock-create-modal .modal-body, #editModal .modal-body, #stockDocumentEditModal .modal-body',function(){
+      $('.stock-create-modal select, #editModal select, #stockDocumentEditModal select').each(function(){
+        if(this.tomselect && this.tomselect.isOpen)stockPositionTomDropdown(this.tomselect);
+      });
+    });
     function stockEnhanceDropdowns(context){
       const $context=$(context);
       $context.find('select').each(function(){
@@ -2633,7 +2672,13 @@
           }
           new window.TomSelect(el,{
             create:false,allowEmptyOption:!!$el.find('option[value=""]').length,
-            dropdownParent:$el.closest('.modal')[0] || 'body',maxOptions:250,searchField:['text'],
+            dropdownParent:'body',maxOptions:250,searchField:['text'],
+            onDropdownOpen:function(){
+              stockPositionTomDropdown(this);
+            },
+            onDropdownClose:function(){
+              this.dropdown.classList.remove('stock-modal-dropdown');
+            },
             placeholder:$el.find('option[value=""]').first().text()||'Select an option',
             onInitialize:function(){$(this.wrapper).addClass('stock-tom-select');}
           });
