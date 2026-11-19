@@ -1793,7 +1793,10 @@
   PROJECT-SCOPED ITEMS + PARTIES MANAGEMENT
   =========================== */
     const editModalEl = $('#editModal')[0];
-    const editModal = new bootstrap.Modal(editModalEl);
+    const editModal = {
+      show: function(){stockModal('#editModal','show');},
+      hide: function(){stockModal('#editModal','hide');}
+    };
 
     function openEditModal(title, fields, onSave) {
       $('#editModalTitle')[0].textContent = title;
@@ -2525,10 +2528,19 @@
       var $modal=$(selector);
       if(!$modal.length)return;
       if(window.bootstrap && window.bootstrap.Modal){
-        var klass=window.bootstrap.Modal;
-        var instance=$.isFunction(klass.getOrCreateInstance)?klass.getOrCreateInstance($modal[0]):new klass($modal[0]);
-        if(action==='hide')instance.hide();else instance.show();
-      }else if($.fn.modal){
+        try{
+          var klass=window.bootstrap.Modal;
+          var instance=$.isFunction(klass.getOrCreateInstance)?klass.getOrCreateInstance($modal[0]):new klass($modal[0]);
+          if(action==='hide')instance.hide();else instance.show();
+          return;
+        }catch(error){
+          if(window.console && console.warn)console.warn('Stock modal fallback:',error);
+        }
+      }
+      if($.fn.modal){
+        try{$modal.modal(action==='hide'?'hide':'show');return;}catch(error){}
+      }
+      {
         $modal.modal(action==='hide'?'hide':'show');
       }else{
         // If the Bootstrap CDN is unavailable, keep the forms usable with jQuery.
