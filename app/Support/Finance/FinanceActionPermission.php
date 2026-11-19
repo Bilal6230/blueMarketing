@@ -144,6 +144,8 @@ final class FinanceActionPermission
             'journal.voucher.delete'=>['jv','delete'],
             'journal.voucher.print'=>['jv','print'],
             'sales.voucher.index'=>['sv','view'],
+            'sales.voucher.create'=>['sv','create'],
+            'sales.voucher.store'=>['sv','create'],
             'commision.voucher.index'=>['cv','view'],
             'commision.voucher.create'=>['cv','create'],
             'commision.voucher.store'=>['cv','create'],
