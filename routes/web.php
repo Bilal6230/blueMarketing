@@ -468,6 +468,12 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
     Route::post('/labours/report', [LabourController::class, 'attendanceReport'])
         ->name('labours.report');
     Route::post('/attendance/labour-payment', [LabourController::class, 'labourPayment'])->name('labours.payment');
+    Route::get('/labours/payment/{source}', [LabourController::class, 'paymentDetails'])
+        ->whereNumber('source')->name('labours.payment.details');
+    Route::put('/labours/payment/{source}', [LabourController::class, 'updatePayment'])
+        ->whereNumber('source')->name('labours.payment.update');
+    Route::delete('/labours/payment/{source}', [LabourController::class, 'deletePayment'])
+        ->whereNumber('source')->name('labours.payment.delete');
     Route::post('/labours/update-rate', [LabourController::class, 'updateRate'])->name('labours.updateRate');
     Route::post('/labours/person/report', [LabourController::class, 'personAttendanceReport'])
         ->name('labours.person.report');
