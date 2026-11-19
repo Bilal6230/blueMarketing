@@ -133,6 +133,7 @@
     .stock-create-modal .d-grid.mt-3,.stock-create-modal .d-grid.gap-2.mt-3{margin-top:10px!important}
     .stock-create-modal .pv-line.mt-3{margin-top:8px!important}
     .stock-create-modal .pv-line button.btn-outline-danger{padding:5px 8px;font-size:12px;min-height:34px}
+    .ts-dropdown.stock-modal-dropdown,.ts-dropdown{z-index:2100!important}
     .stock-create-modal .ts-wrapper{width:100%;min-width:0;font-size:12px}
     .stock-create-modal .ts-wrapper.single .ts-control{display:flex;align-items:center;padding-right:26px!important}
     .stock-create-modal .select2-container{width:100%!important;min-width:0}
@@ -1167,6 +1168,9 @@
 @endsection
 
 @section('js')
+  <!-- Searchable dropdowns shared across Stock create/edit modals. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <!-- Bootstrap JS -->
@@ -1900,6 +1904,7 @@
         `
       );
 
+      stockEnhanceDropdowns($('#editModal'));
       $(form).find(".pv-money").toArray().forEach((el) => {
         pvFormatAmountNoDecimal(el);
         $(el).on("input", () => pvFormatAmountNoDecimal(el));
@@ -2596,6 +2601,37 @@
     /* ===========================
   INIT
   =========================== */
+    function stockEnhanceDropdowns(context){
+      const $context=$(context);
+      $context.find('select').each(function(){
+        const el=this,$el=$(el);
+        if(el.tomselect){
+          el.tomselect.sync();return;
+        }
+        if(window.TomSelect){
+          if($el.hasClass('select2-hidden-accessible') && $.fn.select2){
+            try{$el.select2('destroy');}catch(ignore){}
+          }
+          new window.TomSelect(el,{
+            create:false,allowEmptyOption:!!$el.find('option[value=""]').length,
+            dropdownParent:'body',maxOptions:250,searchField:['text'],
+            placeholder:$el.find('option[value=""]').first().text()||'Select an option',
+            onInitialize:function(){$(this.wrapper).addClass('stock-tom-select');}
+          });
+          return;
+        }
+        if($.fn.select2 && !$el.hasClass('select2-hidden-accessible')){
+          $el.select2({width:'100%',dropdownParent:$el.closest('.modal'),minimumResultsForSearch:0});
+        }
+      });
+    }
+    $(document).on('shown.bs.modal','.stock-create-modal,#editModal,#stockDocumentEditModal',function(){
+      stockEnhanceDropdowns(this);
+    });
+    $(document).on('click','#btnAddLine,#btnAddBillLine,#stockDocumentAddRow',function(){
+      var $modal=$(this).closest('.modal');
+      setTimeout(function(){stockEnhanceDropdowns($modal);},0);
+    });
     function stockModal(selector, action){
       var $modal=$(selector);
       if(!$modal.length)return;
@@ -2628,6 +2664,8 @@
       event.preventDefault();
       if($(this).is('#stockNewEntry'))setEntryMode('purchase');
       stockModal($(this).attr('data-stock-modal'),'show');
+      var $modal=$($(this).attr('data-stock-modal'));
+      setTimeout(function(){stockEnhanceDropdowns($modal);},0);
     });
     $(document).on('click','.stock-create-modal [data-bs-dismiss="modal"],#editModal [data-bs-dismiss="modal"]',function(){
       stockModal('#'+$(this).closest('.modal').attr('id'),'hide');
