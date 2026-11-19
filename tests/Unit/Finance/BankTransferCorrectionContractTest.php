@@ -26,6 +26,9 @@ final class BankTransferCorrectionContractTest extends TestCase
         self::assertStringContainsString('function transferVoucherDetails(',$controller);
         self::assertStringContainsString("'updateTransferVoucher'",$routes);
         self::assertStringContainsString("'transferVoucherDetails'",$routes);
+        self::assertStringContainsString("'deleteTransferVoucher'",$routes);
+        self::assertStringContainsString('function deleteTransferVoucher(',$controller);
+        self::assertStringContainsString('public function delete(',$editor);
         self::assertStringContainsString("where('line.is_active',1)",$report);
     }
 
@@ -40,6 +43,9 @@ final class BankTransferCorrectionContractTest extends TestCase
         self::assertStringContainsString("'/details'",$view);
         self::assertStringContainsString("$('#bankTransferCreateModal').modal('hide')",$view);
         self::assertStringContainsString('loadHistory();',$view);
+        self::assertStringContainsString('bankTransferDeleteModal',$view);
+        self::assertStringContainsString("type:'DELETE'",$view);
+        self::assertStringContainsString('bt-delete',$view);
         self::assertStringContainsString("showError($('#transferFormError')",$view);
     }
 }
