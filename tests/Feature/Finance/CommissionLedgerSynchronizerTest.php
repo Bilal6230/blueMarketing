@@ -278,6 +278,83 @@ final class CommissionLedgerSynchronizerTest extends TestCase
         self::assertSame(3,DB::table('ledgers')->count());
     }
 
+    public function test_approved_commission_same_id_correction_replaces_only_changed_legs_without_new_batch(): void
+    {
+        $workflow=new CommissionDraftWorkflow();
+        $id=$workflow->createDraft(1,'CV-CORRECT-1','2026-11-18',$this->lines(),1);
+        $key='commission-correct-once-0001';
+        $batch=$workflow->approveAndPost(1,$id,$key,1);
+        $details=DB::table('commision_voucher_details')->where('commision_voucher_id',$id)
+            ->whereNull('deleted_at')->orderBy('id')->get();
+        $first=(int)$details[0]->id;$second=(int)$details[1]->id;
+        $firstLedger=DB::table('ledgers')->where('commision_voucher_detail_id',$first)->value('id');
+        $beforeLineId=DB::table('finance_commission_line_sources as src')
+            ->join('finance_posting_lines as line','line.id','=','src.posting_line_id')
+            ->where('src.commision_voucher_detail_id',$first)->value('line.id');
+        $editor=new \App\Services\Finance\CommissionApprovedVoucherEditor();
+        $editor->update(1,$id,'2026-11-18',[
+            ['detail_id'=>$first,'account_id'=>101,'debit'=>'1000.00',
+                'credit'=>'0.00','description'=>'Debit'],
+            ['detail_id'=>$second,'account_id'=>102,'debit'=>'0.00',
+                'credit'=>'1200.00','description'=>'Credit'],
+            ['detail_id'=>null,'account_id'=>101,'debit'=>'200.00',
+                'credit'=>'0.00','description'=>'Additional debit'],
+        ],[],1);
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame(3,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->count());
+        self::assertSame(3,DB::table('ledgers')->where('type','CV')
+            ->where('type_id',$id)->where('is_active',1)->count());
+        self::assertSame((int)$firstLedger,(int)DB::table('ledgers')
+            ->where('commision_voucher_detail_id',$first)->value('id'));
+        self::assertSame((int)$beforeLineId,(int)DB::table('finance_commission_line_sources as src')
+            ->join('finance_posting_lines as line','line.id','=','src.posting_line_id')
+            ->where('src.commision_voucher_detail_id',$first)->where('line.is_active',1)
+            ->value('line.id'));
+        self::assertSame(1200.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->sum('credit'));
+        self::assertSame(1200.0,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->sum('debit'));
+        $current=DB::table('commision_voucher_details')->where('commision_voucher_id',$id)
+            ->whereNull('deleted_at')->orderBy('id')->get();
+        $submitted=$current->map(fn($item)=>[
+            'detail_id'=>(int)$item->id,'account_id'=>(int)$item->account_id,
+            'debit'=>(string)$item->debit,'credit'=>(string)$item->credit,
+            'description'=>(string)$item->description,
+        ])->all();
+        $beforeCount=DB::table('finance_posting_lines')->count();
+        $editor->update(1,$id,'2026-11-18',$submitted,[],1);
+        self::assertSame($beforeCount,DB::table('finance_posting_lines')->count());
+        self::assertSame($batch,$workflow->approveAndPost(1,$id,$key,1));
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+    }
+
+    public function test_approved_commission_correction_rejects_foreign_detail_without_mutation(): void
+    {
+        $workflow=new CommissionDraftWorkflow();
+        $id=$workflow->createDraft(1,'CV-CORRECT-2','2026-11-18',$this->lines(),1);
+        $workflow->approveAndPost(1,$id,'commission-correct-other-0002',1);
+        $other=$workflow->createDraft(1,'CV-CORRECT-3','2026-11-18',$this->lines(),1);
+        $foreign=DB::table('commision_voucher_details')
+            ->where('commision_voucher_id',$other)->value('id');
+        $before=DB::table('finance_posting_lines')->count();
+        try {
+            (new \App\Services\Finance\CommissionApprovedVoucherEditor())->update(
+                1,$id,'2026-11-18',[
+                    ['detail_id'=>$foreign,'account_id'=>101,'debit'=>'1000.00',
+                        'credit'=>'0.00','description'=>'Debit'],
+                    ['detail_id'=>null,'account_id'=>102,'debit'=>'0.00',
+                        'credit'=>'1000.00','description'=>'Credit'],
+                ],[],1);
+            self::fail('Foreign CV detail must not be edited.');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('belongs to another voucher',$e->getMessage());
+        }
+        self::assertSame($before,DB::table('finance_posting_lines')->count());
+        self::assertSame(2,DB::table('ledgers')->where('type','CV')
+            ->where('type_id',$id)->where('is_active',1)->count());
+    }
+
     public function test_existing_draft_backfills_only_missing_fk_linked_ledger_rows(): void
     {
         DB::table('commision_vouchers')->insert([
