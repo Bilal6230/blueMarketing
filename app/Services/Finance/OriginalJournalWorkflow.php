@@ -16,13 +16,25 @@ final class OriginalJournalWorkflow
         return (string) (int) $parts[0].'.'.str_pad($parts[1] ?? '', 2, '0');
     }
 
-    public function createAndPost(int $projectId, string $key, array $input, ?int $actorId): int
+    private function postSeries(string $series,int $projectId,int $id,
+        string $key,?int $actorId): int
+    {
+        $gateway=new PostingGateway();
+        return $series==='SV'
+            ? $gateway->postSalesVoucher($projectId,$id,$key,$actorId)
+            : $gateway->postJournal($projectId,$id,$key,$actorId);
+    }
+
+    public function createAndPost(int $projectId, string $key, array $input, ?int $actorId, string $series = 'JV'): int
     {
         FinanceConnectionGuard::assertAllowed();
+        if (!in_array($series,['JV','SV'],true)) {
+            throw new \DomainException('Unsupported Journal/Sales voucher series.');
+        }
         if (!preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $key)) {
             throw new \DomainException('V2_JV_REQUEST_KEY_REQUIRED');
         }
-        return DB::transaction(function () use ($projectId, $key, $input, $actorId): int {
+        return DB::transaction(function () use ($projectId, $key, $input, $actorId, $series): int {
             DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
             $accounts = \App\Models\ProjectHeadSubhead::availableForPosting()->where('project_id', $projectId)
                 ->whereIn('id', $input['sub_accounts'])->orderBy('id')->lockForUpdate()
@@ -49,7 +61,7 @@ final class OriginalJournalWorkflow
                 $sourceId = DB::table('finance_posting_journal_sources')
                     ->where('posting_batch_id', $existing->id)->value('journal_voucher_id');
                 $header = $sourceId ? DB::table('journal_vouchers')->where('id', $sourceId)
-                    ->where('project_id', $projectId)->where('type', 'JV')->whereNull('deleted_at')->first() : null;
+                    ->where('project_id', $projectId)->where('type', $series)->whereNull('deleted_at')->first() : null;
                 $stored = $header ? DB::table('journal_voucher_details')->where('journal_voucher_id', $sourceId)
                     ->whereNull('deleted_at')->orderBy('id')->get()->map(fn ($row) => [
                         'account_id' => (int) $row->account_id, 'debit' => $this->money($row->debit),
@@ -62,12 +74,14 @@ final class OriginalJournalWorkflow
                     || $stored !== $lines) {
                     throw new \DomainException('V2_JV_REQUEST_CONFLICT');
                 }
-                (new PostingGateway())->postJournal($projectId, (int) $sourceId, $key, $actorId);
+                $this->postSeries($series,$projectId,(int)$sourceId,$key,$actorId);
                 return (int) $sourceId;
             }
             $id = DB::table('journal_vouchers')->insertGetId([
-                'project_id' => $projectId, 'type' => 'JV',
-                'voucher_number' => (new ProjectVoucherAllocator())->nextJournal($projectId),
+                'project_id' => $projectId, 'type' => $series,
+                'voucher_number' => $series==='SV'
+                    ? (new ProjectVoucherAllocator())->nextSalesVoucher($projectId)
+                    : (new ProjectVoucherAllocator())->nextJournal($projectId),
                 'date' => $input['date'], 'reference' => $input['reference'] ?? null,
                 'description' => $input['description'],
                 'total_debit' => intdiv($debit, 100).'.'.str_pad((string) ($debit % 100), 2, '0', STR_PAD_LEFT),
@@ -83,7 +97,10 @@ final class OriginalJournalWorkflow
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
-            (new PostingGateway())->postJournal($projectId, (int) $id, $key, $actorId);
+            app(ProjectVoucherDisplayIdentity::class)->assign(
+                $projectId,'journal_voucher',(int)$id,$series,(string)$input['date']
+            );
+            $this->postSeries($series,$projectId,(int)$id,$key,$actorId);
             return (int) $id;
         }, 3);
     }
