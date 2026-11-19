@@ -237,6 +237,8 @@ final class ApprovedSourcePostingWriter
                 }
                 $persisted = DB::table('finance_posting_lines')
                     ->where('posting_batch_id', $existing->id)
+                    ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                        fn($q)=>$q->where('is_active',1))
                     ->get(['project_head_subhead_id', 'debit', 'credit', 'description']);
                 if ($persisted->count() !== count($lines)) {
                     throw new \DomainException('V2_APPROVED_SOURCE_REPLAY_TAMPERED');
