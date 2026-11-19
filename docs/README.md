@@ -1,3 +1,5 @@
+> **LATEST HANDOFF — 2026-11-19 (Milestone 03):** See [Milestone 03 Browser Acceptance / Test Gate](MILESTONE_03_BROWSER_ACCEPTANCE_2026_11_19.md) for the current authoritative voucher-by-voucher code, local migration/testing commands, browser acceptance matrix, outstanding owner sign-offs and actual PASS numbers. The newest code changes guard legacy-vs-typed ownership for EC, PPR and Labour; protect Stock negative inventory, correct Bootstrap 5 stock modals, and scope DastiCash Delete by project. **All new suites/browser checks are still pending owner execution**; Milestone 03 is not yet signed off. **Milestone 06 Activity Audit remains LAST/deferred.** Older chronological notes below are historical and may be superseded by this acceptance file.
+
 # BlueMarketing — Current Development Handoff
 
 **Updated:** 2026-11-19  
