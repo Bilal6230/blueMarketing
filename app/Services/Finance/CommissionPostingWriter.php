@@ -128,11 +128,16 @@ final class CommissionPostingWriter
                 $actual = DB::table('finance_commission_line_sources as src')
                     ->join('finance_posting_lines as l', 'l.id', '=', 'src.posting_line_id')
                     ->where('l.posting_batch_id', $existing->id)
+                    ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                        fn($q)=>$q->where('l.is_active',1))
                     ->get(['src.commision_voucher_detail_id', 'l.project_head_subhead_id',
                         'l.debit', 'l.credit', 'l.description']);
                 if ($actual->count() !== count($rows)
                     || (int) DB::table('finance_posting_lines')
-                        ->where('posting_batch_id', $existing->id)->count() !== count($rows)) {
+                        ->where('posting_batch_id', $existing->id)
+                        ->when(Schema::hasColumn('finance_posting_lines','is_active'),
+                            fn($q)=>$q->where('is_active',1))
+                        ->count() !== count($rows)) {
                     throw new \DomainException('V2_CV_REPLAY_TAMPERED');
                 }
                 $expected = [];
