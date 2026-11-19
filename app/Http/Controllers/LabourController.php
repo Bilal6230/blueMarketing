@@ -144,6 +144,8 @@ class LabourController extends Controller
             'contractor_id' => 'nullable|integer|min:1',
         ]);
         $selectedProjectId = (int) getSelectedTown();
+        abort_unless(Schema::hasColumn('labour_ledgers','customer_ledger_id'),409,
+            'Apply the labour payment source relationship migration first.');
         $contractor = null;
         $customerSubheadId = self::LABOUR_Sub_Acount_ID;
         if ($request->filled('contractor_id')) {
@@ -192,6 +194,7 @@ class LabourController extends Controller
                 [$year, $weekNo] = explode('-W', $request->week);
 
                 $ledgerLines = [];
+                $labourLedgerRowIds=[];
                 $totalAmount = 0;
 
                 /** ------------------------
@@ -203,7 +206,7 @@ class LabourController extends Controller
                     $dates = $this->formatDates($labour['attendanceDates'] ?? []);
                     $days = count($labour['attendanceDates'] ?? []);
 
-                    LabourLedger::create([
+                    $labourRow=LabourLedger::create([
                         'project_id' => $selectedProjectId,
                         'labour_id' => $labour['id'],
                         'contractor_id' => $contractor?->id,
@@ -211,6 +214,7 @@ class LabourController extends Controller
                         'date' => now()->toDateString(),
                         'details' => json_encode($labour, JSON_UNESCAPED_UNICODE),
                     ]);
+                    $labourLedgerRowIds[]=(int)$labourRow->id;
 
                     $ledgerLines[] =
                         "{$labour['name']} - {$days} day(s) ";
@@ -253,7 +257,12 @@ class LabourController extends Controller
                 app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
                     (int) $selectedProjectId, 'customer_ledger', (int) $customerLedger->id, 'CP', now()->toDateString()
                 );
-
+                $linked=DB::table('labour_ledgers')->where('project_id',$selectedProjectId)
+                    ->whereIn('id',$labourLedgerRowIds)->whereNull('customer_ledger_id')
+                    ->update(['customer_ledger_id'=>(int)$customerLedger->id,'updated_at'=>now()]);
+                if($linked!==count($labourLedgerRowIds)){
+                    throw new \DomainException('Labour payment source FK ownership could not be verified.');
+                }
 
                 /** ------------------------
                  *  General Ledger
@@ -299,9 +308,6 @@ class LabourController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Something went wrong while processing labour payment.',
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
             ], 500);
         }
     }
