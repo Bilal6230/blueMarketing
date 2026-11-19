@@ -757,3 +757,10 @@ php artisan finance:audit-posting-balances
 ### New-chat handoff prompt
 
 Continue BlueMarketing GitHub `Bilal6230/blueMarketing` branch `upgrade/laravel-framework`, configured local project `C:\laragon\www\blueMarketing`. Follow `docs/README.md` as sole authoritative handoff, and this last section as the latest code/verification batch. User wants **actual committed/pushed code, not docs-only work**; deliver complete batches and exact PowerShell pull/tests. Custom frontend JS must use jQuery, global consistent AJAX/skeleton/toasts/modals, no V2 names/isolation or hardcoded project/database. Roadmap is SIX milestones: M01 complete; M02 partial permission acceptance; M03 currently active remaining voucher lifecycle, approved CV correction newly implemented **not yet locally verified**; M04 bank/cheque linked cascade pending; M05 reversal settings/regression pending; M06 centralized activity audit LAST and NOT started (proposed 3 audit tables). Owner verified CV approval/Party Ledger, existing CV draft and JV tests, 6-project posting audit. Next action: request/interpret local test and browser gate above, fix any failures, then finish remaining M03 modules with genuine code and coverage; do not misstate completion.
+
+
+### Final integrity hardening for approved CV correction (same implementation batch)
+
+- Approved CV editor now rejects any existing active financial batch with a mismatched original SHA-256 source fingerprint, date or voucher series **before** mutating source/detail/ledger/posting rows; this prevents silently overwriting pre-existing tampered history.
+- It also rejects any unmapped active posting lines in the source batch, even if the mapped detail count otherwise looks correct. It requires the real database-enforced `ledgers.commision_voucher_detail_id` FK and project scoping. The old posting rows are deactivated, never hard-deleted.
+- Local PHP lint, feature tests, owner browser acceptance and full remaining milestone 03 multi-voucher completion are STILL outstanding as of this commit. Code-review-only and contract tests are not proof of browser acceptance.
