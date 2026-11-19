@@ -42,6 +42,10 @@ class JournalPostingWriterTest extends TestCase
             $table->date('date');
             $table->decimal('total_debit', 15, 2);
             $table->decimal('total_credit', 15, 2);
+            $table->string('reference')->nullable();
+            $table->text('description')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
+            $table->timestamps();
             $table->timestamp('deleted_at')->nullable();
         });
         Schema::create('journal_voucher_details', function (Blueprint $table): void {
@@ -51,10 +55,16 @@ class JournalPostingWriterTest extends TestCase
             $table->decimal('debit', 15, 2);
             $table->decimal('credit', 15, 2);
             $table->text('description')->nullable();
+            $table->timestamps();
             $table->timestamp('deleted_at')->nullable();
         });
         $migration = require base_path('database/finance_legacy_migrations/2026_10_30_000100_create_finance_finance_posting_core.php');
         $migration->up();
+        if (!Schema::hasColumn('finance_posting_lines','is_active')) {
+            Schema::table('finance_posting_lines',function(Blueprint $table) {
+                $table->boolean('is_active')->default(true);
+            });
+        }
 
         DB::table('projects')->insert([['id' => 1], ['id' => 2]]);
         DB::table('project_head_subheads')->insert([
@@ -86,6 +96,71 @@ class JournalPostingWriterTest extends TestCase
              'account_id' => $creditAccount, 'debit' => 0, 'credit' => '125.50',
              'description' => 'Exact credit detail'],
         ]);
+    }
+
+    public function test_posted_jv_full_correction_preserves_one_batch_and_exact_unchanged_detail(): void
+    {
+        $key='JV-FULL-CORRECTION-0001';
+        $batch=(new PostingGateway())->postJournal(1,51,$key);
+        $editor=new \App\Services\Finance\JournalApprovedVoucherEditor();
+        $before=DB::table('finance_journal_line_sources as src')
+            ->join('finance_posting_lines as line','line.id','=','src.posting_line_id')
+            ->where('line.posting_batch_id',$batch)
+            ->where('src.journal_voucher_detail_id',511)->value('line.id');
+        $editor->update(1,51,'2026-10-30',[
+            ['detail_id'=>511,'account_id'=>101,'debit'=>'125.50','credit'=>'0.00',
+                'description'=>'Exact debit detail'],
+            ['detail_id'=>512,'account_id'=>102,'debit'=>'0.00','credit'=>'150.50',
+                'description'=>'Changed credit'],
+            ['detail_id'=>null,'account_id'=>101,'debit'=>'25.00','credit'=>'0.00',
+                'description'=>'Additional debit'],
+        ],[],null);
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame(3,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->count());
+        self::assertSame(4,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->count());
+        self::assertSame((int)$before,(int)DB::table('finance_journal_line_sources as src')
+            ->join('finance_posting_lines as line','line.id','=','src.posting_line_id')
+            ->where('src.journal_voucher_detail_id',511)
+            ->where('line.is_active',1)->value('line.id'));
+        self::assertSame(150.5,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->sum('debit'));
+        self::assertSame(150.5,(float)DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->where('is_active',1)->sum('credit'));
+        self::assertSame($batch,(new PostingGateway())->postJournal(1,51,$key));
+        $oldCount=DB::table('finance_posting_lines')->count();
+        $active=DB::table('journal_voucher_details')->where('journal_voucher_id',51)
+            ->whereNull('deleted_at')->orderBy('id')->get();
+        $rows=$active->map(fn($row)=>[
+            'detail_id'=>(int)$row->id,'account_id'=>(int)$row->account_id,
+            'debit'=>(string)$row->debit,'credit'=>(string)$row->credit,
+            'description'=>$row->description,
+        ])->all();
+        $editor->update(1,51,'2026-10-30',$rows,[],null);
+        self::assertSame($oldCount,DB::table('finance_posting_lines')->count());
+    }
+
+    public function test_posted_jv_correction_rejects_foreign_detail_and_preserves_source(): void
+    {
+        $key='JV-FOREIGN-DETAIL-CORRECT-0001';
+        $batch=(new PostingGateway())->postJournal(1,51,$key);
+        $editor=new \App\Services\Finance\JournalApprovedVoucherEditor();
+        $before=DB::table('finance_posting_lines')->where('posting_batch_id',$batch)->count();
+        try {
+            $editor->update(1,51,'2026-10-30',[
+                ['detail_id'=>99999,'account_id'=>101,'debit'=>'125.50','credit'=>'0',
+                    'description'=>'Invalid'],
+                ['detail_id'=>512,'account_id'=>102,'debit'=>'0','credit'=>'125.50',
+                    'description'=>'Exact credit detail'],
+            ],[],null);
+            self::fail('Foreign source detail ID must never be attached to a posted JV.');
+        }catch(\DomainException $error) {
+            self::assertStringContainsString('another voucher',$error->getMessage());
+        }
+        self::assertSame($before,DB::table('finance_posting_lines')->where('posting_batch_id',$batch)->count());
+        self::assertSame(2,DB::table('journal_voucher_details')
+            ->where('journal_voucher_id',51)->whereNull('deleted_at')->count());
     }
 
     public function test_isolated_jv_draft_updates_before_posting_and_locks_after(): void
