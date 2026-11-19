@@ -2411,6 +2411,24 @@ class BookingController extends Controller
                 return back()->withErrors(['msg' => 'Receipt posting is unavailable for correction.'])->withInput();
             }
             $cash = (string) $validated['payment_type'] === '1';
+            // Cash PPR source, ledger and BookingVoucher are corrected as
+            // one retained identity. No reversal voucher or new booking FK.
+            if((string)$source->transaction_type==='PPR'
+                && (int)$source->payment_type===1 && $cash){
+                app(\App\Services\Finance\BookingReceiptCashEditor::class)->edit(
+                    $projectId,(int)$source->id,[
+                        'date'=>$validated['date'],
+                        'reference'=>$validated['reference'],
+                        'amount'=>str_replace(',','',$validated['amount_out']),
+                        'description'=>$validated['description']??'',
+                    ],(int)Auth::id()
+                );
+                return $request->expectsJson() || $request->ajax()
+                    ? response()->json(['status'=>'success',
+                        'message'=>'Received payment corrected. Same voucher and ledger IDs retained.',
+                        'source_id'=>(int)$source->id])
+                    : back()->with('success','Received payment corrected without new voucher or reversal.');
+            }
             DB::transaction(function () use ($projectId, $source, $oldLedger, $validated, $cash): void {
             $result = app(\App\Services\Finance\LegacyCashVoucherCorrection::class)->correct(
                 $projectId, (int) $source->id, (int) $oldLedger->project_head_subheads_id,
