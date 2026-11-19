@@ -47,6 +47,7 @@ final class StockDocumentEditor
             ['stock_entry_lines','deleted_at'],
             ['stock_bill_lines','deleted_at'],
             ['stock_movements','is_active'],
+            ['stock_movements','deleted_at'],
             ['stock_movements','source_line_id'],
             ['stock_bills','deleted_at'],
             ['stock_entries','deleted_at'],
@@ -143,6 +144,8 @@ final class StockDocumentEditor
             ||$legs->contains(fn($leg)=>(string)$leg->type!=='JV'
                 ||(string)$leg->reference!==$reference
                 ||(string)$leg->date!==$date||(int)$leg->is_active!==1)
+            ||$legs->pluck('type_id')->unique()->count()!==1
+            ||$legs->pluck('voucher_number')->unique()->count()!==1
             ||$this->parseMoney($legs->sum('amount_in'))!==$oldTotal
             ||$this->parseMoney($legs->sum('amount_out'))!==$oldTotal
             ||$legs->filter(fn($leg)=>$this->parseMoney($leg->amount_in)>0
@@ -289,7 +292,7 @@ final class StockDocumentEditor
                     ]);
                 }
             }
-            $narration=$narration===null?'Stock '.strtoupper($kind).' '.$reference
+            $narration=$narration===null?(string)($customer->description??'')
                 : trim($narration);
             $money=$this->money($total);
             $headerUpdate=[$entry?'entry_date':'bill_date'=>$date,'updated_at'=>$now];
