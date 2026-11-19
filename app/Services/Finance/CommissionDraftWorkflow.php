@@ -143,28 +143,80 @@ final class CommissionDraftWorkflow
                 'reference'=>array_key_exists('reference',$metadata) ? $metadata['reference'] : $header->reference,
                 'description'=>array_key_exists('description',$metadata) ? $metadata['description'] : $header->description,
             ];
-            app(CommissionLedgerSynchronizer::class)->assertDraftCanReplace($projectId,$sourceId);
-            if (app(VoucherUnchangedUpdateDetector::class)
+            $synchronizer=app(CommissionLedgerSynchronizer::class);
+            $synchronizer->assertDraftCanReplace($projectId,$sourceId);
+            // IDs come exclusively from the validated form and the locked
+            // voucher details. No account/amount or array-index ID guessing.
+            $submittedIds=[];
+            foreach ($lines as $index=>$submitted) {
+                $detailId=(int)($submitted['detail_id']??0);
+                if ($detailId<1) continue;
+                if (isset($submittedIds[$detailId]) || !$activeDetails->contains('id',$detailId)) {
+                    throw new \DomainException('Commission detail ID is duplicated or belongs to another voucher.');
+                }
+                $submittedIds[$detailId]=true;
+            }
+            $sameIds=$activeDetails->count()===count($prepared)
+                && $activeDetails->pluck('id')->map(fn($id)=>(int)$id)->values()->all()
+                    ===array_map(fn($line)=>(int)($line['detail_id']??0),$lines);
+            if ($sameIds && app(VoucherUnchangedUpdateDetector::class)
                 ->same($header,$activeDetails,$candidateHeader,$prepared)) {
-                // Backfill legacy Draft details which pre-date FK-linked
-                // ledger creation. Repeated Save remains idempotent.
-                app(CommissionLedgerSynchronizer::class)->ensureDraft($projectId,$sourceId);
+                $synchronizer->ensureDraft($projectId,$sourceId);
                 return;
             }
-            DB::table('commision_voucher_details')
-                ->where('commision_voucher_id', $sourceId)->whereNull('deleted_at')
-                ->update(['deleted_at' => now(), 'updated_at' => now()]);
-            foreach ($prepared as $line) {
-                DB::table('commision_voucher_details')->insert($line + [
-                    'commision_voucher_id' => $sourceId,
-                    'created_at' => now(), 'updated_at' => now(),
-                ]);
+            // Older drafts may not have their ledger projection yet. Create
+            // the missing inactive FK-linked rows BEFORE changing any detail.
+            $synchronizer->ensureDraft($projectId,$sourceId);
+            foreach ($activeDetails as $detail) {
+                if (isset($submittedIds[(int)$detail->id])) continue;
+                DB::table('ledgers')->where('type','CV')->where('type_id',$sourceId)
+                    ->where('commision_voucher_detail_id',$detail->id)
+                    ->where('is_active',0)->lockForUpdate()->firstOrFail();
+                DB::table('commision_voucher_details')->where('id',$detail->id)
+                    ->where('commision_voucher_id',$sourceId)
+                    ->whereNull('deleted_at')->update(['deleted_at'=>now(),'updated_at'=>now()]);
+            }
+            foreach ($prepared as $index=>$line) {
+                $detailId=(int)($lines[$index]['detail_id']??0);
+                $values=[
+                    'account_id'=>$line['account_id'],'debit'=>$line['debit'],
+                    'credit'=>$line['credit'],'description'=>$line['description'],
+                    'updated_at'=>now(),
+                ];
+                if ($detailId>0) {
+                    DB::table('commision_voucher_details')->where('id',$detailId)
+                        ->where('commision_voucher_id',$sourceId)->whereNull('deleted_at')
+                        ->update($values);
+                } else {
+                    $detailId=(int)DB::table('commision_voucher_details')->insertGetId($values+[
+                        'commision_voucher_id'=>$sourceId,'created_at'=>now(),
+                    ]);
+                }
+                // Draft ledger evidence has not posted yet; update it in
+                // place, preserving each exact detail and ledger PK. Once
+                // approved, this draft mutation path is inaccessible.
+                $ledgerValues=[
+                    'project_head_subheads_id'=>$line['account_id'],
+                    'amount_in'=>$line['debit'],'amount_out'=>$line['credit'],
+                    'detail'=>$line['description']??'','reference'=>$candidateHeader['reference'],
+                    'date'=>$date,'updated_at'=>now(),
+                ];
+                $affected=DB::table('ledgers')->where('type','CV')->where('type_id',$sourceId)
+                    ->where('commision_voucher_detail_id',$detailId)->where('is_active',0)
+                    ->update($ledgerValues);
+                if ($affected===0 && !DB::table('ledgers')->where('type','CV')
+                    ->where('type_id',$sourceId)->where('commision_voucher_detail_id',$detailId)
+                    ->where('is_active',0)->exists()) {
+                    // A truly new row is created through the FK-validated
+                    // synchronizer after the header has been updated.
+                    continue;
+                }
             }
             DB::table('commision_vouchers')->where('id', $sourceId)->update($metadata + [
                 'date' => $date, 'total_debit' => $amount, 'total_credit' => $amount,
                 'updated_at' => now(),
             ]);
-            app(CommissionLedgerSynchronizer::class)->ensureDraft($projectId,$sourceId);
+            $synchronizer->ensureDraft($projectId,$sourceId);
         }, 3);
     }
 
