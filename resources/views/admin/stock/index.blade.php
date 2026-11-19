@@ -2686,26 +2686,38 @@
       var $modal=$($(this).attr('data-stock-modal'));
       setTimeout(function(){stockEnhanceDropdowns($modal);},0);
     });
-    // Direct listeners run even when a vendor modal handler stops delegated events.
+    // Capture the click before conflicting Bootstrap 4/5 document listeners.
+    // Always dismiss through the instance that opened the dialog, not a new modal instance.
+    function stockDismissNow(modal){
+      const $modal=$(modal),node=$modal[0];
+      if(!node)return;
+      try{
+        if(window.bootstrap&&window.bootstrap.Modal){
+          const klass=window.bootstrap.Modal;
+          const instance=$.isFunction(klass.getInstance)?klass.getInstance(node):null;
+          if(instance){instance.hide();}
+          else if($.isFunction(klass.getOrCreateInstance)){klass.getOrCreateInstance(node).hide();}
+        }
+      }catch(error){if(window.console)console.warn('Stock modal hide:',error);}
+      try{if($.fn.modal)$modal.modal('hide');}catch(ignore){}
+      // Some ERP pages load multiple Bootstrap versions; ensure a stranded dialog is not left onscreen.
+      setTimeout(function(){
+        if(!$modal.hasClass('show')&&$modal.css('display')==='none')return;
+        $modal.removeClass('show').hide().attr('aria-hidden','true').removeAttr('aria-modal');
+        if(!$('.modal.show').length){
+          $('.modal-backdrop,.stock-modal-fallback-backdrop').remove();
+          $('body').removeClass('modal-open').css({overflow:'',paddingRight:''});
+        }
+      },400);
+    }
     $(document).find('[data-stock-dismiss]').each(function(){
-      $(this).off('click.stockDismiss').on('click.stockDismiss',function(event){
+      const button=this;
+      if(button.dataset.stockDismissBound)return;
+      button.dataset.stockDismissBound='1';
+      button.addEventListener('click',function(event){
         event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
-        const $modal=$(this).closest('.modal');
-        if(!$modal.length)return;
-        // Let the same Bootstrap instance own dismissal and its backdrop lifecycle.
-        const node=$modal[0];
-        if(window.bootstrap && window.bootstrap.Modal){
-          try{
-            const modalClass=window.bootstrap.Modal;
-            const active=$.isFunction(modalClass.getInstance)?modalClass.getInstance(node):null;
-            if(active){active.hide();return;}
-          }catch(ignore){}
-        }
-        if($.fn.modal){
-          try{$modal.modal('hide');return;}catch(ignore){}
-        }
-        stockModal('#'+$modal.attr('id'),'hide');
-      });
+        stockDismissNow($(button).closest('.modal')[0]);
+      },true);
     });
     $(document).on('keydown.stockCreateModal',function(event){
       if(event.key==='Escape' && $('.stock-modal-fallback-backdrop').length){
