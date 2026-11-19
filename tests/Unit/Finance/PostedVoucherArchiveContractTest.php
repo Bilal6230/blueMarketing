@@ -26,7 +26,8 @@ final class PostedVoucherArchiveContractTest extends TestCase
         self::assertStringContainsString("'deleted_at'=>now()",$archiver);
         self::assertStringNotContainsString('PostingReversalWriter',$archiver);
         self::assertStringContainsString('PostedVoucherArchiver::class',$journal);
-        self::assertStringContainsString("can('finance jv reverse')",$journal);
+        self::assertStringContainsString("FinanceActionPermission::journalModule((int)\$id)",$journal);
+        self::assertStringContainsString("can('finance '.\$seriesModule.' reverse')",$journal);
         self::assertStringContainsString("can('finance cv reverse')",$commission);
         self::assertStringContainsString('PostedVoucherArchiver::class',$commission);
         self::assertStringContainsString('ARCHIVED_VOUCHER_WITH_ACTIVE_POSTINGS',$audit);
