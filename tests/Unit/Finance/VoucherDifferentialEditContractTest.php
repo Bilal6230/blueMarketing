@@ -38,6 +38,8 @@ final class VoucherDifferentialEditContractTest extends TestCase
         self::assertStringContainsString('finance:commission-saved',$code);
         self::assertStringNotContainsString("$('#journalForm')[0].submit()",$code);
         self::assertStringContainsString('cvUpdateBusy',$code);
+        self::assertStringContainsString("table.ajax.reload(null,false)",$code);
+        self::assertStringContainsString("parentJQ(this).modal('hide')",$code);
     }
 
     public function test_journal_legacy_edit_checks_detail_ledger_foreign_key_and_updates_only_changed_lines(): void
@@ -51,6 +53,7 @@ final class VoucherDifferentialEditContractTest extends TestCase
         self::assertStringContainsString("groupBy('journal_voucher_detail_id')",$method);
         self::assertStringContainsString('Journal detail-to-ledger FK or amount mismatch',$method);
         self::assertStringContainsString('if($prior&&!$headerChanged',$method);
+        self::assertStringContainsString("->where('is_active',1)",$method);
         self::assertStringContainsString('$prior->delete();',$method);
         self::assertStringNotContainsString('saveQuietly()',$method);
     }
