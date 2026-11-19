@@ -77,7 +77,9 @@ body.jv-directory-active{overflow:hidden!important}
  <div class="jv-head">
   <div><h4>{{ $title }}</h4><small>Selected project records · {{ \App\Services\Finance\FinanceWorkflowAccess::normalErpMode() ? 'Standard voucher register' : 'Approval-aware voucher register' }}</small></div>
   <x-finance.voucher-directory-actions :approvals="true">
-   <button type="button" id="jv-add" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i> New {{ $type }} Voucher</button>
+   @if(auth()->user()?->can('finance '.strtolower($type).' create'))
+                    <button type="button" id="jv-add" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i> New {{ $type }} Voucher</button>
+                    @endif
   </x-finance.voucher-directory-actions>
  </div>
  @if(session('success'))<div class="alert alert-success m-0" role="status">{{ session('success') }}</div>@endif
