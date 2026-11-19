@@ -2609,9 +2609,20 @@
                   ? stockDocFeedback.error(xhr,fallback):fallback);
           $box.text(text).removeClass('d-none');stockDocNotify('error',text);
       };
-      var stockDocHide=function(selector){
-          $(selector).modal('hide');
+      // Bootstrap 5 does not guarantee a jQuery .modal() plugin.
+      // Keep all authored event/AJAX handlers in jQuery and use the native
+      // Bootstrap modal API, as the existing stock Edit modal already does.
+      var stockDocModal=function(selector,action){
+          var element=$(selector)[0];
+          if(!element||!window.bootstrap||!window.bootstrap.Modal){
+              stockDocNotify('error','Stock modal component is unavailable.');
+              return;
+          }
+          var instance=bootstrap.Modal.getOrCreateInstance(element);
+          if(action==='show')instance.show();
+          else instance.hide();
       };
+      var stockDocHide=function(selector){stockDocModal(selector,'hide');};
       var stockDocAddLine=function(line){
           line=line||{};
           var $wrap=$('<div class="row g-2 align-items-end mb-2 stock-doc-line">')
@@ -2668,7 +2679,7 @@
               $('#stockDocumentEditRows').empty();
               $.each(data.lines||[],function(_,line){stockDocAddLine(line);});
               $('#stockDocumentEditError').addClass('d-none').text('');
-              $('#stockDocumentEditModal').modal('show');
+              stockDocModal('#stockDocumentEditModal','show');
           }).fail(function(xhr){
               stockDocError($('#stockDocumentEditError'),xhr,'Could not load stock voucher.');
           }).always(function(){$button.prop('disabled',false);});
@@ -2707,7 +2718,7 @@
           if(!source||$.inArray(kind,['entry','bill'])<0)return;
           $('#stockDocumentDeleteConfirm').data('kind',kind).data('source',source);
           $('#stockDocumentDeleteError').addClass('d-none').text('');
-          $('#stockDocumentDeleteModal').modal('show');
+          stockDocModal('#stockDocumentDeleteModal','show');
       });
       $('#stockDocumentDeleteConfirm').on('click',function(){
           var $button=$(this),kind=$button.data('kind'),source=Number($button.data('source'));
