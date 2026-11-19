@@ -603,6 +603,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
     Route::controller(App\Http\Controllers\JournalVoucherController::class)->group(function () {
 
         Route::get('sales-voucher', 'salesIndex')->name('sales.voucher.index');
+        Route::get('sales-voucher/create', 'create')->name('sales.voucher.create');
+        Route::post('sales-voucher/create', 'store')->name('sales.voucher.store');
         Route::get('journal-voucher', 'index')->name('journal.voucher.index');
         Route::get('journal-voucher/create', 'create')->name('journal.voucher.create');
         Route::post('journal-voucher/create', 'store')->name('journal.voucher.store');
