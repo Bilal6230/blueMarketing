@@ -85,7 +85,11 @@ class LabourController extends Controller
         $x['title'] = 'Labour History';
         $x['labour'] = $labour = Labour::where('project_id', $selectedProjectId)->with([
             'attendances' => fn($q) => $q->where('status', 'present')->orderBy('date'),
-            'labourLedgers'
+            'labourLedgers' => fn($q) => $q
+                ->when(Schema::hasColumn('labour_ledgers','is_active'),
+                    fn($query)=>$query->where('is_active',1))
+                ->when(Schema::hasColumn('labour_ledgers','deleted_at'),
+                    fn($query)=>$query->whereNull('deleted_at'))
         ])->findOrFail($id);
 
         $labourAttendances = $labour->attendances;
@@ -110,6 +114,65 @@ class LabourController extends Controller
     private const LABOUR_Head_Acount_ID = 372;
     private const LABOUR_Sub_Acount_ID = 301;
     private const LedgerType = 'CP';
+
+    private function authorizePaymentChange(string $action): void
+    {
+        $user=auth()->user();
+        abort_unless((int)getSelectedTown()>0
+            &&$user &&($user->hasRole('superadmin')
+                ||$user->hasRole('super-admin')||$user->can('direct-update')
+                ||$user->can('finance cp '.$action)),403);
+    }
+
+    public function paymentDetails(int $source)
+    {
+        $this->authorizePaymentChange('edit');
+        try {
+            $data=app(\App\Services\Finance\LabourPaymentEditor::class)
+                ->details((int)getSelectedTown(),$source);
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success','data'=>$data]);
+    }
+
+    public function updatePayment(Request $request,int $source)
+    {
+        $this->authorizePaymentChange('edit');
+        $data=$request->validate([
+            'date'=>['required','date_format:Y-m-d'],
+            'reference'=>['required','string','max:200'],
+            'description'=>['nullable','string','max:2000'],
+            'members'=>['required','array','min:1','max:100'],
+            'members.*.detail_id'=>['nullable','integer','distinct','min:1'],
+            'members.*.labour_id'=>['required','integer','min:1','distinct'],
+            'members.*.amount'=>['required','regex:/^(0|[1-9][0-9]{0,11})(?:\\.[0-9]{1,2})?$/D'],
+        ]);
+        try {
+            app(\App\Services\Finance\LabourPaymentEditor::class)->update(
+                (int)getSelectedTown(),$source,$data['date'],$data['reference'],
+                $data['description']??'',$data['members']);
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success',
+            'message'=>'Labour CP corrected; original voucher and member relationships retained.',
+            'source_id'=>$source]);
+    }
+
+    public function deletePayment(int $source)
+    {
+        $this->authorizePaymentChange('delete');
+        try {
+            app(\App\Services\Finance\LabourPaymentEditor::class)->delete(
+                (int)getSelectedTown(),$source);
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success',
+            'message'=>'Labour payment removed from active ledger. Historical members retained.',
+            'source_id'=>$source]);
+    }
 
     public function labourPayment(Request $request)
     {
