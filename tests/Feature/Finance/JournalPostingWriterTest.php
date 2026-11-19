@@ -770,6 +770,16 @@ class JournalPostingWriterTest extends TestCase
             ->where('posting_batch_id',$batch)->sum('credit'));
         self::assertSame(250.0,(float)DB::table('finance_posting_lines')
             ->where('posting_batch_id',$batch)->sum('debit'));
+        $changed=$data;
+        $changed['description']='Tampered request replay';
+        try{
+            $workflow->createAndPost(1,$key,$changed,null,'SV');
+            self::fail('An idempotency key cannot silently change the stored SV.');
+        }catch(\DomainException $e){
+            self::assertStringContainsString('REQUEST_CONFLICT',$e->getMessage());
+        }
+        self::assertSame(1,DB::table('finance_posting_batches')->count());
+        self::assertSame(1,DB::table('journal_vouchers')->where('type','SV')->count());
     }
 
     public function test_jv_writer_refuses_sales_document_without_explicit_sv_series(): void
