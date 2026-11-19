@@ -37,4 +37,29 @@ final class DailyVoucherDirectoryPostingLifecycleContractTest extends TestCase
             $typedStart-strpos($source,"finance_bank_transfer_sources as source"));
         self::assertStringContainsString("where('filtered_line.is_active',1)",$transfers);
     }
+    public function test_cash_receipt_active_account_filters_never_match_retired_ledger_legs(): void
+    {
+        $source=file_get_contents(dirname(__DIR__,3).
+            '/app/Http/Controllers/Finance/DailyVoucherDirectoryController.php');
+        self::assertIsString($source);
+        $cash=substr($source,strpos($source,"if (Schema::hasTable('customer_ledger'))"),
+            strpos($source,'// Unlinked legacy ledger vouchers'));
+        self::assertStringContainsString("whereColumn('linked.is_active','source.is_active')",$cash);
+        self::assertStringContainsString("fn(\$q)=>\$q->where('linked.is_active',1)",$cash);
+        self::assertStringContainsString("where('linked.customer_ledger_id', \$source->id)",$cash);
+        self::assertStringContainsString("where('a.project_id', \$projectId)",$cash);
+    }
+
+    public function test_deleted_bank_sources_are_absent_from_unified_register(): void
+    {
+        $source=file_get_contents(dirname(__DIR__,3).
+            '/app/Http/Controllers/Finance/DailyVoucherDirectoryController.php');
+        self::assertIsString($source);
+        $bank=substr($source,strpos($source,"if (Schema::hasTable('finance_bank_transfer_sources')"),
+            strpos($source,"['table' => 'finance_plot_receipts'"));
+        self::assertStringContainsString("where('source.is_active',1)",$bank);
+        self::assertStringContainsString("whereNull('source.deleted_at')",$bank);
+        self::assertStringContainsString("where('filtered_line.is_active',1)",$bank);
+    }
+
 }
