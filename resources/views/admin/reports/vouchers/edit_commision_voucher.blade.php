@@ -184,7 +184,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         </form>
                         @if(\App\Services\Finance\FinanceWorkflowAccess::enabled() && $voucher->status === 'draft')
                             @can('can approve')
-                                <form action="{{ route('commision.voucher.approve', request()->boolean('embed') ? ['id'=>$voucher->id,'embed'=>1] : ['id'=>$voucher->id]) }}" method="POST" class="text-center mt-3">
+                                <form id="commissionApproveForm" action="{{ route('commision.voucher.approve', request()->boolean('embed') ? ['id'=>$voucher->id,'embed'=>1] : ['id'=>$voucher->id]) }}" method="POST" class="text-center mt-3">
                                     @csrf
                                     <input type="hidden" name="request_key" value="{{ old('request_key', (string) \Illuminate\Support\Str::uuid()) }}">
                                     <button type="submit" class="btn btn-success">Approve saved voucher and post</button>
@@ -379,6 +379,54 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                 });
             });
 
+            // Approval has the same JSON/feedback contract as Edit. Never
+            // navigate an iframe to a Laravel 409 debug exception page.
+            var cvApprovalBusy=false;
+            $('#commissionApproveForm').on('submit.fvcCommissionApprove',function(event){
+                event.preventDefault();
+                if(cvApprovalBusy)return;
+                var $form=$(this),$button=$form.find('button[type=submit]'),
+                    $body=$form.closest('.card-body');
+                cvApprovalBusy=true;$button.prop('disabled',true);
+                if(fvcFeedback)fvcFeedback.skeleton($body,true);
+                $.ajax({
+                    url:$form.attr('action'),type:'POST',
+                    data:$form.serialize(),dataType:'json',
+                    headers:{Accept:'application/json'}
+                }).done(function(response){
+                    if(!response||response.status!=='success'){
+                        var error=(response&&response.message)||'Commission approval was not confirmed.';
+                        if(fvcFeedback)fvcFeedback.toast('error',error);
+                        $('#errorModal .modal-body').text(error);
+                        $('#errorModal').modal('show');
+                        return;
+                    }
+                    if(window.parent!==window&&window.parent.jQuery){
+                        var parentJQ=window.parent.jQuery;
+                        parentJQ(window.parent.document).trigger('finance:commission-saved',[response]);
+                        parentJQ(window.parent.document).find('.modal.show').each(function(){
+                            if(parentJQ.fn.modal)parentJQ(this).modal('hide');
+                        });
+                        // Reload the shared register: approved status and
+                        // ledger-linked balances are immediately reflected.
+                        window.parent.location.reload();
+                    }else{
+                        if(fvcFeedback)fvcFeedback.toast('success',response.message);
+                        window.location.assign(response.redirect||@json(route('commision.voucher.index')));
+                    }
+                }).fail(function(xhr){
+                    var message=(xhr.responseJSON&&xhr.responseJSON.message)
+                        ||(fvcFeedback?fvcFeedback.error(xhr,'Commission approval failed.'):
+                            'Commission approval failed. Please check voucher details.');
+                    if(fvcFeedback)fvcFeedback.toast('error',message);
+                    $('#errorModal .modal-body').text(message);
+                    $('#errorModal').modal('show');
+                }).always(function(){
+                    cvApprovalBusy=false;$button.prop('disabled',false);
+                    if(fvcFeedback)fvcFeedback.skeleton($body,false);
+                });
+            });
+
             // Fetch Sub-Accounts dynamically via AJAX when account is selected
             $(document).on('change', '.account-select', function() {
                 const accountID = $(this).val();
@@ -391,7 +439,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                         type: 'POST',
                         dataType: 'json',
                         data: {
-                            projectID: 3, // Replace with the dynamic project ID if applicable
+                            projectID: @json((int) $selectedProjectId),
                             accountID: accountID,
                             action: 'get_child',
                             active_only: true,
