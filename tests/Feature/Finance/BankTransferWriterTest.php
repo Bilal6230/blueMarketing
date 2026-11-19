@@ -150,8 +150,10 @@ class BankTransferWriterTest extends TestCase
         try{
             $editor->update(2,'withdrawal',$id,2,201,'2026-11-06','30.00','Foreign');
             self::fail('Cross-project update must be blocked.');
-        }catch(\Throwable $e){self::assertTrue($e instanceof \DomainException
-            ||$e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException);}
+        }catch(\Throwable $e){
+            self::assertTrue($e instanceof \DomainException
+                ||$e instanceof \Illuminate\Database\RecordNotFoundException);
+        }
         self::assertSame('20.00',number_format((float)DB::table('finance_bank_transfer_sources')
             ->where('posting_batch_id',$id)->value('amount'),2,'.',''));
         (new PostingReversalWriter())->reverse(1,$id,'BANK-TRANSFER-EDIT-REV-0002',
