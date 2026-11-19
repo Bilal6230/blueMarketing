@@ -84,6 +84,7 @@ final class CommissionLedgerSynchronizerTest extends TestCase
         Schema::create('finance_posting_lines',function(Blueprint $t) {
             $t->id();$t->unsignedBigInteger('posting_batch_id');
             $t->unsignedBigInteger('project_head_subhead_id');
+            $t->unsignedBigInteger('legacy_ledger_id')->nullable();
             $t->decimal('debit',16,2);$t->decimal('credit',16,2);
             $t->string('description')->nullable();
             $t->boolean('is_active')->default(1);
