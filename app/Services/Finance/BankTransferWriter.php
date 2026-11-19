@@ -124,7 +124,12 @@ final class BankTransferWriter
                 ->where('request_key', $key)->lockForUpdate()->first();
             if ($existing) {
                 $source = DB::table('finance_bank_transfer_sources')->where('posting_batch_id', $existing->id)->first();
-                if (!$source || !hash_equals((string) $existing->payload_sha256, $hash)
+                if (!$source
+                    || (Schema::hasColumn('finance_bank_transfer_sources','is_active')
+                        && (int)$source->is_active!==1)
+                    || (Schema::hasColumn('finance_bank_transfer_sources','deleted_at')
+                        && $source->deleted_at!==null)
+                    || !hash_equals((string) $existing->payload_sha256, $hash)
                     || $source->transfer_kind !== $kind || (int) $source->bank_account_id !== $bankAccountId
                     || (int) $source->project_id !== $projectId || (int) ($source->linked_customer_ledger_id ?? 0) !== (int) ($chequeSourceId ?? 0)) {
                     throw new \DomainException('V2_BANK_TRANSFER_IDEMPOTENCY_CONFLICT');
