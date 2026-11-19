@@ -75,7 +75,10 @@ class DastiCashController extends Controller
     // Delete record
     public function destroy($id)
     {
-        $record = Dasticash::findOrFail($id);
+        // Destroy must obey the same project isolation as Edit/Update.
+        // A foreign-project ID must never delete another project's cash row.
+        $record = Dasticash::query()->whereKey($id)
+            ->where('project_id', getSelectedTown())->firstOrFail();
         $record->delete();
         return response()->json([
             'status' => 'success',
