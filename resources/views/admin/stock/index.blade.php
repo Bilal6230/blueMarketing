@@ -2557,8 +2557,8 @@
       if($(this).is('#stockNewEntry'))setEntryMode('purchase');
       stockModal($(this).attr('data-stock-modal'),'show');
     });
-    $(document).on('click','.stock-create-modal [data-bs-dismiss="modal"]',function(){
-      if(!window.bootstrap || !window.bootstrap.Modal)stockModal('#'+$(this).closest('.stock-create-modal').attr('id'),'hide');
+    $(document).on('click','.stock-create-modal [data-bs-dismiss="modal"],#editModal [data-bs-dismiss="modal"]',function(){
+      stockModal('#'+$(this).closest('.modal').attr('id'),'hide');
     });
     $(document).on('keydown.stockCreateModal',function(event){
       if(event.key==='Escape' && $('.stock-modal-fallback-backdrop').length){
