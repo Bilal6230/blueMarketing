@@ -1641,6 +1641,7 @@ class VoucherController extends Controller
     public function updateTransferVoucher(Request $request,string $kind,int $postingBatch)
     {
         abort_unless(in_array($kind,['deposit','withdrawal'],true),404);
+        abort_unless(auth()->user()?->can('finance bank-'.$kind.' edit'),403);
         $projectId=(int)getSelectedTown();
         \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
         $data=$request->validate([
@@ -1668,6 +1669,7 @@ class VoucherController extends Controller
     public function deleteTransferVoucher(string $kind,int $postingBatch)
     {
         abort_unless(in_array($kind,['deposit','withdrawal'],true),404);
+        abort_unless(auth()->user()?->can('finance bank-'.$kind.' delete'),403);
         $projectId=(int)getSelectedTown();
         \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
         try {
