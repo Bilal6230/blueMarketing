@@ -197,6 +197,62 @@ final class StockDocumentEditorTest extends TestCase
             ->where('project_id',1)->where('item_id',31)->value('on_hand_qty'));
     }
 
+    public function test_stock_bill_purchase_edit_and_delete_preserve_financial_and_entry_fk(): void
+    {
+        DB::table('stock_bills')->insert([
+            'id'=>12,'project_id'=>1,'party_id'=>3,'entry_id'=>null,
+            'bill_no'=>'B-12','bill_date'=>'2026-11-18',
+            'type'=>'purchase','total_minor'=>4000,
+        ]);
+        DB::table('stock_bill_lines')->insert([
+            'id'=>22,'project_id'=>1,'bill_id'=>12,
+            'item_id'=>31,'qty'=>'4.000','rate_minor'=>1000,
+            'amount_minor'=>4000,
+        ]);
+        DB::table('stock_movements')->insert([
+            'id'=>42,'project_id'=>1,'party_id'=>3,'source_type'=>'bill',
+            'source_id'=>12,'source_line_id'=>22,'item_id'=>31,
+            'qty'=>'4.000','rate_minor'=>1000,'amount_minor'=>4000,
+            'direction'=>'IN','movement_date'=>'2026-11-18','is_active'=>1,
+        ]);
+        DB::table('stock_project_item_balances')->where('project_id',1)
+            ->where('item_id',31)->update(['on_hand_qty'=>'9.000']);
+        DB::table('customer_ledger')->insert([
+            'id'=>52,'project_id'=>1,'transaction_type'=>'JV',
+            'reference'=>'STOCK-BILL:12','date'=>'2026-11-18',
+            'description'=>'Purchased','amount_in'=>'0.00',
+            'amount_out'=>'40.00','is_active'=>1,
+        ]);
+        DB::table('ledgers')->insert([
+            ['id'=>63,'customer_ledger_id'=>52,'project_head_subheads_id'=>101,
+                'type'=>'JV','type_id'=>19,'voucher_number'=>13,
+                'reference'=>'STOCK-BILL:12','date'=>'2026-11-18',
+                'amount_in'=>'40.00','amount_out'=>'0.00',
+                'detail'=>'Purchased','is_active'=>1],
+            ['id'=>64,'customer_ledger_id'=>52,'project_head_subheads_id'=>102,
+                'type'=>'JV','type_id'=>19,'voucher_number'=>13,
+                'reference'=>'STOCK-BILL:12','date'=>'2026-11-18',
+                'amount_in'=>'0.00','amount_out'=>'40.00',
+                'detail'=>'Purchased','is_active'=>1],
+        ]);
+        $editor=new StockDocumentEditor();
+        $editor->update(1,'bill',12,'2026-11-19',[
+            ['detail_id'=>22,'item_id'=>31,'qty'=>'6.000','rate'=>1000],
+        ]);
+        self::assertSame(11.0,(float)DB::table('stock_project_item_balances')
+            ->where('project_id',1)->where('item_id',31)->value('on_hand_qty'));
+        self::assertSame(6000,(int)DB::table('stock_bills')->where('id',12)->value('total_minor'));
+        self::assertSame(60.0,(float)DB::table('customer_ledger')->where('id',52)->value('amount_out'));
+        self::assertSame(60.0,(float)DB::table('ledgers')->where('id',63)->value('amount_in'));
+        $editor->delete(1,'bill',12);
+        self::assertSame(5.0,(float)DB::table('stock_project_item_balances')
+            ->where('project_id',1)->where('item_id',31)->value('on_hand_qty'));
+        self::assertSame(0,(int)DB::table('customer_ledger')->where('id',52)->value('is_active'));
+        self::assertSame(0,DB::table('ledgers')->where('customer_ledger_id',52)->where('is_active',1)->count());
+        self::assertSame(4,DB::table('ledgers')->count());
+        self::assertNotNull(DB::table('stock_bills')->where('id',12)->value('deleted_at'));
+    }
+
     public function test_foreign_project_or_billed_entry_refuses_without_inventory_mutation(): void
     {
         $editor=new StockDocumentEditor();
