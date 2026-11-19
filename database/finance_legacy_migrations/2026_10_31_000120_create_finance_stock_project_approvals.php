@@ -1,6 +1,6 @@
 <?php
 
-use App\Services\Finance\V2IsolatedConnectionGuard;
+use App\Services\Finance\FinanceConnectionGuard;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,16 +14,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         foreach (['projects', 'users', 'stock_entries', 'stock_bills'] as $name) {
             if (!Schema::hasTable($name)) {
-                throw new RuntimeException('V2 stock authorization baseline missing: ' . $name);
+                throw new RuntimeException('Stock authorization baseline missing: ' . $name);
             }
         }
         foreach (['finance_stock_entry_project_approvals',
             'finance_stock_bill_project_approvals'] as $name) {
             if (Schema::hasTable($name)) {
-                throw new RuntimeException('V2 stock approval table already exists: ' . $name);
+                throw new RuntimeException('Stock approval table already exists: ' . $name);
             }
         }
         Schema::create('finance_stock_entry_project_approvals', function (Blueprint $table): void {
@@ -50,7 +50,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        V2IsolatedConnectionGuard::assertAllowed();
+        FinanceConnectionGuard::assertAllowed();
         Schema::dropIfExists('finance_stock_bill_project_approvals');
         Schema::dropIfExists('finance_stock_entry_project_approvals');
     }
