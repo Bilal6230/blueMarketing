@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -25,7 +24,7 @@ final class AuditSchemaCleanupCandidates extends Command
             return self::INVALID;
         }
         $files=[];
-        foreach(['app','routes','resources/views','config'] as $directory){
+        foreach(['app','routes','resources/views','config','database/migrations'] as $directory){
             $path=base_path($directory);
             if(!is_dir($path))continue;
             foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
@@ -44,15 +43,18 @@ final class AuditSchemaCleanupCandidates extends Command
                 $fkCounts[$table]=($fkCounts[$table]??0)+1;
             }
         }
-        $tables=Schema::getTableListing();
-        sort($tables);
+        $tables=DB::table('information_schema.TABLES')
+            ->where('TABLE_SCHEMA',$database)
+            ->where('TABLE_TYPE','BASE TABLE')
+            ->orderBy('TABLE_NAME')
+            ->pluck('TABLE_NAME')->map(fn($name)=>(string)$name)->all();
         $report=[];
         foreach($tables as $table){
             // Show references as a conservative heuristic, not an absolute
             // proof: dynamic names and SQL expressions may be indirect.
             $used=[];
             foreach($files as $path=>$contents){
-                if(str_contains($contents,$table))$used[]=str_replace(base_path().DIRECTORY_SEPARATOR,'',$path);
+                if(preg_match('/(?<![A-Za-z0-9_])'.preg_quote($table,'/').'(?![A-Za-z0-9_])/i',$contents))$used[]=str_replace(base_path().DIRECTORY_SEPARATOR,'',$path);
             }
             // This check is efficient even for huge historical tables.
             $hasRows=DB::table($table)->limit(1)->exists();
