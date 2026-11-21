@@ -1243,12 +1243,34 @@ class VoucherController extends Controller
             ->orderByDesc('receipt.receipt_date')->orderByDesc('receipt.id')
             ->limit(250)->get(['receipt.id', 'receipt.receipt_number', 'receipt.receipt_date', 'receipt.amount', 'receipt.narration',
                 'customer.first_name', 'customer.last_name', 'customer.business', 'void_batch.id as reversal_batch_id']);
-        return response()->json(['data' => $rows->map(fn ($row) => [
+        $active=$rows->map(fn ($row) => [
             'id' => (int) $row->id, 'number' => (string) $row->receipt_number, 'date' => substr((string) $row->receipt_date, 0, 10),
             'customer' => trim((string) $row->first_name.' '.(string) $row->last_name) ?: (string) ($row->business ?? 'Customer'),
             'amount' => (string) $row->amount, 'narration' => (string) $row->narration,
             'reversed' => $row->reversal_batch_id !== null,
-        ])]);
+        ]);
+        $pending=collect();
+        if(Schema::hasTable('finance_plot_approval_drafts')){
+            $pending=DB::table('finance_plot_approval_drafts')
+                ->where('project_id',$projectId)->where('voucher_type','PPR')
+                ->whereIn('status',['pending','rejected'])->orderByDesc('id')->get()
+                ->map(function($draft)use($projectId){
+                    $payload=json_decode((string)$draft->payload_json,true)?:[];
+                    $customer=DB::table('leads')->where('id',(int)($payload['customer_id']??0))
+                        ->where('project_id',$projectId)->first(['first_name','last_name','business']);
+                    return ['id'=>null,'approval_draft_id'=>(int)$draft->id,
+                        'number'=>(string)$draft->source_number,
+                        'date'=>(string)$draft->effective_date,
+                        'customer'=>trim(($customer->first_name??'').' '.($customer->last_name??''))
+                            ?:($customer->business??'Customer'),
+                        'amount'=>(string)($payload['amount']??'0'),
+                        'narration'=>(string)($payload['narration']??''),
+                        'approval_status'=>(string)$draft->status,'reversed'=>false];
+                });
+        }
+        return response()->json(['data'=>$active->concat($pending)
+            ->sortByDesc(fn($row)=>($row['date']??'').'|'.($row['number']??''))
+            ->values()]);
     }
 
     /**
@@ -1547,13 +1569,40 @@ class VoucherController extends Controller
             ->when(Schema::hasColumn('finance_plot_purchases','deleted_at'), fn ($query) => $query->whereNull('purchase.deleted_at'))
             ->orderByDesc('purchase.purchase_date')->orderByDesc('purchase.id')->limit(250)
             ->get(['purchase.id', 'purchase.purchase_number', 'purchase.purchase_date', 'purchase.amount', 'purchase.narration', 'sub.name as seller', 'void_batch.id as reversal_batch_id']);
-        return response()->json(['data' => $rows->map(fn ($row) => [
+        $active=$rows->map(fn ($row) => [
             'id' => (int) $row->id, 'number' => (string) $row->purchase_number, 'date' => substr((string) $row->purchase_date, 0, 10),
             'seller' => (string) ($row->seller ?? 'Seller account'), 'amount' => (string) $row->amount, 'narration' => (string) $row->narration,
             'items' => (int) DB::table('finance_plot_purchase_items')->where('purchase_id', $row->id)
                 ->when(Schema::hasColumn('finance_plot_purchase_items','is_active'),fn($q)=>$q->where('is_active',1))->count(),
             'reversed' => $row->reversal_batch_id !== null,
-        ])]);
+        ]);
+        $pending=collect();
+        if(Schema::hasTable('finance_plot_approval_drafts')){
+            $pending=DB::table('finance_plot_approval_drafts')
+                ->where('project_id',$projectId)->where('voucher_type','PP')
+                ->whereIn('status',['pending','rejected'])->orderByDesc('id')->get()
+                ->map(function($draft)use($projectId){
+                    $payload=json_decode((string)$draft->payload_json,true)?:[];
+                    $seller=DB::table('project_head_subheads as account')
+                        ->leftJoin('subhead_accountings as sub','sub.id','=','account.subhead_accounting_id')
+                        ->where('account.project_id',$projectId)
+                        ->where('account.id',(int)($payload['seller_account_id']??0))
+                        ->value('sub.name');
+                    $amount=0;
+                    foreach($payload['items']??[] as $item){
+                        $amount+=round((float)($item['area']??0)*(float)($item['unit_rate']??0),2);
+                    }
+                    return ['id'=>null,'approval_draft_id'=>(int)$draft->id,
+                        'number'=>(string)$draft->source_number,'date'=>(string)$draft->effective_date,
+                        'seller'=>(string)($seller??'Seller account'),
+                        'narration'=>(string)($payload['narration']??''),
+                        'amount'=>(string)$amount,'items'=>count($payload['items']??[]),
+                        'approval_status'=>(string)$draft->status,'reversed'=>false];
+                });
+        }
+        return response()->json(['data'=>$active->concat($pending)
+            ->sortByDesc(fn($row)=>($row['date']??'').'|'.($row['number']??''))
+            ->values()]);
     }
 
     public function plotPurchaseDetails(int $purchaseId)
