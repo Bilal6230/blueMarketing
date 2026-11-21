@@ -263,10 +263,11 @@ class CommissionVoucherController extends Controller
         \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
         // A voucher submitted to centralized approval must never be posted
         // through the independent legacy Approve button.
-        $centralApproval=DB::table('daily_voucher_approvals')
+        $centralApproval=\Illuminate\Support\Facades\Schema::hasTable('daily_voucher_approvals')
+            ? DB::table('daily_voucher_approvals')
             ->where('project_id',$projectId)->where('voucher_type','CV')
             ->where('source_table','commision_vouchers')
-            ->where('source_id',(int)$id)->first();
+            ->where('source_id',(int)$id)->first() : null;
         if($centralApproval){
             $message='This Commission Voucher belongs to the centralized approval queue.';
             if($request->expectsJson()||$request->ajax())
