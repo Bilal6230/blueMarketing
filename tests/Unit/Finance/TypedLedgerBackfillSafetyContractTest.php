@@ -46,7 +46,7 @@ final class TypedLedgerBackfillSafetyContractTest extends TestCase
         self::assertStringContainsString('lockForUpdate()',$src);
         self::assertStringContainsString('DB::transaction(',$src);
         self::assertStringContainsString('if(!$apply)return $summary;',$src);
-        self::assertStringContainsString("if($line->legacy_ledger_id!==null)continue;",$src);
+        self::assertStringContainsString('if($line->legacy_ledger_id!==null)continue;',$src);
     }
 
     public function test_cli_requires_specific_database_project_and_explicit_apply(): void
