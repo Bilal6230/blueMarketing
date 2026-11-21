@@ -88,7 +88,15 @@ class CommissionVoucherController extends Controller
                     ->where('source_kind', 'commission_voucher')->whereIn('source_id', $vouchers->pluck('id'))
                     ->pluck('display_number', 'source_id')
                 : collect();
-            $data = $vouchers->map(function ($voucher) use ($displayNumbers) {
+            $approvalStatuses=\Illuminate\Support\Facades\Schema::hasTable('daily_voucher_approvals')
+                ?DB::table('daily_voucher_approvals')->where('project_id',(int)$selectedProjectId)
+                    ->where('voucher_type','CV')->where('source_table','commision_vouchers')
+                    ->whereIn('source_id',$vouchers->pluck('id'))
+                    ->pluck('status','source_id')
+                :collect();
+            $data = $vouchers->map(function ($voucher) use ($displayNumbers,$approvalStatuses) {
+                $centralStatus=$approvalStatuses[$voucher->id]??null;
+                $approvalPending=$centralStatus==='pending';
                 return [
                     'id' => $voucher->id,
                     'voucher_number' => $displayNumbers[$voucher->id]
@@ -97,7 +105,11 @@ class CommissionVoucherController extends Controller
                     'date' => $voucher->date,
                     'description' => $voucher->description,
                     'total_debit' => $voucher->total_debit,
-                    'actions' => view('admin.reports.vouchers.actions', compact('voucher'))->render(),
+                    'approval_status'=>$centralStatus
+                        ? ucfirst((string)$centralStatus)
+                        : ($voucher->status==='approved'?'Posted':'Draft'),
+                    'actions' => view('admin.reports.vouchers.actions',
+                        compact('voucher','approvalPending'))->render(),
                 ];
             });
             return response()->json([
