@@ -142,7 +142,7 @@ final class BankTransferWriter
             // per-series number was NULL. Reserve those visible identities.
             $legacyMax = (int) DB::table('finance_posting_batches')
                 ->where('project_id',$projectId)->where('voucher_series',$series)
-                ->selectRaw('MAX(COALESCE(voucher_number,id)) AS maximum')->value('maximum');
+                ->selectRaw('MAX(COALESCE(voucher_number,id)) AS maximum')->first()?->maximum;
             $approvedDraft=null;
             if($approvedDraftId!==null){
                 $approvedDraft=DB::table('finance_bank_transfer_approval_drafts')
