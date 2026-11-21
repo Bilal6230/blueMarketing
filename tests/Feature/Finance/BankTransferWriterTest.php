@@ -103,7 +103,7 @@ class BankTransferWriterTest extends TestCase
         $bankDocuments = array_values(array_filter($register, fn ($document) => $document['source_kind'] === 'bank_transfer'));
         $this->assertCount(2, $bankDocuments);
         $this->assertContains('BD-1', array_column($bankDocuments, 'source_reference'));
-        $this->assertContains('BW-2', array_column($bankDocuments, 'source_reference'));
+        $this->assertContains('BW-1', array_column($bankDocuments, 'source_reference'));
         $ledgerRows = (new \App\Services\Finance\OriginalLedgerReport())->rows(1, null, null);
         $this->assertSame(5, count($ledgerRows));
         $this->assertContains('bank_transfer', array_column($ledgerRows, 'source_kind'));
