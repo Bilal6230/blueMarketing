@@ -58,6 +58,24 @@ final class UnifiedLedgerWritePathsContractTest extends TestCase
         self::assertStringContainsString('ledger_source_attributions',$source);
     }
 
+    public function test_historical_ppr_matches_existing_ledger_instead_of_double_posting(): void
+    {
+        $src=$this->source('app/Services/Finance/TypedLedgerBackfill.php');
+        self::assertStringContainsString('LEDGER_BACKFILL_AMBIGUOUS_LEGACY_SOURCE',$src);
+        self::assertStringContainsString('$recovered[(int)$line->id]',$src);
+        self::assertStringContainsString('LEDGER_BACKFILL_ATTRIBUTION_CONFLICT',$src);
+        self::assertStringContainsString('LEDGER_BACKFILL_POSSIBLE_DUPLICATE_SOURCE',$src);
+    }
+
+    public function test_edited_commission_details_do_not_override_balanced_immutable_posting(): void
+    {
+        $src=$this->source('app/Services/Finance/VoucherDetailLedgerLinker.php');
+        self::assertStringContainsString('DETAIL_LEDGER_ACTIVE_POSTING_UNBALANCED',$src);
+        self::assertStringContainsString('(!$cv &&',$src);
+        self::assertStringContainsString('voucher_detail_id',$src);
+        self::assertStringContainsString('ledger_source_attributions',$src);
+    }
+
     public function test_project_scoped_test_db_backfill_has_no_new_database_tables(): void
     {
         $cmd=$this->source('app/Console/Commands/UnifyTestingLedgers.php');
