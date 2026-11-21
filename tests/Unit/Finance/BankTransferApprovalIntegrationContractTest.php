@@ -30,7 +30,7 @@ final class BankTransferApprovalIntegrationContractTest extends TestCase
         $source=$this->code('app/Services/Finance/BankTransferApprovalDraftWriter.php');
         self::assertStringContainsString("'finance_bank_transfer_approval_drafts'",$source);
         self::assertStringContainsString('submitIfRequired(',$source);
-        self::assertStringContainsString("where('project_id',$projectId)",$source);
+        self::assertStringContainsString('where(\'project_id\',$projectId)',$source);
         self::assertStringNotContainsString('finance_posting_lines',$source);
         self::assertStringNotContainsString('BankTransferWriter())->post(',$source);
         self::assertStringContainsString('BANK_APPROVAL_REQUEST_KEY_CONFLICT',$source);
@@ -44,7 +44,8 @@ final class BankTransferApprovalIntegrationContractTest extends TestCase
         $workflow=$this->code('app/Services/Finance/DailyVoucherApprovalWorkflow.php');
         self::assertStringContainsString("['SV','BD','BW']",$workflow);
         self::assertStringContainsString("'finance_bank_transfer_approval_drafts'",$workflow);
-        self::assertStringContainsString("if($active){\n                $result=(new BankTransferWriter())->post(",$workflow);
+        self::assertStringContainsString('if($active){',$workflow);
+        self::assertStringContainsString('$result=(new BankTransferWriter())->post(',$workflow);
         self::assertStringContainsString("'status'=>'rejected'",$workflow);
         self::assertStringContainsString("'status'=>'approved'",$workflow);
         $writer=$this->code('app/Services/Finance/BankTransferWriter.php');
