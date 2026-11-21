@@ -151,13 +151,14 @@ final class DailyVoucherDirectoryController extends Controller
             if (!empty($filters['to'])) $query->whereDate('source.date', '<=', $filters['to']);
             if (!empty($filters['type'])) {
                 $methodSeries = [
-                    'CR' => ['CR', [1, 2, 3]], 'CP' => ['CP', 1], 'DR' => ['CP', [1, 2, 3]],
-                    'CCR' => ['CCR', 1], 'CDR' => ['CDR', 1],
-                    'BOR' => ['CR', [2, 3]], 'BOP' => ['CP', [2, 3]],
+                    'CR' => [['CR'], [1, 2, 3]],
+                    'CP' => [['CP','DR'], 1], 'DR' => [['DR','CP'], [1, 2, 3]],
+                    'CCR' => [['CCR','CR'], 1], 'CDR' => [['CDR','CP'], 1],
+                    'BOR' => [['BOR','CR'], [2, 3]], 'BOP' => [['BOP','CP'], [2, 3]],
                 ];
                 if (isset($methodSeries[$filters['type']])) {
-                    [$sourceType, $paymentType] = $methodSeries[$filters['type']];
-                    $query->where('source.transaction_type', $sourceType);
+                    [$sourceTypes, $paymentType] = $methodSeries[$filters['type']];
+                    $query->whereIn('source.transaction_type', $sourceTypes);
                     if (in_array($filters['type'], ['CCR','CDR'], true)) {
                         $query->where('source.payment_type',1);
                     } elseif (in_array($filters['type'], ['CR', 'CP', 'DR'], true)) {
