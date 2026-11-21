@@ -184,6 +184,12 @@ final class CommissionPostingWriter
                     'commision_voucher_detail_id' => $row['detail_id'],
                 ]);
             }
+            if (Schema::hasTable('ledger_source_attributions')
+                && Schema::hasTable('ledgers')) {
+                app(VoucherDetailLedgerLinker::class)->sync($projectId,(int)$batch);
+            } elseif(!app()->environment('testing')){
+                throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
+            }
             return (int) $batch;
         }, 3);
     }
