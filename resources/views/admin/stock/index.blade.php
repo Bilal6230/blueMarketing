@@ -2740,7 +2740,8 @@
       if(window.bootstrap && window.bootstrap.Modal){
         try{
           var klass=window.bootstrap.Modal;
-          var instance=$.isFunction(klass.getOrCreateInstance)?klass.getOrCreateInstance($modal[0]):new klass($modal[0]);
+          var existing=$.isFunction(klass.getInstance)?klass.getInstance($modal[0]):null;
+          var instance=existing||($.isFunction(klass.getOrCreateInstance)?klass.getOrCreateInstance($modal[0]):new klass($modal[0]));
           if(action==='hide')instance.hide();else instance.show();
           return;
         }catch(error){
@@ -2771,6 +2772,27 @@
     });
     // Bootstrap owns dismiss clicks and their animated fade/backdrop lifecycle.
     // Do not attach a second manual hide() listener to X/Cancel buttons.
+    // The ERP shell may stop Bootstrap's delegated data-api dismiss click.
+    // Capture X/Cancel on the actual button and ask the *same* active Bootstrap
+    // instance to hide. No jQuery double-hide and no forced display:none.
+    document.querySelectorAll('.stock-create-modal [data-bs-dismiss="modal"], #editModal [data-bs-dismiss="modal"], #stockDocumentEditModal [data-bs-dismiss="modal"], #stockDocumentDeleteModal [data-bs-dismiss="modal"]').forEach(function(button){
+      if(button.dataset.stockCloseBound==='1')return;
+      button.dataset.stockCloseBound='1';
+      button.addEventListener('click',function(event){
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        const modal=button.closest('.modal');
+        if(!modal)return;
+        stockModal('#'+modal.id,'hide');
+      },true);
+    });
+    // Dynamically rendered Edit form footer needs a delegated fallback.
+    $(document).on('click.stockModalClose','#editForm [data-bs-dismiss="modal"]',function(event){
+      event.preventDefault();event.stopPropagation();
+      stockModal('#editModal','hide');
+    });
+
     $(document).on('keydown.stockCreateModal',function(event){
       if(event.key==='Escape' && $('.stock-modal-fallback-backdrop').length){
         stockModal('#'+$('.stock-create-modal.show').attr('id'),'hide');
