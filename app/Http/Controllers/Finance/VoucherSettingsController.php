@@ -33,7 +33,7 @@ final class VoucherSettingsController extends Controller
         'CV' => ['label'=>'Credit / Commission Voucher', 'supported'=>false],
         'PPR' => ['label'=>'Plot Receive Payment Voucher', 'supported'=>false],
         'PP' => ['label'=>'Plot Purchase Voucher', 'supported'=>false],
-        'SV' => ['label'=>'Plot Sale Voucher', 'supported'=>false],
+        'SV' => ['label'=>'Sales Voucher', 'supported'=>true],
     ];
 
     private function authorizeSettings(): int
