@@ -31,8 +31,8 @@ final class VoucherSettingsController extends Controller
         'BW' => ['label'=>'Bank Withdrawal Voucher', 'supported'=>true],
         'DR' => ['label'=>'Debit Voucher', 'supported'=>true],
         'CV' => ['label'=>'Credit / Commission Voucher', 'supported'=>true],
-        'PPR' => ['label'=>'Plot Receive Payment Voucher', 'supported'=>false],
-        'PP' => ['label'=>'Plot Purchase Voucher', 'supported'=>false],
+        'PPR' => ['label'=>'Plot Receive Payment Voucher', 'supported'=>true],
+        'PP' => ['label'=>'Plot Purchase Voucher', 'supported'=>true],
         'SV' => ['label'=>'Sales Voucher', 'supported'=>true],
     ];
 
