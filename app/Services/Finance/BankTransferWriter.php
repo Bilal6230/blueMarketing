@@ -68,7 +68,7 @@ final class BankTransferWriter
             if ($chequeSourceId !== null) {
                 if ($kind !== 'withdrawal') { throw new \DomainException('V2_BANK_TRANSFER_CHEQUE_WITHDRAWAL_ONLY'); }
                 $cheque = DB::table('customer_ledger')->where('id', $chequeSourceId)
-                    ->where('project_id', $projectId)->where('transaction_type', 'CP')->where('payment_type', 3)
+                    ->where('project_id', $projectId)->whereIn('transaction_type', ['CP','DR','CDR','BOP'])->where('payment_type', 3)
                     ->where('is_active', 1)->where('passing_status', 1)->lockForUpdate()->first();
                 $custody = $cheque ? DB::table('finance_original_customer_requests')->where('project_id', $projectId)
                     ->where('customer_ledger_id', $chequeSourceId)->first() : null;
