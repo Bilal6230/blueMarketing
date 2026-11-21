@@ -143,7 +143,11 @@ final class TypedLedgerBackfill
             if($existing->count()>0 && count($claimedLegacy)!==$existing->count()){
                 throw new \DomainException('LEDGER_BACKFILL_POSSIBLE_DUPLICATE_SOURCE: batch='.
                     $batchId.' source='.$sourceId.' old_rows='.$existing->count().
-                    ' exactly_matched='.count($claimedLegacy));
+                    ' exactly_matched='.count($claimedLegacy).
+                    ' unmatched_old_ledger_ids='.$existing->filter(fn($row)=>!isset($claimedLegacy[(int)$row->id]))
+                        ->pluck('id')->implode(',').
+                    ' unlinked_line_ids='.$lines->filter(fn($row)=>$row->legacy_ledger_id===null)
+                        ->pluck('id')->implode(','));
             }
             $debit=$credit=0;
             foreach($lines as $line){
