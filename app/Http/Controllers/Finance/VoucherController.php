@@ -1935,7 +1935,7 @@ class VoucherController extends Controller
         abort_unless(\Illuminate\Support\Facades\Schema::hasTable('finance_original_customer_requests'), 409,
             'Verified isolated voucher sources are not installed.');
 
-        $types = $direction === 'receipt' ? ['CR', 'PPR', 'ECP'] : ['CP'];
+        $types = $direction === 'receipt' ? ['CR','CCR','BOR','PPR','ECP'] : ['CP','DR','CDR','BOP'];
         abort_unless(\Illuminate\Support\Facades\Schema::hasTable('finance_bank_transfer_sources'), 409,
             'Bank transfer source records are not installed.');
         $sources = DB::table('customer_ledger as source')
@@ -2250,7 +2250,7 @@ class VoucherController extends Controller
             'projectHeadSubhead.project:id,project'
         ])
             ->where('is_active', 1)
-            ->whereIn('type', $paymentType === null ? ['CR', 'PPR'] : ['CR'])
+            ->whereIn('type', $paymentType === null ? ['CR','CCR','BOR','PPR'] : ['CR','CCR','BOR'])
             ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId));
         if ($paymentType !== null) {
             $q->whereHas('customerLedger', fn ($source) => $source->where('payment_type', $paymentType));
