@@ -13,7 +13,7 @@ final class DailyVoucherApprovalWorkflow
     {
         // Explicit local standard ERP testing uses the original direct-posting
         // workflow. Do not require a separately configured pilot approver.
-        if (!in_array($type,['SV','BD','BW','DR','CV'],true) && FinanceWorkflowAccess::normalErpMode()) return null;
+        if (!in_array($type,['SV','BD','BW','DR','CV','PPR','PP'],true) && FinanceWorkflowAccess::normalErpMode()) return null;
         if (!Schema::hasTable('daily_voucher_approval_policies')) return null;
         return DailyVoucherApprovalPolicy::query()->where('project_id', $projectId)
             ->where('voucher_type', $type)->where('approval_required', true)->first();
@@ -21,7 +21,7 @@ final class DailyVoucherApprovalWorkflow
 
     public function submitIfRequired(int $projectId, string $type, string $sourceTable, int $sourceId, int $userId): bool
     {
-        if (!in_array($type,['SV','BD','BW','DR','CV'],true) && FinanceWorkflowAccess::normalErpMode()) return false;
+        if (!in_array($type,['SV','BD','BW','DR','CV','PPR','PP'],true) && FinanceWorkflowAccess::normalErpMode()) return false;
         if (!Schema::hasTable('daily_voucher_approval_policies')) {
             return false;
         }
@@ -353,6 +353,19 @@ final class DailyVoucherApprovalWorkflow
                 ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')
                     ->select('id')->where('project_id', $approval->project_id))
                 ->update(['is_active' => $active ? 1 : 0]);
+            return;
+        }
+
+        if($approval->source_table==='finance_plot_approval_drafts'
+            && in_array((string)$approval->voucher_type,['PPR','PP'],true)){
+            $writer=app(PlotVoucherApprovalDraftWriter::class);
+            if($active){
+                $writer->finalizeApproved((int)$approval->project_id,
+                    (int)$approval->source_id,(string)$approval->voucher_type,$actorId);
+            }else{
+                $writer->reject((int)$approval->project_id,
+                    (int)$approval->source_id,(string)$approval->voucher_type);
+            }
             return;
         }
 
