@@ -122,6 +122,11 @@ final class DailyVoucherApprovalController extends Controller
             : ($decision === 'approve'
                 ? 'Voucher approved and existing guarded posting activated.'
                 : 'Voucher rejected; posting remains inactive.');
+        if($approval->voucher_type==='SV'&&!$sameSourceRequest){
+            $message=$decision==='approve'
+                ? 'Sales voucher approved; the balanced SV posting is now recorded.'
+                : 'Sales voucher rejected; no financial posting was created.';
+        }
         $actualStatus=$approval->fresh()?->status;
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => $message,
