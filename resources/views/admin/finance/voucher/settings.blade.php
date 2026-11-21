@@ -24,7 +24,7 @@
    <a class="btn btn-outline-success btn-sm" href="{{ route('finance.daily-vouchers.approvals.index') }}">Approval Dashboard</a>
   </div>
   <div class="alert alert-info small">
-   Approval policy applies to <strong>new vouchers only</strong>. CR, CP, CCR, CDR, BOR, BOP and JV use the guarded approval engine. Approvers must have the <code>voucher approver</code> permission through their role or direct assignment. Super Admin has universal decision authority.
+   Approval policy applies to <strong>new vouchers only</strong>. CR, CP, CCR, CDR, BOR, BOP, JV and SV use the guarded approval engine. Approvers must have the <code>voucher approver</code> permission through their role or direct assignment. Super Admin has universal decision authority.
    BOR and BOP have <strong>independent</strong> switches and do not inherit CR/CP approval settings. With approval OFF, new bank vouchers post directly; with approval ON, they remain inactive until approved. Existing Posted vouchers are unchanged. Other voucher types stay locked pending integration.
   </div>
   <div class="row">
