@@ -66,6 +66,7 @@ final class UnifiedLedgerWritePathsContractTest extends TestCase
         self::assertStringContainsString('LEDGER_BACKFILL_ATTRIBUTION_CONFLICT',$src);
         self::assertStringContainsString('LEDGER_BACKFILL_POSSIBLE_DUPLICATE_SOURCE',$src);
         self::assertStringContainsString('unmatched_old_ledger_ids=',$src);
+        self::assertStringContainsString("->when(\$series==='PR',fn(\$q)=>\$q->whereNull('l.customer_ledger_id'))",$src);
         self::assertStringContainsString('unlinked_line_ids=',$src);
     }
 
