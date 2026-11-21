@@ -245,18 +245,21 @@
     .stock-module-wrapper .pv-view .blue-actions-cell {
       width:76px!important;min-width:76px!important;max-width:76px!important;text-align:center!important;white-space:nowrap;
     }
-    /* Voucher-consistent AJAX table skeleton within the scrolling card. */
-    .stock-module-wrapper .pv-scroll,.stock-module-wrapper .stock-import-history .table-responsive{position:relative}
-    .stock-skeleton-overlay{position:absolute;inset:0;z-index:7;background:rgba(255,255,255,.95);
-      display:flex;flex-direction:column;gap:12px;padding:12px;pointer-events:none;overflow:hidden}
-    .stock-skeleton-row{display:flex;gap:12px;width:100%;height:28px;flex:0 0 auto}
-    .stock-skeleton-bar{height:100%;border-radius:6px;flex:1;min-width:0;
-      background:linear-gradient(100deg,#e9eef6 15%,#f6f9ff 40%,#e9eef6 70%);
-      background-size:220% 100%;animation:stock-skeleton-shimmer 1.25s linear infinite}
-    .stock-skeleton-row .stock-skeleton-bar:first-child{flex:.38}
-    .stock-skeleton-row .stock-skeleton-bar:last-child{flex:.55}
-    @keyframes stock-skeleton-shimmer{from{background-position:220% 0}to{background-position:-220% 0}}
-    @media(prefers-reduced-motion:reduce){.stock-skeleton-bar{animation:none}}
+    /* The same shared column-aligned table skeleton as CR/DR; thead never disappears. */
+    .stock-module-wrapper .pv-view table.table tbody tr.bm-skeleton-row td,
+    .stock-module-wrapper .stock-items-side-by-side table.table tbody tr.bm-skeleton-row td{
+      height:40px!important;padding:9px 8px!important;vertical-align:middle!important;
+      background:#fff!important;box-shadow:none!important;
+    }
+    .stock-module-wrapper .pv-view table.table tbody tr.bm-skeleton-row:nth-child(even) td,
+    .stock-module-wrapper .stock-items-side-by-side table.table tbody tr.bm-skeleton-row:nth-child(even) td{
+      background:#f8fbff!important;
+    }
+    .stock-module-wrapper .pv-view .bm-skeleton-row .bm-skeleton-bar,
+    .stock-module-wrapper .stock-items-side-by-side .bm-skeleton-row .bm-skeleton-bar{
+      height:11px;border-radius:5px;
+      background-image:linear-gradient(90deg,#dfeaf9 22%,#f2f7fd 42%,#dfeaf9 67%);
+    }
 
     /* App shell (labour module-ish) */
     .pv-shell {
@@ -2101,29 +2104,48 @@
       billNoChip.textContent = billNo.value || "Bill no… auto";
     }
 
-    // A skeleton belongs to the specific table scroll viewport, never to the page.
-    // Request counters prevent concurrent filter refreshes from hiding it prematurely.
+    // Stock uses the canonical CR/DR skeleton, rendered as real <tr>/<td> rows.
+    // Headings remain visible and column alignment matches actual records.
     const stockSkeletonCounts={};
     const stockSkeletonHosts={entry:'#entryTbody',bill:'#billTbody',stock:'#stockTbody',
       item:'#itemTbody',party:'#partyTbody',history:'#itemImportHistoryBody'};
-    function stockSkeletonStart(kind){
-      const $body=$(stockSkeletonHosts[kind]),$viewport=$body.closest('.table-responsive');
-      if(!$viewport.length)return;
-      stockSkeletonCounts[kind]=(stockSkeletonCounts[kind]||0)+1;
-      if($viewport.children('.stock-skeleton-overlay').length)return;
-      const $overlay=$('<div class="stock-skeleton-overlay" aria-label="Loading records" role="status">');
-      for(let row=0;row<7;row++){
-        const $row=$('<div class="stock-skeleton-row">');
-        for(let column=0;column<5;column++)$row.append('<span class="stock-skeleton-bar"></span>');
-        $overlay.append($row);
+    const stockSkeletonColumns={entry:11,bill:7,stock:4,item:6,party:10,history:5};
+    function stockSkeletonShow(kind){
+      const $body=$(stockSkeletonHosts[kind]);
+      if(!$body.length)return;
+      if($.blueTableSkeleton&&$.isFunction($.blueTableSkeleton.show)){
+        $.blueTableSkeleton.show($body,{
+          rows:10,columns:stockSkeletonColumns[kind],tone:'neutral'
+        });
       }
-      $viewport.append($overlay);
+    }
+    function stockSkeletonStart(kind){
+      stockSkeletonCounts[kind]=(stockSkeletonCounts[kind]||0)+1;
+      if(stockSkeletonCounts[kind]===1)stockSkeletonShow(kind);
     }
     function stockSkeletonEnd(kind){
       stockSkeletonCounts[kind]=Math.max(0,(stockSkeletonCounts[kind]||1)-1);
-      if(stockSkeletonCounts[kind]===0){
-        $(stockSkeletonHosts[kind]).closest('.table-responsive').children('.stock-skeleton-overlay').remove();
+      if(stockSkeletonCounts[kind]!==0)return;
+      const $body=$(stockSkeletonHosts[kind]);
+      if($.blueTableSkeleton&&$.isFunction($.blueTableSkeleton.clear)){
+        $.blueTableSkeleton.clear($body);
       }
+      // Failed requests must never leave skeleton rows on screen.
+      $body.children('tr.bm-skeleton-row').remove();
+    }
+    function stockSkeletonPrime(){
+      // Show at the first paint, even while the metadata request is in flight.
+      $.each(stockSkeletonHosts,function(kind){stockSkeletonShow(kind);});
+    }
+    function stockSkeletonResetAll(){
+      $.each(stockSkeletonHosts,function(kind,selector){
+        stockSkeletonCounts[kind]=0;
+        const $body=$(selector);
+        if($.blueTableSkeleton&&$.isFunction($.blueTableSkeleton.clear)){
+          $.blueTableSkeleton.clear($body);
+        }
+        $body.children('tr.bm-skeleton-row').remove();
+      });
     }
     async function loadEntries() {
       stockSkeletonStart('entry');
@@ -2946,6 +2968,8 @@
         ]);
       } catch (err) {
         handleApiError(err, "Failed to load data.");
+      } finally {
+        stockSkeletonResetAll();
       }
     }
 
@@ -2961,6 +2985,7 @@
       }
       syncStockViewport();
       $(window).on('resize.stockViewport',syncStockViewport);
+      stockSkeletonPrime();
       initUI();
       $(tabBtns).on('click',function(){setView($(this).data('view'));});
     });
