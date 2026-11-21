@@ -285,8 +285,9 @@ $(function () {
             $('<tr>').append($('<td>').attr('colspan',9).addClass('text-center text-muted py-4').text('No matching vouchers')).appendTo($tbody);
         }
         $.each(rows.slice(start,start+length),function(index,r){
+            var isDraft = Number(r.approval_draft_id) > 0;
             var batch = Number(r.posting_batch_id);
-            if (!Number.isSafeInteger(batch) || batch < 1) return;
+            if (!isDraft && (!Number.isSafeInteger(batch) || batch < 1)) return;
             var cashParts = String(r.cash_account || '').split(' / ');
             var head = cashParts.shift() || '';
             var subhead = cashParts.join(' / ');
@@ -298,7 +299,19 @@ $(function () {
             $('<td>').text(subhead).appendTo($tr);
             $('<td>').text(r.narration || '—').appendTo($tr);
             $('<td>').addClass('text-right').text(formatMoney(r.amount)).appendTo($tr);
-            $('<td>').append($('<span class="badge badge-secondary">').text(r.reversed?'Reversed':'Posted')).appendTo($tr);
+            var status = isDraft
+                ? (r.approval_status === 'rejected' ? 'Rejected' : 'Pending')
+                : (r.reversed?'Reversed':'Posted');
+            $('<td>').append($('<span>').addClass('badge '+(isDraft
+                ? (status==='Pending'?'badge-warning':'badge-danger')
+                : 'badge-secondary')).text(status)).appendTo($tr);
+            if(isDraft){
+                $('<td class="blue-actions-cell">').append(
+                    $('<span class="text-muted small">').text(status==='Pending'
+                        ? 'Awaiting approval' : 'Not posted')).appendTo($tr);
+                $tbody.append($tr);
+                return;
+            }
             var $actions=$('<td class="blue-actions-cell">');
             $('<button type="button" class="btn btn-sm btn-outline-secondary bt-view" data-blue-action-type="view">View</button>').attr('data-id',batch).appendTo($actions);
             $('<a class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener" data-blue-action-type="print">Print</a>').attr('href',printUrl(batch)).appendTo($actions);
@@ -342,7 +355,7 @@ $(function () {
         });
     };
     columnFilters=$.blueVoucherColumnFilters.init({
-        initialOptions:{head:[],subhead:[],status:['Posted'],account_relations:[]},
+        initialOptions:{head:[],subhead:[],status:['Posted','Pending','Rejected'],account_relations:[]},
         formSelector:'#btFilterForm',quickSearchSelector:'#btQuickSearch',
         triggerSelector:'#bankTransferApp .dv-excel-trigger',
         tableWrapSelector:'.bt-table-wrap',
