@@ -15,8 +15,42 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
     {
         parent::setUp();
         Schema::dropAllTables();
-        $migration = require database_path('migrations/2026_11_05_000001_create_daily_voucher_approval_workflow_tables.php');
-        $migration->up();
+        // The old combined migration was replaced by the consolidated schema.
+        // These SQLite fixtures match the active approval model's required columns,
+        // without requiring MySQL-only baseline migrations.
+        Schema::create('daily_voucher_approval_policies', function (Blueprint $t): void {
+            $t->id();
+            $t->unsignedBigInteger('project_id');
+            $t->string('voucher_type',12);
+            $t->boolean('approval_required')->default(false);
+            $t->unsignedBigInteger('approver_user_id')->nullable();
+            $t->unsignedBigInteger('updated_by')->nullable();
+            $t->timestamps();
+            $t->unique(['project_id','voucher_type']);
+        });
+        Schema::create('daily_voucher_approvals', function (Blueprint $t): void {
+            $t->id();
+            $t->unsignedBigInteger('project_id');
+            $t->string('voucher_type',12);
+            $t->string('source_table',64);
+            $t->unsignedBigInteger('source_id');
+            $t->string('status',16)->default('pending');
+            $t->unsignedBigInteger('assigned_approver_id');
+            $t->unsignedBigInteger('submitted_by');
+            $t->unsignedBigInteger('decided_by')->nullable();
+            $t->text('rejection_reason')->nullable();
+            $t->timestamp('decided_at')->nullable();
+            $t->timestamps();
+            $t->unique(['source_table','source_id']);
+        });
+        Schema::create('daily_voucher_approval_events', function (Blueprint $t): void {
+            $t->id();
+            $t->unsignedBigInteger('approval_id');
+            $t->string('event',24);
+            $t->unsignedBigInteger('actor_id');
+            $t->text('remarks')->nullable();
+            $t->timestamp('created_at')->useCurrent();
+        });
         // This isolated test wipes all tables. Recreate the minimum authentic
         // user/role schema required by the live VoucherApproverAccess policy;
         // never bypass authorization or modify production approval rules.
