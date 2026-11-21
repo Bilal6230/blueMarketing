@@ -33,6 +33,8 @@ final class RemainingVoucherApprovalIntegrationsContractTest extends TestCase
         self::assertStringContainsString("'DR', 'BOP' => 'CP'",$controller);
         self::assertStringContainsString("in_array(\$displaySeries, ['BOR','BOP','DR'], true)",$controller);
         self::assertStringContainsString('submitIfRequired((int) $selectedProjectId, $approvalPolicyType',$controller);
+        $approval=$this->source('app/Services/Finance/DailyVoucherApprovalWorkflow.php');
+        self::assertStringContainsString('DEBIT_VOUCHER_APPROVAL_SOURCE_MISMATCH',$approval);
     }
 
     public function test_commission_drafts_queue_without_posting_and_manual_approve_cannot_bypass(): void
@@ -48,6 +50,11 @@ final class RemainingVoucherApprovalIntegrationsContractTest extends TestCase
         self::assertStringContainsString("app(CommissionDraftWorkflow::class)->approveAndPost(",$decide);
         $controller=$this->source('app/Http/Controllers/CommissionVoucherController.php');
         self::assertStringContainsString('This Commission Voucher belongs to the centralized approval queue.',$controller);
+        self::assertStringContainsString("'approval_status'=>\$centralStatus",$controller);
+        $actions=$this->source('resources/views/admin/reports/vouchers/actions.blade.php');
+        self::assertStringContainsString('!($approvalPending ?? false)',$actions);
+        $listing=$this->source('resources/views/admin/reports/vouchers/commision_index.blade.php');
+        self::assertStringContainsString("data: 'approval_status'",$listing);
     }
 
     public function test_plot_drafts_are_deferred_with_one_shared_table_and_approval_custody(): void
@@ -67,6 +74,9 @@ final class RemainingVoucherApprovalIntegrationsContractTest extends TestCase
         self::assertStringContainsString('->receive(',$draft);
         self::assertStringContainsString('->purchase(',$draft);
         self::assertStringContainsString("where('status','pending')",$draft);
+        $posted=$this->source('app/Services/Finance/PlotEntryWriter.php');
+        self::assertStringContainsString('assertApprovalReservation(',$posted);
+        self::assertStringContainsString('PLOT_APPROVAL_DRAFT_NUMBER_MISMATCH',$posted);
         $approval=$this->source('app/Services/Finance/DailyVoucherApprovalWorkflow.php');
         self::assertStringContainsString("source_table==='finance_plot_approval_drafts'",$approval);
         self::assertStringContainsString('$writer->finalizeApproved(',$approval);
