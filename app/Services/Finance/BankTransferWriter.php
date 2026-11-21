@@ -27,7 +27,8 @@ final class BankTransferWriter
      * @return array{posting_batch_id:int,replayed:bool}
      */
     public function post(int $projectId, int $bankAccountId, string $kind, string $key, string $date,
-        string $amount, string $narration, array $allocations, ?int $actor = null, ?int $chequeSourceId = null): array
+        string $amount, string $narration, array $allocations, ?int $actor = null, ?int $chequeSourceId = null,
+        ?int $approvedDraftId = null): array
     {
         FinanceConnectionGuard::assertAllowed();
         if (!in_array($kind, ['deposit', 'withdrawal'], true) || $projectId < 1 || $bankAccountId < 1
@@ -54,7 +55,7 @@ final class BankTransferWriter
         if ($opposite !== $total) { throw new \DomainException('V2_BANK_TRANSFER_ALLOCATION_TOTAL_MISMATCH'); }
         $hash = hash('sha256', json_encode([$projectId, $bankAccountId, $kind, $date, $this->money($total), trim($narration), $lines, $chequeSourceId], JSON_THROW_ON_ERROR));
 
-        return DB::transaction(function () use ($projectId, $bankAccountId, $kind, $key, $date, $narration, $lines, $total, $hash, $actor, $chequeSourceId): array {
+        return DB::transaction(function () use ($projectId, $bankAccountId, $kind, $key, $date, $narration, $lines, $total, $hash, $actor, $chequeSourceId, $approvedDraftId): array {
             DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
             $bank = DB::table('project_bank_accounts')->where('id', $bankAccountId)
                 ->where('project_id', $projectId)->where('is_active', 1)->lockForUpdate()->first();
@@ -142,7 +143,31 @@ final class BankTransferWriter
             $legacyMax = (int) DB::table('finance_posting_batches')
                 ->where('project_id',$projectId)->where('voucher_series',$series)
                 ->selectRaw('MAX(COALESCE(voucher_number,id)) AS maximum')->value('maximum');
-            $voucherNumber = (new ProjectVoucherAllocator())->next($projectId,$series,$legacyMax);
+            $approvedDraft=null;
+            if($approvedDraftId!==null){
+                $approvedDraft=DB::table('finance_bank_transfer_approval_drafts')
+                    ->where('id',$approvedDraftId)->where('project_id',$projectId)
+                    ->where('transfer_kind',$kind)->where('status','pending')
+                    ->lockForUpdate()->first();
+                if(!$approvedDraft || $approvedDraft->request_key!==$key
+                    ||(int)$approvedDraft->bank_account_id!==$bankAccountId
+                    ||(string)$approvedDraft->effective_date!==$date
+                    ||(string)$approvedDraft->amount!==$this->money($total)
+                    ||trim((string)$approvedDraft->narration)!==trim($narration)
+                    ||(int)$approvedDraft->cash_account_id!==(int)$lines[0]['account_id']
+                    ||count($lines)!==1
+                    ||(int)($approvedDraft->linked_customer_ledger_id??0)!==(int)($chequeSourceId??0)){
+                    throw new \DomainException('BANK_APPROVAL_DRAFT_PAYLOAD_MISMATCH');
+                }
+                $voucherNumber=(int)$approvedDraft->voucher_number;
+                if($voucherNumber<1 || DB::table('finance_posting_batches')
+                    ->where('project_id',$projectId)->where('voucher_series',$series)
+                    ->where('voucher_number',$voucherNumber)->exists()){
+                    throw new \DomainException('BANK_APPROVAL_DRAFT_NUMBER_ALREADY_USED');
+                }
+            }else{
+                $voucherNumber=(new ProjectVoucherAllocator())->next($projectId,$series,$legacyMax);
+            }
             $batchId = DB::table('finance_posting_batches')->insertGetId([
                 'project_id' => $projectId, 'voucher_series' => $series,
                 'voucher_number' => $voucherNumber, 'request_key' => $key, 'payload_sha256' => $hash,
