@@ -1402,7 +1402,14 @@ class JournalVoucherController extends Controller
                 }
             });
         }
-        return $this->voucherWriteResponse($request, 'Journal voucher corrected successfully; previous posting history was preserved.', route('journal.voucher.edit', ['id' => $id]));
+        $series=DB::table('journal_vouchers')->where('project_id',$projectId)
+            ->where('id',(int)$id)->value('type');
+        return $this->voucherWriteResponse($request,
+            $series==='SV'
+                ? 'Sales Voucher corrected successfully; previous posting history was preserved.'
+                : 'Journal voucher corrected successfully; previous posting history was preserved.',
+            $series==='SV' ? route('sales.voucher.index')
+                : route('journal.voucher.edit', ['id' => $id]));
     }
 
     /**
