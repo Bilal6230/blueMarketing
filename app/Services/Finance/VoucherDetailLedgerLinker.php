@@ -85,7 +85,9 @@ final class VoucherDetailLedgerLinker
                         ->where('project_id',$projectId)
                         ->where('id',$line->project_head_subhead_id)->exists()){
                     throw new \DomainException('DETAIL_LEDGER_AMOUNT_ACCOUNT_MISMATCH: batch='.
-                        $batchId.' line='.$line->id.' detail='.$line->voucher_detail_id);
+                        $batchId.' line='.$line->id.' detail='.$line->voucher_detail_id.
+                        ' active='.($line->is_active??1).' detail_deleted='.($line->detail_deleted_at===null?'no':'yes').
+                        ' posted_account='.$line->project_head_subhead_id.' detail_account='.$line->detail_account);
                 }
                 $ledger=DB::table('ledgers')
                     ->where($detailFk,$line->voucher_detail_id)->lockForUpdate()->first();
