@@ -182,6 +182,7 @@ final class CashPostingWriter
                 if ($expected !== $actual) {
                     throw new \DomainException('V2_CASH_REPLAY_LINES_TAMPERED');
                 }
+                PostedVoucherLedgerGate::assertLinked($projectId, (int) $existing->id);
                 return (int) $existing->id;
             }
 
@@ -217,6 +218,7 @@ final class CashPostingWriter
             } elseif(!app()->environment('testing')){
                 throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
             }
+            PostedVoucherLedgerGate::assertLinked($projectId, (int) $batchId);
             return (int) $batchId;
         }, 3);
     }
