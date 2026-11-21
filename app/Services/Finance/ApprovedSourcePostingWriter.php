@@ -261,6 +261,7 @@ final class ApprovedSourcePostingWriter
                 if ($actual !== $target) {
                     throw new \DomainException('V2_APPROVED_SOURCE_REPLAY_TAMPERED');
                 }
+                PostedVoucherLedgerGate::assertLinked($projectId, (int) $existing->id);
                 return (int) $existing->id;
             }
             $batch = DB::table('finance_posting_batches')->insertGetId([
@@ -291,6 +292,7 @@ final class ApprovedSourcePostingWriter
             } elseif(!app()->environment('testing')){
                 throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
             }
+            PostedVoucherLedgerGate::assertLinked($projectId, (int) $batch);
             return (int) $batch;
         }, 3);
     }
