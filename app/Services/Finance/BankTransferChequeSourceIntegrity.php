@@ -10,7 +10,7 @@ final class BankTransferChequeSourceIntegrity
 {
     public static function assert(object $source, bool $hasLedger, bool $hasAllocation): void
     {
-        if ((string) ($source->transaction_type ?? '') !== 'CP'
+        if (!in_array((string)($source->transaction_type ?? ''), ['CP','DR','CDR','BOP'], true)
             || (int) ($source->payment_type ?? 0) !== 3
             || (int) ($source->is_active ?? 0) !== 1
             || (int) ($source->passing_status ?? -1) !== 1
