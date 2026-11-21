@@ -157,6 +157,7 @@ final class CommissionPostingWriter
                 if ($expected !== []) {
                     throw new \DomainException('V2_CV_REPLAY_TAMPERED');
                 }
+                PostedVoucherLedgerGate::assertLinked($projectId, (int) $existing->id);
                 return (int) $existing->id;
             }
 
@@ -190,6 +191,7 @@ final class CommissionPostingWriter
             } elseif(!app()->environment('testing')){
                 throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
             }
+            PostedVoucherLedgerGate::assertLinked($projectId, (int) $batch);
             return (int) $batch;
         }, 3);
     }
