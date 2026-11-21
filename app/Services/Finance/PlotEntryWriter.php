@@ -202,6 +202,14 @@ final class PlotEntryWriter
             foreach($allocations as $allocation) DB::table('finance_plot_receipt_allocations')->insert($allocation+['receipt_id'=>$source,'created_at'=>now(),'updated_at'=>now()]);
             $batch=$this->post($project,$key,'PR','plot_receipt',$data['date'],$lines,$hash,$actor);
             DB::table('finance_plot_receipt_postings')->insert(['posting_batch_id'=>$batch,'source_id'=>$source,'source_kind'=>'plot_receipt']);
+            // The same posting transaction must persist authentic general ledger
+            // debit/credit lines; existing typed rows remain linked evidence.
+            if (Schema::hasTable('ledger_source_attributions')
+                && Schema::hasTable('ledgers')) {
+                app(TypedLedgerBackfill::class)->inspect($project,(int)$batch,true);
+            } elseif (!app()->environment('testing')) {
+                throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
+            }
             return ['source_id'=>$source,'posting_batch_id'=>$batch,'replayed'=>false];
         },3);
     }
@@ -246,6 +254,14 @@ final class PlotEntryWriter
             }
             $batch=$this->post($project,$key,'PP','plot_purchase',$data['date'],$lines,$hash,$actor);
             DB::table('finance_plot_purchase_postings')->insert(['posting_batch_id'=>$batch,'source_id'=>$source,'source_kind'=>'plot_purchase']);
+            // The same posting transaction must persist authentic general ledger
+            // debit/credit lines; existing typed rows remain linked evidence.
+            if (Schema::hasTable('ledger_source_attributions')
+                && Schema::hasTable('ledgers')) {
+                app(TypedLedgerBackfill::class)->inspect($project,(int)$batch,true);
+            } elseif (!app()->environment('testing')) {
+                throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
+            }
             return ['source_id'=>$source,'posting_batch_id'=>$batch,'replayed'=>false];
         },3);
     }
