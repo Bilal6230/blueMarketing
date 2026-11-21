@@ -282,6 +282,17 @@ final class DailyVoucherApprovalWorkflow
             if (!$source) {
                 throw new \DomainException('DAILY_VOUCHER_SOURCE_NOT_FOUND');
             }
+            if($approval->voucher_type==='DR'){
+                $identity=Schema::hasTable('project_voucher_display_numbers')
+                    ?DB::table('project_voucher_display_numbers')
+                        ->where('project_id',$approval->project_id)
+                        ->where('source_kind','customer_ledger')
+                        ->where('source_id',$source->id)->where('series','DR')
+                        ->exists():false;
+                if(!$identity || $source->transaction_type!=='CP'){
+                    throw new \DomainException('DEBIT_VOUCHER_APPROVAL_SOURCE_MISMATCH');
+                }
+            }
             // BOR/BOP are persisted as CR/CP legacy accounting legs but have
             // distinct, immutable display identities and independent approvals.
             // A bank approval must NEVER activate an unrelated CR/CP source.
