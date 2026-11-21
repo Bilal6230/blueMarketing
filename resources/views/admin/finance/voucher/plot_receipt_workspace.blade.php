@@ -161,7 +161,9 @@
  };
  var getValue=function(row,field){
   var map={date:row.date,number:row.number,customer:row.customer,detail:row.narration,
-   amount:row.amount,status:row.reversed?'Reversed':'Posted'};
+   amount:row.amount,status:row.approval_draft_id
+    ?(row.approval_status==='rejected'?'Rejected':'Pending')
+    :(row.reversed?'Reversed':'Posted')};
   return String(map[field]==null?'':map[field]);
  };
  var selected=function(){
@@ -220,7 +222,15 @@
    $row.append($('<td>').text(start+index+1),$('<td>').text(r.date));
    $row.append($('<td>').append($('<strong>').text(r.number)));
    $row.append($('<td>').text(r.customer),$('<td>').text(r.narration));
-   $row.append($('<td>',{'class':'text-right'}).text(money(r.amount)),$('<td>').text(r.reversed?'Reversed':'Posted'));
+   var status=r.approval_draft_id
+      ?(r.approval_status==='rejected'?'Rejected':'Pending')
+      :(r.reversed?'Reversed':'Posted');
+   $row.append($('<td>',{'class':'text-right'}).text(money(r.amount)),$('<td>').text(status));
+   if(r.approval_draft_id){
+    $row.append($('<td>',{'class':'blue-actions-cell'}).text(status==='Pending'
+      ?'Awaiting approval':'No posting'));
+    $body.append($row);return;
+   }
    var $actions=$('<td>',{'class':'blue-actions-cell'}).append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-detail','data-id':r.id,text:'Details'}));
    @can('finance plot-receipt edit')
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-edit ml-1','data-id':r.id,text:'Edit voucher'}));
