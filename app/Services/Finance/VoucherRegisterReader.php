@@ -96,6 +96,19 @@ final class VoucherRegisterReader
             }
         }
 
+        // Manual BD/BW use a durable project/series voucher number.
+        // Legacy rows without that number retain the original batch-ID label.
+        $bankNumbers = [];
+        foreach ($batches as $batch) {
+            if ($batch['source_kind'] === 'bank_transfer' && !$batch['is_reversal']) {
+                $bankNumbers[] = (int) $batch['posting_batch_id'];
+            }
+        }
+        $bankVoucherNumbers = $bankNumbers
+            ? DB::table('finance_posting_batches')->where('project_id',$projectId)
+                ->whereIn('id',$bankNumbers)->pluck('voucher_number','id')->all()
+            : [];
+
         $results = [];
         foreach ($batches as $batch) {
             if ($batch['debit_cents'] < 1 || $batch['debit_cents'] !== $batch['credit_cents']) {
@@ -109,7 +122,8 @@ final class VoucherRegisterReader
                 $label = $batch['voucher_series'] . '-' . $sourceId;
             }
             if ($kind === 'bank_transfer' && !$batch['is_reversal']) {
-                $label = $batch['voucher_series'] . '-' . $sourceId;
+                $number = $bankVoucherNumbers[(int)$batch['posting_batch_id']] ?? null;
+                $label = $batch['voucher_series'] . '-' . ($number ?: $sourceId);
             }
             $results[] = [
                 'posting_batch_id' => $batch['posting_batch_id'],
