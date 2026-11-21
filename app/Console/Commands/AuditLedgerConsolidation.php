@@ -15,7 +15,8 @@ final class AuditLedgerConsolidation extends Command
     protected $signature = 'finance:audit-ledger-consolidation
         {--database= : Required exact database name, preventing accidental live-target scans}
         {--project= : Optional positive project ID}
-        {--json : Emit machine-readable results}';
+        {--json : Emit machine-readable results}
+        {--strict : Fail when typed posting lines lack ledger links or CP identities are ambiguous}';
 
     protected $description = 'READ ONLY: inventory ledger coverage, typed posting links and CP/DR identities before consolidation';
 
@@ -88,11 +89,6 @@ final class AuditLedgerConsolidation extends Command
 
         // CP may mean DR, CDR or BOP. Never execute an indiscriminate CP->DR UPDATE.
         $hasDisplay=Schema::hasTable('project_voucher_display_numbers');
-        $displayJoin=$hasDisplay
-            ? "LEFT JOIN project_voucher_display_numbers d
-                ON d.project_id=a.project_id
-                AND d.source_kind='customer_ledger' AND d.source_id=c.id"
-            : '';
         $series=$hasDisplay?"COALESCE(d.series,'UNCLASSIFIED_CP')":"'UNCLASSIFIED_CP'";
         $cp=DB::table('ledgers as l')
             ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
@@ -151,6 +147,8 @@ final class AuditLedgerConsolidation extends Command
         }
         // A missing link is an expected consolidation backlog; a corrupt
         // existing FK / foreign-project mapping is a hard safety failure.
-        return $problemRows===0 ? self::SUCCESS : self::FAILURE;
+        return $problemRows===0
+            && (!$this->option('strict') || ($missingMappings===0 && $ambiguousCp===0))
+                ? self::SUCCESS : self::FAILURE;
     }
 }
