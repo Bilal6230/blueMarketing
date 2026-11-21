@@ -203,9 +203,19 @@
    visible.forEach((x,i)=>{
      const $tr=$('<tr>');
      $tr.append($('<td>').text(start+i+1),$('<td>').text(x.date));
-     $tr.append($('<td>').append($('<strong>').text(x.number), x.reversed?$('<span>',{'class':'badge badge-secondary ml-1',text:'Reversed'}):''));
+     var draftStatus=x.approval_draft_id
+       ?(x.approval_status==='rejected'?'Rejected':'Pending'):null;
+     $tr.append($('<td>').append($('<strong>').text(x.number),
+       $('<span>',{'class':'badge ml-1 '+(draftStatus==='Pending'?'badge-warning':
+         draftStatus==='Rejected'?'badge-danger':'badge-secondary'),
+         text:draftStatus|| (x.reversed?'Reversed':'')}).toggle(!!draftStatus||!!x.reversed)));
      $tr.append($('<td>').text(x.seller),$('<td>').text(x.narration));
      $tr.append($('<td>').text(x.items),$('<td>',{'class':'text-right'}).text(money(x.amount)));
+     if(x.approval_draft_id){
+       $tr.append($('<td>',{'class':'blue-actions-cell text-muted small',
+         text:draftStatus==='Pending'?'Awaiting approval':'No posting'}));
+       $body.append($tr);return;
+     }
      var $actions=$('<td>',{'class':'blue-actions-cell'}).append(
        $('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pp-detail','data-id':x.id,text:'Details / print'}));
      @can('finance plot-purchase edit')
@@ -374,7 +384,7 @@
   }).always(function(){$submit.prop('disabled',false);});
  });
  @endcan
- $('#ppAdd').on('click',row);['ppNumber','ppDate','ppSeller','ppNarration'].forEach(id=>$('#'+$.escapeSelector(id)).on('input',recalc));$('#ppPost').on('click',async()=>{recalc();if(byId('ppPost').disabled)return;busy=true;recalc();const payload={request_key:(pendingRequestKey||(pendingRequestKey=('plotpurchase'+Date.now().toString(36)+Math.random().toString(36).slice(2,15)))),purchase_number:byId('ppNumber').value.trim(),date:byId('ppDate').value,seller_account_id:Number(byId('ppSeller').value),narration:byId('ppNarration').value.trim(),items:$('.pp-item').toArray().map(el=>{const o={};$(el).find('[data-field]').toArray().forEach(x=>o[x.dataset.field]=x.value);for(const k of ['type','road_id','facing_id','is_corner','plot_category_definition_id','plot_type_definition_id','plot_size_definition_id','plot_unit_definition_id','inventory_account_id'])if(o[k]==='')delete o[k];return o})};try{const r=await requestJson(editPurchaseId?root.dataset.detailsBase+'/'+editPurchaseId:root.dataset.postUrl,{method:editPurchaseId?'PATCH':'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},body:JSON.stringify(payload)}),j=await r.json();if(!r.ok)throw Error(j.message||Object.values(j.errors||{}).flat().join(' ')||'Purchase was rejected');pendingRequestKey=null;alert('success',editPurchaseId?'Plot Purchase updated.':`Purchase ${payload.purchase_number} posted. Posting batch #${j.data.posting_batch_id}.`);editPurchaseId=null;byId('ppNumber').value='';byId('ppNarration').value='';await loadHistory();$('#plotPurchaseCreateModal').modal('hide')}catch(e){alert('danger',e.message);$('#ppAlert').removeClass('d-none')}finally{busy=false;recalc()}});init()});
+ $('#ppAdd').on('click',row);['ppNumber','ppDate','ppSeller','ppNarration'].forEach(id=>$('#'+$.escapeSelector(id)).on('input',recalc));$('#ppPost').on('click',async()=>{recalc();if(byId('ppPost').disabled)return;busy=true;recalc();const payload={request_key:(pendingRequestKey||(pendingRequestKey=('plotpurchase'+Date.now().toString(36)+Math.random().toString(36).slice(2,15)))),purchase_number:byId('ppNumber').value.trim(),date:byId('ppDate').value,seller_account_id:Number(byId('ppSeller').value),narration:byId('ppNarration').value.trim(),items:$('.pp-item').toArray().map(el=>{const o={};$(el).find('[data-field]').toArray().forEach(x=>o[x.dataset.field]=x.value);for(const k of ['type','road_id','facing_id','is_corner','plot_category_definition_id','plot_type_definition_id','plot_size_definition_id','plot_unit_definition_id','inventory_account_id'])if(o[k]==='')delete o[k];return o})};try{const r=await requestJson(editPurchaseId?root.dataset.detailsBase+'/'+editPurchaseId:root.dataset.postUrl,{method:editPurchaseId?'PATCH':'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},body:JSON.stringify(payload)}),j=await r.json();if(!r.ok)throw Error(j.message||Object.values(j.errors||{}).flat().join(' ')||'Purchase was rejected');pendingRequestKey=null;alert('success',editPurchaseId?'Plot Purchase updated.':(j.message||`Purchase ${payload.purchase_number} posted. Posting batch #${j.data.posting_batch_id}.`));editPurchaseId=null;byId('ppNumber').value='';byId('ppNarration').value='';await loadHistory();$('#plotPurchaseCreateModal').modal('hide')}catch(e){alert('danger',e.message);$('#ppAlert').removeClass('d-none')}finally{busy=false;recalc()}});init()});
 })();
 </script>
 @endsection
