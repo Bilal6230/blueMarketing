@@ -1010,6 +1010,29 @@ class JournalVoucherController extends Controller
     {
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
+        // Pending SV has no financial posting to reverse. Withdrawal must close
+        // the approval request and archive its source in the same transaction.
+        $pendingSales=DB::table('journal_vouchers')->where('id',(int)$id)
+            ->where('project_id',$projectId)->where('type','SV')
+            ->whereNull('deleted_at')->where('status','pending')->exists()
+            &&DB::table('daily_voucher_approvals')
+                ->where('project_id',$projectId)->where('voucher_type','SV')
+                ->where('source_table','journal_vouchers')->where('source_id',(int)$id)
+                ->where('status','pending')->exists();
+        if($pendingSales){
+            try{
+                app(\App\Services\Finance\PendingSalesVoucherEditor::class)
+                    ->withdraw($projectId,(int)$id,(int)Auth::id());
+            }catch(\DomainException $e){
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'voucher'=>$e->getMessage(),
+                ]);
+            }
+            return $this->voucherWriteResponse(
+                request(),'Pending Sales Voucher withdrawn; no financial posting was created.',
+                route('sales.voucher.index'));
+        }
+
         if (request()->boolean('reverse')) {
             $seriesModule=\App\Support\Finance\FinanceActionPermission::journalModule((int)$id);
             abort_unless(auth()->user()?->can('finance '.$seriesModule.' reverse'),403);
@@ -1235,6 +1258,30 @@ class JournalVoucherController extends Controller
             return $this->voucherWriteResponse($request, 'Rejected JV revised and resubmitted for approval. Ledger remains inactive.');
         }
 
+
+        // Pending SV edits replace only unposted source details and retain the
+        // pending approval. Never fall through to legacy active-ledger editing.
+        $pendingSales=DB::table('journal_vouchers')->where('id',(int)$id)
+            ->where('project_id',$projectId)->where('type','SV')
+            ->whereNull('deleted_at')->where('status','pending')->exists()
+            &&DB::table('daily_voucher_approvals')
+                ->where('project_id',$projectId)->where('voucher_type','SV')
+                ->where('source_table','journal_vouchers')->where('source_id',(int)$id)
+                ->where('status','pending')->exists();
+        if($pendingSales){
+            try{
+                app(\App\Services\Finance\PendingSalesVoucherEditor::class)->update(
+                    $projectId,(int)$id,(int)Auth::id(),$data,$lines
+                );
+            }catch(\DomainException $e){
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'voucher'=>$e->getMessage(),
+                ]);
+            }
+            return $this->voucherWriteResponse($request,
+                'Pending Sales Voucher updated; approval remains required.',
+                route('sales.voucher.index'));
+        }
         if ($this->isMergedPostedJournal($projectId,(int)$id)) {
             \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
             try {
