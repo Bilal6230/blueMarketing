@@ -54,3 +54,13 @@
 - Source-aware old CP type converter: php artisan finance:normalize-legacy-voucher-types --database=bluenew_clean_final --apply. It preserves explicit CCR/CDR/BOR/BOP display family where available; truly unclassified old CP is labeled DR and provenance limitations remain.
 - **Unverified:** user has not run new automated tests or apply commands on the local MySQL instance; code pushes are not a statement that database was already converted.
 - **Not yet cleaned:** no physical table DROP, pending feature-specific table consolidation and report lifecycle/browser regression acceptance; table count remains 149 until a deliberate schema dependency reduction is implemented.
+
+## Live-origin staging dump comparison (uploaded 2026-11-21)
+- Source dump header: `u429032065_staging`, generated 2026-11-21 10:17 AM, MariaDB 11.8.9.
+- `CREATE TABLE` declarations: **82**; tables with `INSERT INTO` statements: **48**; tables with no INSERT statements: **34**. Data absence does not mean an unneeded table.
+- Local test schema is **149 tables** according to owner audit. The 67-table difference is a review scope, NOT a list of removable tables. Staging lacks data for typed posting and commission source tables despite some being vital for modern voucher workflows.
+- Read-only, dependency-scoped local table audit added: `php artisan schema:audit-cleanup-candidates --database=bluenew_clean_final`. It checks physical presence, any rows, runtime PHP/JS usage, and MySQL inbound/outbound foreign-key references. `REVIEW_ONLY` means inspect further, not immediate removal. Zero schema modifications by this command.
+- Explicit future goal is **data-only** move from staging to the final Laravel migration schema. Do not overwrite migrations with the historical dump, blindly import its `CREATE TABLE` statements, or drop tables solely because a staging dump has no INSERT lines.
+- Owner's latest reconciliation after first apply: 43 unlinked lines became 7, only PR batch 3 (3 lines) and CV batch 14 (4 lines) remain. CP normalization changed 2817 source identities plus 2817 linked ledger rows and 8277 old CP ledger labels; 0 remaining CP display identities needing review. Read-only posting audit still passed.
+- Follow-up code fixes: a broken interpolated PHPUnit assertion; exact existing PPR ledger reuse with duplicate/attribution guards; balanced immutable CV batch authority when legacy detail values have since changed.
+- **Do not claim final success until the owner reruns tests and applies the fixes on the disposable local database.** Physical migration/table pruning is deliberately not performed without a verified zero-reference, zero-row, zero-FK candidate list.
