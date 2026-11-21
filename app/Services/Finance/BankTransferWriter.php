@@ -152,7 +152,7 @@ final class BankTransferWriter
                 if(!$approvedDraft || $approvedDraft->request_key!==$key
                     ||(int)$approvedDraft->bank_account_id!==$bankAccountId
                     ||(string)$approvedDraft->effective_date!==$date
-                    ||(string)$approvedDraft->amount!==$this->money($total)
+                    ||$this->cents((string)$approvedDraft->amount)!==$total
                     ||trim((string)$approvedDraft->narration)!==trim($narration)
                     ||(int)$approvedDraft->cash_account_id!==(int)$lines[0]['account_id']
                     ||count($lines)!==1
