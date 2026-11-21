@@ -1185,6 +1185,16 @@ class VoucherController extends Controller
         ])]);
     }
 
+    private function assertPlotApprovalNumberNotReserved(int $projectId,string $type,string $number): void
+    {
+        if(Schema::hasTable('finance_plot_approval_drafts')
+            &&DB::table('finance_plot_approval_drafts')
+                ->where('project_id',$projectId)->where('voucher_type',$type)
+                ->where('source_number',trim($number))->exists()){
+            throw new \DomainException('PLOT_VOUCHER_NUMBER_RESERVED_BY_APPROVAL');
+        }
+    }
+
     public function postPlotReceipt(Request $request)
     {
         $projectId = (int) getSelectedTown();
@@ -1199,9 +1209,23 @@ class VoucherController extends Controller
             'allocations.*.receivable_account_id' => ['required', 'integer', 'min:1'],
             'allocations.*.amount' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\.[0-9]{1,2})?$/D'],
         ]);
-        $result = (new \App\Services\Finance\PlotEntryWriter())->receive($projectId, (int) $data['customer_id'],
-            $data['request_key'], $data, auth()->id());
-        return response()->json(['status' => 'success', 'data' => $result], $result['replayed'] ? 200 : 201);
+        try{
+            $approvalRequired=(bool)app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+                ->policy($projectId,'PPR');
+            if($approvalRequired){
+                $result=app(\App\Services\Finance\PlotVoucherApprovalDraftWriter::class)
+                    ->submit($projectId,'PPR',$data['request_key'],$data,(int)auth()->id());
+            }else{
+                $this->assertPlotApprovalNumberNotReserved($projectId,'PPR',(string)$data['receipt_number']);
+                $result=(new \App\Services\Finance\PlotEntryWriter())->receive(
+                    $projectId,(int)$data['customer_id'],$data['request_key'],$data,auth()->id());
+            }
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success','data'=>$result,
+            'message'=>$approvalRequired?'Plot receipt saved for approval; no posting created.':'Plot receipt posted.'],
+            $result['replayed']?200:201);
     }
 
     public function plotReceiptHistory()
@@ -1489,11 +1513,22 @@ class VoucherController extends Controller
             'items.*.inventory_account_id' => ['required', 'integer', 'min:1'],
         ]);
         try {
-            $result = (new \App\Services\Finance\PlotEntryWriter())->purchase($projectId, $data['request_key'], $data, auth()->id());
+            $approvalRequired=(bool)app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+                ->policy($projectId,'PP');
+            if($approvalRequired){
+                $result=app(\App\Services\Finance\PlotVoucherApprovalDraftWriter::class)
+                    ->submit($projectId,'PP',$data['request_key'],$data,(int)auth()->id());
+            }else{
+                $this->assertPlotApprovalNumberNotReserved($projectId,'PP',(string)$data['purchase_number']);
+                $result=(new \App\Services\Finance\PlotEntryWriter())->purchase(
+                    $projectId,$data['request_key'],$data,auth()->id());
+            }
         } catch (\DomainException $error) {
             return response()->json(['message' => $error->getMessage()], 422);
         }
-        return response()->json(['status' => 'success', 'data' => $result], $result['replayed'] ? 200 : 201);
+        return response()->json(['status'=>'success','data'=>$result,
+            'message'=>$approvalRequired?'Plot purchase saved for approval; no plot inventory or posting created.':'Plot purchase posted.'],
+            $result['replayed']?200:201);
     }
 
     public function plotPurchaseHistory()
