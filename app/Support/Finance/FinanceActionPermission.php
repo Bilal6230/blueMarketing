@@ -96,6 +96,9 @@ final class FinanceActionPermission
         abort_unless($approval,404);
         if ($approval->source_table === 'customer_ledger') return self::sourceModule((int)$approval->source_id);
         if ($approval->source_table === 'journal_vouchers') return self::journalModule((int)$approval->source_id);
+        if ($approval->source_table === 'finance_plot_approval_drafts') {
+            return $approval->voucher_type === 'PPR' ? 'plot-receipt' : 'plot-purchase';
+        }
         return self::moduleForSeries((string)$approval->voucher_type) ?? 'directory';
     }
 
