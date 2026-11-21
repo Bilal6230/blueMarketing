@@ -24,7 +24,7 @@ final class AuditSchemaCleanupCandidates extends Command
             return self::INVALID;
         }
         $files=[];
-        foreach(['app','routes','resources/views','config','database/migrations'] as $directory){
+        foreach(['app','routes','resources/views','config'] as $directory){
             $path=base_path($directory);
             if(!is_dir($path))continue;
             foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator(
