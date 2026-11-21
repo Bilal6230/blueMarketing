@@ -143,12 +143,34 @@ final class PlotEntryWriter
         return $batch;
     }
 
-    public function receive(int $project, int $customer, string $key, array $data, ?int $actor): array
+    /**
+     * Protect reserved pending voucher numbers under the same project row lock
+     * used by direct and approval postings. An approver may use only their
+     * exact locked pending draft; a direct writer cannot consume it.
+     */
+    private function assertApprovalReservation(int $project,string $type,string $number,?int $draftId): void
+    {
+        if(!Schema::hasTable('finance_plot_approval_drafts')){
+            if($draftId!==null)throw new \DomainException('PLOT_APPROVAL_DRAFT_MIGRATION_REQUIRED');
+            return;
+        }
+        $reservation=DB::table('finance_plot_approval_drafts')
+            ->where('project_id',$project)->where('voucher_type',$type)
+            ->where('source_number',$number)->lockForUpdate()->first();
+        if($draftId===null){
+            if($reservation)throw new \DomainException('PLOT_VOUCHER_NUMBER_RESERVED_BY_APPROVAL');
+        }elseif(!$reservation || (int)$reservation->id!==$draftId
+            ||$reservation->status!=='pending'){
+            throw new \DomainException('PLOT_APPROVAL_DRAFT_NUMBER_MISMATCH');
+        }
+    }
+
+    public function receive(int $project, int $customer, string $key, array $data, ?int $actor, ?int $approvedDraftId=null): array
     {
         FinanceConnectionGuard::assertAllowed();
         $this->date($data['date']); $total=$this->cents($data['amount']);
         if ($project<1 || $customer<1 || $total<1 || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D',$key)) throw new \DomainException('V2_PLOT_RECEIPT_INPUT_INVALID');
-        return DB::transaction(function() use($project,$customer,$key,$data,$actor,$total):array {
+        return DB::transaction(function() use($project,$customer,$key,$data,$actor,$total,$approvedDraftId):array {
             DB::table('projects')->where('id',$project)->lockForUpdate()->firstOrFail();
             if (!DB::table('leads')->where('id',$customer)->where('project_id',$project)->exists()) throw new \DomainException('V2_PLOT_CUSTOMER_PROJECT_MISMATCH');
             $bank=(int)$data['cash_account_id'];
@@ -173,6 +195,7 @@ final class PlotEntryWriter
             $hash=hash('sha256',json_encode([$project,$customer,$data['date'],$this->money($total),$data['narration'],$bank,$allocations,$lines],JSON_THROW_ON_ERROR));
             $replay=$this->existingReplay($project,$key,'plot_receipt',$hash); if($replay) return $replay;
             $number=trim($data['receipt_number']);
+            $this->assertApprovalReservation($project,'PPR',$number,$approvedDraftId);
             if(DB::table('finance_plot_receipts')->where('project_id',$project)->where('receipt_number',$number)->exists()) throw new \DomainException('V2_PLOT_RECEIPT_NUMBER_EXISTS');
             $source=DB::table('finance_plot_receipts')->insertGetId(['project_id'=>$project,'customer_id'=>$customer,'receipt_number'=>$number,
                 'receipt_date'=>$data['date'],'amount'=>$this->money($total),'narration'=>$data['narration'],'created_by'=>$actor,'created_at'=>now(),'updated_at'=>now()]);
@@ -183,11 +206,11 @@ final class PlotEntryWriter
         },3);
     }
 
-    public function purchase(int $project, string $key, array $data, ?int $actor): array
+    public function purchase(int $project, string $key, array $data, ?int $actor, ?int $approvedDraftId=null): array
     {
         FinanceConnectionGuard::assertAllowed(); $this->date($data['date']);
         if($project<1 || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D',$key) || count($data['items'])<1) throw new \DomainException('V2_PLOT_PURCHASE_INPUT_INVALID');
-        return DB::transaction(function()use($project,$key,$data,$actor):array {
+        return DB::transaction(function()use($project,$key,$data,$actor,$approvedDraftId):array {
             DB::table('projects')->where('id',$project)->lockForUpdate()->firstOrFail();
             $seller=(int)$data['seller_account_id'];
             if(!$this->projectAccount($project,$seller)) throw new \DomainException('V2_PLOT_ACCOUNT_PROJECT_MISMATCH');
@@ -211,7 +234,9 @@ final class PlotEntryWriter
             if($total<1) throw new \DomainException('V2_PLOT_PURCHASE_TOTAL_INVALID');
             $hash=hash('sha256',json_encode([$project,$data['date'],$data['purchase_number'],$this->money($total),$seller,$data['narration'],$items,$lines],JSON_THROW_ON_ERROR));
             $replay=$this->existingReplay($project,$key,'plot_purchase',$hash);if($replay)return $replay;
-            $number=trim($data['purchase_number']);if(DB::table('finance_plot_purchases')->where('project_id',$project)->where('purchase_number',$number)->exists())throw new \DomainException('V2_PLOT_PURCHASE_NUMBER_EXISTS');
+            $number=trim($data['purchase_number']);
+            $this->assertApprovalReservation($project,'PP',$number,$approvedDraftId);
+            if(DB::table('finance_plot_purchases')->where('project_id',$project)->where('purchase_number',$number)->exists())throw new \DomainException('V2_PLOT_PURCHASE_NUMBER_EXISTS');
             $source=DB::table('finance_plot_purchases')->insertGetId(['project_id'=>$project,'seller_account_id'=>$seller,'purchase_number'=>$number,'purchase_date'=>$data['date'],
                 'amount'=>$this->money($total),'narration'=>$data['narration'],'created_by'=>$actor,'created_at'=>now(),'updated_at'=>now()]);
             foreach($items as $item) {
