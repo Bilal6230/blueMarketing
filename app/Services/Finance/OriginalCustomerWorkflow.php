@@ -32,7 +32,10 @@ final class OriginalCustomerWorkflow
     public function create(int $projectId, string $series, string $key, array $source, array $legs, ?int $actor): array
     {
         FinanceConnectionGuard::assertAllowed();
-        if (!in_array($series, ['CR', 'CP', 'PPR', 'EC', 'ECP'], true)
+        // CP was renamed Debit Voucher. Preserve CP as an accepted legacy
+        // request alias while persisting all new outgoing cash vouchers as DR.
+        if ($series==='CP') $series='DR';
+        if (!in_array($series, ['CR', 'DR', 'PPR', 'EC', 'ECP'], true)
             || !preg_match('/^[A-Za-z0-9_-]{16,128}$/D', $key)) {
             throw new \DomainException('V2_SOURCE_REQUEST_INVALID');
         }
@@ -140,7 +143,7 @@ final class OriginalCustomerWorkflow
     public function post(int $projectId, int $id, string $series, string $key, array $legs, ?int $actor): int
     {
         $gateway = new PostingGateway();
-        return in_array($series, ['CR', 'CP'], true)
+        return in_array($series, ['CR', 'CP', 'DR'], true)
             ? $gateway->postCash($projectId, $id, $key, $legs, $actor)
             : $gateway->postCustomerVoucher($projectId, $id, $series, $key, $legs, $actor);
     }
