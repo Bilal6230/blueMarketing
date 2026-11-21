@@ -28,7 +28,7 @@ final class VoucherSettingsController extends Controller
         'BOR' => ['label'=>'Bank Receipt Voucher', 'supported'=>true],
         'BOP' => ['label'=>'Bank Payment Voucher', 'supported'=>true],
         'BD' => ['label'=>'Bank Deposit Voucher', 'supported'=>true],
-        'BW' => ['label'=>'Bank Withdrawal Voucher', 'supported'=>false],
+        'BW' => ['label'=>'Bank Withdrawal Voucher', 'supported'=>true],
         'DR' => ['label'=>'Debit Voucher', 'supported'=>false],
         'CV' => ['label'=>'Credit / Commission Voucher', 'supported'=>false],
         'PPR' => ['label'=>'Plot Receive Payment Voucher', 'supported'=>false],
