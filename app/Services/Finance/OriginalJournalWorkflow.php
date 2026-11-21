@@ -93,7 +93,7 @@ final class OriginalJournalWorkflow
             }
             foreach ($lines as $line) {
                 DB::table('journal_voucher_details')->insert($line + [
-                    'journal_voucher_id' => $id, 'created_by' => $actorId,
+                    'journal_voucher_id' => $id,
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
