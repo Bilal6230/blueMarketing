@@ -29,7 +29,8 @@ final class BankTransferApprovalDraftWriter
             ||($chequeSourceId!==null&&$kind!=='withdrawal')){
             throw new \DomainException('BANK_APPROVAL_DRAFT_INPUT_INVALID');
         }
-        $normalized=number_format((float)$amount,2,'.','');
+        $parts=explode('.',(string)$amount,2);
+        $normalized=$parts[0].'.'.str_pad($parts[1]??'',2,'0');
         $payload=hash('sha256',json_encode([$projectId,$bankId,$cashId,$kind,$date,$normalized,
             trim($narration),$chequeSourceId],JSON_THROW_ON_ERROR));
         return DB::transaction(function()use($projectId,$bankId,$cashId,$kind,$key,$date,
