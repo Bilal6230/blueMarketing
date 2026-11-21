@@ -45,6 +45,20 @@ final class BackfillVerifiedTypedLedger extends Command
             ->whereIn('voucher_series',['BD','BW','PR','PP'])
             ->whereNull('reversal_of_batch_id')->orderBy('id')
             ->pluck('id');
+        // Never begin a write run when the batch-level dry run finds
+        // incomplete identity or accounting evidence.
+        if($apply){
+            $blocked=[];
+            foreach($ids as $id){
+                try{$backfill->inspect((int)$project,(int)$id,false);}
+                catch(\Throwable $e){$blocked[]='batch '.$id.': '.$e->getMessage();}
+            }
+            if($blocked!==[]){
+                foreach($blocked as $reason)$this->error($reason);
+                $this->error('No writes attempted. Resolve every blocked batch first.');
+                return self::FAILURE;
+            }
+        }
         $results=[];$errors=0;
         foreach($ids as $id){
             try{
