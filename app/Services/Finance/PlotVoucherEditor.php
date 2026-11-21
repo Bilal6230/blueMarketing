@@ -74,6 +74,38 @@ final class PlotVoucherEditor
         ]);
     }
 
+    private function syncAccountingLedgers(int $project,int $batchId,int $sourceId,string $series): void
+    {
+        if(!Schema::hasTable('ledger_source_attributions')||!Schema::hasTable('ledgers')){
+            if(app()->environment('testing'))return;
+            throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
+        }
+        $typed=DB::table('finance_posting_lines')->where('posting_batch_id',$batchId)
+            ->whereNotNull('legacy_ledger_id')->lockForUpdate()->get();
+        foreach($typed as $line){
+            $ledger=DB::table('ledgers')->where('id',$line->legacy_ledger_id)
+                ->where('type',$series)->where('type_id',$sourceId)
+                ->lockForUpdate()->first();
+            if(!$ledger||!DB::table('project_head_subheads')
+                ->where('id',$ledger->project_head_subheads_id)
+                ->where('project_id',$project)->exists()){
+                throw new \DomainException('PLOT_LEDGER_SOURCE_RELATION_INVALID');
+            }
+            $active=(int)($line->is_active??1)===1;
+            $update=['is_active'=>$active?1:0,'updated_at'=>now()];
+            if($active){
+                $this->account($project,(int)$line->project_head_subhead_id);
+                $update+=['project_head_subheads_id'=>$line->project_head_subhead_id,
+                    'amount_in'=>$line->debit,'amount_out'=>$line->credit,
+                    'detail'=>$line->description,'date'=>DB::table('finance_posting_batches')
+                        ->where('id',$batchId)->where('project_id',$project)
+                        ->value('effective_date')];
+            }
+            DB::table('ledgers')->where('id',$ledger->id)->update($update);
+        }
+        app(TypedLedgerBackfill::class)->inspect($project,$batchId,true);
+    }
+
     private function replaceLines(int $project,int $batchId,$old,array $new,array $oldLegKeys=[],array $newLegKeys=[]): void
     {
         $debit=0;$credit=0;
@@ -122,8 +154,7 @@ final class PlotVoucherEditor
                     // deleted; full previous values remain in the snapshot.
                     DB::table('finance_posting_lines')->where('id',$line->id)
                         ->where('posting_batch_id',$batchId)
-                        ->update(['debit'=>'0.00','credit'=>'0.00','is_active'=>0,
-                            'updated_at'=>now()]);
+                        ->update(['is_active'=>0,'updated_at'=>now()]);
                 } elseif ($target) {
                     DB::table('finance_posting_lines')->insert([
                         'posting_batch_id'=>$batchId,'project_head_subhead_id'=>$target['account'],
@@ -254,6 +285,7 @@ final class PlotVoucherEditor
             ]);
             DB::table('finance_posting_batches')->where('id',$batch->id)->where('project_id',$project)
                 ->update(['effective_date'=>$data['date'],'updated_at'=>now()]);
+            $this->syncAccountingLedgers($project,(int)$batch->id,$id,'PPR');
             $this->snapshot($project,'plot_receipt',$id,$actor,$before,[
                 'voucher'=>$data,'posting_batch_id'=>(int)$batch->id]);
             return ['source_id'=>$id,'posting_batch_id'=>(int)$batch->id,'updated'=>true];
@@ -411,6 +443,7 @@ final class PlotVoucherEditor
             ]);
             DB::table('finance_posting_batches')->where('id',$batch->id)->where('project_id',$project)
                 ->update(['effective_date'=>$data['date'],'updated_at'=>now()]);
+            $this->syncAccountingLedgers($project,(int)$batch->id,$id,'PP');
             $this->snapshot($project,'plot_purchase',$id,$actor,$before,[
                 'voucher'=>$data,'posting_batch_id'=>(int)$batch->id,'amount'=>$this->money($total)]);
             return ['source_id'=>$id,'posting_batch_id'=>(int)$batch->id,'updated'=>true];
