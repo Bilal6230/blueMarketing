@@ -115,14 +115,15 @@ final class PendingSalesVoucherEditor
 
     private function lockPending(int $projectId,int $voucherId,int $actorId): array
     {
-        DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
-        $voucher=DB::table('journal_vouchers')->where('id',$voucherId)
-            ->where('project_id',$projectId)->where('type','SV')
-            ->whereNull('deleted_at')->lockForUpdate()->first();
+        // Lock approval before source: the same order as the approver's
+        // decision transaction, avoiding edit-vs-approve lock inversion.
         $approval=DailyVoucherApproval::query()->where('project_id',$projectId)
             ->where('voucher_type','SV')->where('source_table','journal_vouchers')
             ->where('source_id',$voucherId)->where('status','pending')
             ->lockForUpdate()->first();
+        $voucher=DB::table('journal_vouchers')->where('id',$voucherId)
+            ->where('project_id',$projectId)->where('type','SV')
+            ->whereNull('deleted_at')->lockForUpdate()->first();
         if(!$voucher||!$approval||$voucher->status!=='pending'){
             throw new \DomainException('SV_PENDING_SOURCE_NOT_FOUND');
         }
