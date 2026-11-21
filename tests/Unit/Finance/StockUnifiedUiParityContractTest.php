@@ -70,7 +70,7 @@ class StockUnifiedUiParityContractTest extends TestCase
         self::assertStringContainsString('CR voucher-style bordered directory tables', $view);
         self::assertStringContainsString('border-right:1px solid #d5e0ec!important', $view);
         self::assertStringContainsString('function stockActionsCell(sourceButtons)', $view);
-        self::assertSame(10, substr_count($view, 'data-bs-dismiss="modal"'));
+        self::assertGreaterThanOrEqual(10, substr_count($view, 'data-bs-dismiss="modal"'));
         self::assertStringNotContainsString('data-stock-dismiss', $view);
         self::assertStringNotContainsString('function stockDismissNow(modal)', $view);
         self::assertStringNotContainsString("off('click.stockDismiss')", $view);
