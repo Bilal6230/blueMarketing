@@ -96,7 +96,7 @@ final class VoucherApprovalDetailReader
             $stored=trim((string)($j->voucher_number??''));
             $base=array_merge($base,[
                 'number'=>$identity->lookup($project,'journal_voucher',(int)$j->id)
-                    ?: ($stored===''?'JV-'.$j->id:(preg_match('/^JV-/i',$stored)?$stored:'JV-'.$stored)),
+                    ?: ($stored===''?$approval->voucher_type.'-'.$j->id:(preg_match('/^(JV|SV)-/i',$stored)?$stored:$approval->voucher_type.'-'.$stored)),
                 'date'=>$j->date,'reference'=>$j->reference??null,'description'=>$j->description,
                 'amount'=>max((float)($j->total_debit??0),(float)($j->total_credit??0)),
                 'created_at'=>$j->created_at??null,'updated_at'=>$j->updated_at??null,
