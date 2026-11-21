@@ -104,6 +104,14 @@ final class CommissionDraftWorkflow
             // Draft leg records are persisted with the actual detail FK but
             // cannot affect balances until the approved posting is committed.
             app(CommissionLedgerSynchronizer::class)->ensureDraft($projectId,(int)$id,$actorId);
+            // CV draft and approval request must commit together: neither
+            // source nor ledger may become active before assigned approval.
+            if(app(DailyVoucherApprovalWorkflow::class)->policy($projectId,'CV')){
+                if(!$actorId || !app(DailyVoucherApprovalWorkflow::class)->submitIfRequired(
+                    $projectId,'CV','commision_vouchers',(int)$id,(int)$actorId)){
+                    throw new \DomainException('CV_APPROVAL_SUBMISSION_FAILED');
+                }
+            }
             return (int) $id;
         }, 3);
     }
