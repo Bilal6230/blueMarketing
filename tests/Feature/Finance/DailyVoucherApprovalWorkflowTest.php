@@ -123,7 +123,8 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
             ['id' => 32, 'customer_ledger_id' => 7, 'type' => 'CR', 'type_id' => 7, 'project_head_subheads_id' => 12, 'is_active' => 0],
         ]);
         $workflow = app(DailyVoucherApprovalWorkflow::class);
-        $this->assertTrue($workflow->submitIfRequired(1, 'CR', 'customer_ledger', 7, 10));
+        $this->assertFalse($workflow->submitIfRequired(1, 'CR', 'customer_ledger', 7, 10));
+        $this->seedPreviouslySubmittedApproval('CR', 'customer_ledger', 7);
         $approval = DailyVoucherApproval::query()->firstOrFail();
         $this->expectException(\DomainException::class);
         try { $workflow->decide($approval, 10, 'approved'); } finally {
@@ -140,7 +141,7 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
             ['id' => 32, 'customer_ledger_id' => 7, 'type' => 'CR', 'type_id' => 7, 'project_head_subheads_id' => 12, 'is_active' => 0],
         ]);
         $workflow = app(DailyVoucherApprovalWorkflow::class);
-        $workflow->submitIfRequired(1, 'CR', 'customer_ledger', 7, 10);
+        $this->seedPreviouslySubmittedApproval('CR', 'customer_ledger', 7);
         $workflow->decide(DailyVoucherApproval::query()->firstOrFail(), 20, 'approved');
         $this->assertSame(1, (int) DB::table('customer_ledger')->where('id', 7)->value('is_active'));
         $this->assertSame(1, (int) DB::table('ledgers')->where('id', 31)->value('is_active'));
@@ -154,7 +155,7 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
         DB::table('project_head_subheads')->insert(['id' => 11, 'project_id' => 1]);
         DB::table('ledgers')->insert(['id' => 31, 'customer_ledger_id' => 7, 'type' => 'CR', 'type_id' => 7, 'project_head_subheads_id' => 11, 'is_active' => 0]);
         $workflow = app(DailyVoucherApprovalWorkflow::class);
-        $workflow->submitIfRequired(1, 'CR', 'customer_ledger', 7, 10);
+        $this->seedPreviouslySubmittedApproval('CR', 'customer_ledger', 7);
         $approval = DailyVoucherApproval::query()->firstOrFail();
         try {
             $workflow->decide($approval, 20, 'rejected');
@@ -175,9 +176,26 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
             ['id' => 42, 'customer_ledger_id' => 70, 'type' => 'CP', 'type_id' => 70, 'project_head_subheads_id' => 12, 'is_active' => 0],
         ]);
         $workflow = app(DailyVoucherApprovalWorkflow::class);
-        $workflow->submitIfRequired(1, 'CP', 'ledgers', 41, 10);
+        $this->seedPreviouslySubmittedApproval('CP', 'ledgers', 41);
         $workflow->decide(DailyVoucherApproval::query()->firstOrFail(), 20, 'approved');
         $this->assertSame(1, (int) DB::table('ledgers')->where('id', 41)->value('is_active'));
         $this->assertSame(0, (int) DB::table('ledgers')->where('id', 42)->value('is_active'));
     }
+    /**
+     * Legacy pending approvals must remain decidable even though the unified
+     * ERP no longer creates new CR/CP approval requests.
+     */
+    private function seedPreviouslySubmittedApproval(string $type,string $sourceTable,int $sourceId): void
+    {
+        $id=DB::table('daily_voucher_approvals')->insertGetId([
+            'project_id'=>1,'voucher_type'=>$type,'source_table'=>$sourceTable,
+            'source_id'=>$sourceId,'status'=>'pending',
+            'assigned_approver_id'=>20,'submitted_by'=>10,
+            'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        DB::table('daily_voucher_approval_events')->insert([
+            'approval_id'=>$id,'event'=>'submitted','actor_id'=>10,'created_at'=>now(),
+        ]);
+    }
+
 }
