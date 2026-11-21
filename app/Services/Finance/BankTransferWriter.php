@@ -187,6 +187,15 @@ final class BankTransferWriter
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
+            // Same transaction: the existing general ledger is the accounting authority.
+            // Test-only isolated SQLite fixtures without the legacy schema keep
+            // their original isolated posting contract.
+            if (Schema::hasTable('ledger_source_attributions')
+                && Schema::hasColumn('ledgers','amount_in')) {
+                app(TypedLedgerBackfill::class)->inspect($projectId,(int)$batchId,true);
+            } elseif (!app()->environment('testing')) {
+                throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
+            }
             return ['posting_batch_id' => (int) $batchId, 'replayed' => false];
         }, 3);
     }
