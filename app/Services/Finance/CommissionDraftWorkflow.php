@@ -142,6 +142,17 @@ final class CommissionDraftWorkflow
                     ->where('commision_voucher_id', $sourceId)->exists()) {
                 throw new \DomainException('V2_CV_DRAFT_IMMUTABLE');
             }
+            // The central approval request already captures this draft.
+            // Editing/withdrawing it before the assigned decision would
+            // silently change what the approver is being asked to sign off.
+            if(Schema::hasTable('daily_voucher_approvals')
+                &&DB::table('daily_voucher_approvals')
+                    ->where('project_id',$projectId)
+                    ->where('voucher_type','CV')->where('source_table','commision_vouchers')
+                    ->where('source_id',$sourceId)->where('status','pending')
+                    ->exists()){
+                throw new \DomainException('CV_PENDING_CENTRAL_APPROVAL_LOCKED');
+            }
             [$prepared, $amount] = $this->lines($projectId, $lines);
             $activeDetails=DB::table('commision_voucher_details')
                 ->where('commision_voucher_id', $sourceId)->whereNull('deleted_at')
@@ -242,6 +253,17 @@ final class CommissionDraftWorkflow
                 || DB::table('finance_posting_commission_sources')
                     ->where('commision_voucher_id', $sourceId)->exists()) {
                 throw new \DomainException('V2_CV_DRAFT_IMMUTABLE');
+            }
+            // The central approval request already captures this draft.
+            // Editing/withdrawing it before the assigned decision would
+            // silently change what the approver is being asked to sign off.
+            if(Schema::hasTable('daily_voucher_approvals')
+                &&DB::table('daily_voucher_approvals')
+                    ->where('project_id',$projectId)
+                    ->where('voucher_type','CV')->where('source_table','commision_vouchers')
+                    ->where('source_id',$sourceId)->where('status','pending')
+                    ->exists()){
+                throw new \DomainException('CV_PENDING_CENTRAL_APPROVAL_LOCKED');
             }
             // Check exact linked ledger ownership before archiving the draft.
             app(CommissionLedgerSynchronizer::class)->assertDraftCanReplace($projectId,$sourceId);
