@@ -67,4 +67,44 @@ class SalesVoucherApprovalIntegrationContractTest extends TestCase
         self::assertStringContainsString('applySalesApprovalStatusFilter(',$controller);
         self::assertStringContainsString("'approval_status' => ucfirst(\$approval['status']??'posted')",$controller);
     }
+    public function test_sv_decision_permission_resolves_bound_model_id(): void
+    {
+        $router=$this->source('app/Support/Finance/FinanceActionPermission.php');
+        self::assertStringContainsString('$approvalParam instanceof \\App\\Models\\DailyVoucherApproval',$router);
+        self::assertStringContainsString('(int)$approvalParam->getKey()',$router);
+        self::assertStringNotContainsString('$approvalId = (int)$route->parameter(\'approval\')',$router);
+    }
+
+    public function test_sv_direct_posting_respects_journal_details_schema(): void
+    {
+        $writer=$this->source('app/Services/Finance/OriginalJournalWorkflow.php');
+        $direct=substr($writer,strpos($writer,'public function createAndPost('),
+            strpos($writer,'public function createPendingSales(')
+                -strpos($writer,'public function createAndPost('));
+        $schema=$this->source('database/migrations/2025_01_27_143458_create_journal_voucher_details_table.php');
+        self::assertStringNotContainsString('`created_by`',$schema);
+        $detail=substr($direct,strpos($direct,"DB::table('journal_voucher_details')->insert("));
+        self::assertStringNotContainsString("'created_by' =>",$detail);
+        self::assertStringContainsString('postSeries($series',$direct);
+    }
+
+    public function test_sv_actions_and_pending_editor_are_guarded(): void
+    {
+        $actions=$this->source('resources/views/admin/reports/vouchers/actions.blade.php');
+        self::assertStringContainsString('$salesEditable',$actions);
+        self::assertStringContainsString('journal.voucher',$actions);
+        self::assertStringContainsString('delete-btn',$actions);
+        $editor=$this->source('app/Services/Finance/PendingSalesVoucherEditor.php');
+        self::assertStringContainsString("where('voucher_type','SV')",$editor);
+        self::assertStringContainsString("where('status','pending')",$editor);
+        self::assertStringContainsString('SV_ALREADY_POSTED',$editor);
+        self::assertStringContainsString('pending_sv_edited',$editor);
+        self::assertStringContainsString("'event'=>'withdrawn'",$editor);
+        self::assertStringNotContainsString('postSalesVoucher(',$editor);
+        self::assertStringNotContainsString('createAndPost(',$editor);
+        $controller=$this->source('app/Http/Controllers/JournalVoucherController.php');
+        self::assertSame(2,substr_count($controller,'if($pendingSales)'));
+        self::assertStringContainsString('Pending Sales Voucher withdrawn',$controller);
+        self::assertStringContainsString('Pending Sales Voucher updated',$controller);
+    }
 }
