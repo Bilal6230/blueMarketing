@@ -31,3 +31,16 @@
 - All active finance posting lines have verified ledger links; no account/amount/foreign-project mismatches.
 - Approval ON/OFF, update, delete, reverse, no-change save, source replay and cross-project tests all pass.
 - Source and report totals reconcile, no double-counting, and no unnecessary new tables.
+
+## Local owner evidence — 2026-11-21
+- Exact connected MySQL database: `bluenew_clean_final`; it has **149 physical tables**. Laravel `db:show` displays **1,113 tables across all locally accessible MySQL schemas**, not 1,113 tables in this one database.
+- LedgerConsolidationSafetyContractTest owner run PASS (3 tests / 31 assertions).
+- `finance:audit-ledger-consolidation --database=bluenew_clean_final`: project 3 has **43 finance_posting_lines with NULL legacy_ledger_id**, none with invalid existing links. Breakdown: BD 8, BW 8, PR 3, PP 2, EC 6, ECP 4, REV 6, CV 4, SV 2.
+- Legacy CP ledger report: **11,087 require identity review**, including rows without valid customer_ledger FK. Only two project-3 CP rows had explicit DR/BOP display mapping. This is **not** evidence that all 11,087 are safely DR; no bulk type renaming is authorized.
+- Existing unused-table audit was run by owner into `storage/app/table_audit.json`; its contents were not supplied, so no candidate table is approved for deletion.
+
+## Implemented follow-on batch: exact source ledger backfill
+- `finance:backfill-verified-ledgers --database=bluenew_clean_final --project=3` previews linked/unlinked **BD, BW, plot PR and PP** source batches. This targets up to **21 typed lines** in the owner inventory, *only if every source and posting identity passes strict checks*. PR is the Plot Receipt batch series; the final ledger's voucher type is `PPR`. No other PPR family is silently modified.
+- On an explicitly approved backup copy, `--apply --confirm=bluenew_clean_final` inserts `ledgers` and links `finance_posting_lines.legacy_ledger_id`, with a matching `ledger_source_attributions` provenance row. The code checks project, source claim, source ID, account, amount, active status, balanced current legs and existing duplicate ledger sources.
+- **No new tables or migrations.** A blocked source stops that batch; the apply command preflights all project batches before beginning writes. Use this only on a backed-up local disposable database with no concurrent voucher writers; remaining EC/ECP/CV/SV/REV 22 lines and CP identity migration need separate source-aware implementations.
+- This backfill **does not** cut over new Create/Edit/Delete writers or reports; that work remains pending until account lifecycle parity is implemented. Do not consider `ledgers` fully authoritative yet.
