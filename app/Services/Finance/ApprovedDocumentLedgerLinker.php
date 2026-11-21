@@ -66,6 +66,11 @@ final class ApprovedDocumentLedgerLinker
                 if((int)($line->is_active??1)===1){$debit+=$d;$credit+=$c;}
             }
             if($debit!==$credit)throw new \DomainException('DOCUMENT_LEDGER_NOT_BALANCED');
+            if(in_array($kind,['booking','labour'],true)){
+                $amount=(string)$source->amount;
+                if($debit!==$this->cents($amount))
+                    throw new \DomainException('DOCUMENT_LEDGER_SOURCE_AMOUNT_MISMATCH');
+            }
             $existing=DB::table('ledgers as l')
                 ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
                 ->where('a.project_id',$projectId)->where('l.type',$series)
