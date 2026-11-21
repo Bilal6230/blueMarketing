@@ -289,7 +289,7 @@ final class DailyVoucherApprovalWorkflow
                         ->where('source_kind','customer_ledger')
                         ->where('source_id',$source->id)->where('series','DR')
                         ->exists():false;
-                if(!$identity || $source->transaction_type!=='CP'){
+                if(!$identity || !in_array((string)$source->transaction_type,['CP','DR'],true)){
                     throw new \DomainException('DEBIT_VOUCHER_APPROVAL_SOURCE_MISMATCH');
                 }
             }
@@ -301,7 +301,7 @@ final class DailyVoucherApprovalWorkflow
                 $sourceType=$series==='BOR'?'CR':'CP';
                 if (!Schema::hasTable('project_voucher_display_numbers')
                     || !Schema::hasTable('finance_bank_voucher_allocations')
-                    || (string)$source->transaction_type!==$sourceType
+                    || !in_array((string)$source->transaction_type,[$sourceType,$series],true)
                     || !in_array((int)$source->payment_type,[2,3],true)) {
                     throw new \DomainException('BANK_APPROVAL_SOURCE_IDENTITY_MISMATCH');
                 }
@@ -324,7 +324,7 @@ final class DailyVoucherApprovalWorkflow
                     || !Schema::hasTable('finance_bank_voucher_allocation_releases')
                     || DB::table('finance_bank_voucher_allocation_releases')
                         ->where('allocation_id',$allocation?->id)->exists()
-                    || $legs->first()->type!==$sourceType
+                    || !in_array((string)$legs->first()->type,[$sourceType,$series],true)
                     || ((int)$source->payment_type===2 && $allocation->source_method!=='online')
                     || ((int)$source->payment_type===3 && $allocation->source_method!=='cheque')
                     || abs((float)$allocation->amount - max((float)$source->amount_in,(float)$source->amount_out))>0.001
