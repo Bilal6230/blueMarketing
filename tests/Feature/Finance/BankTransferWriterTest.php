@@ -39,6 +39,11 @@ class BankTransferWriterTest extends TestCase
         Schema::create('ledgers', function (Blueprint $t): void {
             $t->id();
             $t->unsignedBigInteger('customer_ledger_id')->nullable()->index();
+            // Authentic legacy ledger identity fields needed by the shared
+            // project/series voucher allocator.
+            $t->unsignedBigInteger('project_head_subheads_id')->nullable();
+            $t->string('type',12)->nullable();
+            $t->unsignedBigInteger('voucher_number')->nullable();
         });
         Schema::create('finance_original_customer_requests', function (Blueprint $t): void {
             $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('customer_ledger_id'); $t->string('source_sha256');
