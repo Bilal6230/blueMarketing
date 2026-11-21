@@ -104,4 +104,94 @@ final class OriginalJournalWorkflow
             return (int) $id;
         }, 3);
     }
+    /**
+     * Save a Sales Voucher for approval without creating any active posting.
+     * The project row serializes concurrent saves and approval-event metadata
+     * makes retries with the same request key idempotent.
+     */
+    public function createPendingSales(int $projectId,string $key,array $input,int $actorId): int
+    {
+        FinanceConnectionGuard::assertAllowed();
+        if(!preg_match('/^[A-Za-z0-9_-]{16,128}$/D',$key)){
+            throw new \DomainException('SV_REQUEST_KEY_REQUIRED');
+        }
+        return DB::transaction(function()use($projectId,$key,$input,$actorId):int{
+            DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
+            $entries=[];
+            $debitCents=0;$creditCents=0;
+            $accounts=\App\Models\ProjectHeadSubhead::availableForPosting()
+                ->where('project_id',$projectId)->whereIn('id',$input['sub_accounts'])
+                ->lockForUpdate()->get(['id','head_accounting_id'])->keyBy('id');
+            foreach($input['sub_accounts'] as $i=>$accountId){
+                if(!$accounts->has($accountId)||
+                    (int)$accounts->get($accountId)->head_accounting_id!==(int)$input['accounts'][$i]){
+                    throw new \DomainException('SV_ACCOUNT_PAIR_CHANGED');
+                }
+                $debit=$this->money($input['debit'][$i]);
+                $credit=$this->money($input['credit'][$i]);
+                $debitCents+=(int)str_replace('.','',$debit);
+                $creditCents+=(int)str_replace('.','',$credit);
+                $entries[]=['account_id'=>(int)$accountId,'debit'=>$debit,
+                    'credit'=>$credit,'description'=>(string)($input['line_description'][$i]??'')];
+            }
+            if(count($entries)<2||$debitCents<1||$debitCents!==$creditCents){
+                throw new \DomainException('SV_AMOUNT_IMBALANCE');
+            }
+            $identity=[
+                'date'=>(string)$input['date'],
+                'reference'=>(string)($input['reference']??''),
+                'description'=>(string)$input['description'],
+                'lines'=>$entries,
+            ];
+            $fingerprint=hash('sha256',json_encode($identity,JSON_THROW_ON_ERROR));
+            $event='sv_submit_'.substr(hash('sha256',$key),0,22);
+            $prior=DB::table('daily_voucher_approval_events as e')
+                ->join('daily_voucher_approvals as a','a.id','=','e.approval_id')
+                ->where('a.project_id',$projectId)->where('a.voucher_type','SV')
+                ->where('e.event',$event)->lockForUpdate()
+                ->first(['a.source_id','a.source_table','e.remarks']);
+            if($prior){
+                $meta=json_decode((string)$prior->remarks,true);
+                if(($meta['key']??null)!==$key||($meta['fingerprint']??null)!==$fingerprint
+                    ||$prior->source_table!=='journal_vouchers'
+                    ||!DB::table('journal_vouchers')->where('id',$prior->source_id)
+                        ->where('project_id',$projectId)->where('type','SV')
+                        ->whereNull('deleted_at')->exists()){
+                    throw new \DomainException('SV_REQUEST_KEY_CONFLICT');
+                }
+                return (int)$prior->source_id;
+            }
+            $formatted=intdiv($debitCents,100).'.'.str_pad((string)($debitCents%100),2,'0',STR_PAD_LEFT);
+            $id=DB::table('journal_vouchers')->insertGetId([
+                'project_id'=>$projectId,'type'=>'SV',
+                'voucher_number'=>(new ProjectVoucherAllocator())->nextSalesVoucher($projectId),
+                'date'=>$input['date'],'reference'=>$input['reference']??null,
+                'description'=>$input['description'],'total_debit'=>$formatted,
+                'total_credit'=>$formatted,'status'=>'pending',
+                'created_by'=>$actorId,'created_at'=>now(),'updated_at'=>now(),
+            ]);
+            foreach($entries as $line){
+                DB::table('journal_voucher_details')->insert($line+[
+                    'journal_voucher_id'=>$id,'created_by'=>$actorId,
+                    'created_at'=>now(),'updated_at'=>now(),
+                ]);
+            }
+            app(ProjectVoucherDisplayIdentity::class)->assign(
+                $projectId,'journal_voucher',(int)$id,'SV',(string)$input['date']);
+            if(!app(DailyVoucherApprovalWorkflow::class)->submitIfRequired(
+                $projectId,'SV','journal_vouchers',(int)$id,$actorId)){
+                throw new \DomainException('SV_APPROVAL_POLICY_CHANGED');
+            }
+            $approvalId=DB::table('daily_voucher_approvals')
+                ->where('project_id',$projectId)->where('voucher_type','SV')
+                ->where('source_table','journal_vouchers')->where('source_id',$id)->value('id');
+            DB::table('daily_voucher_approval_events')->insert([
+                'approval_id'=>$approvalId,'event'=>$event,'actor_id'=>$actorId,
+                'remarks'=>json_encode(['key'=>$key,'fingerprint'=>$fingerprint],JSON_THROW_ON_ERROR),
+                'created_at'=>now(),
+            ]);
+            return (int)$id;
+        },3);
+    }
+
 }
