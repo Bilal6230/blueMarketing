@@ -78,6 +78,7 @@
                                     <th>Date</th>
                                     <th>Description</th>
                                     <th>Amount</th>
+                                    <th>Status</th>
                                     {{-- Keep the table schema stable for read-only and print-only users.
                                          Action buttons remain gated in actions.blade.php. --}}
                                     <th>Actions</th>
@@ -264,6 +265,10 @@
                     },
                     {
                         data: 'total_debit'
+                    },
+                    {
+                        data: 'approval_status',
+                        render: $.fn.dataTable.render.text()
                     },
                     {
                         data: 'actions'
