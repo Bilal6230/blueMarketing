@@ -13,7 +13,7 @@ final class DailyVoucherApprovalWorkflow
     {
         // Explicit local standard ERP testing uses the original direct-posting
         // workflow. Do not require a separately configured pilot approver.
-        if ($type !== 'SV' && FinanceWorkflowAccess::normalErpMode()) return null;
+        if (!in_array($type,['SV','BD','BW'],true) && FinanceWorkflowAccess::normalErpMode()) return null;
         if (!Schema::hasTable('daily_voucher_approval_policies')) return null;
         return DailyVoucherApprovalPolicy::query()->where('project_id', $projectId)
             ->where('voucher_type', $type)->where('approval_required', true)->first();
@@ -21,7 +21,7 @@ final class DailyVoucherApprovalWorkflow
 
     public function submitIfRequired(int $projectId, string $type, string $sourceTable, int $sourceId, int $userId): bool
     {
-        if ($type !== 'SV' && FinanceWorkflowAccess::normalErpMode()) return false;
+        if (!in_array($type,['SV','BD','BW'],true) && FinanceWorkflowAccess::normalErpMode()) return false;
         if (!Schema::hasTable('daily_voucher_approval_policies')) {
             return false;
         }
@@ -353,6 +353,36 @@ final class DailyVoucherApprovalWorkflow
                 ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')
                     ->select('id')->where('project_id', $approval->project_id))
                 ->update(['is_active' => $active ? 1 : 0]);
+            return;
+        }
+
+        if ($approval->source_table === 'finance_bank_transfer_approval_drafts'
+            && in_array((string)$approval->voucher_type,['BD','BW'],true)) {
+            $draft=DB::table('finance_bank_transfer_approval_drafts')
+                ->where('id',$approval->source_id)->where('project_id',$approval->project_id)
+                ->where('transfer_kind',$approval->voucher_type==='BD'?'deposit':'withdrawal')
+                ->where('status','pending')->lockForUpdate()->first();
+            if(!$draft)throw new \DomainException('BANK_APPROVAL_DRAFT_NOT_PENDING');
+            if($active){
+                $result=(new BankTransferWriter())->post(
+                    (int)$approval->project_id,(int)$draft->bank_account_id,
+                    (string)$draft->transfer_kind,(string)$draft->request_key,
+                    (string)$draft->effective_date,(string)$draft->amount,
+                    (string)$draft->narration,
+                    [['account_id'=>(int)$draft->cash_account_id,
+                      'amount'=>(string)$draft->amount]],
+                    $actorId,$draft->linked_customer_ledger_id===null?null:
+                        (int)$draft->linked_customer_ledger_id,(int)$draft->id
+                );
+                DB::table('finance_bank_transfer_approval_drafts')
+                    ->where('id',$draft->id)->where('project_id',$approval->project_id)
+                    ->update(['status'=>'approved','posting_batch_id'=>$result['posting_batch_id'],
+                        'updated_at'=>now()]);
+            }else{
+                DB::table('finance_bank_transfer_approval_drafts')
+                    ->where('id',$draft->id)->where('project_id',$approval->project_id)
+                    ->update(['status'=>'rejected','updated_at'=>now()]);
+            }
             return;
         }
 
