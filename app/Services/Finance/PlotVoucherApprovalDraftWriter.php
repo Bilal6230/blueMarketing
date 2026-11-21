@@ -119,8 +119,8 @@ final class PlotVoucherApprovalDraftWriter
         $writer=app(PlotEntryWriter::class);
         $result=$type==='PPR'
             ?$writer->receive($projectId,(int)$data['customer_id'],
-                (string)$draft->request_key,$data,$actorId)
-            :$writer->purchase($projectId,(string)$draft->request_key,$data,$actorId);
+                (string)$draft->request_key,$data,$actorId,$draftId)
+            :$writer->purchase($projectId,(string)$draft->request_key,$data,$actorId,$draftId);
         DB::table('finance_plot_approval_drafts')
             ->where('id',$draftId)->where('project_id',$projectId)
             ->update(['status'=>'approved','posted_source_id'=>$result['source_id'],
