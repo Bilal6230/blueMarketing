@@ -80,6 +80,11 @@ final class PlotVoucherEditor
             if(app()->environment('testing'))return;
             throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
         }
+        $table=$series==='PPR'?'finance_plot_receipts':'finance_plot_purchases';
+        $numberColumn=$series==='PPR'?'receipt_number':'purchase_number';
+        $reference=DB::table($table)->where('project_id',$project)
+            ->where('id',$sourceId)->value($numberColumn);
+        if(!$reference)throw new \DomainException('PLOT_LEDGER_SOURCE_NOT_FOUND');
         $typed=DB::table('finance_posting_lines')->where('posting_batch_id',$batchId)
             ->whereNotNull('legacy_ledger_id')->lockForUpdate()->get();
         foreach($typed as $line){
@@ -92,7 +97,8 @@ final class PlotVoucherEditor
                 throw new \DomainException('PLOT_LEDGER_SOURCE_RELATION_INVALID');
             }
             $active=(int)($line->is_active??1)===1;
-            $update=['is_active'=>$active?1:0,'updated_at'=>now()];
+            $update=['is_active'=>$active?1:0,'reference'=>$reference,
+                'updated_at'=>now()];
             if($active){
                 $this->account($project,(int)$line->project_head_subhead_id);
                 $update+=['project_head_subheads_id'=>$line->project_head_subhead_id,
