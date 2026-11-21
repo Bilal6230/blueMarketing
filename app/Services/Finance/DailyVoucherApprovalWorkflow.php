@@ -225,7 +225,7 @@ final class DailyVoucherApprovalWorkflow
                     ]);
                 }
             }
-            $this->setPostingState($locked, $decision === 'approved');
+            $this->setPostingState($locked, $decision === 'approved', $actorId);
             }
             $previousStatus=null;
             $previousDecisionActor=null;
@@ -262,7 +262,7 @@ final class DailyVoucherApprovalWorkflow
         },3);
     }
 
-    private function setPostingState(DailyVoucherApproval $approval, bool $active): void
+    private function setPostingState(DailyVoucherApproval $approval, bool $active, int $actorId): void
     {
         if ($approval->source_table === 'ledgers') {
             $ledger = DB::table('ledgers as ledger')
@@ -370,7 +370,7 @@ final class DailyVoucherApprovalWorkflow
                 (new PostingGateway())->postSalesVoucher(
                     (int)$approval->project_id,(int)$voucher->id,
                     'sv_approval_'.(int)$approval->id.'_'.(int)$voucher->id,
-                    (int)$approval->assigned_approver_id
+                    $actorId
                 );
             }
             DB::table('journal_vouchers')->where('id',$voucher->id)
