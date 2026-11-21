@@ -121,31 +121,31 @@ body.jv-directory-active{overflow:hidden!important}
  <button type="button" class="btn btn-sm btn-light" id="jv-excel-clear">Clear</button><button type="button" class="btn btn-sm btn-light" id="jv-excel-cancel">Cancel</button><button type="button" class="btn btn-sm btn-primary" id="jv-excel-apply">Apply</button></div></div>
 <div class="modal fade jv-modal" id="jv-entry" tabindex="-1" role="dialog" aria-hidden="true">
  <div class="modal-dialog" role="document"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title" id="jv-entry-title">Journal Voucher</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <div class="modal-header"><h5 class="modal-title" id="jv-entry-title">{{ $type === 'SV' ? 'Sales Voucher' : 'Journal Voucher' }}</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
   <div class="modal-body"><div class="jv-load" id="jv-loading"><span class="spinner-border spinner-border-sm"></span> Loading voucher form...</div><iframe id="jv-entry-frame" title="Journal Voucher Form" src="about:blank"></iframe></div>
   <div class="modal-footer"><a id="jv-open-tab" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">Open in new tab</a><button class="btn btn-sm btn-secondary" type="button" data-dismiss="modal">Close</button></div>
  </div></div>
 </div>
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-  <div class="modal-header bg-danger text-white"><h5 class="modal-title">Reverse Journal Voucher</h5><button class="close text-white" type="button" data-dismiss="modal"><span>&times;</span></button></div>
+  <div class="modal-header bg-danger text-white"><h5 class="modal-title">{{ $type === 'SV' ? 'Delete Sales Voucher' : 'Reverse Journal Voucher' }}</h5><button class="close text-white" type="button" data-dismiss="modal"><span>&times;</span></button></div>
   <form id="deleteForm" method="POST">
    @csrf @method('DELETE')
    <input type="hidden" name="request_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
    <div class="modal-body">
-    <p class="text-muted mb-3">This reverses posted accounting entries while preserving their history.</p>
+    <p class="text-muted mb-3">{{ $type === 'SV' ? 'Pending vouchers are withdrawn without posting. Posted vouchers are archived with their accounting history preserved.' : 'This reverses posted accounting entries while preserving their history.' }}</p>
     <div class="form-group mb-3">
-     <label for="jv-reversal-date" class="font-weight-bold">Reversal Date *</label>
+     <label for="jv-reversal-date" class="font-weight-bold">{{ $type === 'SV' ? 'Effective Date *' : 'Reversal Date *' }}</label>
      <input type="date" id="jv-reversal-date" name="effective_date" value="{{ now()->toDateString() }}" class="form-control" required>
     </div>
     <div class="form-group mb-0">
      <label for="jv-reversal-reason" class="font-weight-bold">Reason *</label>
-     <textarea id="jv-reversal-reason" name="reason" maxlength="200" rows="3" class="form-control" placeholder="Explain the reversal" required></textarea>
+     <textarea id="jv-reversal-reason" name="reason" maxlength="200" rows="3" class="form-control" placeholder="{{ $type === 'SV' ? 'Reason for deletion' : 'Explain the reversal' }}" required></textarea>
     </div>
    </div>
    <div class="modal-footer d-flex justify-content-end">
     <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
-    <button class="btn btn-danger btn-sm" type="submit">Confirm Reversal</button>
+    <button class="btn btn-danger btn-sm" type="submit">{{ $type === 'SV' ? 'Confirm Delete' : 'Confirm Reversal' }}</button>
    </div>
   </form>
  </div></div>
