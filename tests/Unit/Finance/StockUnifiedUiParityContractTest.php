@@ -44,7 +44,14 @@ class StockUnifiedUiParityContractTest extends TestCase
             self::assertStringContainsString("stockSkeletonStart('".$kind."')", $view);
             self::assertStringContainsString("stockSkeletonEnd('".$kind."')", $view);
         }
-        self::assertStringContainsString('stock-skeleton-shimmer', $view);
+        self::assertStringContainsString('$.blueTableSkeleton.show($body', $view);
+        self::assertStringContainsString('$.blueTableSkeleton.clear($body)', $view);
+        self::assertStringContainsString('function stockSkeletonPrime()', $view);
+        self::assertStringContainsString('stockSkeletonPrime();', $view);
+        self::assertStringContainsString('function stockSkeletonResetAll()', $view);
+        self::assertStringContainsString('rows:10,columns:stockSkeletonColumns[kind]', $view);
+        self::assertStringContainsString('tr.bm-skeleton-row', $view);
+        self::assertStringNotContainsString('stock-skeleton-overlay', $view);
 
         self::assertStringNotContainsString('Legacy stock needs project reconciliation.', $view);
         self::assertStringNotContainsString('id="btnApplyStock"', $view);
