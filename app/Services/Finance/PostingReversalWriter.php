@@ -165,6 +165,7 @@ final class PostingReversalWriter
                 if ($target !== $actualCanonical) {
                     throw new \DomainException('V2_REVERSAL_REPLAY_TAMPERED');
                 }
+                PostedVoucherLedgerGate::assertLinked($projectId, (int) $existing->id);
                 return (int) $existing->id;
             }
 
@@ -195,6 +196,7 @@ final class PostingReversalWriter
             } elseif(!app()->environment('testing')){
                 throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
             }
+            PostedVoucherLedgerGate::assertLinked($projectId, (int) $id);
             return (int) $id;
         }, 3);
     }
