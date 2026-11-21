@@ -144,7 +144,7 @@ final class OriginalJournalWorkflow
                 'lines'=>$entries,
             ];
             $fingerprint=hash('sha256',json_encode($identity,JSON_THROW_ON_ERROR));
-            $event='sv_submit_'.substr(hash('sha256',$key),0,22);
+            $event='svk_'.substr(hash('sha256',$key),0,20);
             $prior=DB::table('daily_voucher_approval_events as e')
                 ->join('daily_voucher_approvals as a','a.id','=','e.approval_id')
                 ->where('a.project_id',$projectId)->where('a.voucher_type','SV')
