@@ -1772,6 +1772,15 @@ class VoucherController extends Controller
                 'can_reverse' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null,
                 'can_edit' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null]);
         if(Schema::hasTable('finance_bank_transfer_approval_drafts')){
+            $approvedStatuses=DB::table('finance_bank_transfer_approval_drafts')
+                ->where('project_id',$projectId)->where('transfer_kind',$kind)
+                ->whereNotNull('posting_batch_id')
+                ->whereIn('posting_batch_id',$rows->pluck('posting_batch_id'))
+                ->pluck('status','posting_batch_id');
+            $rows=$rows->map(function($row)use($approvedStatuses){
+                $row['approval_status']=$approvedStatuses[$row['posting_batch_id']]??null;
+                return $row;
+            });
             $drafts=DB::table('finance_bank_transfer_approval_drafts as draft')
                 ->join('project_bank_accounts as bank',function($j)use($projectId){
                     $j->on('bank.id','=','draft.bank_account_id')
