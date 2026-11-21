@@ -115,8 +115,36 @@ final class TypedLedgerBackfill
                 ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
                 ->where('a.project_id',$projectId)
                 ->where('l.type',$ledgerType)->where('l.type_id',$sourceId)
-                ->when($linkedIds,fn($q)=>$q->whereNotIn('l.id',$linkedIds))->exists();
-            if($existing)throw new \DomainException('LEDGER_BACKFILL_POSSIBLE_DUPLICATE_SOURCE');
+                ->when($linkedIds,fn($q)=>$q->whereNotIn('l.id',$linkedIds))
+                ->lockForUpdate()->get(['l.*']);
+
+            // Old PPR ledgers may already exist from the original payment
+            // flow. Claim them only when each original row matches one typed
+            // line exactly; never insert another debit/credit for that source.
+            $claimedLegacy=[];
+            $recovered=[];
+            foreach($lines as $line){
+                if($line->legacy_ledger_id!==null)continue;
+                $matches=$existing->filter(fn($ledger)=>
+                    !isset($claimedLegacy[(int)$ledger->id])
+                    &&(int)$ledger->project_head_subheads_id===(int)$line->project_head_subhead_id
+                    &&$this->cents($ledger->amount_in)===$this->cents($line->debit)
+                    &&$this->cents($ledger->amount_out)===$this->cents($line->credit)
+                    &&(int)$ledger->is_active===(int)($line->is_active??1))->values();
+                if($matches->count()>1){
+                    throw new \DomainException('LEDGER_BACKFILL_AMBIGUOUS_LEGACY_SOURCE');
+                }
+                if($matches->count()===1){
+                    $ledger=$matches->first();
+                    $claimedLegacy[(int)$ledger->id]=true;
+                    $recovered[(int)$line->id]=(int)$ledger->id;
+                }
+            }
+            if($existing->count()>0 && count($claimedLegacy)!==$existing->count()){
+                throw new \DomainException('LEDGER_BACKFILL_POSSIBLE_DUPLICATE_SOURCE: batch='.
+                    $batchId.' source='.$sourceId.' old_rows='.$existing->count().
+                    ' exactly_matched='.count($claimedLegacy));
+            }
             $debit=$credit=0;
             foreach($lines as $line){
                 if(!DB::table('project_head_subheads')
@@ -154,6 +182,9 @@ final class TypedLedgerBackfill
             if(!$apply)return $summary;
             foreach($lines as $line){
                 if($line->legacy_ledger_id!==null)continue;
+                if(isset($recovered[(int)$line->id])){
+                    $ledgerId=$recovered[(int)$line->id];
+                }else{
                 $amountIn=(string)$line->debit;$amountOut=(string)$line->credit;
                 $voucherNumber=$batch->voucher_number;
                 $ledgerId=DB::table('ledgers')->insertGetId([
@@ -167,11 +198,19 @@ final class TypedLedgerBackfill
                     'is_active'=>(int)($line->is_active??1),'status'=>'0',
                     'created_at'=>$line->created_at??now(),'updated_at'=>now(),
                 ]);
+                }
                 DB::table('finance_posting_lines')->where('id',$line->id)
                     ->whereNull('legacy_ledger_id')->update([
                         'legacy_ledger_id'=>$ledgerId,'updated_at'=>now(),
                     ]);
-                DB::table('ledger_source_attributions')->insert([
+                $attributed=DB::table('ledger_source_attributions')
+                    ->where('ledger_id',$ledgerId)->first();
+                if($attributed && ((int)$attributed->project_id!==$projectId
+                    ||(string)$attributed->source_kind!==$attributionKind
+                    ||(int)$attributed->source_id!==$sourceId)){
+                    throw new \DomainException('LEDGER_BACKFILL_ATTRIBUTION_CONFLICT');
+                }
+                if(!$attributed)DB::table('ledger_source_attributions')->insert([
                     'ledger_id'=>$ledgerId,'project_id'=>$projectId,
                     'source_kind'=>$attributionKind,'source_id'=>$sourceId,
                     'evidence_kind'=>'verified_typed_backfill',
