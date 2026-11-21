@@ -18,11 +18,11 @@ final class BankTransferApprovalIntegrationContractTest extends TestCase
         $writer=$this->code('app/Services/Finance/BankTransferWriter.php');
         self::assertStringContainsString("'BD' : 'BW'",$writer);
         self::assertStringContainsString('ProjectVoucherAllocator())->next($projectId,$series,$legacyMax)',$writer);
-        self::assertStringContainsString("'voucher_number' => $voucherNumber",$writer);
+        self::assertStringContainsString('\'voucher_number\' => $voucherNumber',$writer);
         self::assertStringNotContainsString("'voucher_number' => null",$writer);
         self::assertStringContainsString('COALESCE(voucher_number,id)',$writer);
         $history=$this->code('app/Http/Controllers/Finance/VoucherController.php');
-        self::assertStringContainsString("($r->voucher_number ?: $r->posting_batch_id)",$history);
+        self::assertStringContainsString('($r->voucher_number ?: $r->posting_batch_id)',$history);
     }
 
     public function test_approval_submission_has_no_posting_and_is_project_scoped(): void
