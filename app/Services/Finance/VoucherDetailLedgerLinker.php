@@ -61,16 +61,31 @@ final class VoucherDetailLedgerLinker
             $total=DB::table('finance_posting_lines')->where('posting_batch_id',$batchId)->count();
             if($total<2||$lines->count()!==$total)
                 throw new \DomainException('DETAIL_LEDGER_LINE_IDENTITY_INCOMPLETE');
+            $activeDebit=$activeCredit=0;
+            foreach($lines as $line){
+                if((int)($line->is_active??1)===1){
+                    $activeDebit+=$this->cents($line->debit);
+                    $activeCredit+=$this->cents($line->credit);
+                }
+            }
+            if($activeDebit<1||$activeDebit!==$activeCredit){
+                throw new \DomainException('DETAIL_LEDGER_ACTIVE_POSTING_UNBALANCED');
+            }
             $created=0;
             foreach($lines as $line){
+                // Commission details may have been edited after the immutable
+                // finance batch was posted. The batch's validated accounting
+                // legs remain authoritative; the FK alone proves detail
+                // ownership, not the current amount/account snapshot.
                 if($line->detail_deleted_at!==null
-                    ||(int)$line->detail_account!==(int)$line->project_head_subhead_id
-                    ||$this->cents($line->detail_debit)!==$this->cents($line->debit)
-                    ||$this->cents($line->detail_credit)!==$this->cents($line->credit)
+                    ||(!$cv && ((int)$line->detail_account!==(int)$line->project_head_subhead_id
+                        ||$this->cents($line->detail_debit)!==$this->cents($line->debit)
+                        ||$this->cents($line->detail_credit)!==$this->cents($line->credit)))
                     ||!DB::table('project_head_subheads')
                         ->where('project_id',$projectId)
                         ->where('id',$line->project_head_subhead_id)->exists()){
-                    throw new \DomainException('DETAIL_LEDGER_AMOUNT_ACCOUNT_MISMATCH');
+                    throw new \DomainException('DETAIL_LEDGER_AMOUNT_ACCOUNT_MISMATCH: batch='.
+                        $batchId.' line='.$line->id.' detail='.$line->voucher_detail_id);
                 }
                 $ledger=DB::table('ledgers')
                     ->where($detailFk,$line->voucher_detail_id)->lockForUpdate()->first();
