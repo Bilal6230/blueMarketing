@@ -39,6 +39,13 @@ class SalesVoucherApprovalIntegrationContractTest extends TestCase
         self::assertStringContainsString("submitIfRequired(",$pending);
         self::assertStringNotContainsString('postSalesVoucher(',$pending);
         self::assertStringContainsString('SV_REQUEST_KEY_CONFLICT',$pending);
+        // The journal voucher header has created_by, but its details table does not.
+        $schema=$this->source('database/migrations/2025_01_27_143458_create_journal_voucher_details_table.php');
+        self::assertStringNotContainsString('`created_by`',$schema);
+        $detailInsert=substr($pending,strpos($pending,"DB::table('journal_voucher_details')->insert("),
+            strpos($pending,"app(ProjectVoucherDisplayIdentity::class)"));
+        self::assertStringContainsString("'journal_voucher_id'=>\$id",$detailInsert);
+        self::assertStringNotContainsString("'created_by'=>",$detailInsert);
 
         $approval=$this->source('app/Services/Finance/DailyVoucherApprovalWorkflow.php');
         self::assertStringContainsString("\$type !== 'SV' && FinanceWorkflowAccess::normalErpMode()",$approval);
