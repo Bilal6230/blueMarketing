@@ -285,6 +285,12 @@ final class ApprovedSourcePostingWriter
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
+            if(Schema::hasTable('ledger_source_attributions')
+                && Schema::hasTable('ledgers')){
+                app(ApprovedDocumentLedgerLinker::class)->sync($projectId,(int)$batch);
+            } elseif(!app()->environment('testing')){
+                throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
+            }
             return (int) $batch;
         }, 3);
     }
