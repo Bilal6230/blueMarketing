@@ -65,6 +65,8 @@ final class UnifiedLedgerWritePathsContractTest extends TestCase
         self::assertStringContainsString('$recovered[(int)$line->id]',$src);
         self::assertStringContainsString('LEDGER_BACKFILL_ATTRIBUTION_CONFLICT',$src);
         self::assertStringContainsString('LEDGER_BACKFILL_POSSIBLE_DUPLICATE_SOURCE',$src);
+        self::assertStringContainsString('unmatched_old_ledger_ids=',$src);
+        self::assertStringContainsString('unlinked_line_ids=',$src);
     }
 
     public function test_edited_commission_details_do_not_override_balanced_immutable_posting(): void
@@ -73,6 +75,8 @@ final class UnifiedLedgerWritePathsContractTest extends TestCase
         self::assertStringContainsString('DETAIL_LEDGER_ACTIVE_POSTING_UNBALANCED',$src);
         self::assertStringContainsString('(!$cv &&',$src);
         self::assertStringContainsString('voucher_detail_id',$src);
+        self::assertStringContainsString('detail_deleted_at!==null && (int)($line->is_active??1)===1',$src);
+        self::assertStringContainsString('detail_deleted=',$src);
         self::assertStringContainsString('ledger_source_attributions',$src);
     }
 
