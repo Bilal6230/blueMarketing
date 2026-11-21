@@ -1588,11 +1588,30 @@ class VoucherController extends Controller
         ]);
         abort_unless($kind === 'withdrawal' || empty($data['cheque_source_id']), 422, 'A cheque source can only be linked to a withdrawal.');
         $narration = trim(($data['reference'] ?? '') !== '' ? 'Ref: '.$data['reference'].' | ' : '').$data['description'];
-        $result = (new \App\Services\Finance\BankTransferWriter())->post($projectId, (int) $data['bank_account_id'], $kind,
-            $data['request_key'], $data['date'], (string) $data['amount'], $narration,
-            [['account_id' => (int) $data['cash_account_id'], 'amount' => (string) $data['amount']]], auth()->id(),
-            isset($data['cheque_source_id']) ? (int) $data['cheque_source_id'] : null);
-        return response()->json(['status' => 'success', 'data' => $result], $result['replayed'] ? 200 : 201);
+        $series=$kind==='deposit'?'BD':'BW';
+        $approvalRequired=(bool)app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+            ->policy($projectId,$series);
+        try{
+            if($approvalRequired){
+                $result=app(\App\Services\Finance\BankTransferApprovalDraftWriter::class)->submit(
+                    $projectId,(int)$data['bank_account_id'],(int)$data['cash_account_id'],
+                    $kind,$data['request_key'],$data['date'],(string)$data['amount'],
+                    $narration,(int)auth()->id(),
+                    isset($data['cheque_source_id'])?(int)$data['cheque_source_id']:null);
+            }else{
+                $result=(new \App\Services\Finance\BankTransferWriter())->post(
+                    $projectId,(int)$data['bank_account_id'],$kind,$data['request_key'],$data['date'],
+                    (string)$data['amount'],$narration,
+                    [['account_id'=>(int)$data['cash_account_id'],'amount'=>(string)$data['amount']]],
+                    auth()->id(),isset($data['cheque_source_id'])?(int)$data['cheque_source_id']:null);
+            }
+        }catch(\DomainException $e){
+            return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
+        }
+        return response()->json(['status'=>'success','data'=>$result,
+            'message'=>$approvalRequired
+                ? 'Bank voucher submitted for approval; no posting created.'
+                : 'Bank voucher posted successfully.'],$result['replayed']?200:201);
     }
 
     /** Current editable bank voucher details; never infer a cash account by row order. */
