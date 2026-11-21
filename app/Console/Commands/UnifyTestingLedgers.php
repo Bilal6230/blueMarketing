@@ -28,7 +28,8 @@ final class UnifyTestingLedgers extends Command
         TypedLedgerBackfill $plotBank,
         CashSourceLedgerLinker $cash,
         VoucherDetailLedgerLinker $detail,
-        ReversalLedgerLinker $reversal
+        ReversalLedgerLinker $reversal,
+        \App\Services\Finance\ApprovedDocumentLedgerLinker $approved
     ): int {
         $database=(string)DB::connection()->getDatabaseName();
         $project=(string)$this->option('project');
@@ -82,7 +83,14 @@ final class UnifyTestingLedgers extends Command
                 }elseif($series==='REV' && $batch->reversal_of_batch_id!==null){
                     $linked+=$reversal->sync((int)$project,(int)$batch->id);
                 }else{
-                    $blocked[]='Batch '.$batch->id.': unsupported series '.$series;
+                    $sourceKind=DB::table('finance_posting_source_claims')
+                        ->where('posting_batch_id',$batch->id)->value('source_kind');
+                    if(in_array($sourceKind,['booking','labour','stock_entry','stock_bill'],true)){
+                        $linked+=$approved->sync((int)$project,(int)$batch->id);
+                    }else{
+                        $blocked[]='Batch '.$batch->id.': unsupported source '.$sourceKind.
+                            ', series '.$series;
+                    }
                 }
             }catch(\Throwable $error){
                 $blocked[]='Batch '.$batch->id.' ('.$batch->voucher_series.'): '.$error->getMessage();
