@@ -52,6 +52,9 @@ final class AuditLedgerConsolidation extends Command
             ->groupBy('a.project_id','l.type','l.is_active')->orderBy('a.project_id')
             ->orderBy('l.type')->get()->map(fn($row)=>(array)$row)->all();
 
+        $stateCheck=Schema::hasColumn('finance_posting_lines','is_active')
+            ? 'SUM(CASE WHEN ledger.id IS NOT NULL AND line.is_active != ledger.is_active THEN 1 ELSE 0 END)'
+            : '0';
         $typed=DB::table('finance_posting_lines as line')
             ->join('finance_posting_batches as batch','batch.id','=','line.posting_batch_id')
             ->leftJoin('project_head_subheads as account','account.id','=','line.project_head_subhead_id')
@@ -69,7 +72,8 @@ final class AuditLedgerConsolidation extends Command
                     OR ledger.amount_in != line.debit OR ledger.amount_out != line.credit)
                     THEN 1 ELSE 0 END) AS mismatched_link,
                 SUM(CASE WHEN account.project_id IS NULL OR account.project_id != batch.project_id
-                    THEN 1 ELSE 0 END) AS foreign_account")
+                    THEN 1 ELSE 0 END) AS foreign_account,
+                {$stateCheck} AS status_mismatch")
             ->groupBy('batch.project_id','batch.voucher_series','batch.reversal_of_batch_id')
             ->get()->groupBy(fn($row)=>(int)$row->project_id.'|'.$row->voucher_series.'|'.
                 ($row->batch_kind==='reversal'?'reversal':'original'))
@@ -84,6 +88,7 @@ final class AuditLedgerConsolidation extends Command
                     'missing_link_target'=>(int)$group->sum('missing_link_target'),
                     'mismatched_link'=>(int)$group->sum('mismatched_link'),
                     'foreign_account'=>(int)$group->sum('foreign_account'),
+                    'status_mismatch'=>(int)$group->sum('status_mismatch'),
                 ];
             })->values()->all();
 
@@ -109,7 +114,8 @@ final class AuditLedgerConsolidation extends Command
             ->get()->map(fn($row)=>(array)$row)->all();
 
         $problemRows=array_sum(array_map(static fn($row)=>
-            $row['missing_link_target']+$row['mismatched_link']+$row['foreign_account'],$typed));
+            $row['missing_link_target']+$row['mismatched_link']+$row['foreign_account']
+                +$row['status_mismatch'],$typed));
         $missingMappings=array_sum(array_column($typed,'without_ledger_link'));
         $ambiguousCp=array_sum(array_map(static fn($row)=>
             in_array($row['display_series'],['UNCLASSIFIED_CP','CP'],true)||$row['missing_or_foreign_source']>0
@@ -135,10 +141,11 @@ final class AuditLedgerConsolidation extends Command
         }else{
             $this->info('READ ONLY: '.$database.' / '.($project===null?'all projects':'project '.$project));
             $this->line('Physical tables: '.$result['physical_tables']);
-            $this->table(['Project','Type','Batch','Lines','No ledger link','Bad links','Foreign accounts'],
+            $this->table(['Project','Type','Batch','Lines','No ledger link','Bad links','Foreign accounts','Status mismatch'],
                 array_map(static fn($r)=>[$r['project_id'],$r['voucher_type'],$r['batch_kind'],
                     $r['total_lines'],$r['without_ledger_link'],
-                    $r['missing_link_target']+$r['mismatched_link'],$r['foreign_account']],$typed));
+                    $r['missing_link_target']+$r['mismatched_link'],$r['foreign_account'],
+                    $r['status_mismatch']],$typed));
             $this->table(['Project','CP display identity','Rows','Missing/foreign source'],
                 array_map(static fn($r)=>[$r['project_id'],$r['display_series'],
                     $r['ledger_rows'],$r['missing_or_foreign_source']],$cp));
