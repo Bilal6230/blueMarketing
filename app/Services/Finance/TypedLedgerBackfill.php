@@ -115,6 +115,10 @@ final class TypedLedgerBackfill
                 ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
                 ->where('a.project_id',$projectId)
                 ->where('l.type',$ledgerType)->where('l.type_id',$sourceId)
+                // Legacy cash PPR uses the same numeric type_id space as plot
+                // receipts. Its customer_ledger_id is the authoritative FK;
+                // never mistake that cash row for a plot-receipt posting.
+                ->when($series==='PR',fn($q)=>$q->whereNull('l.customer_ledger_id'))
                 ->when($linkedIds,fn($q)=>$q->whereNotIn('l.id',$linkedIds))
                 ->lockForUpdate()->get(['l.*']);
 
