@@ -13,7 +13,7 @@ final class DailyVoucherApprovalWorkflow
     {
         // Explicit local standard ERP testing uses the original direct-posting
         // workflow. Do not require a separately configured pilot approver.
-        if (!in_array($type,['SV','BD','BW'],true) && FinanceWorkflowAccess::normalErpMode()) return null;
+        if (!in_array($type,['SV','BD','BW','DR','CV'],true) && FinanceWorkflowAccess::normalErpMode()) return null;
         if (!Schema::hasTable('daily_voucher_approval_policies')) return null;
         return DailyVoucherApprovalPolicy::query()->where('project_id', $projectId)
             ->where('voucher_type', $type)->where('approval_required', true)->first();
@@ -21,7 +21,7 @@ final class DailyVoucherApprovalWorkflow
 
     public function submitIfRequired(int $projectId, string $type, string $sourceTable, int $sourceId, int $userId): bool
     {
-        if (!in_array($type,['SV','BD','BW'],true) && FinanceWorkflowAccess::normalErpMode()) return false;
+        if (!in_array($type,['SV','BD','BW','DR','CV'],true) && FinanceWorkflowAccess::normalErpMode()) return false;
         if (!Schema::hasTable('daily_voucher_approval_policies')) {
             return false;
         }
@@ -353,6 +353,29 @@ final class DailyVoucherApprovalWorkflow
                 ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')
                     ->select('id')->where('project_id', $approval->project_id))
                 ->update(['is_active' => $active ? 1 : 0]);
+            return;
+        }
+
+        if($approval->source_table==='commision_vouchers' && $approval->voucher_type==='CV'){
+            $source=DB::table('commision_vouchers')
+                ->where('project_id',$approval->project_id)
+                ->where('id',$approval->source_id)->whereNull('deleted_at')
+                ->lockForUpdate()->first();
+            if(!$source || $source->status!=='draft'
+                || DB::table('finance_posting_commission_sources')
+                    ->where('commision_voucher_id',$approval->source_id)->exists()){
+                throw new \DomainException('CV_APPROVAL_SOURCE_INVALID');
+            }
+            if($active){
+                app(CommissionDraftWorkflow::class)->approveAndPost(
+                    (int)$approval->project_id,(int)$approval->source_id,
+                    'commission_approval_'.(int)$approval->id.'_'.(int)$approval->source_id,
+                    $actorId
+                );
+            }else{
+                // Keep the original source and inactive draft lines intact for
+                // audit; reject blocks subsequent direct/manual posting.
+            }
             return;
         }
 
