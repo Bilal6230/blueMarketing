@@ -10,7 +10,8 @@ final class RemainingVoucherApprovalIntegrationsContractTest extends TestCase
     {
         $content=file_get_contents(base_path($path));
         self::assertIsString($content);
-        return $content;
+        // Normalize Windows CRLF so assertions validate source behavior, not checkout line endings.
+        return str_replace(["\r\n", "\r"], "\n", $content);
     }
 
     public function test_all_four_policy_cards_are_enabled_and_supported_by_dashboard(): void
