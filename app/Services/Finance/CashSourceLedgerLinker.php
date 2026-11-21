@@ -54,8 +54,11 @@ final class CashSourceLedgerLinker
                     throw new \DomainException('CASH_LEDGER_INVALID_POSTING_LINE');
                 if((int)($line->is_active??1)===1){$activeDebit+=$debit;$activeCredit+=$credit;}
             }
-            if($activeDebit!==$activeCredit)
-                throw new \DomainException('CASH_LEDGER_UNBALANCED');
+            $sourceAmount=max($this->cents($source->amount_in),
+                $this->cents($source->amount_out));
+            if($activeDebit!==$activeCredit
+                ||$activeDebit!==$sourceAmount)
+                throw new \DomainException('CASH_LEDGER_SOURCE_TOTAL_MISMATCH');
             $legacy=DB::table('ledgers as l')
                 ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
                 ->where('a.project_id',$projectId)->where('l.customer_ledger_id',$source->id)
