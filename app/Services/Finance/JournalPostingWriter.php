@@ -183,6 +183,12 @@ final class JournalPostingWriter
                     'journal_voucher_detail_id' => $line['detail_id'],
                 ]);
             }
+            if (Schema::hasTable('ledger_source_attributions')
+                && Schema::hasTable('ledgers')) {
+                app(VoucherDetailLedgerLinker::class)->sync($projectId,(int)$batchId);
+            } elseif(!app()->environment('testing')){
+                throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
+            }
             return (int) $batchId;
         }, 3);
     }
