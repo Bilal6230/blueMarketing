@@ -557,8 +557,10 @@ $(function () {
         }).done(function(json){
             pendingRequestKey=null;
             $('#bankTransferCreateModal').modal('hide');
-            notify('success',editingBatch?'Voucher updated':'Voucher posted',
-                editingBatch?json.message:'Posting batch #'+json.data.posting_batch_id);
+            notify('success',editingBatch?'Voucher updated':(json.data&&json.data.pending?'Pending approval':'Voucher posted'),
+                json.message||(editingBatch?'Voucher updated successfully.':
+                    (json.data&&json.data.pending?'Awaiting assigned approver.':
+                        'Posting batch #'+json.data.posting_batch_id)));
             loadHistory();
         }).fail(function(xhr){
             showError($('#transferFormError'),xhr,'Voucher could not be posted');
