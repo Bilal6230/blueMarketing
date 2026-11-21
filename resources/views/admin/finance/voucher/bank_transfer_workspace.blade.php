@@ -219,7 +219,7 @@ $(function () {
         var fields={date:r.date,number:r.voucher,head:cash[0]||'',subhead:cash.slice(1).join(' / '),
             detail:r.narration,amount:r.amount,status:r.approval_draft_id
                 ?(r.approval_status==='rejected'?'Rejected':'Pending')
-                :(r.reversed?'Reversed':'Posted')};
+                :(r.reversed?'Reversed':(r.approval_status==='approved'?'Approved':'Posted'))};
         return String(fields[field] == null ? '' : fields[field]);
     };
     var printUrl = function (id) { return $root.attr('data-print-base') + '/' + encodeURIComponent(id) + '/print'; };
@@ -303,7 +303,7 @@ $(function () {
             $('<td>').addClass('text-right').text(formatMoney(r.amount)).appendTo($tr);
             var status = isDraft
                 ? (r.approval_status === 'rejected' ? 'Rejected' : 'Pending')
-                : (r.reversed?'Reversed':'Posted');
+                : (r.reversed?'Reversed':(r.approval_status==='approved'?'Approved':'Posted'));
             $('<td>').append($('<span>').addClass('badge '+(isDraft
                 ? (status==='Pending'?'badge-warning':'badge-danger')
                 : 'badge-secondary')).text(status)).appendTo($tr);
