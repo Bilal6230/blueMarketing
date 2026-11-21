@@ -76,7 +76,7 @@ final class BankTransferApprovalDraftWriter
             $series=$kind==='deposit'?'BD':'BW';
             $legacyMax=(int)DB::table('finance_posting_batches')
                 ->where('project_id',$projectId)->where('voucher_series',$series)
-                ->selectRaw('MAX(COALESCE(voucher_number,id)) AS maximum')->value('maximum');
+                ->selectRaw('MAX(COALESCE(voucher_number,id)) AS maximum')->first()?->maximum;
             $number=(new ProjectVoucherAllocator())->next($projectId,$series,$legacyMax);
             $id=DB::table('finance_bank_transfer_approval_drafts')->insertGetId([
                 'project_id'=>$projectId,'transfer_kind'=>$kind,
