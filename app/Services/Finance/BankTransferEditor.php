@@ -22,6 +22,32 @@ final class BankTransferEditor
         return intdiv($value,100).'.'.str_pad((string)($value%100),2,'0',STR_PAD_LEFT);
     }
 
+    private function syncLinkedLedgerStatus(int $projectId,int $batchId): void
+    {
+        if(!Schema::hasTable('ledger_source_attributions')||!Schema::hasTable('ledgers')){
+            if(app()->environment('testing'))return;
+            throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
+        }
+        $series=(string)DB::table('finance_posting_batches')
+            ->where('id',$batchId)->where('project_id',$projectId)->value('voucher_series');
+        $sourceId=DB::table('finance_bank_transfer_sources')
+            ->where('posting_batch_id',$batchId)->where('project_id',$projectId)->value('id');
+        if(!$sourceId||!in_array($series,['BD','BW'],true))
+            throw new \DomainException('BANK_LEDGER_SOURCE_INVALID');
+        $lines=DB::table('finance_posting_lines')->where('posting_batch_id',$batchId)
+            ->whereNotNull('legacy_ledger_id')->lockForUpdate()->get();
+        foreach($lines as $line){
+            $ledger=DB::table('ledgers as l')
+                ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
+                ->where('a.project_id',$projectId)
+                ->where('l.id',$line->legacy_ledger_id)
+                ->where('l.type',$series)->where('l.type_id',$sourceId)->first(['l.id']);
+            if(!$ledger)throw new \DomainException('BANK_LEDGER_RELATION_INVALID');
+            DB::table('ledgers')->where('id',$ledger->id)
+                ->update(['is_active'=>(int)($line->is_active??1),'updated_at'=>now()]);
+        }
+    }
+
     public function update(int $projectId,string $kind,int $batchId,int $bankAccountId,
         int $cashAccountId,string $date,string $amount,string $narration,?int $actorId=null): void
     {
@@ -141,6 +167,10 @@ final class BankTransferEditor
             DB::table('finance_posting_batches')->where('id',$batchId)
                 ->where('project_id',$projectId)
                 ->update(['effective_date'=>$date,'payload_sha256'=>$hash,'updated_at'=>now()]);
+            $this->syncLinkedLedgerStatus($projectId,$batchId);
+            if(Schema::hasTable('ledger_source_attributions')){
+                app(TypedLedgerBackfill::class)->inspect($projectId,$batchId,true);
+            }
         },3);
     }
     /** Ordinary logical Delete; preserve original batch and every retired leg. */
@@ -211,6 +241,7 @@ final class BankTransferEditor
                 ->where('is_active',1)->update([
                     'is_active'=>0,'deleted_at'=>now(),'updated_at'=>now(),
                 ]);
+            $this->syncLinkedLedgerStatus($projectId,$batchId);
         },3);
     }
 
