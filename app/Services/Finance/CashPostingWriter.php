@@ -56,9 +56,9 @@ final class CashPostingWriter
                 ->where('id', $sourceId)->where('project_id', $projectId)
                 ->lockForUpdate()->first();
             if (!$source || (int) ($source->is_active ?? 1) !== 1 ||
-                !in_array((string) $source->transaction_type, ['CR', 'CP', 'PPR', 'EC', 'ECP'], true)
+                !in_array((string) $source->transaction_type, ['CR', 'CP', 'DR', 'PPR', 'EC', 'ECP'], true)
                 || ($expectedSeries === null
-                    ? !in_array((string) $source->transaction_type, ['CR', 'CP'], true)
+                    ? !in_array((string) $source->transaction_type, ['CR', 'CP', 'DR'], true)
                     : (string) $source->transaction_type !== $expectedSeries)
                 || (in_array((string) $source->transaction_type, ['PPR', 'EC', 'ECP'], true)
                     && (int) ($source->is_approve ?? 0) !== 1)) {
@@ -84,7 +84,7 @@ final class CashPostingWriter
             }
             $total = max($receipt, $payment);
             if (($source->transaction_type === 'CR' && $receipt === 0) ||
-                ($source->transaction_type === 'CP' && $payment === 0)) {
+                (in_array($source->transaction_type,['CP','DR'],true) && $payment === 0)) {
                 throw new \DomainException('V2_CASH_SOURCE_DIRECTION_INVALID');
             }
 
@@ -125,7 +125,7 @@ final class CashPostingWriter
 
             // Legacy type_id is a polymorphic voucher reference, NOT a real
             // voucher sequence for PPR/EC/ECP. Never cast it as identity.
-            $batchNumber = in_array((string) $source->transaction_type, ['CR', 'CP'], true)
+            $batchNumber = in_array((string) $source->transaction_type, ['CR', 'CP', 'DR'], true)
                 ? $source->type_id : null;
 
             $payload = [
