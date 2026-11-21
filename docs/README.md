@@ -1100,3 +1100,31 @@ Continue BlueMarketing repo `Bilal6230/blueMarketing`, `upgrade/laravel-framewor
 - **Newly detected CCR/CDR Edit blocker fixed:** `LedgerController::update` previously accepted only `CR` and `CP` although `SameSourceCashVoucherEdit` already supported `CCR/CDR`. Its source lookup now handles `CR/CP/CCR/CDR` together with the same granular permission and project/account checks. `CashCreditDebitEditContractTest` added.
 - Latest NEW tests remain **unexecuted by owner** and have not been claimed passed. Newly added scenarios must run locally before any closure.
 - Additional owner test gates: `php artisan test --filter=CashCreditDebitEditContractTest`, `php artisan test --filter=StockDocumentEditorTest`, `php artisan test --filter=LabourPaymentEditorTest`. Re-run `php artisan test --filter=SameSourceCashVoucherEditTest` if present. Browser test CCR/CDR Edit and attached Ledger balances after green tests.
+
+
+## 2026-11-21 — Milestone 03: DR / CV / Plot Receive / Plot Purchase approvals (latest branch changes)
+
+**Implementation pushed; local automated tests and browser acceptance are NOT YET confirmed.** Owner requested to finish the four voucher types previously marked `Integration pending` in `/admin/finance/voucher-settings`, while preserving the existing normal ERP and without resurrecting isolated V2 databases.
+
+- **DR:** `LedgerController` continues to persist its real `CP` accounting-source representation but now submits the selected **DR** display series into the project-scoped approval workflow. Decision guard requires matching project-owned `CP` source and exact saved `DR` display identity; normal ERP policy bypass now explicitly permits DR.
+- **CV:** `CommissionDraftWorkflow::createDraft` submits a pending request in the same transaction if CV approval is enabled. Existing inactive commission draft ledgers remain inactive until the shared dashboard's authorized approval calls `CommissionDraftWorkflow::approveAndPost`. Reject never posts; original direct CV Approve endpoint rejects centralized pending/rejected sources, and pending CV draft Edit/Delete are blocked against post-submission changes. CV directory now shows central approval status.
+- **PPR (typed Plot Receipt) and PP (Plot Purchase):** one shared migration creates `finance_plot_approval_drafts` with project/type/request-key/number uniqueness, immutable JSON payload fingerprint, decision and posted source references. On approval ON, source posting and plot inventory creation are **deferred**; on Approve, the existing `PlotEntryWriter` revalidates all accounts, bookings and inventory constraints and creates the source/posting only inside the approval decision transaction. Reject creates no financial or inventory effect. The exact draft ID gates reserved voucher numbers under the same project lock as direct posting. Pending/rejected records display in both Plot voucher lists without early Print/Edit/Delete actions.
+- Settings and approval dashboard enable DR/CV/PPR/PP; approval details render project-scoped CV lines and preview plot allocations/purchases. Granular permission routing maps typed Plot PPR to `finance plot-receipt approve` rather than unrelated booking cash PPR.
+- New contract: `tests/Unit/Finance/RemainingVoucherApprovalIntegrationsContractTest.php` checks all four types, guarded source routing and deferred posting.
+
+**Required owner local verification on disposable local DB only (backup before migration):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan migrate:status
+php artisan migrate --path=database/migrations/2026_11_21_130000_create_finance_plot_approval_drafts_table.php
+php artisan view:cache
+php artisan test --filter=RemainingVoucherApprovalIntegrationsContractTest
+php artisan test --filter=DailyVoucherApprovalWorkflowTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=CommissionLedgerSynchronizerTest
+php artisan finance:audit-posting-balances
+```
+
+**Browser acceptance required before milestone sign-off:** For DR/CV/PPR/PP separately: policy OFF Create -> direct posting (CV retains its prior own draft/approve lifecycle); policy ON Create -> central pending queue; authorized Approve -> correct one-time finance posting, and for PP only then plot inventory added; fresh pending Reject -> no posting/no plot inventory; confirm project permissions and status lists. CV is already inherently a draft and must be centrally approved when policy ON, with no direct button bypass. Neither these changes nor Milestone 03 as a whole are marked browser PASS. SV approval bugs remain separately deferred per owner's instruction.
