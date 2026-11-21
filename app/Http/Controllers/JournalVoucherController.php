@@ -360,6 +360,10 @@ class JournalVoucherController extends Controller
         if ($request->ajax()) {
             $allowed=['id','voucher_number','reference','date','description','total_debit'];
             $facet=(string)$request->input('excel_facet','');
+            if($facet==='approval_status'){
+                return response()->json(['options'=>['Pending','Approved','Rejected','Posted'],
+                    'more_options'=>false]);
+            }
             if($facet==='voucher_number'){
                 $numbers=$this->excelVoucherNumbers($query,(int)$selectedProjectId,'SV');
                 $values=collect(array_values($numbers))->unique()->sort(SORT_NATURAL|SORT_FLAG_CASE)->values();
@@ -375,6 +379,16 @@ class JournalVoucherController extends Controller
             }
             foreach(['excel_values'=>true,'excel_excluded'=>false] as $param=>$include){
                 foreach((array)$request->input($param,[]) as $field=>$values){
+                    if($field==='approval_status'&&is_array($values)){
+                        $statuses=array_unique(array_map('strtolower',array_map('strval',$values)));
+                        if(!$statuses||count($statuses)>4||
+                            array_diff($statuses,['pending','approved','rejected','posted'])){
+                            abort(422,'Invalid Sales Voucher approval status filter.');
+                        }
+                        $this->applySalesApprovalStatusFilter($query,$statuses,
+                            (int)$selectedProjectId,$include);
+                        continue;
+                    }
                     if(!in_array($field,$allowed,true)||!is_array($values)||
                         !$values||count($values)>100)abort(422,'Invalid sales voucher filter.');
                     foreach($values as $v)if(!is_scalar($v)||mb_strlen((string)$v)>255)
@@ -456,6 +470,37 @@ class JournalVoucherController extends Controller
         $x['vouchers'] = $query->orderByDesc('id')->get(); // Fetch all vouchers initially
 
         return view('admin.reports.vouchers.index', $x);
+    }
+
+    private function applySalesApprovalStatusFilter($query,array $statuses,int $projectId,bool $include): void
+    {
+        $scope=function($q)use($statuses,$projectId){
+            if(in_array('posted',$statuses,true)){
+                $q->orWhereNotExists(function($sub)use($projectId){
+                    $sub->selectRaw('1')->from('daily_voucher_approvals as a')
+                        ->whereColumn('a.source_id','journal_vouchers.id')
+                        ->where('a.project_id',$projectId)
+                        ->where('a.voucher_type','SV')
+                        ->where('a.source_table','journal_vouchers');
+                });
+            }
+            foreach(array_diff($statuses,['posted']) as $status){
+                $q->orWhereExists(function($sub)use($projectId,$status){
+                    $sub->selectRaw('1')->from('daily_voucher_approvals as a')
+                        ->whereColumn('a.source_id','journal_vouchers.id')
+                        ->where('a.project_id',$projectId)
+                        ->where('a.voucher_type','SV')
+                        ->where('a.source_table','journal_vouchers')
+                        ->where('a.status',$status);
+                });
+            }
+        };
+        if(!\Illuminate\Support\Facades\Schema::hasTable('daily_voucher_approvals')){
+            if($include&&!in_array('posted',$statuses,true))$query->whereRaw('1=0');
+            if(!$include&&in_array('posted',$statuses,true))$query->whereRaw('1=0');
+            return;
+        }
+        $include?$query->where($scope):$query->whereNot($scope);
     }
 
     private function applyLiveExcelFilters($query, Request $request,string $voucherType,int $projectId): void
