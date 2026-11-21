@@ -301,7 +301,7 @@ class VoucherController extends Controller
      */
     private function previewCanonicalCashNumber(int $projectId, string $type): int
     {
-        abort_unless($projectId > 0 && in_array($type, ['CR','CP','CCR','CDR','BOR','BOP'], true), 422);
+        abort_unless($projectId > 0 && in_array($type, ['CR','DR','CP','CCR','CDR','BOR','BOP'], true), 422);
         $sourceMax = (int) DB::table('customer_ledger')->where('project_id', $projectId)
             ->where('transaction_type', $type)->max('type_id');
         $ledgerMax = (int) DB::table('ledgers as ledger')
@@ -456,7 +456,7 @@ class VoucherController extends Controller
             ->firstOrFail();
         if ($method !== null) {
             $paymentType = $this->cashVoucherPaymentType($method);
-            abort_unless(in_array((string) $x['voucher']->type, ['CR', 'CP'], true), 404);
+            abort_unless(in_array((string) $x['voucher']->type, ['CR','DR','CP','CCR','CDR','BOR','BOP'], true), 404);
             $source = CustomerLedger::query()->whereKey($x['voucher']->customer_ledger_id)
                 ->where('project_id', $projectId)->firstOrFail();
             abort_unless((int) $source->payment_type === $paymentType, 404);
@@ -471,7 +471,8 @@ class VoucherController extends Controller
             ->lookup($projectId, 'ledger', (int) $x['voucher']->id);
         $x['voucherTitle'] ??= match ((string) $x['voucher']->type) {
             'CR' => 'Cash Receipt Voucher',
-            'CP' => 'Cash Payment Voucher',
+            'CP' => 'Debit Voucher',
+            'DR' => 'Debit Voucher',
             default => (string) $x['voucher']->type . ' Voucher',
         };
         return view('admin.finance.voucher.print-eng', $x);
@@ -673,7 +674,7 @@ class VoucherController extends Controller
 
         // $data = Ledger::with('projectHeadSubhead.headAccounting', 'projectHeadSubhead.subheadAccounting', 'projectHeadSubhead.project')
         //     ->where('is_active', 1)
-        //     ->whereIn('type', ['CP', 'BO'])  // Use whereIn to check for either 'CP' or 'BO'
+        //     ->whereIn('type', ['CP','DR','CDR','BOP','BO'])  // Use whereIn to check for either 'CP' or 'BO'
         //     ->whereHas('projectHeadSubhead', function ($query) use ($selectedProjectId) {
         //         $query->where('project_id', $selectedProjectId);
         //     })
@@ -732,7 +733,7 @@ class VoucherController extends Controller
         $x['table_data_route'] = $fixedPaymentType === null
             ? route('voucher.cash_out.data')
             : route('voucher.cash_out.method.data', ['method' => $method]);
-        $nextNumber = $this->previewCanonicalCashNumber((int) $selectedProjectId, $displaySeries === 'CDR' ? 'CDR' : ($displaySeries === 'BOP' ? 'BOP' : 'CP'));
+        $nextNumber = $this->previewCanonicalCashNumber((int) $selectedProjectId, $displaySeries === 'CDR' ? 'CDR' : ($displaySeries === 'BOP' ? 'BOP' : 'DR'));
 
         $x['latest_voucher_number'] = $nextNumber;
 
@@ -768,7 +769,7 @@ class VoucherController extends Controller
             },
         ])
             ->where('is_active', 1)
-            ->whereIn('type', $paymentType === null ? ['CP', 'BO'] : ['CP'])
+            ->whereIn('type', $paymentType === null ? ['CP','DR','CDR','BOP','BO'] : ['CP','DR','CDR','BOP'])
             ->whereHas('projectHeadSubhead', function ($q) use ($selectedProjectId) {
                 $q->where('project_id', $selectedProjectId);
             });
@@ -892,7 +893,7 @@ class VoucherController extends Controller
                 ->pluck('display_number', 'source_id')
             : collect();
         $data = $rows->map(function ($i) use ($displayNumbers, $ledgerDisplayNumbers) {
-            $amount = $i->type === 'CP' ? (float) $i->amount_out : (float) $i->amount_in;
+            $amount = in_array((string)$i->type,['CP','DR','CDR','BOP'],true) ? (float) $i->amount_out : (float) $i->amount_in;
 
             // Latest pending update (if any)
             $p = $i->latestPendingUpdate ?? PendingUpdate::where('table_name', 'ledgers')
@@ -941,7 +942,7 @@ class VoucherController extends Controller
                 'customers' => $customers, // List of customers + head/subhead
                 'id' => $i->id,
                 'type' => $i->type,
-                'editable' => in_array((string) $i->type, ['CR', 'CP'], true)
+                'editable' => in_array((string) $i->type, ['CR','DR','CP','CCR','CDR','BOR','BOP'], true)
                     && $i->customer_ledger_id !== null,
             ];
         });
@@ -965,7 +966,7 @@ class VoucherController extends Controller
             'projectHeadSubhead.project:id,project'
         ])
             ->where('is_active', 1)
-            ->whereIn('type', ['CP', 'BO'])
+            ->whereIn('type', ['CP','DR','CDR','BOP','BO'])
             ->whereHas('projectHeadSubhead', fn($q) => $q->where('project_id', $selectedProjectId));
 
         // Get total count before pagination
@@ -991,7 +992,7 @@ class VoucherController extends Controller
                 ->pluck('display_number', 'source_id')
             : collect();
         $data = $rows->map(function ($i) use ($displayNumbers, $ledgerDisplayNumbers) {
-            $amount = $i->type === 'CP' ? (float) $i->amount_out : (float) $i->amount_in;
+            $amount = in_array((string)$i->type,['CP','DR','CDR','BOP'],true) ? (float) $i->amount_out : (float) $i->amount_in;
 
             // Use preloaded relation if available or define relation in Ledger for latestPendingUpdate
             $p = $i->latestPendingUpdate ?? PendingUpdate::where('table_name', 'ledgers')
@@ -1647,7 +1648,7 @@ class VoucherController extends Controller
             ->join('finance_original_customer_requests as custody', function ($join) use ($projectId) {
                 $join->on('custody.customer_ledger_id', '=', 'source.id')->where('custody.project_id', '=', $projectId);
             })->leftJoin('leads as customer', 'customer.id', '=', 'source.customer_id')
-            ->where('source.project_id', $projectId)->where('source.transaction_type', 'CP')->where('source.payment_type', 3)
+            ->where('source.project_id', $projectId)->whereIn('source.transaction_type', ['CP','DR','CDR','BOP'])->where('source.payment_type', 3)
             ->where('source.is_active', 1)->where('source.passing_status', 1)
             ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('finance_bank_transfer_sources as link')->whereColumn('link.linked_customer_ledger_id', 'source.id'))
             ->orderByDesc('source.date')->orderByDesc('source.id')->get(['source.*', 'customer.first_name', 'customer.last_name', 'custody.source_sha256'])
@@ -2382,7 +2383,7 @@ class VoucherController extends Controller
                 ->pluck('display_number', 'source_id')
             : collect();
         $data = $rows->map(function ($i) use ($displayNumbers, $ledgerDisplayNumbers) {
-            $amount = $i->type === 'CP' ? (float) $i->amount_out : (float) $i->amount_in;
+            $amount = in_array((string)$i->type,['CP','DR','CDR','BOP'],true) ? (float) $i->amount_out : (float) $i->amount_in;
 
             $p = $i->latestPendingUpdate ?? PendingUpdate::where('table_name', 'ledgers')
                 ->where('record_id', $i->id)
@@ -2404,7 +2405,7 @@ class VoucherController extends Controller
                 'new_values' => json_decode($p?->new_values, true) ?? [],
                 'id' => $i->id,
                 'type' => $i->type,
-                'editable' => in_array((string) $i->type, ['CR', 'CP'], true)
+                'editable' => in_array((string) $i->type, ['CR','DR','CP','CCR','CDR','BOR','BOP'], true)
                     && $i->customer_ledger_id !== null,
             ];
         });
