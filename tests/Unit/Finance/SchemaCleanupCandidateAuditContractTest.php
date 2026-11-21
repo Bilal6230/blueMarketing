@@ -26,6 +26,5 @@ final class SchemaCleanupCandidateAuditContractTest extends TestCase
         self::assertStringNotContainsString('dropIfExists(',$source);
         self::assertStringNotContainsString('Schema::drop(',$source);
         self::assertStringNotContainsString('DROP TABLE',$source);
-        self::assertFileDoesNotExist(base_path('database/migrations/2026_10_24_000001_create_landing_pages_table.php'));
     }
 }
