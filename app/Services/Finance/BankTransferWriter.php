@@ -136,9 +136,16 @@ final class BankTransferWriter
                 }
                 return ['posting_batch_id' => (int) $existing->id, 'replayed' => true];
             }
+            $series = $kind === 'deposit' ? 'BD' : 'BW';
+            // Legacy manual bank transfers displayed global batch IDs when the
+            // per-series number was NULL. Reserve those visible identities.
+            $legacyMax = (int) DB::table('finance_posting_batches')
+                ->where('project_id',$projectId)->where('voucher_series',$series)
+                ->selectRaw('MAX(COALESCE(voucher_number,id)) AS maximum')->value('maximum');
+            $voucherNumber = (new ProjectVoucherAllocator())->next($projectId,$series,$legacyMax);
             $batchId = DB::table('finance_posting_batches')->insertGetId([
-                'project_id' => $projectId, 'voucher_series' => $kind === 'deposit' ? 'BD' : 'BW',
-                'voucher_number' => null, 'request_key' => $key, 'payload_sha256' => $hash,
+                'project_id' => $projectId, 'voucher_series' => $series,
+                'voucher_number' => $voucherNumber, 'request_key' => $key, 'payload_sha256' => $hash,
                 'effective_date' => $date, 'posted_by' => $actor, 'posted_at' => now(),
                 'created_at' => now(), 'updated_at' => now(),
             ]);
