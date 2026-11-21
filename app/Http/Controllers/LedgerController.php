@@ -581,6 +581,11 @@ class LedgerController extends Controller
                     $displaySeries, \Carbon\Carbon::parse($request->input('date'))->toDateString(),
                     $bankSeriesNumber
                 );
+                // Persist the actual voucher series as its financial identity.
+                // CP survives only as legacy compatibility for old rows.
+                if ((string)$customerLedger->transaction_type!==$displaySeries) {
+                    $customerLedger->update(['transaction_type'=>$displaySeries]);
+                }
 
                 if ($t_number != null) {
                     $check_slip = $customerLedger->transaction_type . '-' . $customerLedger->reference;
@@ -638,7 +643,7 @@ class LedgerController extends Controller
                 $data = Ledger::create([
                     'customer_ledger_id' => $customerLedger->id,
                     'voucher_number' => $resolvedVoucherNumber,
-                    'type' => $effectiveVoucherType,
+                    'type' => $displaySeries,
                     'type_id' => $resolvedVoucherNumber,
                     'project_head_subheads_id' => $projectHeadSubhead->id,
                     'reference' => $request->reference,
@@ -666,8 +671,7 @@ class LedgerController extends Controller
                     && ($displaySeries !== $requestedDisplaySeries || !$linkedVerifiedSource)) {
                     throw new \DomainException('BANK_VOUCHER_IDENTITY_REQUIRES_VERIFIED_SOURCE');
                 }
-                $approvalPolicyType = in_array($displaySeries, ['BOR','BOP','DR'], true)
-                    ? $displaySeries : $effectiveVoucherType;
+                $approvalPolicyType = $displaySeries;
                 $approvalPending = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
                     ->submitIfRequired((int) $selectedProjectId, $approvalPolicyType,
                         'customer_ledger', (int) $customerLedger->id, (int) Auth::id());
