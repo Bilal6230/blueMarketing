@@ -369,7 +369,7 @@ final class DailyVoucherApprovalWorkflow
             if($active){
                 (new PostingGateway())->postSalesVoucher(
                     (int)$approval->project_id,(int)$voucher->id,
-                    'sv_approval_'.(int)$approval->id.'_'.(int)$voucher->id,
+                    'sales_approval_request_'.(int)$approval->id.'_'.(int)$voucher->id,
                     $actorId
                 );
             }
