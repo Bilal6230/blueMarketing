@@ -124,6 +124,7 @@ final class PlotEntryWriter
                 ->where('before_snapshot','like','%"source_kind":"'.$kind.'"%')->exists()) {
             throw new \DomainException('PLOT_SOURCE_HAS_BEEN_EDITED');
         }
+        PostedVoucherLedgerGate::assertLinked($project, (int) $batch->id);
         return ['source_id'=>(int)$link->source_id,'posting_batch_id'=>(int)$batch->id,'replayed'=>true];
     }
     private function post(int $project, string $key, string $series, string $kind, string $date, array $lines, string $payloadHash, ?int $actor): int
@@ -210,6 +211,7 @@ final class PlotEntryWriter
             } elseif (!app()->environment('testing')) {
                 throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
             }
+            PostedVoucherLedgerGate::assertLinked($project, (int) $batch);
             return ['source_id'=>$source,'posting_batch_id'=>$batch,'replayed'=>false];
         },3);
     }
@@ -262,6 +264,7 @@ final class PlotEntryWriter
             } elseif (!app()->environment('testing')) {
                 throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
             }
+            PostedVoucherLedgerGate::assertLinked($project, (int) $batch);
             return ['source_id'=>$source,'posting_batch_id'=>$batch,'replayed'=>false];
         },3);
     }
