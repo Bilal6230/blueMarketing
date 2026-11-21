@@ -245,6 +245,19 @@
     .stock-module-wrapper .pv-view .blue-actions-cell {
       width:76px!important;min-width:76px!important;max-width:76px!important;text-align:center!important;white-space:nowrap;
     }
+    /* Voucher-consistent AJAX table skeleton within the scrolling card. */
+    .stock-module-wrapper .pv-scroll,.stock-module-wrapper .stock-import-history .table-responsive{position:relative}
+    .stock-skeleton-overlay{position:absolute;inset:0;z-index:7;background:rgba(255,255,255,.95);
+      display:flex;flex-direction:column;gap:12px;padding:12px;pointer-events:none;overflow:hidden}
+    .stock-skeleton-row{display:flex;gap:12px;width:100%;height:28px;flex:0 0 auto}
+    .stock-skeleton-bar{height:100%;border-radius:6px;flex:1;min-width:0;
+      background:linear-gradient(100deg,#e9eef6 15%,#f6f9ff 40%,#e9eef6 70%);
+      background-size:220% 100%;animation:stock-skeleton-shimmer 1.25s linear infinite}
+    .stock-skeleton-row .stock-skeleton-bar:first-child{flex:.38}
+    .stock-skeleton-row .stock-skeleton-bar:last-child{flex:.55}
+    @keyframes stock-skeleton-shimmer{from{background-position:220% 0}to{background-position:-220% 0}}
+    @media(prefers-reduced-motion:reduce){.stock-skeleton-bar{animation:none}}
+
     /* App shell (labour module-ish) */
     .pv-shell {
       display: flex;
@@ -2088,7 +2101,33 @@
       billNoChip.textContent = billNo.value || "Bill no… auto";
     }
 
+    // A skeleton belongs to the specific table scroll viewport, never to the page.
+    // Request counters prevent concurrent filter refreshes from hiding it prematurely.
+    const stockSkeletonCounts={};
+    const stockSkeletonHosts={entry:'#entryTbody',bill:'#billTbody',stock:'#stockTbody',
+      item:'#itemTbody',party:'#partyTbody',history:'#itemImportHistoryBody'};
+    function stockSkeletonStart(kind){
+      const $body=$(stockSkeletonHosts[kind]),$viewport=$body.closest('.table-responsive');
+      if(!$viewport.length)return;
+      stockSkeletonCounts[kind]=(stockSkeletonCounts[kind]||0)+1;
+      if($viewport.children('.stock-skeleton-overlay').length)return;
+      const $overlay=$('<div class="stock-skeleton-overlay" aria-label="Loading records" role="status">');
+      for(let row=0;row<7;row++){
+        const $row=$('<div class="stock-skeleton-row">');
+        for(let column=0;column<5;column++)$row.append('<span class="stock-skeleton-bar"></span>');
+        $overlay.append($row);
+      }
+      $viewport.append($overlay);
+    }
+    function stockSkeletonEnd(kind){
+      stockSkeletonCounts[kind]=Math.max(0,(stockSkeletonCounts[kind]||1)-1);
+      if(stockSkeletonCounts[kind]===0){
+        $(stockSkeletonHosts[kind]).closest('.table-responsive').children('.stock-skeleton-overlay').remove();
+      }
+    }
     async function loadEntries() {
+      stockSkeletonStart('entry');
+      try {
       const res = await apiGet(endpoints.entries, {
         item_id: $('#entryFilterItem')[0].value || null,
         flow: $('#entryFilterFlow')[0].value || null,
@@ -2097,10 +2136,12 @@
         page: 1,
       });
       state.entries = res?.data || { rows: [], total: 0, kpi: {} };
-      renderEntryTable();
+      renderEntryTable();      } finally { stockSkeletonEnd('entry'); }
     }
 
     async function loadBills() {
+      stockSkeletonStart('bill');
+      try {
       const res = await apiGet(endpoints.bills, {
         type: $('#billFilterType')[0].value || null,
         party_id: $('#billFilterParty')[0].value || null,
@@ -2109,28 +2150,34 @@
         page: 1,
       });
       state.bills = res?.data || { rows: [], total: 0, kpi: {} };
-      renderBillTable();
+      renderBillTable();      } finally { stockSkeletonEnd('bill'); }
     }
 
     async function loadReport() {
+      stockSkeletonStart('stock');
+      try {
       const res = await apiGet(endpoints.report, {
         from: $('#stockFrom')[0].value || null,
         to: $('#stockTo')[0].value || null,
         item_id: $('#stockItemFilter')[0].value || null,
       });
       state.report = res?.data || { rows: [], kpi: {} };
-      renderStock();
+      renderStock();      } finally { stockSkeletonEnd('stock'); }
     }
 
     async function loadItemsTable() {
+      stockSkeletonStart('item');
+      try {
       const res = await apiGet(endpoints.items, {
         q: $('#itemSearch')[0].value || null,
       });
       state.itemsTable = res?.data || { rows: [], total: 0 };
-      renderItems();
+      renderItems();      } finally { stockSkeletonEnd('item'); }
     }
 
     async function loadItemImportHistory() {
+      stockSkeletonStart('history');
+      try {
       const tbody = $('#itemImportHistoryBody')[0];
       try {
         const result = await apiGet(endpoints.itemImportHistory);
@@ -2147,16 +2194,18 @@
         }));
       } catch (error) {
         $(tbody).html(`<tr><td colspan="6" class="text-danger text-center">${importHtml(error?.data?.message || "Import history is unavailable until its migration is installed.")}</td></tr>`);
-      }
+      }      } finally { stockSkeletonEnd('history'); }
     }
 
     async function loadPartiesTable() {
+      stockSkeletonStart('party');
+      try {
       const res = await apiGet(endpoints.parties, {
         q: $('#partySearch')[0].value || null,
         type: $('#partyFilterType')[0].value || null,
       });
       state.partiesTable = res?.data || { rows: [], total: 0 };
-      renderParties();
+      renderParties();      } finally { stockSkeletonEnd('party'); }
     }
 
     /* ===========================
