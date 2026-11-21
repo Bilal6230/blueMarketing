@@ -2,9 +2,9 @@
     $voucherRoutePrefix = $voucher instanceof \App\Models\CommisionVoucher ? 'commision.voucher' : 'journal.voucher';
     $salesEditable = $voucher->type === 'SV' && $voucher->status !== 'rejected';
 @endphp
-@canany(['edit jv', 'delete jv', 'print jv'])
+@canany(['edit jv', 'delete jv', 'print jv', 'finance sv edit', 'finance sv delete', 'finance sv print'])
     <div class="btn-group">
-        @can('edit jv')
+        @canany(['edit jv','finance sv edit'])
             {{-- SV uses the same typed journal source editor, with pending-approval
                  and posted-source lifecycle checks enforced server-side. --}}
             @if(($salesEditable || ($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))))
@@ -14,7 +14,7 @@
             @endif
         @endcan
 
-        @can('delete jv')
+        @canany(['delete jv','finance sv delete'])
             @if(($salesEditable || ($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))))
             <button class="btn btn-sm btn-danger delete-btn" data-id="{{ $voucher->id }}">
                 <i class="fas fa-undo"></i> {{ $voucher->type === 'SV' ? 'Delete' : 'Reverse' }}
@@ -30,7 +30,7 @@
             @endcan
         @endif
 
-        @can('print jv')
+        @canany(['print jv','finance sv print'])
             <a href="{{ route($voucherRoutePrefix.'.print', $voucher->id) }}" target="_blank" rel="noopener" data-blue-action-label="{{ $voucher->type === 'SV' ? 'View / Print Sales Voucher' : 'Print Journal Voucher' }}" class="btn btn-sm btn-info">
                 <i class="fas fa-print"></i> Print
             </a>
