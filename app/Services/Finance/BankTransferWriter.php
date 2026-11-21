@@ -135,6 +135,7 @@ final class BankTransferWriter
                     || (int) $source->project_id !== $projectId || (int) ($source->linked_customer_ledger_id ?? 0) !== (int) ($chequeSourceId ?? 0)) {
                     throw new \DomainException('V2_BANK_TRANSFER_IDEMPOTENCY_CONFLICT');
                 }
+                PostedVoucherLedgerGate::assertLinked($projectId, (int) $existing->id);
                 return ['posting_batch_id' => (int) $existing->id, 'replayed' => true];
             }
             $series = $kind === 'deposit' ? 'BD' : 'BW';
@@ -196,6 +197,7 @@ final class BankTransferWriter
             } elseif (!app()->environment('testing')) {
                 throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
             }
+            PostedVoucherLedgerGate::assertLinked($projectId, (int) $batchId);
             return ['posting_batch_id' => (int) $batchId, 'replayed' => false];
         }, 3);
     }
