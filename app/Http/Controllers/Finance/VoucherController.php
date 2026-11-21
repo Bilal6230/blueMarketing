@@ -1771,6 +1771,37 @@ class VoucherController extends Controller
                 'reversed' => $r->reversal_batch_id !== null,
                 'can_reverse' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null,
                 'can_edit' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null]);
+        if(Schema::hasTable('finance_bank_transfer_approval_drafts')){
+            $drafts=DB::table('finance_bank_transfer_approval_drafts as draft')
+                ->join('project_bank_accounts as bank',function($j)use($projectId){
+                    $j->on('bank.id','=','draft.bank_account_id')
+                        ->where('bank.project_id',$projectId);
+                })
+                ->join('project_head_subheads as account',function($j)use($projectId){
+                    $j->on('account.id','=','draft.cash_account_id')
+                        ->where('account.project_id',$projectId);
+                })
+                ->leftJoin('head_accountings as head','head.id','=','account.head_accounting_id')
+                ->leftJoin('subhead_accountings as child','child.id','=','account.subhead_accounting_id')
+                ->where('draft.project_id',$projectId)->where('draft.transfer_kind',$kind)
+                ->whereIn('draft.status',['pending','rejected'])
+                ->orderByDesc('draft.id')
+                ->get(['draft.id','draft.voucher_number','draft.effective_date',
+                    'draft.amount','draft.narration','draft.status',
+                    'bank.bank_name','bank.account_title','head.name as head_name','child.name as child_name'])
+                ->map(fn($d)=>[
+                    'approval_draft_id'=>(int)$d->id,'posting_batch_id'=>null,
+                    'voucher'=>($kind==='deposit'?'BD':'BW').'-'.$d->voucher_number,
+                    'date'=>(string)$d->effective_date,
+                    'cash_account'=>trim(($d->head_name??'').' / '.($d->child_name??''),' /'),
+                    'bank'=>trim(($d->bank_name??'').' / '.($d->account_title??''),' /'),
+                    'cheque'=>'','amount'=>(string)$d->amount,
+                    'narration'=>(string)$d->narration,'approval_status'=>(string)$d->status,
+                    'reversed'=>false,'can_reverse'=>false,'can_edit'=>false
+                ]);
+            $rows=$rows->concat($drafts)
+                ->sortByDesc(fn($r)=>($r['date']??'').'|'.($r['voucher']??''))->values();
+        }
         return response()->json(['data' => $rows]);
     }
 
