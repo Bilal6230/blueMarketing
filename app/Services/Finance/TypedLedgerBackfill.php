@@ -88,10 +88,7 @@ final class TypedLedgerBackfill
             if($lines->count()<2)throw new \DomainException('LEDGER_BACKFILL_INCOMPLETE_POSTING');
             $linked=$lines->filter(fn($l)=>$l->legacy_ledger_id!==null);
             if($linked->count()>0){
-                if($linked->count()!==$lines->count()){
-                    throw new \DomainException('LEDGER_BACKFILL_PARTIAL_LINKS');
-                }
-                foreach($lines as $line){
+                foreach($linked as $line){
                     $ledger=DB::table('ledgers as l')
                         ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
                         ->where('a.project_id',$projectId)->where('l.id',$line->legacy_ledger_id)
@@ -105,13 +102,20 @@ final class TypedLedgerBackfill
                         throw new \DomainException('LEDGER_BACKFILL_EXISTING_LINK_MISMATCH');
                     }
                 }
-                return ['batch'=>$batchId,'series'=>$ledgerType,'status'=>'already_linked',
-                    'lines'=>$lines->count()];
+                if($linked->count()===$lines->count()){
+                    return ['batch'=>$batchId,'series'=>$ledgerType,'status'=>'already_linked',
+                        'lines'=>$lines->count()];
+                }
             }
+            // When a posted voucher is corrected, superseded typed legs stay
+            // linked and new unlinked legs are added. Any unrelated old ledger
+            // for this source must still block unsafe duplicate insertion.
+            $linkedIds=$linked->pluck('legacy_ledger_id')->all();
             $existing=DB::table('ledgers as l')
                 ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
                 ->where('a.project_id',$projectId)
-                ->where('l.type',$ledgerType)->where('l.type_id',$sourceId)->exists();
+                ->where('l.type',$ledgerType)->where('l.type_id',$sourceId)
+                ->when($linkedIds,fn($q)=>$q->whereNotIn('l.id',$linkedIds))->exists();
             if($existing)throw new \DomainException('LEDGER_BACKFILL_POSSIBLE_DUPLICATE_SOURCE');
             $debit=$credit=0;
             foreach($lines as $line){
@@ -149,6 +153,7 @@ final class TypedLedgerBackfill
                 'active_lines'=>$active->count(),'status'=>$apply?'linked':'ready'];
             if(!$apply)return $summary;
             foreach($lines as $line){
+                if($line->legacy_ledger_id!==null)continue;
                 $amountIn=(string)$line->debit;$amountOut=(string)$line->credit;
                 $voucherNumber=$batch->voucher_number;
                 $ledgerId=DB::table('ledgers')->insertGetId([
