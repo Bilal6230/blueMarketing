@@ -11,6 +11,14 @@ use Illuminate\Support\Facades\Schema;
  */
 final class VoucherDetailLedgerLinker
 {
+    private function cents(mixed $raw): int
+    {
+        $s=trim((string)$raw);
+        if(!preg_match('/^(0|[1-9][0-9]{0,11})(?:\\.([0-9]{1,2}))?$/D',$s,$m))
+            throw new \\DomainException('DETAIL_LEDGER_INVALID_MONEY');
+        return (int)$m[1]*100+(int)str_pad($m[2]??'',2,'0');
+    }
+
     public function sync(int $projectId,int $batchId): int
     {
         return DB::transaction(function()use($projectId,$batchId):int{
@@ -57,8 +65,8 @@ final class VoucherDetailLedgerLinker
             foreach($lines as $line){
                 if($line->detail_deleted_at!==null
                     ||(int)$line->detail_account!==(int)$line->project_head_subhead_id
-                    ||bccomp((string)$line->detail_debit,(string)$line->debit,2)!==0
-                    ||bccomp((string)$line->detail_credit,(string)$line->credit,2)!==0
+                    ||$this->cents($line->detail_debit)!==$this->cents($line->debit)
+                    ||$this->cents($line->detail_credit)!==$this->cents($line->credit)
                     ||!DB::table('project_head_subheads')
                         ->where('project_id',$projectId)
                         ->where('id',$line->project_head_subhead_id)->exists()){
@@ -69,8 +77,8 @@ final class VoucherDetailLedgerLinker
                 if($ledger){
                     if((string)$ledger->type!==$type||(int)$ledger->type_id!==(int)$sourceId
                         ||(int)$ledger->project_head_subheads_id!==(int)$line->project_head_subhead_id
-                        ||bccomp((string)$ledger->amount_in,(string)$line->debit,2)!==0
-                        ||bccomp((string)$ledger->amount_out,(string)$line->credit,2)!==0
+                        ||$this->cents($ledger->amount_in)!==$this->cents($line->debit)
+                        ||$this->cents($ledger->amount_out)!==$this->cents($line->credit)
                         ||(int)$ledger->is_active!==(int)($line->is_active??1)){
                         throw new \DomainException('DETAIL_LEDGER_EXISTING_LEDGER_MISMATCH');
                     }
@@ -81,7 +89,8 @@ final class VoucherDetailLedgerLinker
                     $ledgerId=DB::table('ledgers')->insertGetId([
                         $detailFk=>(int)$line->voucher_detail_id,
                         'type'=>$type,'type_id'=>(int)$sourceId,
-                        'voucher_number'=>$head->voucher_number,
+                        'voucher_number'=>ctype_digit((string)$head->voucher_number)
+                            ? $head->voucher_number : null,
                         'project_head_subheads_id'=>(int)$line->project_head_subhead_id,
                         'reference'=>$head->reference??null,'date'=>$head->date,
                         'amount_in'=>$line->debit,'amount_out'=>$line->credit,
