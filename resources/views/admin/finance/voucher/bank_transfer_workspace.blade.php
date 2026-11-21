@@ -217,7 +217,9 @@ $(function () {
     var columnValue=function(r,field){
         var cash=String(r.cash_account||'').split(' / ');
         var fields={date:r.date,number:r.voucher,head:cash[0]||'',subhead:cash.slice(1).join(' / '),
-            detail:r.narration,amount:r.amount,status:r.reversed?'Reversed':'Posted'};
+            detail:r.narration,amount:r.amount,status:r.approval_draft_id
+                ?(r.approval_status==='rejected'?'Rejected':'Pending')
+                :(r.reversed?'Reversed':'Posted')};
         return String(fields[field] == null ? '' : fields[field]);
     };
     var printUrl = function (id) { return $root.attr('data-print-base') + '/' + encodeURIComponent(id) + '/print'; };
