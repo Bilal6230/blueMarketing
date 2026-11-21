@@ -739,22 +739,22 @@ class JournalVoucherController extends Controller
                     'idempotency_key'=>'A durable Save request key is required.',
                 ]);
             }
-            if(app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
-                ->policy((int)$selectedProjectId,'SV')){
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'voucher'=>'Sales voucher requires approval; direct posting is unavailable.',
-                ]);
-            }
+            $approvalRequired=(bool)app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+                ->policy((int)$selectedProjectId,'SV');
             try{
-                $id=app(\App\Services\Finance\OriginalJournalWorkflow::class)
-                    ->createAndPost((int)$selectedProjectId,$key,$validated,
-                        (int)Auth::id(),'SV');
+                $workflow=app(\App\Services\Finance\OriginalJournalWorkflow::class);
+                $id=$approvalRequired
+                    ? $workflow->createPendingSales((int)$selectedProjectId,$key,$validated,(int)Auth::id())
+                    : $workflow->createAndPost((int)$selectedProjectId,$key,$validated,(int)Auth::id(),'SV');
             }catch(\DomainException $e){
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'voucher'=>$e->getMessage(),
                 ]);
             }
-            return $this->voucherWriteResponse($request,'Sales voucher posted successfully.',
+            return $this->voucherWriteResponse($request,
+                $approvalRequired
+                    ? 'Sales voucher saved — Pending Approval. No posting until approved.'
+                    : 'Sales voucher posted successfully.',
                 route('sales.voucher.index'));
         }
 
