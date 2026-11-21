@@ -24,8 +24,8 @@ class JournalVoucherController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
-        $x['type'] = $isSales ? 'SV' : 'JV';
-        $x['class'] = $isSales ? 'Sales voucher' : 'Journal voucher';
+        $x['type'] = 'JV';
+        $x['class'] = 'Journal voucher';
         $x['bg_voucher'] = 'info-cash-in';
 
         // Get selected town's project_id
