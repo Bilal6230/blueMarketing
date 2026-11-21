@@ -36,6 +36,15 @@ class StockUnifiedUiParityContractTest extends TestCase
         self::assertStringContainsString('height:calc(100dvh - var(--stock-page-top)', $view);
         self::assertStringContainsString("$('#stockFrom,#stockTo').on('change'", $view);
         self::assertStringContainsString('function stockModal(selector, action)', $view);
+        self::assertStringContainsString("button.addEventListener('click',function(event)", $view);
+        self::assertStringContainsString("stockModal('#'+modal.id,'hide')", $view);
+        self::assertStringContainsString('function stockSkeletonStart(kind)', $view);
+        self::assertStringContainsString('function stockSkeletonEnd(kind)', $view);
+        foreach (['entry', 'bill', 'stock', 'item', 'party', 'history'] as $kind) {
+            self::assertStringContainsString("stockSkeletonStart('".$kind."')", $view);
+            self::assertStringContainsString("stockSkeletonEnd('".$kind."')", $view);
+        }
+        self::assertStringContainsString('stock-skeleton-shimmer', $view);
 
         self::assertStringNotContainsString('Legacy stock needs project reconciliation.', $view);
         self::assertStringNotContainsString('id="btnApplyStock"', $view);
