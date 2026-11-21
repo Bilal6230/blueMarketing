@@ -497,7 +497,9 @@ class LedgerController extends Controller
                 $sourceReference = trim((string) $request->input('reference'));
                 if ($sourceReference !== '' && CustomerLedger::query()
                     ->where('project_id', $selectedProjectId)
-                    ->where('transaction_type', $effectiveVoucherType)
+                    ->whereIn('transaction_type',
+                        $effectiveVoucherType==='CR'
+                            ? ['CR','CCR','BOR'] : ['CP','DR','CDR','BOP'])
                     ->where('reference', $sourceReference)
                     ->where('customer_id', $customerID)
                     ->where('plot_id', $plotID)
@@ -509,7 +511,9 @@ class LedgerController extends Controller
                 // Reserve once BEFORE inserting the source: allocating after
                 // source creation incorrectly skips the just-created number.
                 $resolvedVoucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
-                    ->next((int) $selectedProjectId, $effectiveVoucherType);
+                    ->next((int) $selectedProjectId,
+                        in_array($voucherPrefix,['BOR','BOP'],true)
+                            ? $effectiveVoucherType : ($voucherPrefix==='CP'?'DR':$voucherPrefix));
                 // Never save a different number than the one displayed in the
                 // active form. Transaction rollback also releases the counter.
                 $bankSeriesNumber = null;
