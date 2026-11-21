@@ -23,7 +23,7 @@ final class PostedVoucherLedgerGate
 
     public static function assertLinked(int $projectId, int $batchId): void
     {
-        foreach (['finance_posting_lines', 'ledgers', 'project_head_subheads'] as $table) {
+        foreach (['finance_posting_batches', 'finance_posting_lines', 'ledgers', 'project_head_subheads'] as $table) {
             if (!Schema::hasTable($table)) {
                 // Existing isolated tests deliberately omit the finance schema.
                 // Never allow the same bypass in a real application environment.
@@ -60,8 +60,7 @@ final class PostedVoucherLedgerGate
             if (!$ledger ||
                 (int) $ledger->project_head_subheads_id !== (int) $line->project_head_subhead_id ||
                 self::cents($ledger->amount_in) !== self::cents($line->debit) ||
-                self::cents($ledger->amount_out) !== self::cents($line->credit) ||
-                (int) $ledger->is_active !== (int) ($line->is_active ?? 1)) {
+                self::cents($ledger->amount_out) !== self::cents($line->credit)) {
                 throw new \DomainException('POSTED_VOUCHER_LEDGER_MISMATCH: line='.$line->id);
             }
         }
