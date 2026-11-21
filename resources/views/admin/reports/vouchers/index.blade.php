@@ -102,7 +102,7 @@ body.jv-directory-active{overflow:hidden!important}
       @foreach(['id'=>'ID','voucher_number'=>'Voucher #','reference'=>'Reference','date'=>'Date','description'=>'Description','total_debit'=>'Amount'] as $field=>$title)
       <th class="jv-filter-heading"><span>{{ $title }}</span><button type="button" class="jv-excel-trigger" data-field="{{ $field }}" data-col="{{ $loop->index }}" aria-label="Sort or filter {{ $title }}" aria-haspopup="dialog" aria-expanded="false"><i class="fas fa-caret-down"></i></button></th>
       @endforeach
-      @if($type==='JV')<th class="jv-filter-heading"><span>Status</span><button type="button" class="jv-excel-trigger" data-field="approval_status" data-col="6" aria-label="Filter status" aria-haspopup="dialog" aria-expanded="false"><i class="fas fa-caret-down"></i></button></th>@endif
+      @if(in_array($type,['JV','SV'],true))<th class="jv-filter-heading"><span>Status</span><button type="button" class="jv-excel-trigger" data-field="approval_status" data-col="6" aria-label="Filter status" aria-haspopup="dialog" aria-expanded="false"><i class="fas fa-caret-down"></i></button></th>@endif
       <th>Actions</th>
      </tr>
     </thead><tbody></tbody>
@@ -207,7 +207,7 @@ $(function(){
    {data:'date',name:'date',render:$.fn.dataTable.render.text()},
    {data:'description',name:'description',render:$.fn.dataTable.render.text()},
    {data:'total_debit',name:'total_debit',className:'text-right',render:function(v){return Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}},
-   @if($type==='JV')
+   @if(in_array($type,['JV','SV'],true))
    {data:'approval_status',orderable:false,searchable:false,render:function(value,renderType,row){
     if(renderType!=='display')return value||'';
     var colors={pending:'warning',approved:'success',rejected:'danger',posted:'secondary'};
