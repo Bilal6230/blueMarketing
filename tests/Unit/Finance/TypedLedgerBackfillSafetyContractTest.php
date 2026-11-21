@@ -35,7 +35,6 @@ final class TypedLedgerBackfillSafetyContractTest extends TestCase
             'LEDGER_BACKFILL_SOURCE_CLAIM_MISMATCH',
             'LEDGER_BACKFILL_SOURCE_PROJECT_MISMATCH',
             'LEDGER_BACKFILL_POSSIBLE_DUPLICATE_SOURCE',
-            'LEDGER_BACKFILL_PARTIAL_LINKS',
             'LEDGER_BACKFILL_EXISTING_LINK_MISMATCH',
             'LEDGER_BACKFILL_FOREIGN_ACCOUNT',
             'LEDGER_BACKFILL_ACTIVE_LINES_UNBALANCED',
@@ -47,6 +46,7 @@ final class TypedLedgerBackfillSafetyContractTest extends TestCase
         self::assertStringContainsString('lockForUpdate()',$src);
         self::assertStringContainsString('DB::transaction(',$src);
         self::assertStringContainsString('if(!$apply)return $summary;',$src);
+        self::assertStringContainsString("if($line->legacy_ledger_id!==null)continue;",$src);
     }
 
     public function test_cli_requires_specific_database_project_and_explicit_apply(): void
