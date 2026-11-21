@@ -13,7 +13,7 @@ final class DailyVoucherApprovalWorkflow
     {
         // Explicit local standard ERP testing uses the original direct-posting
         // workflow. Do not require a separately configured pilot approver.
-        if (FinanceWorkflowAccess::normalErpMode()) return null;
+        if ($type !== 'SV' && FinanceWorkflowAccess::normalErpMode()) return null;
         if (!Schema::hasTable('daily_voucher_approval_policies')) return null;
         return DailyVoucherApprovalPolicy::query()->where('project_id', $projectId)
             ->where('voucher_type', $type)->where('approval_required', true)->first();
@@ -21,7 +21,7 @@ final class DailyVoucherApprovalWorkflow
 
     public function submitIfRequired(int $projectId, string $type, string $sourceTable, int $sourceId, int $userId): bool
     {
-        if (FinanceWorkflowAccess::normalErpMode()) return false;
+        if ($type !== 'SV' && FinanceWorkflowAccess::normalErpMode()) return false;
         if (!Schema::hasTable('daily_voucher_approval_policies')) {
             return false;
         }
@@ -353,6 +353,29 @@ final class DailyVoucherApprovalWorkflow
                 ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')
                     ->select('id')->where('project_id', $approval->project_id))
                 ->update(['is_active' => $active ? 1 : 0]);
+            return;
+        }
+
+        if ($approval->source_table === 'journal_vouchers' && $approval->voucher_type === 'SV') {
+            $voucher=DB::table('journal_vouchers')->where('id',$approval->source_id)
+                ->where('project_id',$approval->project_id)->where('type','SV')
+                ->whereNull('deleted_at')->lockForUpdate()->first();
+            if(!$voucher)throw new \DomainException('DAILY_VOUCHER_SOURCE_NOT_FOUND');
+            $posted=DB::table('finance_posting_journal_sources')
+                ->where('journal_voucher_id',$voucher->id)->exists();
+            if($posted){
+                throw new \DomainException('SV_APPROVAL_ALREADY_POSTED');
+            }
+            if($active){
+                (new PostingGateway())->postSalesVoucher(
+                    (int)$approval->project_id,(int)$voucher->id,
+                    'sv_approval_'.(int)$approval->id.'_'.(int)$voucher->id,
+                    (int)$approval->assigned_approver_id
+                );
+            }
+            DB::table('journal_vouchers')->where('id',$voucher->id)
+                ->where('project_id',$approval->project_id)->where('type','SV')
+                ->update(['status'=>$active?'approved':'rejected','updated_at'=>now()]);
             return;
         }
 
