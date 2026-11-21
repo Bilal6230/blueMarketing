@@ -88,6 +88,35 @@ final class VoucherApprovalDetailReader
                         'credit'=>(float)$l->amount_in,'active'=>(int)$l->is_active===1])
                     ->all();
             }
+        } elseif($approval->source_table==='commision_vouchers'
+            && $approval->voucher_type==='CV' && Schema::hasTable('commision_vouchers')){
+            $voucher=DB::table('commision_vouchers')->where('id',$approval->source_id)
+                ->where('project_id',$project)->first();
+            if(!$voucher)return $base;
+            $base=array_merge($base,[
+                'number'=>$identity->lookup($project,'commission_voucher',(int)$voucher->id)
+                    ?: 'CV-'.$voucher->voucher_number,
+                'date'=>$voucher->date,'reference'=>$voucher->reference??null,
+                'description'=>$voucher->description??null,
+                'amount'=>(float)$voucher->total_debit,
+                'created_at'=>$voucher->created_at,'updated_at'=>$voucher->updated_at,
+            ]);
+            $base['lines']=DB::table('commision_voucher_details as line')
+                ->join('project_head_subheads as account',function($join)use($project){
+                    $join->on('account.id','=','line.account_id')
+                        ->where('account.project_id',$project);
+                })
+                ->leftJoin('head_accountings as head','head.id','=','account.head_accounting_id')
+                ->leftJoin('subhead_accountings as sub','sub.id','=','account.subhead_accounting_id')
+                ->where('line.commision_voucher_id',$voucher->id)
+                ->whereNull('line.deleted_at')->orderBy('line.id')
+                ->get(['head.name as head','sub.name as child',
+                    'line.description','line.debit','line.credit'])
+                ->map(fn($line)=>[
+                    'account'=>trim(($line->head??'').' / '.($line->child??''),' /'),
+                    'description'=>$line->description,'debit'=>(float)$line->debit,
+                    'credit'=>(float)$line->credit,'active'=>$approval->status==='approved',
+                ])->all();
         } elseif ($approval->source_table==='finance_bank_transfer_approval_drafts'
             && Schema::hasTable('finance_bank_transfer_approval_drafts')) {
             $draft=DB::table('finance_bank_transfer_approval_drafts as draft')
