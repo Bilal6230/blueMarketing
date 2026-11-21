@@ -211,6 +211,12 @@ final class CashPostingWriter
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
+            if(Schema::hasTable('ledgers')
+                && Schema::hasColumn('ledgers','customer_ledger_id')) {
+                app(CashSourceLedgerLinker::class)->sync($projectId,(int)$batchId);
+            } elseif(!app()->environment('testing')){
+                throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
+            }
             return (int) $batchId;
         }, 3);
     }
