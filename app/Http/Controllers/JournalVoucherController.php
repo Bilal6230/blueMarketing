@@ -291,7 +291,7 @@ class JournalVoucherController extends Controller
         $x['users'] = User::get();
         $x['power'] = $power;
         $x['type'] = 'SV';
-        $x['class'] = 'Journal voucher';
+        $x['class'] = 'Sales voucher';
         $x['bg_voucher'] = 'info-cash-in';
 
         // Get selected town's project_id
@@ -571,8 +571,8 @@ class JournalVoucherController extends Controller
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
-        $x['type'] = 'JV';
-        $x['class'] = 'Journal voucher';
+        $x['type'] = $isSales ? 'SV' : 'JV';
+        $x['class'] = $isSales ? 'Sales voucher' : 'Journal voucher';
         $x['bg_voucher'] = 'info-cash-in';
 
         // Get selected town's project_id
