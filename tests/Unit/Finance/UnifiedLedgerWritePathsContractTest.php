@@ -45,6 +45,13 @@ final class UnifiedLedgerWritePathsContractTest extends TestCase
         self::assertStringContainsString('VoucherDetailLedgerLinker::class',$journal);
         self::assertStringContainsString('VoucherDetailLedgerLinker::class',$commission);
         self::assertStringContainsString('ReversalLedgerLinker::class',$reverse);
+        $approved=$this->source('app/Services/Finance/ApprovedSourcePostingWriter.php');
+        self::assertStringContainsString('ApprovedDocumentLedgerLinker::class',$approved);
+        $bridge=$this->source('app/Services/Finance/ApprovedDocumentLedgerLinker.php');
+        self::assertStringContainsString("'stock_entry'",$bridge);
+        self::assertStringContainsString("'stock_bill'",$bridge);
+        self::assertStringContainsString("'booking'",$bridge);
+        self::assertStringContainsString("'labour'",$bridge);
         $source=$this->source('app/Services/Finance/VoucherDetailLedgerLinker.php');
         self::assertStringContainsString('journal_voucher_detail_id',$source);
         self::assertStringContainsString('commision_voucher_detail_id',$source);
