@@ -63,6 +63,8 @@ final class TypedLedgerBackfill
                 $isSourceActive=!isset($link->is_active)||(int)$link->is_active===1;
                 if(isset($link->deleted_at)&&$link->deleted_at!==null)$isSourceActive=false;
                 $voucherReference=$series.'-'.($batch->voucher_number?:$batch->id);
+                $sourceAmount=$this->cents($link->amount);
+                if($sourceAmount<1)throw new \DomainException('LEDGER_BACKFILL_SOURCE_AMOUNT_INVALID');
             }else{
                 $sourceId=(int)$link->source_id;
                 $source=DB::table($sourceTable)->where('id',$sourceId)
@@ -71,6 +73,11 @@ final class TypedLedgerBackfill
                 $isSourceActive=!isset($source->is_active)||(int)$source->is_active===1;
                 if(isset($source->deleted_at)&&$source->deleted_at!==null)$isSourceActive=false;
                 $voucherReference=(string)$source->{$numberColumn};
+                $sourceAmount=$this->cents($source->amount);
+                $sourceDate=(string)$source->{$series==='PR'?'receipt_date':'purchase_date'};
+                if($sourceAmount<1 || $sourceDate!==(string)$batch->effective_date){
+                    throw new \DomainException('LEDGER_BACKFILL_SOURCE_AMOUNT_OR_DATE_MISMATCH');
+                }
             }
             if($sourceId<1||$sourceId>2147483647||$voucherReference===''){
                 throw new \DomainException('LEDGER_BACKFILL_SOURCE_IDENTITY_INVALID');
@@ -130,7 +137,8 @@ final class TypedLedgerBackfill
                 $activeDebit+=$this->cents($line->debit);
                 $activeCredit+=$this->cents($line->credit);
             }
-            if($active->count()>0&&($active->count()<2||$activeDebit<1||$activeDebit!==$activeCredit)){
+            if($active->count()>0&&($active->count()<2||$activeDebit<1
+                ||$activeDebit!==$activeCredit||$activeDebit!==$sourceAmount)){
                 throw new \DomainException('LEDGER_BACKFILL_ACTIVE_LINES_UNBALANCED');
             }
             if($active->count()===0&&$isSourceActive){
