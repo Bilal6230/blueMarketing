@@ -82,6 +82,14 @@ final class NormalizeLegacyVoucherTypes extends Command
                         ->select('id')->where('project_id',$update['project']))
                     ->where('type',$update['from'])
                     ->update(['type'=>$update['to'],'updated_at'=>now()]);
+                if(Schema::hasTable('daily_voucher_approvals')){
+                    DB::table('daily_voucher_approvals')
+                        ->where('project_id',$update['project'])
+                        ->where('source_table','customer_ledger')
+                        ->where('source_id',$update['id'])
+                        ->where('voucher_type',$update['from'])
+                        ->update(['voucher_type'=>$update['to'],'updated_at'=>now()]);
+                }
             }
             // Legacy CP ledger rows without an attributable customer source
             // still need the renamed DR label, but their ownership is left
@@ -92,7 +100,15 @@ final class NormalizeLegacyVoucherTypes extends Command
                 ->when($p!==null,fn($q)=>$q->where('a.project_id',(int)$p))
                 ->pluck('l.id');
             foreach($unknown->chunk(1000) as $chunk){
-                $unlinkedCp+=DB::table('ledgers')->whereIn('id',$chunk->all())
+                $chunkIds=$chunk->all();
+                if(Schema::hasTable('daily_voucher_approvals')){
+                    DB::table('daily_voucher_approvals')
+                        ->where('source_table','ledgers')
+                        ->whereIn('source_id',$chunkIds)
+                        ->where('voucher_type','CP')
+                        ->update(['voucher_type'=>'DR','updated_at'=>now()]);
+                }
+                $unlinkedCp+=DB::table('ledgers')->whereIn('id',$chunkIds)
                     ->where('type','CP')->update(['type'=>'DR','updated_at'=>now()]);
             }
         },3);
