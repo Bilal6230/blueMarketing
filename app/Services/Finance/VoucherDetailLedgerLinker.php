@@ -77,7 +77,7 @@ final class VoucherDetailLedgerLinker
                 // finance batch was posted. The batch's validated accounting
                 // legs remain authoritative; the FK alone proves detail
                 // ownership, not the current amount/account snapshot.
-                if($line->detail_deleted_at!==null
+                if(($line->detail_deleted_at!==null && (int)($line->is_active??1)===1)
                     ||(!$cv && ((int)$line->detail_account!==(int)$line->project_head_subhead_id
                         ||$this->cents($line->detail_debit)!==$this->cents($line->debit)
                         ||$this->cents($line->detail_credit)!==$this->cents($line->credit)))
