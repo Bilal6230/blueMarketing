@@ -79,7 +79,8 @@ final class VoucherDetailLedgerLinker
                         ||(int)$ledger->project_head_subheads_id!==(int)$line->project_head_subhead_id
                         ||$this->cents($ledger->amount_in)!==$this->cents($line->debit)
                         ||$this->cents($ledger->amount_out)!==$this->cents($line->credit)
-                        ||(int)$ledger->is_active!==(int)($line->is_active??1)){
+                        ||(!$cv && (int)$ledger->is_active!==(int)($line->is_active??1))
+                        ||($cv && !in_array((int)$ledger->is_active,[0,1],true))){
                         throw new \DomainException('DETAIL_LEDGER_EXISTING_LEDGER_MISMATCH');
                     }
                     $ledgerId=(int)$ledger->id;
