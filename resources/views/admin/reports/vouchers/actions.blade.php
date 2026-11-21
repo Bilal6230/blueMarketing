@@ -1,13 +1,13 @@
 @php
     $voucherRoutePrefix = $voucher instanceof \App\Models\CommisionVoucher ? 'commision.voucher' : 'journal.voucher';
+    $salesEditable = $voucher->type === 'SV' && $voucher->status !== 'rejected';
 @endphp
 @canany(['edit jv', 'delete jv', 'print jv'])
     <div class="btn-group">
         @can('edit jv')
-            {{-- SV is created by the booking workflow. This JV-only editor
-                 cannot safely mutate a posted SV; offer its voucher detail
-                 document through the authorized print route instead. --}}
-            @if($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))
+            {{-- SV uses the same typed journal source editor, with pending-approval
+                 and posted-source lifecycle checks enforced server-side. --}}
+            @if(($salesEditable || ($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))))
             <a href="{{ route($voucherRoutePrefix.'.edit', $voucher->id) }}" class="btn btn-sm btn-warning">
                 <i class="fas fa-edit"></i> Edit
             </a>
@@ -15,9 +15,9 @@
         @endcan
 
         @can('delete jv')
-            @if($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))
+            @if(($salesEditable || ($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))))
             <button class="btn btn-sm btn-danger delete-btn" data-id="{{ $voucher->id }}">
-                <i class="fas fa-undo"></i> Reverse
+                <i class="fas fa-undo"></i> {{ $voucher->type === 'SV' ? 'Delete' : 'Reverse' }}
             </button>
             @endif
         @endcan
