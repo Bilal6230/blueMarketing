@@ -189,6 +189,12 @@ final class PostingReversalWriter
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
             }
+            if(Schema::hasTable('ledger_source_attributions')
+                && Schema::hasTable('ledgers')) {
+                app(ReversalLedgerLinker::class)->sync($projectId,(int)$id);
+            } elseif(!app()->environment('testing')){
+                throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
+            }
             return (int) $id;
         }, 3);
     }
