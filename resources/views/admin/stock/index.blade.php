@@ -2775,24 +2775,34 @@
     function stockDismissNow(modal){
       const $modal=$(modal),node=$modal[0];
       if(!node)return;
-      try{
-        if(window.bootstrap&&window.bootstrap.Modal){
-          const klass=window.bootstrap.Modal;
-          const instance=$.isFunction(klass.getInstance)?klass.getInstance(node):null;
-          if(instance){instance.hide();}
-          else if($.isFunction(klass.getOrCreateInstance)){klass.getOrCreateInstance(node).hide();}
-        }
-      }catch(error){if(window.console)console.warn('Stock modal hide:',error);}
-      try{if($.fn.modal)$modal.modal('hide');}catch(ignore){}
-      // Some ERP pages load multiple Bootstrap versions; ensure a stranded dialog is not left onscreen.
+      // Use exactly one modal manager. Calling the jQuery modal plugin immediately
+      // after Bootstrap 5 hide() interrupts the framework's fade-out transition.
+      if(window.bootstrap && window.bootstrap.Modal){
+        try{
+          const Modal=window.bootstrap.Modal;
+          const instance=$.isFunction(Modal.getInstance)?Modal.getInstance(node):null;
+          if(instance){instance.hide();return;}
+          if($.isFunction(Modal.getOrCreateInstance)){
+            Modal.getOrCreateInstance(node).hide();
+            return;
+          }
+        }catch(error){if(window.console)console.warn('Stock modal close:',error);}
+      }
+      if($.fn.modal){
+        try{$modal.modal('hide');return;}catch(error){}
+      }
+      // Lightweight fallback for a page without a working Bootstrap modal plugin:
+      // animate opacity first; remove the backdrop only after the transition.
+      $modal.removeClass('show').attr('aria-hidden','true').removeAttr('aria-modal');
+      const $backdrop=$('.stock-modal-fallback-backdrop').last();
+      $backdrop.removeClass('show');
       setTimeout(function(){
-        if(!$modal.hasClass('show')&&$modal.css('display')==='none')return;
-        $modal.removeClass('show').hide().attr('aria-hidden','true').removeAttr('aria-modal');
+        $modal.hide();
+        $backdrop.remove();
         if(!$('.modal.show').length){
-          $('.modal-backdrop,.stock-modal-fallback-backdrop').remove();
           $('body').removeClass('modal-open').css({overflow:'',paddingRight:''});
         }
-      },400);
+      },180);
     }
     $(document).find('[data-stock-dismiss]').each(function(){
       const button=this;
