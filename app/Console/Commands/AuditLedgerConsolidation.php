@@ -112,7 +112,7 @@ final class AuditLedgerConsolidation extends Command
             $row['missing_link_target']+$row['mismatched_link']+$row['foreign_account'],$typed));
         $missingMappings=array_sum(array_column($typed,'without_ledger_link'));
         $ambiguousCp=array_sum(array_map(static fn($row)=>
-            $row['display_series']==='UNCLASSIFIED_CP'||$row['missing_or_foreign_source']>0
+            in_array($row['display_series'],['UNCLASSIFIED_CP','CP'],true)||$row['missing_or_foreign_source']>0
                 ?(int)$row['ledger_rows']:0,$cp));
 
         $result=[
