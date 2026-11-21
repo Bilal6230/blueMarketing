@@ -48,20 +48,21 @@ class StockUnifiedUiParityContractTest extends TestCase
         self::assertStringContainsString('grid-template-columns:minmax(0,1fr) minmax(0,1fr)', $view);
         self::assertStringContainsString('width:185px!important', $view);
         self::assertStringContainsString('stock-entry-mode d-flex gap-3', $view);
-        self::assertStringContainsString("$(document).find('[data-stock-dismiss]').each(function()", $view);
         self::assertStringContainsString('stock-line-field', $view);
         self::assertStringContainsString('stock-line-caption', $view);
         self::assertStringContainsString('stock-line-remove', $view);
         self::assertStringContainsString('CR voucher-style bordered directory tables', $view);
         self::assertStringContainsString('border-right:1px solid #d5e0ec!important', $view);
         self::assertStringContainsString('function stockActionsCell(sourceButtons)', $view);
+        self::assertSame(10, substr_count($view, 'data-bs-dismiss="modal"'));
+        self::assertStringNotContainsString('data-stock-dismiss', $view);
+        self::assertStringNotContainsString('function stockDismissNow(modal)', $view);
+        self::assertStringNotContainsString("off('click.stockDismiss')", $view);
         self::assertStringContainsString('function stockEnhanceRowActions(body)', $view);
         self::assertStringContainsString('$.blueActionMenu.enhance', $view);
         self::assertStringContainsString('class="blue-actions-cell"', $view);
         self::assertStringNotContainsString('id="stockActionsPopover"', $view);
         self::assertStringContainsString('--bs-table-border-color:#cbd8e6', $view);
-        self::assertStringContainsString('function stockDismissNow(modal)', $view);
-        self::assertStringContainsString("if(instance){instance.hide();return;}", $view);
         self::assertStringContainsString("dropdownParent:'body'", $view);
         self::assertStringContainsString('function stockPositionTomDropdown(instance)', $view);
         self::assertStringContainsString("menu.style.setProperty('position','fixed','important')", $view);
@@ -71,9 +72,6 @@ class StockUnifiedUiParityContractTest extends TestCase
         self::assertStringContainsString('collect($partyAccountOptions ?? [])->unique(\'head_id\')', $view);
         self::assertStringContainsString('item.subhead_accounting_id??nested.id', $view);
         self::assertStringContainsString('item.plot_id!=null || item.customer_id!=null', $view);
-        self::assertStringContainsString('function stockDismissNow(modal)', $view);
-        self::assertStringContainsString("button.addEventListener('click'", $view);
         self::assertSame(5, substr_count($view, 'class="stock-modal-actions mt-2"'));
-        self::assertStringNotContainsString('data-bs-dismiss="modal"', $view);
     }
 }
