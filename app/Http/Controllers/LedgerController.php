@@ -666,7 +666,7 @@ class LedgerController extends Controller
                     && ($displaySeries !== $requestedDisplaySeries || !$linkedVerifiedSource)) {
                     throw new \DomainException('BANK_VOUCHER_IDENTITY_REQUIRES_VERIFIED_SOURCE');
                 }
-                $approvalPolicyType = in_array($displaySeries, ['BOR','BOP'], true)
+                $approvalPolicyType = in_array($displaySeries, ['BOR','BOP','DR'], true)
                     ? $displaySeries : $effectiveVoucherType;
                 $approvalPending = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
                     ->submitIfRequired((int) $selectedProjectId, $approvalPolicyType,
