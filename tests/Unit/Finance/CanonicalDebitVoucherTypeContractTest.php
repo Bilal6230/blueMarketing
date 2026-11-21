@@ -41,7 +41,7 @@ final class CanonicalDebitVoucherTypeContractTest extends TestCase
         self::assertStringContainsString("'CR','DR','CCR','CDR','BOR','BOP'",$source);
         self::assertStringContainsString("'project_voucher_display_numbers'",$source);
         self::assertStringContainsString("'customer_ledger'",$source);
-        self::assertStringContainsString("'type'=>'DR'",$this->code('app/Http/Controllers/LedgerController.php'));
+        self::assertStringContainsString("'type' => 'DR'",$this->code('app/Http/Controllers/LedgerController.php'));
         self::assertStringNotContainsString('Schema::create(',$source);
         self::assertStringNotContainsString('Schema::dropIfExists(',$source);
     }
