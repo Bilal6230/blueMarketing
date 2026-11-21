@@ -96,7 +96,7 @@ class CommissionVoucherController extends Controller
                 :collect();
             $data = $vouchers->map(function ($voucher) use ($displayNumbers,$approvalStatuses) {
                 $centralStatus=$approvalStatuses[$voucher->id]??null;
-                $approvalPending=$centralStatus==='pending';
+                $approvalPending=in_array($centralStatus,['pending','rejected'],true);
                 return [
                     'id' => $voucher->id,
                     'voucher_number' => $displayNumbers[$voucher->id]
