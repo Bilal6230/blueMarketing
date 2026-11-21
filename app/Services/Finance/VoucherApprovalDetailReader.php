@@ -88,6 +88,41 @@ final class VoucherApprovalDetailReader
                         'credit'=>(float)$l->amount_in,'active'=>(int)$l->is_active===1])
                     ->all();
             }
+        } elseif ($approval->source_table==='finance_bank_transfer_approval_drafts'
+            && Schema::hasTable('finance_bank_transfer_approval_drafts')) {
+            $draft=DB::table('finance_bank_transfer_approval_drafts as draft')
+                ->leftJoin('project_bank_accounts as bank',function($join)use($project){
+                    $join->on('bank.id','=','draft.bank_account_id')
+                        ->where('bank.project_id',$project);
+                })
+                ->where('draft.id',$approval->source_id)->where('draft.project_id',$project)
+                ->first(['draft.*','bank.bank_name','bank.account_title']);
+            if(!$draft)return $base;
+            $cash=DB::table('project_head_subheads as a')
+                ->leftJoin('head_accountings as h','h.id','=','a.head_accounting_id')
+                ->leftJoin('subhead_accountings as sub','sub.id','=','a.subhead_accounting_id')
+                ->where('a.id',$draft->cash_account_id)->where('a.project_id',$project)
+                ->first(['h.name as head','sub.name as child']);
+            $cashLabel=trim(($cash->head??'').' / '.($cash->child??''),' /');
+            $bankLabel=trim(($draft->bank_name??'').' / '.($draft->account_title??''),' /');
+            $isDeposit=$draft->transfer_kind==='deposit';
+            $base=array_merge($base,[
+                'number'=>$approval->voucher_type.'-'.$draft->voucher_number,
+                'date'=>$draft->effective_date,
+                'reference'=>null,'description'=>$draft->narration,
+                'amount'=>(float)$draft->amount,
+                'bank'=>$bankLabel,
+                'created_at'=>$draft->created_at,
+                'updated_at'=>$draft->updated_at,
+                'lines'=>[
+                    ['account'=>$bankLabel,'description'=>$draft->narration,
+                        'debit'=>$isDeposit?(float)$draft->amount:0,
+                        'credit'=>$isDeposit?0:(float)$draft->amount,'active'=>false],
+                    ['account'=>$cashLabel,'description'=>$draft->narration,
+                        'debit'=>$isDeposit?0:(float)$draft->amount,
+                        'credit'=>$isDeposit?(float)$draft->amount:0,'active'=>false],
+                ],
+            ]);
         } elseif (in_array($approval->source_table,['journal_vouchers','journal_voucher'],true) &&
             Schema::hasTable('journal_vouchers')) {
             $j=DB::table('journal_vouchers')->where('id',$approval->source_id)
