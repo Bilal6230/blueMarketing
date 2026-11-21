@@ -403,7 +403,7 @@ class LedgerController extends Controller
                     $createdClearanceLedger = false;
                     if ($pendingStatus === 1) {
                         $cashOutClearanceLedger = Ledger::where('customer_ledger_id', $pendingCustomerLedger->id)
-                            ->where('type', 'CP')
+                            ->whereIn('type', ['CP','DR'])
                             ->where('reference', $clearanceReference)
                             ->lockForUpdate()
                             ->first();
@@ -418,7 +418,7 @@ class LedgerController extends Controller
                                 ->first();
 
                             $resolvedVoucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
-                                ->next((int) $selectedProjectId, 'CP');
+                                ->next((int) $selectedProjectId, 'DR');
                             if ($resolvedVoucherNumber !== $voucherNumber) {
                                 throw new \DomainException('Voucher number changed since this form was opened. Refresh to use the current database number.');
                             }
@@ -426,9 +426,9 @@ class LedgerController extends Controller
                             $cashOutClearanceLedger = Ledger::create([
                                 'customer_ledger_id' => $pendingCustomerLedger->id,
                                 'voucher_number' => $resolvedVoucherNumber,
-                                'type' => 'CP',
+                                'type' => 'DR',
                                 'type_id' => app(\App\Services\Finance\ProjectVoucherAllocator::class)
-                                    ->nextLedgerId((int) $selectedProjectId, 'CP'),
+                                    ->nextLedgerId((int) $selectedProjectId, 'DR'),
                                 'project_head_subheads_id' => $projectHeadSubhead->id,
                                 'reference' => $clearanceReference,
                                 'amount_in' => 0.00,
@@ -451,12 +451,12 @@ class LedgerController extends Controller
                         }
 
                         $approvalWorkflow = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class);
-                        if ($approvalWorkflow->policy((int) $selectedProjectId, 'CP')) {
+                        if ($approvalWorkflow->policy((int) $selectedProjectId, 'DR')) {
                             if (!$createdClearanceLedger) {
                                 throw new \DomainException('Existing clearance ledger cannot be safely placed into a new approval policy.');
                             }
                             $clearanceApprovalPending = $approvalWorkflow->submitIfRequired(
-                                (int) $selectedProjectId, 'CP', 'ledgers', (int) $cashOutClearanceLedger->id, (int) Auth::id()
+                                (int) $selectedProjectId, 'DR', 'ledgers', (int) $cashOutClearanceLedger->id, (int) Auth::id()
                             );
                             if ($clearanceApprovalPending) {
                                 DB::table('ledgers')->where('id', $cashOutClearanceLedger->id)->update(['is_active' => 0]);
@@ -1096,7 +1096,7 @@ class LedgerController extends Controller
             'projectHeadSubhead.subheadAccounting',
             'projectHeadSubhead.project',
         ])
-            ->whereIn('type', ['CR', 'CP'])
+            ->whereIn('type', ['CR','CCR','BOR','CP','DR','CDR','BOP'])
             ->whereNotNull('customer_ledger_id')
             ->whereHas('projectHeadSubhead', function ($q) {
                 $q->where('project_id', getSelectedTown());
@@ -1232,7 +1232,7 @@ class LedgerController extends Controller
         try {
             $changed = DB::transaction(function () use ($validated, $projectId): bool {
                 $ledger = Ledger::query()->whereKey((int) $validated['id'])
-                    ->whereIn('type', ['CR', 'CP','CCR','CDR'])
+                    ->whereIn('type', ['CR','CP','DR','CCR','CDR','BOR','BOP'])
                     ->whereHas('projectHeadSubhead', fn ($query) => $query->where('project_id', $projectId))
                     ->lockForUpdate()->firstOrFail();
 
@@ -1371,7 +1371,7 @@ class LedgerController extends Controller
         $projectId = (int) getSelectedTown();
         abort_if($projectId < 1, 403, 'Select a project.');
         $ledger = Ledger::query()->whereKey((int) $data['id'])
-            ->whereIn('type', ['CR','CP','CCR','CDR'])->whereNotNull('customer_ledger_id')
+            ->whereIn('type', ['CR','CP','DR','CCR','CDR','BOR','BOP'])->whereNotNull('customer_ledger_id')
             ->whereHas('projectHeadSubhead', fn ($q) => $q->where('project_id', $projectId))->firstOrFail();
         if ($paymentType !== null) {
             abort_unless((int) $data['payment_type'] === $paymentType
@@ -1460,7 +1460,7 @@ class LedgerController extends Controller
 
             // This editor is a cash voucher editor, not a generic ledger editor.
             // Never rewrite journal, stock, sale, booking or clearance postings.
-            if (!in_array($ledger->type, ['CR', 'CP'], true) || !$ledger->customer_ledger_id) {
+            if (!in_array($ledger->type, ['CR','CCR','BOR','CP','DR','CDR','BOP'], true) || !$ledger->customer_ledger_id) {
                 throw new \DomainException('CASH_VOUCHER_SOURCE_REQUIRED');
             }
 
@@ -1506,8 +1506,8 @@ class LedgerController extends Controller
                 return back()->with('error', $errorMessage)->withInput();
             }
 
-            $amountIn = $ledger->type === 'CR' ? $cleanAmount : 0;
-            $amountOut = $ledger->type === 'CP' ? $cleanAmount : 0;
+            $amountIn = in_array($ledger->type,['CR','CCR','BOR'],true) ? $cleanAmount : 0;
+            $amountOut = in_array($ledger->type,['CP','DR','CDR','BOP'],true) ? $cleanAmount : 0;
             $tNumber = in_array($paymentType, [2, 3], true) ? $request->input('t_number') : null;
             $bankId = in_array($paymentType, [2, 3], true) ? $request->input('bank_id') : null;
             $passingDate = in_array($paymentType, [2, 3], true) ? $request->input('passing_date') : null;
