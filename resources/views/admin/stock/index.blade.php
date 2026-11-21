@@ -1001,7 +1001,7 @@
     </main>
   </div></div>
 
-  <div class="modal fade stock-create-modal" id="stockEntryCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title"><span id="entryTitle">Purchase Entry</span></h5><button class="stock-modal-close" type="button" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><div class="stock-entry-mode d-flex gap-3 mb-2"><button type="button" class="btn btn-outline-primary" id="btnPurchaseMode">Purchase</button><button type="button" class="btn btn-outline-secondary" id="btnStockOutMode">Stock Out</button></div><form id="entryForm" novalidate>
+  <div class="modal fade stock-create-modal" id="stockEntryCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title"><span id="entryTitle">Purchase Entry</span></h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><div class="stock-entry-mode d-flex gap-3 mb-2"><button type="button" class="btn btn-outline-primary" id="btnPurchaseMode">Purchase</button><button type="button" class="btn btn-outline-secondary" id="btnStockOutMode">Stock Out</button></div><form id="entryForm" novalidate>
                     <div class="row g-2">
                       <div class="col-md-6">
                         <label class="form-label pv-small">Slip No (auto)</label>
@@ -1060,7 +1060,7 @@
                       </div>
                     </div>
                   </form></div></div></div></div>
-<div class="modal fade stock-create-modal" id="stockBillCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">Purchase / Sale Bill <span class="pv-chip" id="billNoChip">Bill no… auto</span></h5><button class="stock-modal-close" type="button" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="billForm" novalidate>
+<div class="modal fade stock-create-modal" id="stockBillCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">Purchase / Sale Bill <span class="pv-chip" id="billNoChip">Bill no… auto</span></h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="billForm" novalidate>
                     <div class="row g-2">
                       <div class="col-md-6">
                         <label class="form-label pv-small">Selection</label>
@@ -1113,7 +1113,7 @@
                       </button>
                     </div>
                   </form></div></div></div></div>
-<div class="modal fade stock-create-modal" id="stockItemCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Item / Material</h5><button class="stock-modal-close" type="button" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="itemForm" novalidate>
+<div class="modal fade stock-create-modal" id="stockItemCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Item / Material</h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="itemForm" novalidate>
                     <div class="row g-2">
                       <div class="col-12">
                         <label class="form-label pv-small">Item Name</label>
@@ -1136,7 +1136,7 @@
                       </button>
                     </div>
                   </form></div></div></div></div>
-<div class="modal fade stock-create-modal" id="stockPartyCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Stock Party</h5><button class="stock-modal-close" type="button" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="partyForm" novalidate>
+<div class="modal fade stock-create-modal" id="stockPartyCreateModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content pv-card"><div class="modal-header"><h5 class="modal-title">New Stock Party</h5><button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div><div class="modal-body"><form id="partyForm" novalidate>
                     <div class="row g-2">
                       <div class="col-md-6">
                         <label class="form-label pv-small">Supplier / Consumer</label>
@@ -1203,7 +1203,7 @@
               Edit this project's record. Existing linked history is preserved.
             </div>
           </div>
-          <button type="button" class="btn btn-light" data-stock-dismiss="1" aria-label="Close"
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal" aria-label="Close"
             style="border-radius: 14px">
             <i class="bi bi-x-lg"></i>
           </button>
@@ -1218,7 +1218,7 @@
    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content pv-card">
      <div class="modal-header"><h5 class="modal-title" id="stockDocumentEditTitle">Edit Stock Voucher</h5>
-       <button class="stock-modal-close" type="button" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+       <button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
      <form id="stockDocumentEditForm">
       <div class="modal-body">
        <div class="alert alert-info small">The original stock document, inventory movements and ledger IDs remain linked.</div>
@@ -1233,7 +1233,7 @@
        <div id="stockDocumentEditError" class="alert alert-danger d-none mt-2" role="alert"></div>
       </div>
       <div class="modal-footer">
-       <button type="button" class="btn btn-outline-secondary" data-stock-dismiss="1">Cancel</button>
+       <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
        <button type="submit" id="stockDocumentSave" class="btn btn-primary">Update Stock Voucher</button>
       </div>
      </form>
@@ -1243,13 +1243,13 @@
   <div class="modal fade" id="stockDocumentDeleteModal" tabindex="-1" aria-labelledby="stockDocumentDeleteTitle" aria-hidden="true">
    <div class="modal-dialog modal-dialog-centered"><div class="modal-content pv-card">
     <div class="modal-header"><h5 id="stockDocumentDeleteTitle" class="modal-title">Delete Stock Voucher</h5>
-     <button type="button" class="stock-modal-close" data-stock-dismiss="1" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+     <button type="button" class="stock-modal-close" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
     <div class="modal-body">
      <p>Archive this stock voucher from active inventory and balances? The original source and movement IDs remain preserved.</p>
      <div id="stockDocumentDeleteError" class="alert alert-danger d-none" role="alert"></div>
     </div>
     <div class="modal-footer">
-     <button type="button" class="btn btn-outline-secondary" data-stock-dismiss="1">Cancel</button>
+     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
      <button type="button" id="stockDocumentDeleteConfirm" class="btn btn-danger">Delete Voucher</button>
     </div>
    </div></div>
@@ -1971,7 +1971,7 @@
             </button>`
           : ""
         }
-            <button type="button" class="btn btn-outline-secondary" data-stock-dismiss="1">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
               ${onSave ? "Cancel" : "Close"}
             </button>
           </div>
@@ -1979,7 +1979,6 @@
       );
 
       stockEnhanceDropdowns($('#editModal'));
-      $(form).find('[data-stock-dismiss]').off('click.stockDismiss').on('click.stockDismiss',function(e){e.preventDefault();editModal.hide();});
       $(form).find(".pv-money").toArray().forEach((el) => {
         pvFormatAmountNoDecimal(el);
         $(el).on("input", () => pvFormatAmountNoDecimal(el));
@@ -2770,49 +2769,8 @@
       var $modal=$($(this).attr('data-stock-modal'));
       setTimeout(function(){stockEnhanceDropdowns($modal);},0);
     });
-    // Capture the click before conflicting Bootstrap 4/5 document listeners.
-    // Always dismiss through the instance that opened the dialog, not a new modal instance.
-    function stockDismissNow(modal){
-      const $modal=$(modal),node=$modal[0];
-      if(!node)return;
-      // Use exactly one modal manager. Calling the jQuery modal plugin immediately
-      // after Bootstrap 5 hide() interrupts the framework's fade-out transition.
-      if(window.bootstrap && window.bootstrap.Modal){
-        try{
-          const Modal=window.bootstrap.Modal;
-          const instance=$.isFunction(Modal.getInstance)?Modal.getInstance(node):null;
-          if(instance){instance.hide();return;}
-          if($.isFunction(Modal.getOrCreateInstance)){
-            Modal.getOrCreateInstance(node).hide();
-            return;
-          }
-        }catch(error){if(window.console)console.warn('Stock modal close:',error);}
-      }
-      if($.fn.modal){
-        try{$modal.modal('hide');return;}catch(error){}
-      }
-      // Lightweight fallback for a page without a working Bootstrap modal plugin:
-      // animate opacity first; remove the backdrop only after the transition.
-      $modal.removeClass('show').attr('aria-hidden','true').removeAttr('aria-modal');
-      const $backdrop=$('.stock-modal-fallback-backdrop').last();
-      $backdrop.removeClass('show');
-      setTimeout(function(){
-        $modal.hide();
-        $backdrop.remove();
-        if(!$('.modal.show').length){
-          $('body').removeClass('modal-open').css({overflow:'',paddingRight:''});
-        }
-      },180);
-    }
-    $(document).find('[data-stock-dismiss]').each(function(){
-      const button=this;
-      if(button.dataset.stockDismissBound)return;
-      button.dataset.stockDismissBound='1';
-      button.addEventListener('click',function(event){
-        event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
-        stockDismissNow($(button).closest('.modal')[0]);
-      },true);
-    });
+    // Bootstrap owns dismiss clicks and their animated fade/backdrop lifecycle.
+    // Do not attach a second manual hide() listener to X/Cancel buttons.
     $(document).on('keydown.stockCreateModal',function(event){
       if(event.key==='Escape' && $('.stock-modal-fallback-backdrop').length){
         stockModal('#'+$('.stock-create-modal.show').attr('id'),'hide');
