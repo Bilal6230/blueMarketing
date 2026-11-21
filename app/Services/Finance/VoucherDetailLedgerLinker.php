@@ -15,7 +15,7 @@ final class VoucherDetailLedgerLinker
     {
         $s=trim((string)$raw);
         if(!preg_match('/^(0|[1-9][0-9]{0,11})(?:\\.([0-9]{1,2}))?$/D',$s,$m))
-            throw new \\DomainException('DETAIL_LEDGER_INVALID_MONEY');
+            throw new \DomainException('DETAIL_LEDGER_INVALID_MONEY');
         return (int)$m[1]*100+(int)str_pad($m[2]??'',2,'0');
     }
 
