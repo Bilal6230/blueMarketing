@@ -16,8 +16,8 @@ final class CanonicalDebitVoucherTypeContractTest extends TestCase
     public function test_new_daily_cash_vouchers_keep_their_actual_series_in_both_source_and_general_ledger(): void
     {
         $controller=$this->code('app/Http/Controllers/LedgerController.php');
-        self::assertStringContainsString("if ((string)$customerLedger->transaction_type!==$displaySeries)",$controller);
-        self::assertStringContainsString("'type' => $displaySeries",$controller);
+        self::assertStringContainsString("if ((string)\$customerLedger->transaction_type!==\$displaySeries)",$controller);
+        self::assertStringContainsString("'type' => \$displaySeries",$controller);
         self::assertStringContainsString('$approvalPolicyType = $displaySeries',$controller);
         $workflow=$this->code('app/Services/Finance/DailyVoucherApprovalWorkflow.php');
         self::assertStringContainsString("'CP','DR'",$workflow);
@@ -27,7 +27,7 @@ final class CanonicalDebitVoucherTypeContractTest extends TestCase
     public function test_original_cp_alias_is_persisted_as_dr_for_new_typed_sources(): void
     {
         $source=$this->code('app/Services/Finance/OriginalCustomerWorkflow.php');
-        self::assertStringContainsString("if ($series==='CP') $series='DR';",$source);
+        self::assertStringContainsString("if (\$series==='CP') \$series='DR';",$source);
         self::assertStringContainsString("'CR', 'DR', 'PPR', 'EC', 'ECP'",$source);
         $cash=$this->code('app/Services/Finance/CashPostingWriter.php');
         self::assertStringContainsString("'CR', 'CP', 'DR'",$cash);
