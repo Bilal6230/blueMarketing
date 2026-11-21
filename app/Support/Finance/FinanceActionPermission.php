@@ -167,7 +167,9 @@ final class FinanceActionPermission
             return [self::journalModule((int)$route->parameter('id')),$action];
         }
         if ($name === 'finance.daily-vouchers.approvals.decide') {
-            $approvalId = (int)$route->parameter('approval');
+            $approvalParam = $route->parameter('approval');
+            $approvalId = $approvalParam instanceof \App\Models\DailyVoucherApproval
+                ? (int)$approvalParam->getKey() : (int)$approvalParam;
             $decision = (string)$route->parameter('decision');
             return [self::dailyApprovalModule($approvalId),$decision === 'reject' ? 'reject' : 'approve'];
         }
