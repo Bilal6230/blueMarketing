@@ -7,7 +7,7 @@
         @canany(['edit jv','finance sv edit'])
             {{-- SV uses the same typed journal source editor, with pending-approval
                  and posted-source lifecycle checks enforced server-side. --}}
-            @if(($salesEditable || ($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))))
+            @if(!($approvalPending ?? false) && ($salesEditable || ($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))))
             <a href="{{ route($voucherRoutePrefix.'.edit', $voucher->id) }}" class="btn btn-sm btn-warning">
                 <i class="fas fa-edit"></i> Edit
             </a>
@@ -15,7 +15,7 @@
         @endcan
 
         @canany(['delete jv','finance sv delete'])
-            @if(($salesEditable || ($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))))
+            @if(!($approvalPending ?? false) && ($salesEditable || ($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))))
             <button class="btn btn-sm btn-danger delete-btn" data-id="{{ $voucher->id }}">
                 <i class="fas fa-undo"></i> {{ $voucher->type === 'SV' ? 'Delete' : 'Reverse' }}
             </button>
