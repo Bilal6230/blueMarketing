@@ -421,8 +421,11 @@ class JournalVoucherController extends Controller
                     ->whereIn('source_id', $vouchers->pluck('id'))->pluck('display_number', 'source_id')
                 : collect();
 
-            // Prepare the data, including the "actions" column
-            $data = $vouchers->map(function ($voucher) use ($displayNumbers) {
+            // Approval status is project/source scoped. Untracked SVs are Posted.
+            $approvalStatuses=app(\App\Services\Finance\VoucherApprovalStatusReader::class)
+                ->forSources((int)$selectedProjectId,'journal_vouchers',$vouchers->pluck('id'));
+            $data = $vouchers->map(function ($voucher) use ($displayNumbers,$approvalStatuses) {
+                $approval=$approvalStatuses[$voucher->id]??null;
                 return [
                     'id' => $voucher->id,
                     'voucher_number' => $displayNumbers[$voucher->id] ?? ('SV-' . (int) $voucher->voucher_number),
@@ -430,7 +433,13 @@ class JournalVoucherController extends Controller
                     'date' => $voucher->date,
                     'description' => $voucher->description,
                     'total_debit' => $voucher->total_debit,
-                    'actions' => view('admin.reports.vouchers.actions', compact('voucher'))->render() // Render actions view
+                    'approval_status' => ucfirst($approval['status']??'posted'),
+                    'approval_approver' => $approval['approver']??null,
+                    'approval_reason' => $approval['reason']??null,
+                    'actions' => view('admin.reports.vouchers.actions',[
+                        'voucher'=>$voucher,'approvalTracked'=>$approval!==null,
+                        'canResubmit'=>false,
+                    ])->render()
                 ];
             });
 
