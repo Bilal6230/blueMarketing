@@ -22,9 +22,9 @@ final class TypedLedgerBackfillSafetyContractTest extends TestCase
         self::assertStringContainsString("'PP'=>['plot_purchase'",$src);
         self::assertStringContainsString("'PPR','plot_receipt'",$src);
         self::assertStringContainsString("'ledger_source_attributions'",$src);
-        self::assertStringContainsString("'legacy_ledger_id'=>$ledgerId",$src);
-        self::assertStringContainsString("'type'=>$ledgerType",$src);
-        self::assertStringContainsString("'type_id'=>$sourceId",$src);
+        self::assertStringContainsString("'legacy_ledger_id'=>\$ledgerId",$src);
+        self::assertStringContainsString("'type'=>\$ledgerType",$src);
+        self::assertStringContainsString("'type_id'=>\$sourceId",$src);
         self::assertStringNotContainsString('Schema::create(',$src);
     }
 
