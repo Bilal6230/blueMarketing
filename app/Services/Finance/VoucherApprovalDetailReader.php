@@ -88,6 +88,46 @@ final class VoucherApprovalDetailReader
                         'credit'=>(float)$l->amount_in,'active'=>(int)$l->is_active===1])
                     ->all();
             }
+        } elseif($approval->source_table==='finance_plot_approval_drafts'
+            && in_array((string)$approval->voucher_type,['PPR','PP'],true)
+            && Schema::hasTable('finance_plot_approval_drafts')){
+            $draft=DB::table('finance_plot_approval_drafts')
+                ->where('id',$approval->source_id)->where('project_id',$project)
+                ->where('voucher_type',$approval->voucher_type)->first();
+            if(!$draft)return $base;
+            $payload=json_decode((string)$draft->payload_json,true);
+            if(!is_array($payload))return $base;
+            $isReceipt=$approval->voucher_type==='PPR';
+            $amount=$isReceipt?(float)($payload['amount']??0):0;
+            $lines=[];
+            if($isReceipt){
+                $lines[]=['account'=>'Cash / receipt account #'.(int)($payload['cash_account_id']??0),
+                    'description'=>$payload['narration']??'',
+                    'debit'=>$amount,'credit'=>0,'active'=>$approval->status==='approved'];
+                foreach($payload['allocations']??[] as $item){
+                    $lines[]=['account'=>'Plot #'.(int)($item['plot_id']??0),
+                        'description'=>$payload['narration']??'',
+                        'debit'=>0,'credit'=>(float)($item['amount']??0),
+                        'active'=>$approval->status==='approved'];
+                }
+            }else{
+                foreach($payload['items']??[] as $item){
+                    $lineAmount=round((float)($item['area']??0)*(float)($item['unit_rate']??0),2);
+                    $amount+=$lineAmount;
+                    $lines[]=['account'=>'Inventory: '.(string)($item['plot_code']??''),
+                        'description'=>$item['description']??'',
+                        'debit'=>$lineAmount,'credit'=>0,'active'=>$approval->status==='approved'];
+                }
+                $lines[]=['account'=>'Seller #'.(int)($payload['seller_account_id']??0),
+                    'description'=>$payload['narration']??'',
+                    'debit'=>0,'credit'=>$amount,'active'=>$approval->status==='approved'];
+            }
+            $base=array_merge($base,[
+                'number'=>$draft->source_number,'date'=>$draft->effective_date,
+                'reference'=>null,'description'=>$payload['narration']??null,
+                'amount'=>$amount,'created_at'=>$draft->created_at,
+                'updated_at'=>$draft->updated_at,'lines'=>$lines,
+            ]);
         } elseif($approval->source_table==='commision_vouchers'
             && $approval->voucher_type==='CV' && Schema::hasTable('commision_vouchers')){
             $voucher=DB::table('commision_vouchers')->where('id',$approval->source_id)
