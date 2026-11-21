@@ -68,7 +68,7 @@ final class DailyVoucherApprovalController extends Controller
         $this->authorizeManager();
         $projectId = (int) getSelectedTown();
         $data = $request->validate([
-            'voucher_type' => ['required', 'in:CR,CP,CCR,CDR,BOR,BOP,JV,SV'],
+            'voucher_type' => ['required', 'in:CR,CP,CCR,CDR,BOR,BOP,JV,SV,BD,BW'],
             'approval_required' => ['nullable', 'boolean'],
             'approver_user_id' => ['nullable', 'integer', 'min:1'],
         ]);
