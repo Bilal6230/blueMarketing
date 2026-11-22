@@ -113,6 +113,27 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_every_configured_series_is_honored_in_normal_erp_mode(): void
+    {
+        $workflow = app(DailyVoucherApprovalWorkflow::class);
+        self::assertTrue(\App\Services\Finance\FinanceWorkflowAccess::normalErpMode());
+        $series = ['CR','CP','CCR','CDR','BOR','BOP','JV','SV','BD','BW','DR','CV','PPR','PP'];
+        foreach ($series as $type) {
+            DB::table('daily_voucher_approval_policies')->updateOrInsert(
+                ['project_id'=>1,'voucher_type'=>$type],
+                ['approval_required'=>1,'approver_user_id'=>20,
+                    'created_at'=>now(),'updated_at'=>now()]
+            );
+            self::assertNotNull($workflow->policy(1,$type), $type.' policy must not be bypassed');
+            self::assertNull($workflow->policy(2,$type), $type.' policy belongs only to project 1');
+        }
+
+        DB::table('daily_voucher_approval_policies')->where('project_id',1)
+            ->where('voucher_type','BOR')->update(['approval_required'=>0]);
+        self::assertNull($workflow->policy(1,'BOR'),
+            'Disabled policy should still use direct posting when explicitly configured off');
+    }
+
     public function test_submitter_cannot_approve_their_own_voucher(): void
     {
         DB::table('customer_ledger')->insert(['id' => 7, 'project_id' => 1, 'is_active' => 0]);
