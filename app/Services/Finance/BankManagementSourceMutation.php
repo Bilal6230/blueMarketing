@@ -129,7 +129,9 @@ final class BankManagementSourceMutation
                         'project_id'=>$projectId,'cheque_intake_id'=>$sourceId,
                         'action'=>'withdrawn','from_status'=>(string)$source->status,
                         'to_status'=>'withdrawn','action_date'=>now()->toDateString(),
-                        'reason'=>$reason,'actor_id'=>$actorId,'created_at'=>now(),
+                        'reason'=>$reason,'actor_id'=>$actorId,
+                        'bank_name'=>(string)$source->bank_name,
+                        'original_amount'=>$source->amount,'created_at'=>now(),
                     ]);
                 }
             }
