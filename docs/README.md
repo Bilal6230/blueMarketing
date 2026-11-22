@@ -19,6 +19,15 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 04 — Batch 03 (2026-11-22): Same-ID verified bank linked correction engine — PARTIAL
+
+- New `BankLinkedCorrection` implements a project-scoped locked `preview()` and `confirm()` for explicit per-voucher amount corrections on confirmed Online / cleared Cheque sources. It preserves original management source ID, allocated voucher ID/number, allocation ID, and linked ledger ID, with **no physical deletion** or replacement; the old genuine Replace/Withdraw workflow is separate.
+- `preview()` requires one proposed amount for every linked voucher, validates one active project-owned ledger leg, original direction/amount identity, permitted approval status, and blocks released, duplicated, inactive, conflicting and pending-edits allocations. The revised allocation total cannot exceed the corrected source amount. No automatic proportional allocation.
+- `confirm()` re-locks and re-inspects the graph, requires matching SHA256 reviewed fingerprint plus actor and reason, and atomically updates source amount, allocation amounts, exact original voucher/ledger rows and writes per-voucher before/after evidence in existing `daily_voucher_edit_snapshots`. No additional business/audit table. Failures roll back everything.
+- Added `BankLinkedCorrectionContractTest`. GitHub connector committed code and test; **these tests have not been executed in owner's Laragon and are NOT a browser acceptance**.
+- **Deliberately not exposed through existing Edit route yet**: it currently invokes verified-source audited replacement. Batch 04 must add explicit Review & Confirm authorization/UI; no automatic bank-number replacement, reference mutation or hidden financial edits. Batch 03 is currently **amount-correction engine only**, not completed full Head/Subhead/Customer/Date correction. Implement exact FK/account mapping and source-history safeguards before exposing that scope. Do not claim whole Batch 03 or Milestone 04 accepted.
+- Local gate: `php -l app/Services/Finance/BankLinkedCorrection.php`; `php artisan test --filter=BankLinkedCorrectionContractTest`. Integration and concurrent-write tests plus source/voucher/ledger reconciliation remain mandatory before allowing staff use.
+
 ## Milestone 04 — Batch 2 (2026-11-22): management Edit/Delete and linked atomic cascade
 
 - Added `BankManagementSourceMutation` and `BankManagementMutationController` with scoped routes for Online/Cheque Edit, Update and Delete. Existing management register forms now support jQuery AJAX Edit and audited Withdraw. No migration or extra mapping tables.
