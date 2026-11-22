@@ -18,7 +18,10 @@ final class LedgerVoucherDisplayService
         // type/type_id attributions. This works for all selected projects and
         // cannot mislabel a similarly-numbered voucher in another family.
         if ($projectId > 0 && isset($ledger->id) && Schema::hasTable('ledgers')
-            && Schema::hasTable('project_head_subheads')) {
+            && Schema::hasTable('project_head_subheads')
+            && Schema::hasColumn('ledgers','customer_ledger_id')
+            && Schema::hasColumn('ledgers','journal_voucher_detail_id')
+            && Schema::hasColumn('ledgers','commision_voucher_detail_id')) {
             $owned = DB::table('ledgers as l')
                 ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
                 ->where('l.id',(int)$ledger->id)->where('a.project_id',$projectId)
