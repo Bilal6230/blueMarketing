@@ -41,7 +41,6 @@ final class PassedBankSourcePickerController extends Controller
                         ->where('verified.from_status','pending')
                         ->where('verified.to_status','confirmed');
                 })
-                ->whereColumn('verified.original_amount','i.amount')
                 ->whereColumn('verified.transaction_type','i.type')
                 ->where('i.project_id',$project)->where('i.status','confirmed')
                 ->where('i.type',$direction)
@@ -51,7 +50,6 @@ final class PassedBankSourcePickerController extends Controller
                         ->whereColumn('e.online_intake_id','i.id')
                         ->where('e.project_id',$project)
                         ->where('e.from_status','pending')->where('e.to_status','confirmed')
-                        ->whereColumn('e.original_amount','i.amount')
                         ->whereColumn('e.transaction_type','i.type');
                 })->whereNotExists(function($q)use($project){
                     $q->selectRaw('1')->from('finance_online_voucher_claims as c')
@@ -61,12 +59,16 @@ final class PassedBankSourcePickerController extends Controller
             $items=$rows->orderByDesc('i.id')->limit(100)->get([
                 'i.id','i.reference','i.transaction_date','i.amount','i.sending_bank',
                 'i.receiving_bank','i.purpose','i.account_mapping_id','verified.verification_date',
-            ])->map(fn($i)=>[
+                'i.sending_bank','verified.original_amount as confirmed_amount',
+            ])->filter(fn($i)=>\App\Services\Finance\BankSourceCorrectionEvidence::matchesOnlineAmount(
+                $project,(int)$i->id,$i->confirmed_amount,$i->amount))->map(fn($i)=>[
                 'id'=>(int)$i->id,'method'=>'online','reference'=>(string)$i->reference,
                 'date'=>(string)$i->transaction_date,'passing_date'=>(string)$i->verification_date,
                 'amount'=>(string)$i->amount,'bank'=>(string)($direction==='receipt'?$i->receiving_bank:$i->sending_bank),
                 'purpose'=>(string)($i->purpose??''),'account_mapping_id'=>(int)$i->account_mapping_id,
                 'status'=>'Confirmed',
+                'sending_bank'=>(string)$i->sending_bank,
+                'receiving_bank'=>(string)$i->receiving_bank,
             ]);
         } else {
             abort_unless(Schema::hasTable('finance_cheque_intakes') &&
@@ -92,7 +94,7 @@ final class PassedBankSourcePickerController extends Controller
                 });
             if($search!=='')$rows->where('c.cheque_number','like','%'.$search.'%');
             $items=$rows->orderByDesc('c.id')->limit(100)->get([
-                'c.id','c.cheque_number','c.cheque_date','c.amount','c.bank_name',
+                'c.id','c.cheque_number','c.cheque_title','c.cheque_date','c.amount','c.bank_name',
                 'c.purpose','c.account_mapping_id',
             ])->map(function($c)use($project){
                 $verified=DB::table('finance_cheque_intake_actions')->where('project_id',$project)
@@ -104,8 +106,18 @@ final class PassedBankSourcePickerController extends Controller
                     'amount'=>(string)$c->amount,'bank'=>(string)($verified->bank_name?:$c->bank_name),
                     'purpose'=>(string)($c->purpose??''),'account_mapping_id'=>(int)$c->account_mapping_id,
                     'status'=>'Cleared',
+                    'cheque_title'=>(string)$c->cheque_title,
+                    'cheque_last4'=>substr((string)$c->cheque_number,-4),
                 ];
             });
+        }
+        // Pending correction approval freezes new vouchers; otherwise an
+        // approver might decide on a stale graph and leave mixed postings.
+        if(Schema::hasTable('finance_bank_correction_requests')) {
+            $pendingIds=DB::table('finance_bank_correction_requests')
+                ->where('project_id',$project)->where('source_method',$input['method'])
+                ->where('status','pending')->pluck('source_id')->all();
+            $items=$items->reject(fn(array $row)=>in_array($row['id'],$pendingIds))->values();
         }
         // Display remaining balance and explicit Partial/Available status, but never
         // trust picker values for saving: the writer recalculates under row locks.
