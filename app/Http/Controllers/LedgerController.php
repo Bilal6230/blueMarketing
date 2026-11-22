@@ -538,42 +538,23 @@ class LedgerController extends Controller
                     'passing_status' => $isPendingCashInBankPayment ? 0 : null,
                     'cheque_purpose' => $paymentType === 3 ? trim((string) $request->input('cheque_purpose')) : null,
                 ]);
-                $displaySeries = match ([$effectiveVoucherType, $paymentType]) {
-                    ['CR', 1] => 'CCR', ['CP', 1] => 'CDR',
-                    ['CR', 2] => 'BOR', ['CP', 2] => 'BOP',
-                    ['CR', 3] => 'BOR', ['CP', 3] => 'BOP',
-                    default => $effectiveVoucherType,
+                // The form determines the persisted voucher family. Never
+                // relabel a new CR/DR as CCR/CDR/BOR/BOP based on method.
+                $displaySeries = $voucherPrefix;
+                $allowedPaymentMethods = match ($displaySeries) {
+                    'BOR','BOP' => [2,3],
+                    'CCR','CDR','CP' => [1],
+                    'CR','DR' => [1,2,3],
+                    default => [],
                 };
-                $requestedDisplaySeries = strtoupper(trim((string) $request->input('display_series')));
-                if ($requestedDisplaySeries !== '') {
-                    $seriesMapping = [
-                        'CCR' => ['CR', 1], 'CDR' => ['CP', 1],
-                        'CR' => ['CR', 1], 'DR' => ['CP', 1],
-                        'BOR' => ['CR', 2], 'BOP' => ['CP', 2],
-                        'CP' => ['CP', 1],
-                    ];
-                    $seriesAllowed = match ($requestedDisplaySeries) {
-                        'CR' => $effectiveVoucherType === 'CR' && in_array($paymentType, [1, 2, 3], true),
-                        'DR' => $effectiveVoucherType === 'CP' && in_array($paymentType, [1, 2, 3], true),
-                        'BOR' => $effectiveVoucherType === 'CR' && in_array($paymentType, [2, 3], true),
-                        'BOP' => $effectiveVoucherType === 'CP' && in_array($paymentType, [2, 3], true),
-                        default => isset($seriesMapping[$requestedDisplaySeries])
-                            && $seriesMapping[$requestedDisplaySeries] === [$effectiveVoucherType, $paymentType],
-                    };
-                    abort_unless($seriesAllowed,
-                        422, 'Voucher series does not match its direction and payment method.');
-                    $displaySeries = $requestedDisplaySeries;
+                if (!in_array($paymentType,$allowedPaymentMethods,true)) {
+                    throw new \DomainException('VOUCHER_SERIES_PAYMENT_METHOD_MISMATCH');
                 }
                 $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)->assign(
                     (int) $selectedProjectId, 'customer_ledger', (int) $customerLedger->id,
                     $displaySeries, \Carbon\Carbon::parse($request->input('date'))->toDateString(),
                     $bankSeriesNumber
                 );
-                // Persist the actual voucher series as its financial identity.
-                // CP survives only as legacy compatibility for old rows.
-                if ((string)$customerLedger->transaction_type!==$displaySeries) {
-                    $customerLedger->update(['transaction_type'=>$displaySeries]);
-                }
 
                 if ($t_number != null) {
                     $check_slip = $customerLedger->transaction_type . '-' . $customerLedger->reference;
