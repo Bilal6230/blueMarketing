@@ -74,8 +74,9 @@ final class BankLinkedCorrectionController extends Controller
 
     public function pending(Request $request)
     {
-        abort_unless($request->user()?->can('finance online correction approve')
-            || $request->user()?->can('finance cheque correction approve'),403);
+        abort_unless(VoucherApproverAccess::mayApprove($request->user())
+            && ($request->user()?->can('finance online correction approve')
+                || $request->user()?->can('finance cheque correction approve')),403);
         $project=(int)getSelectedTown();
         abort_unless($project>0,403);
         $rows=DB::table('finance_bank_correction_requests')
