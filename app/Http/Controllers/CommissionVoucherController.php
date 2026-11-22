@@ -156,7 +156,8 @@ class CommissionVoucherController extends Controller
         // dd($data_list[0]->headAccounting->name);
 
         $x['accounts'] = $data_list;
-        $x['nextCommissionNumber'] = \App\Services\Finance\CommissionVoucherNumber::next((int) $selectedProjectId);
+        $x['nextCommissionNumber'] = (int)$selectedProjectId > 0
+            ? \App\Services\Finance\CommissionVoucherNumber::next((int)$selectedProjectId) : null;
         $x['commissionPilotCreateAllowed'] =
             (\App\Services\Finance\FinanceWorkflowAccess::enabled()
                 || \App\Services\Finance\FinanceWorkflowAccess::mergedWriterAllowed())
