@@ -565,7 +565,7 @@ $(function () {
             toast('Cheque list could not be loaded.',true);
         });
     }
-    $('#cheque-add-btn').on('click',function(){resetForm();$create.modal('show');});
+    $('#cheque-add-btn').on('click',function(){resetForm();$('#bank-linked-correct-button').remove();$create.modal('show');});
     $('#cheque-filter-form').on('submit',function(e){e.preventDefault();load(1);});
     $('#cheque-reset').on('click',function(){
         $('#cheque-filter-form').trigger('reset');
@@ -736,6 +736,11 @@ $(function () {
             resetForm();editingChequeId=id;
             var record=response.data;
             editingChequeReplacement=!!response.cascade_impact.requires_cascade || record.status==='cleared';
+            $(document).trigger('bank-linked-correction-ready',[{
+                method:'cheque',id:id,record:record,impact:response.cascade_impact,
+                verified:record.status==='cleared',saveSelector:'#cheque-save',
+                modalSelector:'#cheque-create-modal',reloadSelector:'#cheque-filter-form'
+            }]);
   $('#cheque-replacement-reason-wrap').toggleClass('d-none',!editingChequeReplacement);
   $('#cheque-replacement-reason').prop('required',editingChequeReplacement);
             $form.attr('action',bankUpdateUrl.replace('__SOURCE_ID__',id));
@@ -948,4 +953,5 @@ $(function () {
     load(1);
 });
 </script>
+@include('admin.finance.voucher.bank_linked_correction_script')
 @endpush
