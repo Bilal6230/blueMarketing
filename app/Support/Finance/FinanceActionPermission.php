@@ -241,6 +241,7 @@ final class FinanceActionPermission
                 ? ['bank-'.$kind,$transfers[$name]] : null;
         }
         $plot = [
+            'finance.voucher.plot-next-number'=>'view',
             'finance.voucher.plot-receipt.workspace'=>'view',
             'finance.voucher.plot-receipt.options'=>'view',
             'finance.voucher.plot-receipt.history'=>'history',
@@ -262,6 +263,10 @@ final class FinanceActionPermission
             'finance.voucher.plot-purchase.reverse'=>'reverse',
             'finance.voucher.plot-purchase.print'=>'print',
         ];
+        if ($name === 'finance.voucher.plot-next-number') {
+            $series = (string) $route->parameter('series');
+            return [$series === 'PPR' ? 'plot-receipt' : 'plot-purchase', 'view'];
+        }
         if (isset($plot[$name])) {
             return [str_contains($name,'plot-receipt')?'plot-receipt':'plot-purchase',$plot[$name]];
         }
