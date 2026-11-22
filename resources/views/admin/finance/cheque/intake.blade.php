@@ -481,7 +481,7 @@ $(function () {
         }
         if(@json(auth()->user()->can('finance cheque edit')) &&
             ((r.status==='received'||r.status==='issued') && Number(r.linked_voucher_count||0)===0 ||
-             r.status==='cleared' && Number(r.linked_voucher_count||0)>0 &&
+             r.status==='cleared' &&
              @json(auth()->user()->can('finance cheque delete')) &&
              @json(auth()->user()->can('delete voucher')) &&
              @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
@@ -490,7 +490,7 @@ $(function () {
         }
         if(@json(auth()->user()->can('finance cheque delete')) &&
           (r.status==='received'||r.status==='issued'||
-           (Number(r.linked_voucher_count||0)>0 && @json(auth()->user()->can('delete voucher')) &&
+           (r.status==='cleared' && @json(auth()->user()->can('delete voucher')) &&
             @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))))){
             $('<button type="button">').addClass('btn btn-sm btn-outline-danger mr-1 cheque-delete-source')
              .attr('data-id',r.id).text('Delete').appendTo($actions);
@@ -717,13 +717,13 @@ $(function () {
         $.ajax({url:bankEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
          .done(function(response){
             if(!response.cascade_impact||!response.cascade_impact.can_edit_directly){
-                if(!(response.cascade_impact&&response.cascade_impact.requires_cascade &&
+                if(!(response.cascade_impact&&(response.cascade_impact.requires_cascade || response.data.status==='cleared') &&
                     @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
                     toast(response.cascade_impact&&response.cascade_impact.reason||'Source is linked or verified.',true);return;
                 }
             }
             resetForm();editingChequeId=id;
-            editingChequeReplacement=!!response.cascade_impact.requires_cascade;
+            editingChequeReplacement=!!response.cascade_impact.requires_cascade || record.status==='cleared';
             $form.attr('action',bankUpdateUrl.replace('__SOURCE_ID__',id));
             $('#cheque-create-title').text(editingChequeReplacement?'Replace Cleared Linked Cheque':'Edit Cheque');
             $('#cheque-save').text(editingChequeReplacement?'Replace & Reverify':'Update Cheque');
