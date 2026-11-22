@@ -24,7 +24,7 @@ final class BankLinkedCorrectionHttpContractTest extends TestCase
         self::assertStringContainsString('function decide(',$controller);
         self::assertStringContainsString('function pending(',$controller);
         self::assertStringContainsString("'fingerprint'",$controller);
-        self::assertStringContainsString("'vouchers.*'",$controller);
+        self::assertStringContainsString("'changes'",$controller);
     }
 
     public function test_cheque_and_online_have_separate_jquery_review_wizard(): void
@@ -33,12 +33,12 @@ final class BankLinkedCorrectionHttpContractTest extends TestCase
         $cheque=file_get_contents(__DIR__.'/../../../resources/views/admin/finance/cheque/intake.blade.php');
         $online=file_get_contents(__DIR__.'/../../../resources/views/admin/finance/online/intake.blade.php');
         foreach ([$script,$cheque,$online] as $source) self::assertIsString($source);
-        self::assertStringContainsString('bank-linked-correction-ready',$script);
-        self::assertStringContainsString('bank-linked-correction-direct',$script);
-        self::assertStringContainsString('bank-linked-correction-ready',$cheque);
-        self::assertStringContainsString('bank-linked-correction-ready',$online);
-        self::assertStringContainsString('Submit / Apply Correction',$script);
-        self::assertStringContainsString('vouchers[id]=val',$script);
+        self::assertStringContainsString('bank-source-reissue-submit',$script);
+        self::assertStringContainsString('Submit Correction',$script);
+        self::assertStringContainsString('bank-source-reissue-submit',$cheque);
+        self::assertStringContainsString('bank-source-reissue-submit',$online);
+        self::assertStringContainsString('Review & Reissue',$script);
+        self::assertStringContainsString('active_vouchers',$script);
         self::assertStringContainsString('fingerprint:plan.fingerprint',$script);
         self::assertStringContainsString("modal('hide')",$script);
         self::assertStringContainsString("bank_linked_correction_script",$online);
