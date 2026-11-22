@@ -15,6 +15,9 @@ final class AuthorizeBookingDeposit
     {
         if ($request->input('action') === 'extra_charge') {
             abort_unless($request->user()?->can('finance extra-charge create'),403);
+        } elseif ($request->input('action') === 'deposit') {
+            abort_unless($request->user()?->can('create plot')
+                || $request->user()?->can('finance plot-receipt create'),403);
         } else {
             abort_unless($request->user()?->can('create plot'),403);
         }
