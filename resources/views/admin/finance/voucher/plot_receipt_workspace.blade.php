@@ -15,6 +15,7 @@
 <div class="container-fluid bm-ui bm-voucher-directory bm-voucher-workspace pr-page" id="plotReceiptApp"
  style="--voucher-accent:#1769e0;--voucher-tint:#eaf2ff"
  data-options-url="{{ route('finance.voucher.plot-receipt.options') }}"
+ data-number-preview-url="{{ route('check_new_voucher_number') }}"
  data-history-url="{{ route('finance.voucher.plot-receipt.history') }}"
  data-post-url="{{ route('finance.voucher.plot-receipt.post') }}"
  data-details-base="{{ url('admin/finance/voucher/plot-receipt') }}"
@@ -70,7 +71,7 @@
   <div class="modal-body">
    <div id="prAlert" class="alert d-none" role="status"></div>
    <div class="form-row">
-    <div class="form-group col-md-6"><label for="prNumber">Voucher No.</label><input id="prNumber" class="form-control" maxlength="64" placeholder="e.g. PLOT-RCPT-001"></div>
+    <div class="form-group col-md-6"><label for="prNumber">Voucher No.</label><input id="prNumber" class="form-control" maxlength="64" value="{{ $nextVoucherNumber }}" readonly aria-readonly="true"></div>
     <div class="form-group col-md-6"><label for="prDate">Date</label><input id="prDate" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
     <div class="form-group col-md-6"><label for="prCustomer">Customer</label><select id="prCustomer" class="form-control"><option value="">Loading customers…</option></select></div>
     <div class="form-group col-md-6"><label for="prAccount">Receiving Account</label><select id="prAccount" class="form-control"><option value="">Select active project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
@@ -335,7 +336,12 @@
  $('#prNewVoucher').on('click',function(){
   editReceiptId=null;editAllocations=[];pendingKey=null;
   $('#prCreateTitle').text('New Plot Receive Payment');$('#prPost').text('Post receipt');
-  $('#prNumber,#prNarration,#prSearch').val('');$('#prSearch').prop('disabled',false);
+  $('#prNumber').val(@json($nextVoucherNumber));$('#prNarration,#prSearch').val('');$('#prSearch').prop('disabled',false);
+   $.ajax({url:$root.attr('data-number-preview-url'),type:'POST',dataType:'json',
+    headers:{'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
+    data:{type:'PPR'}}).done(function(data){
+     if(!editReceiptId){$('#prNumber').val('PPR-'+data.latest_voucher_number);recalc();}
+    }).fail(function(){notify('danger','Could not refresh the next PPR voucher number.');});
   $('#prCustomer,#prAccount').val('');drawBookings();
  });
  @can('finance plot-receipt edit')
