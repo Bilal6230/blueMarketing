@@ -495,6 +495,10 @@ $(function () {
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary mr-1 cheque-edit-source')
              .attr('data-id',r.id).text('Edit').appendTo($actions);
         }
+        if(r.status==='cleared' && @json(auth()->user()->can('finance cheque correct'))) {
+            $('<button type="button" class="btn btn-sm btn-outline-info mr-1 cheque-correct-source">')
+                .attr('data-id',r.id).text('Correct').appendTo($actions);
+        }
         if(@json(auth()->user()->can('finance cheque delete')) &&
           (r.status==='received'||r.status==='issued'||
            (r.status==='cleared' && @json(auth()->user()->can('delete voucher')) &&
@@ -723,6 +727,17 @@ $(function () {
             .text($(this).val()==='out'?'Issued To *':'Received From *');
     });
     initChequeTomSelects();
+    $('#cheque-table-body').on('click','.cheque-correct-source',function(){
+        var id=String($(this).attr('data-id'));
+        $.getJSON(bankEditUrl.replace('__SOURCE_ID__',id))
+        .done(function(response){
+            $(document).trigger('bank-linked-correction-direct',[{
+                method:'cheque',id:id,record:response.data,
+                impact:response.cascade_impact,verified:true,
+                reloadSelector:'#cheque-filter-form'
+            }]);
+        }).fail(function(xhr){toast(xhr.responseJSON&&xhr.responseJSON.message||'Cannot open correction.',true);});
+    });
     $('#cheque-table-body').on('click','.cheque-edit-source',function(){
         var id=String($(this).attr('data-id'));
         $.ajax({url:bankEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
@@ -738,7 +753,7 @@ $(function () {
             editingChequeReplacement=!!response.cascade_impact.requires_cascade || record.status==='cleared';
             $(document).trigger('bank-linked-correction-ready',[{
                 method:'cheque',id:id,record:record,impact:response.cascade_impact,
-                verified:record.status==='cleared' && @json(auth()->user()->can('delete voucher')),saveSelector:'#cheque-save',
+                verified:record.status==='cleared' && @json(auth()->user()->can('finance cheque correct')),saveSelector:'#cheque-save',
                 modalSelector:'#cheque-create-modal',reloadSelector:'#cheque-filter-form'
             }]);
   $('#cheque-replacement-reason-wrap').toggleClass('d-none',!editingChequeReplacement);
