@@ -45,6 +45,12 @@ final class PlotVoucherApprovalDraftWriter
                     'status'=>(string)$prior->status,'pending'=>$prior->status==='pending',
                     'replayed'=>true];
             }
+            // Reserve a series-specific number before saving the pending draft.
+            // The same number is carried into the eventual approved posting.
+            $expected=$type.'-'.app(ProjectVoucherAllocator::class)->next($projectId,$type);
+            if($number!==$expected) {
+                throw new \DomainException('PLOT_VOUCHER_NUMBER_CHANGED_REFRESH_FORM');
+            }
             $source=$type==='PPR'?'finance_plot_receipts':'finance_plot_purchases';
             $sourceNumber=$type==='PPR'?'receipt_number':'purchase_number';
             if(DB::table($source)->where('project_id',$projectId)
