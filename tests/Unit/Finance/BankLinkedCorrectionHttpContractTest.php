@@ -17,10 +17,12 @@ final class BankLinkedCorrectionHttpContractTest extends TestCase
         self::assertStringContainsString('finance.bank-management.correction.confirm',$routes);
         self::assertStringContainsString('BankLinkedCorrectionController::class',$routes);
         self::assertStringContainsString('finance ', $controller);
-        self::assertStringContainsString("user->can('delete voucher')",$controller);
-        self::assertStringContainsString('VoucherApproverAccess::isSuperAdmin($user)',$controller);
+        self::assertStringContainsString("' correct'",$controller);
+        self::assertStringContainsString('BankLinkedCorrectionApproval',$controller);
         self::assertStringContainsString('function preview(',$controller);
         self::assertStringContainsString('function confirm(',$controller);
+        self::assertStringContainsString('function decide(',$controller);
+        self::assertStringContainsString('function pending(',$controller);
         self::assertStringContainsString("'fingerprint'",$controller);
         self::assertStringContainsString("'vouchers.*'",$controller);
     }
@@ -32,9 +34,10 @@ final class BankLinkedCorrectionHttpContractTest extends TestCase
         $online=file_get_contents(__DIR__.'/../../../resources/views/admin/finance/online/intake.blade.php');
         foreach ([$script,$cheque,$online] as $source) self::assertIsString($source);
         self::assertStringContainsString('bank-linked-correction-ready',$script);
+        self::assertStringContainsString('bank-linked-correction-direct',$script);
         self::assertStringContainsString('bank-linked-correction-ready',$cheque);
         self::assertStringContainsString('bank-linked-correction-ready',$online);
-        self::assertStringContainsString('Confirm Atomic Correction',$script);
+        self::assertStringContainsString('Submit / Apply Correction',$script);
         self::assertStringContainsString('vouchers[id]=val',$script);
         self::assertStringContainsString('fingerprint:plan.fingerprint',$script);
         self::assertStringContainsString("modal('hide')",$script);
