@@ -76,9 +76,13 @@ final class BankLinkedCorrection
                 $amountFields = $incoming
                     ? ['amount_in'=>$new,'amount_out'=>0]
                     : ['amount_out'=>$new,'amount_in'=>0];
+                $allocationChanges = ['amount'=>$new];
+                if (Schema::hasColumn('finance_bank_voucher_allocations','updated_at')) {
+                    $allocationChanges['updated_at']=$now;
+                }
                 DB::table('finance_bank_voucher_allocations')
                     ->where('project_id',$projectId)->where('id',$item['allocation_id'])
-                    ->update(['amount'=>$new,'updated_at'=>$now]);
+                    ->update($allocationChanges);
                 DB::table('customer_ledger')->where('project_id',$projectId)
                     ->where('id',$item['voucher_id'])
                     ->update($amountFields + ['updated_at'=>$now]);
@@ -142,6 +146,11 @@ final class BankLinkedCorrection
         if (count($ids)!==count(array_unique($ids))) {
             throw new \DomainException('Ambiguous duplicate voucher allocation.');
         }
+        foreach (array_keys($voucherAmounts) as $key) {
+            if (!ctype_digit((string)$key) || (int)$key<1) {
+                throw new \DomainException('Linked voucher IDs must be positive integers.');
+            }
+        }
         $provided = array_map('intval',array_keys($voucherAmounts));
         sort($provided);
         $expected = $ids;
@@ -151,8 +160,8 @@ final class BankLinkedCorrection
         }
 
         $rows = [];
-        $sum = 0.0;
-        $originalSum = 0.0;
+        $sumCents = 0;
+        $originalCents = 0;
         foreach ($allocations as $allocation) {
             if (DB::table('finance_bank_voucher_allocation_releases')
                 ->where('allocation_id',$allocation->id)->exists()) {
@@ -194,9 +203,9 @@ final class BankLinkedCorrection
                 throw new \DomainException('Linked voucher identity, status or ledger ownership is invalid.');
             }
             BankVoucherLegIntegrity::assert($series,$voucher,$legs->first(),(float)$allocation->amount);
-            $originalSum += (float)$allocation->amount;
+            $originalCents += (int)round((float)$allocation->amount*100);
             $after = $this->money($voucherAmounts[$voucherId]);
-            $sum += (float)$after;
+            $sumCents += (int)round((float)$after*100);
             $rows[]=[
                 'allocation_id'=>(int)$allocation->id,'voucher_id'=>$voucherId,
                 'voucher_number'=>(string)$identity->display_number,
@@ -206,10 +215,10 @@ final class BankLinkedCorrection
                 'amount_after'=>$after,
             ];
         }
-        if (round($originalSum,2)>round((float)$source->amount,2)) {
+        if ($originalCents > (int)round((float)$source->amount*100)) {
             throw new \DomainException('Existing allocations exceed the original verified source amount.');
         }
-        if (round($sum,2)>round((float)$amount,2)) {
+        if ($sumCents > (int)round((float)$amount*100)) {
             throw new \DomainException('Proposed allocations exceed the corrected bank source amount.');
         }
         $before=$this->money($source->amount);
