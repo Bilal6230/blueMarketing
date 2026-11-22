@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class FinancialSourceOwnership
 {
-    public const FAMILIES = ['CR', 'CP', 'CCR', 'CDR', 'PPR', 'EC', 'ECP'];
+    public const FAMILIES = ['CR', 'CP', 'DR', 'CCR', 'CDR', 'BOR', 'BOP', 'PPR', 'EC', 'ECP'];
 
     public function assertLinked(array $leg): void
     {
