@@ -129,7 +129,7 @@ final class BankLinkedCorrection
                         'source_kind'=>$table,'method'=>$method,'source_id'=>$sourceId,
                         'amount'=>$plan['amount_after']
                     ],JSON_THROW_ON_ERROR),
-                    'reason'=>$reason,'submitted_by'=>$actorId,'decided_by'=>$actorId,
+                    'reason'=>$reason,'submitted_by'=>$submittedBy??$actorId,'decided_by'=>$actorId,
                     'created_at'=>$now,'updated_at'=>$now,
                 ]);
             }
