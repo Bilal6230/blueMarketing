@@ -511,26 +511,10 @@ class LedgerController extends Controller
                 // Reserve once BEFORE inserting the source: allocating after
                 // source creation incorrectly skips the just-created number.
                 $resolvedVoucherNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
-                    ->next((int) $selectedProjectId,
-                        in_array($voucherPrefix,['BOR','BOP'],true)
-                            ? $effectiveVoucherType : ($voucherPrefix==='CP'?'DR':$voucherPrefix));
-                // Never save a different number than the one displayed in the
-                // active form. Transaction rollback also releases the counter.
-                $bankSeriesNumber = null;
-                if (in_array($voucherPrefix, ['BOR','BOP'], true)) {
-                    if (!\Illuminate\Support\Facades\Schema::hasTable('ledger_voucher_counters')
-                        || !\Illuminate\Support\Facades\Schema::hasTable('project_voucher_display_numbers')) {
-                        throw new \DomainException('Bank voucher numbering and display migrations are required.');
-                    }
-                    // Reserve bank-specific voucher number independently of
-                    // the underlying legacy CR/CP source identity.
-                    $bankSeriesNumber = app(\App\Services\Finance\ProjectVoucherAllocator::class)
-                        ->next((int)$selectedProjectId, $voucherPrefix);
-                    if ($bankSeriesNumber !== $voucherNumber) {
-                        throw new \DomainException('Bank voucher number changed. Refresh the form before saving.');
-                    }
-                } elseif ($resolvedVoucherNumber !== $voucherNumber) {
-                    throw new \DomainException('Voucher number changed since this form was opened. Refresh and retry to get the current database number.');
+                    ->next((int) $selectedProjectId, $voucherPrefix);
+                $bankSeriesNumber = in_array($voucherPrefix,['BOR','BOP'],true) ? $resolvedVoucherNumber : null;
+                if ($resolvedVoucherNumber !== $voucherNumber) {
+                    throw new \DomainException('Voucher number changed since this form was opened. Refresh and retry.');
                 }
 
                 $customerLedger = CustomerLedger::create([
