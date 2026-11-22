@@ -16,15 +16,14 @@ jQuery(function($) {
         current=cfg;
         var $save=$(cfg.saveSelector),$existing=$('#bank-linked-correct-button');
         $existing.remove();
-        if(!cfg.impact || !cfg.impact.linked || !cfg.verified) return;
+        if(!cfg.verified) return;
         $('<button type="button" id="bank-linked-correct-button" class="btn btn-outline-primary mr-2">')
-            .text('Correct Linked Amounts').insertBefore($save);
+            .text('Correct Transaction / Amounts').insertBefore($save);
     });
     $(document).on('click','#bank-linked-correct-button',function(){
         if(busy||!current||!window.Swal) return;
         var cfg=current, allocations=(cfg.impact.allocations||[]).filter(function(a){return !a.released;});
-        if(!allocations.length){window.Swal.fire({icon:'warning',text:'No active linked vouchers available.'});return;}
-        // Avoid Bootstrap focus enforcement stealing typing from SweetAlert.
+         // Avoid Bootstrap focus enforcement stealing typing from SweetAlert.
         var $modal=$(cfg.modalSelector);
         $modal.one('hidden.bs.modal',function(){openEditor(cfg,allocations);});
         $modal.modal('hide');
@@ -35,7 +34,9 @@ jQuery(function($) {
         var $source=$('<input type="number" min="0.01" step="0.01" class="form-control mb-3 bank-correction-source">')
             .val(cfg.record.amount);
         $layout.append($source);
-        $layout.append($('<p class="small text-muted">').text('Specify the new amount of EVERY linked voucher. Unchanged vouchers retain the same amount. No voucher is automatically reduced.'));
+        $layout.append($('<p class="small text-muted">').text(allocations.length
+            ? 'Review each active linked voucher. Unchanged amounts stay the same; remaining unallocated balance is allowed.'
+            : 'No active linked vouchers. You can safely correct the source amount while preserving its bank verification evidence.'));
         $.each(allocations,function(_,a) {
             var $wrap=$('<div class="mb-2">').append($('<label class="small d-block">')
                 .text(a.voucher_type+' / Voucher ID '+a.voucher_id+' (current '+a.amount+')'));
@@ -70,7 +71,10 @@ jQuery(function($) {
             dataType:'json',headers:{Accept:'application/json'}})
         .done(function(response) {
             var plan=response.data,$details=$('<div class="text-left">');
-            $details.append($('<p>').text('Source: '+plan.amount_before+' → '+plan.amount_after));
+            $details.append($('<p>').text('Source: Rs. '+plan.amount_before+' → Rs. '+plan.amount_after));
+            $details.append($('<p>').text('Allocated: Rs. '+plan.allocated_before+' → Rs. '+plan.allocated_after));
+            $details.append($('<p>').text('Remaining: Rs. '+plan.unallocated_before+' → Rs. '+plan.unallocated_after));
+            if(plan.historical_released_count){$details.append($('<p class="text-muted small">').text('Historical released vouchers (unchanged): '+plan.historical_released_count));}
             var $table=$('<table class="table table-sm">'),$body=$('<tbody>');
             $.each(plan.vouchers,function(_,v){
                 $body.append($('<tr>')
@@ -81,7 +85,7 @@ jQuery(function($) {
             $details.append($('<p class="small text-muted">').text('Same source/voucher/ledger IDs will be retained. All changes will save together or none will save.'));
             window.Swal.fire({icon:'question',title:'Confirm Financial Correction',
                 html:$details[0],width:700,showCancelButton:true,
-                confirmButtonText:'Confirm Atomic Correction',confirmButtonColor:'#168348'
+                confirmButtonText:'Submit / Apply Correction',confirmButtonColor:'#168348'
             }).then(function(result){
                 if(!result.isConfirmed)return;
                 busy=true;
@@ -90,7 +94,7 @@ jQuery(function($) {
                         fingerprint:plan.fingerprint},values),
                     dataType:'json',headers:{Accept:'application/json'}})
                 .done(function(data){
-                    window.Swal.fire({icon:'success',title:'Linked Correction Saved',text:data.message});
+                    window.Swal.fire({icon:'success',title:data.data&&data.data.pending?'Sent For Approval':'Correction Applied',text:data.message});
                     // Trigger original register reload through its existing filters, not full navigation.
                     $(cfg.reloadSelector).trigger('submit');
                 }).fail(function(xhr){window.Swal.fire({icon:'error',title:'Correction Refused',text:error(xhr)});})
