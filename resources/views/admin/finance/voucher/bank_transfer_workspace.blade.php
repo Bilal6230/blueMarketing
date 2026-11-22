@@ -503,6 +503,7 @@ $(function () {
                     $('#saveTransfer').prop('disabled',true);return;
                 }
                 var d=json.data;
+                $('#btVoucherNumber').val(d.voucher || 'Existing voucher');
                 $('#voucherDate').val(d.date);$('#voucherAmount').val(d.amount);
                 $('#cashAccount').val(String(d.cash_account_id));
                 $('#bankAccount').val(String(d.bank_account_id));
