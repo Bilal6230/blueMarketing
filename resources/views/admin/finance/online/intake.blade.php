@@ -559,7 +559,7 @@ $(function(){
     editingOnlineReplacement=!!response.cascade_impact.requires_cascade || record.status==='confirmed';
     $(document).trigger('bank-linked-correction-ready',[{
      method:'online',id:id,record:record,impact:response.cascade_impact,
-     verified:record.status==='confirmed',saveSelector:'#online-save',
+     verified:record.status==='confirmed' && @json(auth()->user()->can('delete voucher')),saveSelector:'#online-save',
      modalSelector:'#online-entry-modal',reloadSelector:'#online-filters'
     }]);
     $('#online-replacement-reason-wrap').toggleClass('d-none',!editingOnlineReplacement);
