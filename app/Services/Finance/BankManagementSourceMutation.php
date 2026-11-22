@@ -194,7 +194,7 @@ final class BankManagementSourceMutation
                     'reference','transaction_date','amount','type','sending_bank','sending_account',
                     'receiving_bank','receiving_account','sender_name','receiver_name','purpose',
                     'account_mapping_id']));
-                $row += ['proof_path'=>$source->proof_path];
+                $row += ['proof_path'=>null]; // Never reuse proof for a newly verified reference.
                 $row['reference_key']=$key;
                 $row['remarks']='Audited replacement for Online #'.$sourceId.': '.$reason;
                 $row['status']='pending';
@@ -205,7 +205,7 @@ final class BankManagementSourceMutation
                 $row['cheque_number']=$number;
                 $row['bank_name']=$bank;
                 $row['customer_id']=$source->customer_id;
-                $row['attachment_path']=$source->attachment_path;
+                $row['attachment_path']=null; // Old cheque image belongs only to the archived source.
                 $row['customer_ledger_id']=null;
                 $row['status']=$changes['direction']==='out'?'issued':'received';
             }
@@ -215,10 +215,12 @@ final class BankManagementSourceMutation
             $row['updated_at']=now();
             $replacementId=(int)DB::table($table)->insertGetId($row);
             if ($method==='cheque' && Schema::hasTable('finance_cheque_intake_actions')) {
-                DB::table('finance_cheque_intake_actions')
+                $eventId=DB::table('finance_cheque_intake_actions')
                     ->where('project_id',$projectId)->where('cheque_intake_id',$sourceId)
                     ->where('action','withdrawn')->where('actor_id',$actorId)
-                    ->orderByDesc('id')->limit(1)
+                    ->orderByDesc('id')->value('id');
+                if ($eventId) DB::table('finance_cheque_intake_actions')
+                    ->where('id',$eventId)
                     ->update(['remarks'=>'Replaced by cheque source #'.$replacementId]);
             }
             return ['old_source_id'=>$sourceId,'replacement_source_id'=>$replacementId,
