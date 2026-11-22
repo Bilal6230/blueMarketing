@@ -91,7 +91,7 @@ final class BankLinkedCorrection
                 DB::table('daily_voucher_edit_snapshots')->insert([
                     'project_id'=>$projectId,'source_id'=>$item['voucher_id'],
                     'approval_id'=>$item['approval_id'],
-                    'status'=>'bank_linked_corrected',
+                    'status'=>'bank_corrected',
                     'before_snapshot'=>json_encode([
                         'bank_method'=>$method,'bank_source_id'=>$sourceId,
                         'allocation_id'=>$item['allocation_id'],'ledger_id'=>$item['ledger_id'],
@@ -101,6 +101,22 @@ final class BankLinkedCorrection
                         'bank_method'=>$method,'bank_source_id'=>$sourceId,
                         'allocation_id'=>$item['allocation_id'],'ledger_id'=>$item['ledger_id'],
                         'voucher_type'=>$item['series'],'amount'=>$new
+                    ],JSON_THROW_ON_ERROR),
+                    'reason'=>$reason,'submitted_by'=>$actorId,'decided_by'=>$actorId,
+                    'created_at'=>$now,'updated_at'=>$now,
+                ]);
+            }
+            if ($plan['amount_before'] !== $plan['amount_after']) {
+                DB::table('daily_voucher_edit_snapshots')->insert([
+                    'project_id'=>$projectId,'source_id'=>$sourceId,
+                    'approval_id'=>null,'status'=>'bank_source_fix',
+                    'before_snapshot'=>json_encode([
+                        'source_kind'=>$table,'method'=>$method,'source_id'=>$sourceId,
+                        'amount'=>$plan['amount_before']
+                    ],JSON_THROW_ON_ERROR),
+                    'proposed_snapshot'=>json_encode([
+                        'source_kind'=>$table,'method'=>$method,'source_id'=>$sourceId,
+                        'amount'=>$plan['amount_after']
                     ],JSON_THROW_ON_ERROR),
                     'reason'=>$reason,'submitted_by'=>$actorId,'decided_by'=>$actorId,
                     'created_at'=>$now,'updated_at'=>$now,
