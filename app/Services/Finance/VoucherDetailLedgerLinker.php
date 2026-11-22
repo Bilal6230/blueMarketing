@@ -26,7 +26,7 @@ final class VoucherDetailLedgerLinker
             $batch=DB::table('finance_posting_batches')
                 ->where('project_id',$projectId)->where('id',$batchId)
                 ->whereNull('reversal_of_batch_id')->lockForUpdate()->first();
-            if(!$batch||!in_array($batch->voucher_series,['JV','SV','CV'],true))
+            if(!$batch||$batch->posted_at===null||!in_array($batch->voucher_series,['JV','SV','CV'],true))
                 throw new \DomainException('DETAIL_LEDGER_UNSUPPORTED_BATCH');
             $cv=$batch->voucher_series==='CV';
             $type=$cv?'CV':(string)$batch->voucher_series;
@@ -101,6 +101,16 @@ final class VoucherDetailLedgerLinker
                         throw new \DomainException('DETAIL_LEDGER_EXISTING_LEDGER_MISMATCH');
                     }
                     $ledgerId=(int)$ledger->id;
+                    // Approved commission posting owns the verified detail leg.
+                    // Activate the exact FK row during posting, not after the
+                    // posting transaction has passed its ledger-completion gate.
+                    if($cv && (int)($line->is_active??1)===1 && (int)$ledger->is_active===0){
+                        if((string)$head->status!=='approved' || $line->detail_deleted_at!==null)
+                            throw new \DomainException('DETAIL_LEDGER_ACTIVATION_NOT_APPROVED');
+                        DB::table('ledgers')->where('id',$ledgerId)
+                            ->where($detailFk,$line->voucher_detail_id)
+                            ->update(['is_active'=>1,'updated_at'=>now()]);
+                    }
                 }else{
                     // The authentic detail FK is unique; no duplicate row can
                     // be inserted on a retry or a concurrent second posting.
