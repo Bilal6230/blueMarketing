@@ -1143,7 +1143,8 @@ class VoucherController extends Controller
             ->where(fn ($q) => $q->whereHas('headAccounting', fn ($h) => $h->where('name', 'LIKE', '%cash%')->orWhere('name', 'LIKE', '%bank%'))
                 ->orWhereHas('subheadAccounting', fn ($s) => $s->where('name', 'LIKE', '%cash%')->orWhere('name', 'LIKE', '%bank%')))
             ->orderBy('id')->get();
-        return view('admin.finance.voucher.plot_receipt_workspace', compact('accounts'));
+        $nextVoucherNumber = 'PPR-'.app(\App\Services\Finance\ProjectVoucherAllocator::class)->preview($projectId,'PPR');
+        return view('admin.finance.voucher.plot_receipt_workspace', compact('accounts','nextVoucherNumber'));
     }
 
     public function plotReceiptOptions(Request $request)
@@ -1486,7 +1487,8 @@ class VoucherController extends Controller
         \App\Services\Finance\FinanceWorkflowAccess::authorizeRead($projectId);
         $accounts = ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
             ->where('project_id', $projectId)->orderBy('id')->get();
-        return view('admin.finance.voucher.plot_purchase_workspace', compact('accounts'));
+        $nextVoucherNumber = 'PP-'.app(\App\Services\Finance\ProjectVoucherAllocator::class)->preview($projectId,'PP');
+        return view('admin.finance.voucher.plot_purchase_workspace', compact('accounts','nextVoucherNumber'));
     }
 
     public function plotPurchaseOptions()
