@@ -3084,10 +3084,14 @@ class BookingController extends Controller
                             }
                         }
 
+                        // Reserve the same PPR serial for the original customer
+                        // source, booking voucher and its linked ledger.
+                        $newPprNumber = $duplicateLedger ? null
+                            : $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
                         $customerLedger = $duplicateLedger ?: CustomerLedger::create([
                             'customer_id' => $customer_id,
                             'transaction_type' => 'PPR',
-                            'type_id' => get_new_typeID('PPR'),
+                            'type_id' => $newPprNumber,
                             'reference' => $reference,
                             'project_id' => $projectId,
                             'plot_id' => $plotId,
@@ -3138,7 +3142,10 @@ class BookingController extends Controller
                         }
                         $displayVoucherNumber = (int) ($existingBookingVoucher?->voucher_number ?: 0);
                         if ($displayVoucherNumber <= 0) {
-                            $displayVoucherNumber = $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
+                            if ($duplicateLedger) {
+                                throw new \DomainException('PPR_EXISTING_SOURCE_HAS_NO_BOOKING_VOUCHER');
+                            }
+                            $displayVoucherNumber = (int)$newPprNumber;
                         }
 
                         $creditAccountId = ProjectHeadSubhead::availableForPosting()->where('head_accounting_id', 16)
