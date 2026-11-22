@@ -3436,10 +3436,26 @@ class BookingController extends Controller
                 return back()->withErrors(['msg' => get_class($e) . ': ' . $e->getMessage()])->withInput();
             }
 
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Unable to save the voucher right now. Please try again.'], 422);
+            $safeMessage = 'Unable to save the voucher right now. Please try again.';
+            if ($action === 'extra_charge' && $e instanceof \DomainException) {
+                $safeMessage = match ($e->getMessage()) {
+                    'EXTRA_CHARGE_SOURCE_ALREADY_POSTED', 'FINANCE_SOURCE_DUPLICATE' =>
+                        'This slip reference has already been used for an Extra Charge in the selected project. Enter a different Slip No.',
+                    'EXTRA_CHARGE_BOOKING_NOT_UNIQUE' =>
+                        'The selected customer and plot must have exactly one active booking in this project.',
+                    'EXTRA_CHARGE_INPUT_OR_PAYMENT_UNSUPPORTED' =>
+                        'Check the Extra Charge date, positive amount, charge type, slip number and description.',
+                    'EC_ACCOUNT_MAPPING_INACTIVE', 'EC_ACCOUNT_SIDES_NOT_DISTINCT' =>
+                        'Extra Charge accounting mappings are inactive or incomplete for this project.',
+                    'VOUCHER_SOURCE_NUMBER_INVALID', 'VOUCHER_ALLOCATION_REQUIRES_TRANSACTION' =>
+                        'Extra Charge number could not be reserved. Refresh the form before retrying.',
+                    default => $safeMessage,
+                };
             }
-            return back()->withErrors(['msg' => 'Unable to save the voucher right now. Please try again.'])->withInput();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $safeMessage], 422);
+            }
+            return back()->withErrors(['msg' => $safeMessage])->withInput();
         }
         if ($request->expectsJson()) {
             return response()->json(['status' => 'success', 'message' => 'Voucher saved.']);
