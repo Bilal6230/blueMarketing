@@ -411,6 +411,11 @@ $(function () {
         $('#cheque-file-name').text(files&&files.length?files[0].name:'No file selected');
     });
     function resetForm() {
+        editingChequeId=null;
+        $form.attr('action',@json(route('finance.cheques.store')));
+        $('#cheque-create-title').text('Add New Cheque');
+        $('#cheque-save').text('Save Cheque');
+        $('#cheque-attachment').prop('disabled',false);
         $form.trigger('reset');
         $form.find('[name=received_date]').val(@json(date('Y-m-d')));
         $('#cheque-file-name').text('No file selected');
