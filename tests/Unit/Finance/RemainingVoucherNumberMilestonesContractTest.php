@@ -35,7 +35,7 @@ final class RemainingVoucherNumberMilestonesContractTest extends TestCase
         self::assertStringContainsString("'l.customer_ledger_id'", $resolver);
         self::assertStringContainsString('journal_voucher_detail_id', $resolver);
         self::assertStringContainsString('commision_voucher_detail_id', $resolver);
-        self::assertStringContainsString("'SV-'.(int)$header", $resolver);
+        self::assertStringContainsString("'SV-'.(int)\$header", $resolver);
         self::assertStringContainsString('CommissionVoucherNumber::display($header)', $resolver);
     }
 
