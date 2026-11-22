@@ -92,7 +92,7 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                         <div class="input-group">
                                             <input type="text" value="1" name="action" hidden />
                                             <input type="text" class="form-control " name="voucher_number"
-                                                value="{{ $type }}-{{ $previewVoucherNumber ?? (getLastJvVNumber() + 1) }}"
+                                                value="{{ $type }}-{{ $type === 'JV' ? str_pad((string)($previewVoucherNumber ?? (getLastJvVNumber() + 1)),7,'0',STR_PAD_LEFT) : ($previewVoucherNumber ?? 1) }}"
                                                 autocomplete="off" readonly>
                                         </div>
                                     </div>
