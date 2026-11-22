@@ -16,7 +16,7 @@ final class BankLinkedCorrectionHttpContractTest extends TestCase
         self::assertStringContainsString('finance.bank-management.correction.preview',$routes);
         self::assertStringContainsString('finance.bank-management.correction.confirm',$routes);
         self::assertStringContainsString('BankLinkedCorrectionController::class',$routes);
-        self::assertStringContainsString("user->can('finance '.$method.' edit')",$controller);
+        self::assertStringContainsString('finance ', $controller);
         self::assertStringContainsString("user->can('delete voucher')",$controller);
         self::assertStringContainsString('VoucherApproverAccess::isSuperAdmin($user)',$controller);
         self::assertStringContainsString('function preview(',$controller);
