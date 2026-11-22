@@ -59,7 +59,7 @@ final class PassedBankSourcePickerController extends Controller
             $items=$rows->orderByDesc('i.id')->limit(100)->get([
                 'i.id','i.reference','i.transaction_date','i.amount','i.sending_bank',
                 'i.receiving_bank','i.purpose','i.account_mapping_id','verified.verification_date',
-                'i.sending_bank','verified.original_amount as confirmed_amount',
+                'verified.original_amount as confirmed_amount',
             ])->filter(fn($i)=>\App\Services\Finance\BankSourceCorrectionEvidence::matchesOnlineAmount(
                 $project,(int)$i->id,$i->confirmed_amount,$i->amount))->map(fn($i)=>[
                 'id'=>(int)$i->id,'method'=>'online','reference'=>(string)$i->reference,
