@@ -589,6 +589,9 @@ $(function(){
     $('#online-replacement-reason-wrap').toggleClass('d-none',!(editingOnlineReplacement||editingOnlineCorrection));
     $('#online-replacement-reason-wrap label').text(editingOnlineCorrection?'Reason for correcting transaction and recreating linked vouchers *':'Reason for replacing verified transaction *');
     $('#online-replacement-reason').prop('required',editingOnlineReplacement||editingOnlineCorrection);
+    $('#online-replacement-reason').attr('placeholder',editingOnlineCorrection
+      ? 'Explain what was entered incorrectly. Linked vouchers will be archived and recreated later.'
+      : 'Explain why this verified instrument must be genuinely replaced.');
     $entry.attr('action',bankMutationUrl.replace('__SOURCE_ID__',id));
     $modal.find('.modal-title').text(editingOnlineCorrection?'Correct Verified Online Transaction':(editingOnlineReplacement?'Replace Linked Online Transaction':'Edit Online Transaction'));
     $entry.find('[name=reference]').prop('readonly',editingOnlineCorrection);
