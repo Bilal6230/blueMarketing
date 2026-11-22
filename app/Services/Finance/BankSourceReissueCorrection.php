@@ -121,8 +121,6 @@ final class BankSourceReissueCorrection
                 $changed=true;
             }
         }
-        if (!$changed) throw new \DomainException('No source fields changed.');
-
         $allocations=DB::table('finance_bank_voucher_allocations')
             ->where('project_id',$projectId)->where('source_method',$method)
             ->where('source_id',$sourceId)->orderBy('id')->lockForUpdate()->get();
@@ -176,6 +174,9 @@ final class BankSourceReissueCorrection
         if(!Schema::hasTable($claimTable) || DB::table($claimTable)
             ->where('project_id',$projectId)->where($claimColumn,$sourceId)->exists()) {
             throw new \DomainException('Unreconciled historical bank claim prevents correction.');
+        }
+        if (!$changed && count($active)===0) {
+            throw new \DomainException('No source changes or active linked vouchers to correct.');
         }
         $state=['project_id'=>$projectId,'method'=>$method,'source_id'=>$sourceId,
             'status'=>(string)$source->status,
