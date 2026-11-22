@@ -14,6 +14,68 @@ final class LedgerVoucherDisplayService
     public function display(object $ledger, int $projectId): string
     {
         $original = (string) ($ledger->type ?? '') . '-' . (string) ($ledger->voucher_number ?? '');
+        // Resolve the voucher's retained source FK before consulting legacy
+        // type/type_id attributions. This works for all selected projects and
+        // cannot mislabel a similarly-numbered voucher in another family.
+        if ($projectId > 0 && isset($ledger->id) && Schema::hasTable('ledgers')
+            && Schema::hasTable('project_head_subheads')) {
+            $owned = DB::table('ledgers as l')
+                ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
+                ->where('l.id',(int)$ledger->id)->where('a.project_id',$projectId)
+                ->first(['l.type','l.type_id','l.voucher_number','l.customer_ledger_id',
+                    'l.journal_voucher_detail_id','l.commision_voucher_detail_id']);
+            if ($owned) {
+                $type = (string)$owned->type;
+                if ((int)$owned->customer_ledger_id > 0 && Schema::hasTable('customer_ledger')) {
+                    $source = DB::table('customer_ledger')
+                        ->where('id',(int)$owned->customer_ledger_id)
+                        ->where('project_id',$projectId)
+                        ->first(['transaction_type','type_id']);
+                    if ($source && (int)$source->type_id > 0
+                        && $type === (string)$source->transaction_type) {
+                        if ($type === 'PPR' && Schema::hasTable('booking_vouchers')) {
+                            $booking = DB::table('booking_vouchers')
+                                ->where('project_id',$projectId)
+                                ->where('customer_ledger_id',(int)$owned->customer_ledger_id)
+                                ->where('voucher_series','PPR')->value('voucher_number');
+                            if ((int)$booking > 0) return 'PPR-'.(int)$booking;
+                        }
+                        return $type.'-'.(int)$source->type_id;
+                    }
+                    // Preserve old CP ledger/source identities in their
+                    // historical debit-voucher display without rewriting rows.
+                    if ($source && $type === 'CP'
+                        && (string)$source->transaction_type === 'CP'
+                        && (int)$source->type_id > 0) {
+                        return 'DR-'.(int)$source->type_id;
+                    }
+                }
+                if ($type === 'JV' && (int)$owned->journal_voucher_detail_id > 0
+                    && Schema::hasTable('journal_voucher_details')
+                    && Schema::hasTable('journal_vouchers')) {
+                    $header = DB::table('journal_voucher_details as d')
+                        ->join('journal_vouchers as h','h.id','=','d.journal_voucher_id')
+                        ->where('d.id',(int)$owned->journal_voucher_detail_id)
+                        ->where('h.project_id',$projectId)->where('h.type','JV')
+                        ->where('h.id',(int)$owned->type_id)->value('h.voucher_number');
+                    if ((int)$header > 0) {
+                        return 'JV-'.str_pad((string)(int)$header,7,'0',STR_PAD_LEFT);
+                    }
+                }
+                if ($type === 'CV' && (int)$owned->commision_voucher_detail_id > 0
+                    && Schema::hasTable('commision_voucher_details')
+                    && Schema::hasTable('commision_vouchers')) {
+                    $header = DB::table('commision_voucher_details as d')
+                        ->join('commision_vouchers as h','h.id','=','d.commision_voucher_id')
+                        ->where('d.id',(int)$owned->commision_voucher_detail_id)
+                        ->where('h.project_id',$projectId)
+                        ->where('h.id',(int)$owned->type_id)->value('h.voucher_number');
+                    if ($header !== null && (string)$header !== '') {
+                        return CommissionVoucherNumber::display($header);
+                    }
+                }
+            }
+        }
         if ($projectId < 1 || ($ledger->type ?? null) !== 'JV'
             || !isset($ledger->id) || !Schema::hasTable('ledger_source_attributions')) {
             return $original;
