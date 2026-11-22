@@ -7,6 +7,72 @@ use Illuminate\Support\Facades\Schema;
 
 final class ProjectVoucherAllocator
 {
+    /**
+     * Read-only preview. The final number is allocated again under the project
+     * lock at save time. Preview must never consume a sequence.
+     */
+    public function preview(int $projectId, string $series): int
+    {
+        if ($projectId < 1 || !preg_match('/^[A-Z]{2,4}$/D', $series)) {
+            throw new \DomainException('INVALID_VOUCHER_ALLOCATION_SCOPE');
+        }
+        $counter = Schema::hasTable('ledger_voucher_counters')
+            ? (int) DB::table('ledger_voucher_counters')->where('project_id', $projectId)
+                ->where('voucher_type', $series)->value('last_number') : 0;
+        return max($counter, $this->highestExisting($projectId, $series)) + 1;
+    }
+
+    private function highestExisting(int $projectId, string $series): int
+    {
+        $max = 0;
+        $numeric = function (string $table, string $column, array $scope = []) use ($projectId, &$max): void {
+            if (!Schema::hasTable($table) || !Schema::hasColumn($table, $column)) return;
+            $query = DB::table($table)->where('project_id', $projectId);
+            foreach ($scope as $key => $value) $query->where($key, $value);
+            $max = max($max, (int) $query->max($column));
+        };
+        $text = function (string $table, string $column, array $scope = []) use ($projectId, $series, &$max): void {
+            if (!Schema::hasTable($table) || !Schema::hasColumn($table, $column)) return;
+            $query = DB::table($table)->where('project_id', $projectId);
+            foreach ($scope as $key => $value) $query->where($key, $value);
+            foreach ($query->pluck($column) as $value) {
+                if (preg_match('/^(?:'.preg_quote($series, '/').'-)?([0-9]{1,15})$/D', (string) $value, $match)) {
+                    $max = max($max, (int) $match[1]);
+                }
+            }
+        };
+        $numeric('customer_ledger', 'type_id', ['transaction_type' => $series]);
+        if (Schema::hasTable('ledgers') && Schema::hasTable('project_head_subheads')) {
+            $max = max($max, (int) DB::table('ledgers as l')
+                ->join('project_head_subheads as p', 'p.id', '=', 'l.project_head_subheads_id')
+                ->where('p.project_id', $projectId)->where('l.type', $series)->max('l.voucher_number'));
+        }
+        $numeric('finance_posting_batches', 'voucher_number', ['voucher_series' => $series]);
+        $text('project_voucher_display_numbers', 'display_number', ['series' => $series]);
+        if (in_array($series, ['JV','SV'], true)) $numeric('journal_vouchers', 'voucher_number', ['type' => $series]);
+        if ($series === 'CV') $text('commision_vouchers', 'voucher_number');
+        if ($series === 'PPR') {
+            $numeric('booking_vouchers', 'voucher_number', ['voucher_series' => 'PPR']);
+            $numeric('finance_posting_batches', 'voucher_number', ['voucher_series' => 'PR']);
+            $text('finance_plot_receipts', 'receipt_number');
+        }
+        if ($series === 'PP') $text('finance_plot_purchases', 'purchase_number');
+        if (in_array($series, ['PPR','PP'], true)) {
+            $text('finance_plot_approval_drafts', 'source_number', ['voucher_type' => $series]);
+        }
+        if (in_array($series, ['BD','BW'], true)) {
+            $numeric('finance_bank_transfer_approval_drafts', 'voucher_number',
+                ['transfer_kind' => $series === 'BD' ? 'deposit' : 'withdrawal']);
+            // Preserve previously displayed fallback batch IDs for old unnumbered transfers.
+            if (Schema::hasTable('finance_posting_batches')) {
+                $max = max($max, (int) DB::table('finance_posting_batches')
+                    ->where('project_id', $projectId)->where('voucher_series', $series)
+                    ->whereNull('voucher_number')->max('id'));
+            }
+        }
+        return $max;
+    }
+
     /** Allocate a CustomerLedger type_id from its own retained sequence. */
     public function nextSourceId(int $projectId, string $series): int
     {
@@ -94,14 +160,7 @@ final class ProjectVoucherAllocator
         if (!DB::table('projects')->where('id', $projectId)->lockForUpdate()->first()) {
             throw new \DomainException('VOUCHER_PROJECT_NOT_FOUND');
         }
-        $sourceMax = (int) DB::table('customer_ledger')
-            ->where('project_id', $projectId)->where('transaction_type', $series)
-            ->max('type_id');
-        $ledgerMax = (int) DB::table('ledgers as l')
-            ->join('project_head_subheads as p', 'p.id', '=', 'l.project_head_subheads_id')
-            ->where('p.project_id', $projectId)->where('l.type', $series)
-            ->max('l.voucher_number');
-        $highestExisting = max($sourceMax, $ledgerMax, $additionalMax);
+        $highestExisting = max($this->highestExisting($projectId, $series), $additionalMax);
 
         // Share the retained counter with legacy getVocuherNumber() callers.
         // This keeps all migrated writers in one project/type lock domain and
