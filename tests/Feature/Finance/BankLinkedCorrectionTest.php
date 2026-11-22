@@ -199,9 +199,43 @@ final class BankLinkedCorrectionTest extends TestCase
         $this->voucher(41,'BOR','cheque',77,'500.00');
         $allocationId=(int)DB::table('finance_bank_voucher_allocations')->where('voucher_id',41)->value('id');
         DB::table('finance_bank_voucher_allocation_releases')->insert(['allocation_id'=>$allocationId]);
-        $this->expectException(\DomainException::class);
-        $this->expectExceptionMessage('Previously released allocation');
-        app(BankLinkedCorrection::class)->preview(1,'cheque',77,'450.00',[41=>'450.00']);
+        $preview=app(BankLinkedCorrection::class)->preview(1,'cheque',77,'450.00',[]);
+        self::assertSame(1,$preview['historical_released_count']);
+        self::assertSame([],$preview['vouchers']);
+        self::assertSame('0.00',$preview['allocated_after']);
+        try {
+            app(BankLinkedCorrection::class)->preview(1,'cheque',77,'450.00',[41=>'450.00']);
+            self::fail('Released voucher should never be editable.');
+        } catch (\DomainException $e) {
+            self::assertStringContainsString('Specify exactly one',$e->getMessage());
+        }
+    }
+
+    public function test_unallocated_confirmed_online_source_corrects_without_creating_vouchers(): void
+    {
+        $service=app(BankLinkedCorrection::class);
+        $plan=$service->preview(1,'online',55,'420.00',[]);
+        self::assertSame('500.00',$plan['unallocated_before']);
+        self::assertSame('420.00',$plan['unallocated_after']);
+        self::assertSame('0.00',$plan['allocated_after']);
+        $service->confirm(1,'online',55,7,'Amount entry typo','420.00',[],$plan['fingerprint']);
+        self::assertEquals(420,DB::table('finance_online_intakes')->where('id',55)->value('amount'));
+        self::assertSame(0,DB::table('finance_bank_voucher_allocations')->count());
+        self::assertSame(0,DB::table('ledgers')->count());
+    }
+
+    public function test_partially_allocated_cheque_retains_unallocated_balance_and_voucher_ids(): void
+    {
+        $this->voucher(41,'BOR','cheque',77,'200.00');
+        $service=app(BankLinkedCorrection::class);
+        $plan=$service->preview(1,'cheque',77,'450.00',[41=>'200.00']);
+        self::assertSame('300.00',$plan['unallocated_before']);
+        self::assertSame('250.00',$plan['unallocated_after']);
+        $service->confirm(1,'cheque',77,7,'Correction of unallocated balance',
+            '450.00',[41=>'200.00'],$plan['fingerprint']);
+        self::assertEquals(200,DB::table('ledgers')->where('customer_ledger_id',41)->value('amount_in'));
+        self::assertEquals(450,DB::table('finance_cheque_intakes')->where('id',77)->value('amount'));
+        self::assertSame(1,DB::table('finance_bank_voucher_allocations')->count());
     }
 
     public function test_cross_project_cannot_read_or_correct_linked_cheque(): void
