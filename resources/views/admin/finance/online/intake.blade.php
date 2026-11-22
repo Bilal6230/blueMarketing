@@ -574,7 +574,8 @@ $(function(){
   $.ajax({url:bankMutationEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
    .done(function(response){
     if(!response.cascade_impact||!response.cascade_impact.can_edit_directly){
-     if(!(correctionMode || (response.cascade_impact&&(response.cascade_impact.requires_cascade || response.data.status==='confirmed') &&
+     if(!correctionMode && !(response.cascade_impact &&
+       (response.cascade_impact.requires_cascade || response.data.status==='confirmed') &&
        @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
       toast(response.cascade_impact&&response.cascade_impact.reason||'Source cannot be edited.',true);return;
      }
@@ -591,7 +592,7 @@ $(function(){
     $modal.find('.modal-title').text(editingOnlineCorrection?'Correct Verified Online Transaction':(editingOnlineReplacement?'Replace Linked Online Transaction':'Edit Online Transaction'));
     $entry.find('[name=reference]').prop('readonly',editingOnlineCorrection);
     $('#online-save').text(editingOnlineCorrection?'Review Correction':(editingOnlineReplacement?'Replace & Reverify':'Update Transaction'));
-    $('#online-entry-type').prop('disabled',editingOnlineCorrection);
+    // Type remains readable in TomSelect; backend disallows verified direction mutation.
     $('#online-proof').prop('disabled',true);
     $.each(['reference','transaction_date','amount','sending_bank','sending_account',
      'receiving_bank','receiving_account','sender_name','receiver_name','purpose'],function(_,field){
