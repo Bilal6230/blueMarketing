@@ -1133,6 +1133,19 @@ class VoucherController extends Controller
         return view('admin.finance.voucher.bank_transfer_workspace', compact('kind', 'bankAccounts', 'cashAccounts'));
     }
 
+    /** Read-only fresh preview for Plot Receipt and Plot Purchase modals. */
+    public function plotVoucherNextNumber(string $series)
+    {
+        abort_unless(in_array($series,['PPR','PP'],true),404);
+        $projectId=(int)getSelectedTown();
+        \App\Services\Finance\FinanceWorkflowAccess::authorizeRead($projectId);
+        return response()->json([
+            'series'=>$series,
+            'voucher_number'=>$series.'-'.app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                ->preview($projectId,$series),
+        ]);
+    }
+
     /** Multi-plot receipt entry, project scoped to the selected project. */
     public function plotReceiptWorkspace()
     {
