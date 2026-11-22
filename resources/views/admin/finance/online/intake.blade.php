@@ -233,7 +233,7 @@ $(function(){
  var bankMutationUrl=@json(route('finance.bank-management.update',['method'=>'online','id'=>'__SOURCE_ID__']));
  var bankMutationEditUrl=@json(route('finance.bank-management.edit',['method'=>'online','id'=>'__SOURCE_ID__']));
  var bankMutationDeleteUrl=@json(route('finance.bank-management.delete',['method'=>'online','id'=>'__SOURCE_ID__']));
- var editingOnlineId=null,editingOnlineReplacement=false;
+ var editingOnlineId=null,editingOnlineReplacement=false,editingOnlineCorrection=false;
  var mappings=@json($mappings);
  function fit(){
   var $page=$('.online-register-page');
@@ -337,7 +337,7 @@ $(function(){
   $('#online-file-name').text(files&&files.length?files[0].name:'No file selected');
  });
  function resetEntry(){
-  editingOnlineId=null;editingOnlineReplacement=false;
+  editingOnlineId=null;editingOnlineReplacement=false;editingOnlineCorrection=false;
   $('#online-replacement-reason-wrap').addClass('d-none');
   $('#online-replacement-reason').prop('required',false).val('');
   $entry.attr('action',@json(route('finance.online.store')));
@@ -403,7 +403,7 @@ $(function(){
   }
   if(@json(auth()->user()->can('finance online delete')) &&
      (x.status==='pending' || (x.status==='confirmed' &&
-       @json(auth()->user()->can('delete voucher')) && @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))))){
+       @json(auth()->user()->can('delete voucher')) && @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))))){
    $('<button type="button">').addClass('btn btn-outline-danger btn-sm mr-1 online-delete-button')
     .attr('data-id',x.id).text('Delete').appendTo($actions);
   }
@@ -495,6 +495,27 @@ $(function(){
  });
  $entry.on('submit',function(e){
   e.preventDefault();if(busy||!validate())return;
+  if(editingOnlineCorrection){
+   var reason=$.trim($('#online-replacement-reason').val());
+   if(reason.length<3 || reason.length>500){toast('Correction reason must be 3–500 characters.',true);return;}
+   var account=$.grep(mappings,function(m){
+    return String(m.head_id)===String($('#online-head').val())
+     && String(m.child_id)===String($('#online-child').val());
+   })[0];
+   if(!account){toast('Select a valid project account.',true);return;}
+   var changes={};
+   $.each(['reference','type','transaction_date','amount','sending_bank',
+    'sending_account','receiving_bank','receiving_account','sender_name',
+    'receiver_name','purpose'],function(_,field){
+    changes[field]=$entry.find('[name="'+field+'"]').val();
+   });
+   changes.account_mapping_id=account.id;
+   $(document).trigger('bank-source-reissue-submit',[{
+    method:'online',id:editingOnlineId,changes:changes,reason:reason,
+    modalSelector:'#online-entry-modal',reloadSelector:'#online-filters'
+   }]);
+   return;
+  }
   if(editingOnlineReplacement){
    var reason=$.trim($('#online-replacement-reason').val());
    if(reason.length<3 || reason.length>500){
@@ -547,41 +568,30 @@ $(function(){
  });
  // Source edit is permitted only before bank confirmation and before any
  // historical allocation or claim; the server repeats all checks under lock.
- $rows.on('click','.online-correct-source',function(){
-  var id=String($(this).attr('data-id'));
-  $.getJSON(bankMutationEditUrl.replace('__SOURCE_ID__',id))
-   .done(function(response){
-    $(document).trigger('bank-linked-correction-direct',[{
-     method:'online',id:id,record:response.data,
-     impact:response.cascade_impact,verified:true,
-     reloadSelector:'#online-filters'
-    }]);
-   }).fail(function(xhr){toast(xhr.responseJSON&&xhr.responseJSON.message||'Cannot open correction.',true);});
- });
- $rows.on('click','.online-edit-button',function(){
+ $rows.on('click','.online-edit-button,.online-correct-source',function(){
+  var correctionMode=$(this).hasClass('online-correct-source');
   var id=String($(this).attr('data-id'));
   $.ajax({url:bankMutationEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
    .done(function(response){
     if(!response.cascade_impact||!response.cascade_impact.can_edit_directly){
-     if(!(response.cascade_impact&&(response.cascade_impact.requires_cascade || response.data.status==='confirmed') &&
+     if(!(correctionMode || (response.cascade_impact&&(response.cascade_impact.requires_cascade || response.data.status==='confirmed') &&
        @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
       toast(response.cascade_impact&&response.cascade_impact.reason||'Source cannot be edited.',true);return;
      }
     }
-    resetEntry();editingOnlineId=id;
+    resetEntry();editingOnlineId=id;editingOnlineCorrection=correctionMode;
     
     var record=response.data;
-    editingOnlineReplacement=!!response.cascade_impact.requires_cascade || record.status==='confirmed';
-    $(document).trigger('bank-linked-correction-ready',[{
-     method:'online',id:id,record:record,impact:response.cascade_impact,
-     verified:record.status==='confirmed' && @json(auth()->user()->can('finance online correct')),saveSelector:'#online-save',
-     modalSelector:'#online-entry-modal',reloadSelector:'#online-filters'
-    }]);
-    $('#online-replacement-reason-wrap').toggleClass('d-none',!editingOnlineReplacement);
-    $('#online-replacement-reason').prop('required',editingOnlineReplacement);
+    editingOnlineReplacement=!correctionMode && (!!response.cascade_impact.requires_cascade || record.status==='confirmed');
+
+    $('#online-replacement-reason-wrap').toggleClass('d-none',!(editingOnlineReplacement||editingOnlineCorrection));
+    $('#online-replacement-reason-wrap label').text(editingOnlineCorrection?'Reason for correcting transaction and recreating linked vouchers *':'Reason for replacing verified transaction *');
+    $('#online-replacement-reason').prop('required',editingOnlineReplacement||editingOnlineCorrection);
     $entry.attr('action',bankMutationUrl.replace('__SOURCE_ID__',id));
-    $modal.find('.modal-title').text(editingOnlineReplacement?'Replace Linked Online Transaction':'Edit Online Transaction');
-    $('#online-save').text(editingOnlineReplacement?'Replace & Reverify':'Update Transaction');
+    $modal.find('.modal-title').text(editingOnlineCorrection?'Correct Verified Online Transaction':(editingOnlineReplacement?'Replace Linked Online Transaction':'Edit Online Transaction'));
+    $entry.find('[name=reference]').prop('readonly',editingOnlineCorrection);
+    $('#online-save').text(editingOnlineCorrection?'Review Correction':(editingOnlineReplacement?'Replace & Reverify':'Update Transaction'));
+    $('#online-entry-type').prop('disabled',editingOnlineCorrection);
     $('#online-proof').prop('disabled',true);
     $.each(['reference','transaction_date','amount','sending_bank','sending_account',
      'receiving_bank','receiving_account','sender_name','receiver_name','purpose'],function(_,field){
