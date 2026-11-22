@@ -300,6 +300,8 @@ final class ChequeIntakeController extends Controller
                 'direction' => $cheque->direction],
             'linked_vouchers' => app(\App\Services\Finance\BankSourceLinkedVoucherHistory::class)
                 ->forSource($project,'cheque',$id),
+            'cascade_impact' => app(\App\Services\Finance\BankManagementCascadePlanner::class)
+                ->inspect($project,'cheque',$id),
             'events' => $events->map(function ($event) use ($id) {
                 $event->has_memo = (bool) $event->memo_path;
                 $event->memo_url = $event->has_memo
