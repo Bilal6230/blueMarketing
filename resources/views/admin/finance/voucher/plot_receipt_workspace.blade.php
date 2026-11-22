@@ -24,7 +24,13 @@
  data-void-base="{{ url('admin/finance/voucher/plot-receipt') }}">
  <div class="bm-voucher-heading pr-heading d-flex align-items-center justify-content-between">
   <div><h2>Plot Receive Payment</h2><div class="bm-voucher-subtitle pr-subtitle">Selected project records · Full voucher Edit</div></div>
-  <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+  <div class="d-flex align-items-center" style="gap:6px">
+   <a href="{{ route('finance.daily-vouchers.approvals.index', ['type'=>'PPR']) }}" class="btn btn-outline-primary btn-sm">Approvals</a>
+   <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+   @if(auth()->user()?->can('finance plot-receipt create') || auth()->user()?->can('create plot') || auth()->user()?->can('add slip'))
+   <button type="button" id="prNewVoucher" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#prOriginalCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
+   @endif
+  </div>
  </div>
  <x-finance.voucher-filter-card class="pr-filter-card">
   <form id="prFilterForm" class="bm-voucher-filter-grid pr-filter-row">
@@ -35,9 +41,7 @@
    <div class="bm-voucher-filter-actions pr-filter-actions">
     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
     <button type="button" id="prResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
-    @can('finance plot-receipt create')
-    <button type="button" id="prNewVoucher" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#prOriginalCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
-    @endcan
+
    </div>
   </form>
  </x-finance.voucher-filter-card>
