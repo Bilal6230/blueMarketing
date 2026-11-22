@@ -15,7 +15,7 @@ final class RemainingVoucherNumberMilestonesContractTest extends TestCase
 
         self::assertStringContainsString("name('finance.voucher.transfer.next-number')", $routes);
         self::assertStringContainsString("function transferVoucherNextNumber(", $controller);
-        self::assertStringContainsString("->preview($projectId,$series)", $controller);
+        self::assertStringContainsString('->preview($projectId,$series)', $controller);
         self::assertStringContainsString("'finance.voucher.transfer.next-number'=>'view'", $permissions);
         self::assertStringContainsString('id="btVoucherNumber"', $view);
         self::assertStringContainsString('readonly aria-readonly="true"', $view);
@@ -52,6 +52,6 @@ final class RemainingVoucherNumberMilestonesContractTest extends TestCase
     public function test_commission_form_and_new_header_use_the_same_number_style(): void
     {
         $identity = file_get_contents(base_path('app/Services/Finance/ProjectVoucherDisplayIdentity.php'));
-        self::assertStringContainsString("'CV' => CommissionVoucherNumber::display((int)$match[1])", $identity);
+        self::assertStringContainsString("'CV' => CommissionVoucherNumber::display((int)\$match[1])", $identity);
     }
 }
