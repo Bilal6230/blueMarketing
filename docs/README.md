@@ -2,7 +2,7 @@
 
 # BlueMarketing — Current Development Handoff
 
-**Updated:** 2026-11-19  
+**Updated:** 2026-11-22  
 **Branch:** `upgrade/laravel-framework`  
 **Local application:** `C:\laragon\www\blueMarketing`  
 **Database:** whichever database is configured in `.env`. Owner currently uses `bluenew_clean_final`. Never hard-code database names, introduce separate V2 finance, or reinstate V2 isolation.
@@ -15,9 +15,21 @@
 | 01 | Nonblocking loading and voucher-tinted skeletons | **COMPLETE** — owner browser + PHP tests PASS |
 | 02 | Action-specific permissions, Roles page and backend enforcement | **PARTIAL ACCEPTANCE** — implemented, tests PASS, owner confirmed CR Edit visibly works; complete cross-module browser permission matrix not yet accepted |
 | **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. Plot/JV/CV differential correction owner-accepted; Approved CV browser PASS, 16 tests PASS / 139 assertions. BD/BW same-batch Edit/Delete local **13 tests PASS / 102 assertions**, posting audit 6 projects clean (BD/BW browser still pending). SV production Create/Post and exact typed/legacy Edit/Delete now committed, **SV tests/browser pending**. PPR/EC/ECP and Stock/Labour remaining source-domain lifecycle acceptance incomplete. |
-| 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **STARTED — PRE-FLIGHT IMPLEMENTED**. Exact linked allocation impact now shown in Online/Cheque history; actual linked Edit/Delete transaction, releases and reallocation remain pending. |
+| 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **CODE IMPLEMENTED — LOCAL TEST/BROWSER ACCEPTANCE PENDING**. Online/Cheque Edit/Delete, atomic linked voucher void/release, supervised verified-source replacement, project and permission guards. |
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
+
+## Milestone 04 — Batch 2 (2026-11-22): management Edit/Delete and linked atomic cascade
+
+- Added `BankManagementSourceMutation` and `BankManagementMutationController` with scoped routes for Online/Cheque Edit, Update and Delete. Existing management register forms now support jQuery AJAX Edit and audited Withdraw. No migration or extra mapping tables.
+- **Unverified Pending/Received/Issued, unlinked:** Edit original source record under selected project lock. Delete archives it as `withdrawn` instead of removing bank/cheque evidence. Historical claims and verification events block unsafe direct edits.
+- **Confirmed/Cleared, linked or unlinked:** "Edit" is an audited **replacement**, not a historical rewrite: require authorized Super Admin with voucher deletion privilege and 3–500 character reason; original source and linked voucher ledger entries are voided/released in one DB transaction; new intake ID with NEW unique Online reference or Cheque number is created `pending` / `received` / `issued` and requires fresh bank verification. Old evidence is retained; original proof is never silently reused. Delete withdraws without creating replacement.
+- Verified native `BOR`/`BOP`/`DR` and documented old `CR`/`CP` source identities for the audited `BankVoucherAllocationRelease`; original project ledger/source amounts and directions must match. Pending approvals/corrections block cascade. Multiple allocations either all release or all rollback.
+- Authorization check for linked Delete is performed under project row lock, so another concurrent voucher writer cannot add an allocation between privilege check and mutation. Independent finance granular `edit`/`delete` permissions apply to every route; financial cascade also requires Super Admin and `delete voucher`.
+- Regression tests added: `BankManagementSourceMutationTest`, `BankManagementLinkedCascadeTest`, `BankManagementMutationContractTest`. Re-run existing `BankVoucherAllocationReleaseTest` and `BankManagementCascadePlannerContractTest`. **Not yet executed on owner's Laragon environment**. Never claim verified completion before these pass and user signs off browser scenarios.
+- **Browser test matrix:** Online pending edit/delete; Cheque received/issued edit/delete; confirmed/cleared unlinked withdraw/replace; one linked approved BOR/BOP release; multi-allocation source cascade; pending approval refusal and atomic rollback; project 3 and alternate project; permission-off user; repeat/duplicate reference refusal; view history and Party Ledger after void.
+- **No automatic transfer of old voucher approval to a new replacement.** New source must pass actual Online/Cheque management again and create newly numbered vouchers via existing workflow. No physical rows are hard deleted.
+- **Remaining acceptance:** local PHP feature/unit tests, live browser UX and multi-project ledger totals. Any blocked historic source remains untouched until reviewed.
 
 ## Milestone 04 — Batch 1 (2026-11-22): linked voucher impact preflight
 
