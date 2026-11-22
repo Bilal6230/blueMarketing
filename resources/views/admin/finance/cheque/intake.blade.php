@@ -493,7 +493,7 @@ $(function () {
              @json(auth()->user()->can('delete voucher')) &&
              @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary mr-1 cheque-edit-source')
-             .attr('data-id',r.id).text('Edit').appendTo($actions);
+             .attr('data-id',r.id).text(r.status==='cleared'?'Replace':'Edit').appendTo($actions);
         }
         if(r.status==='cleared' && @json(auth()->user()->can('finance cheque correct'))) {
             $('<button type="button" class="btn btn-sm btn-outline-info mr-1 cheque-correct-source">')
