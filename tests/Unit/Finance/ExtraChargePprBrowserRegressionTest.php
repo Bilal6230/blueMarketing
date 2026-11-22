@@ -11,7 +11,7 @@ final class ExtraChargePprBrowserRegressionTest extends TestCase
         $controller = file_get_contents(base_path('app/Http/Controllers/BookingController.php'));
         self::assertStringContainsString("'EXTRA_CHARGE_SOURCE_ALREADY_POSTED', 'FINANCE_SOURCE_DUPLICATE'", $controller);
         self::assertStringContainsString('Enter a different Slip No.', $controller);
-        self::assertStringContainsString("return response()->json(['message' => $safeMessage], 422)", $controller);
+        self::assertStringContainsString('return response()->json([\'message\' => $safeMessage], 422)', $controller);
     }
 
     public function test_plot_receipt_register_displays_new_and_approvals_actions(): void
