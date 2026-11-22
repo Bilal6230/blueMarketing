@@ -58,6 +58,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 </style>
 <div class="container-fluid bm-ui bm-voucher-directory bt-page {{ $kind === 'deposit' ? 'bt-credit' : 'bt-debit' }}" style="--voucher-accent:{{ $kind === 'deposit' ? '#128044' : '#bd3140' }};--voucher-tint:{{ $kind === 'deposit' ? '#e9f8ef' : '#fff0f1' }}" id="bankTransferApp" data-kind="{{ $kind }}"
     data-post-url="{{ route('finance.voucher.transfer.post',['kind'=>$kind]) }}"
+    data-next-number-url="{{ route('finance.voucher.transfer.next-number',['kind'=>$kind]) }}"
     data-update-base="{{ url('admin/finance/voucher/bank-transfer/'.$kind) }}"
     data-history-url="{{ route('finance.voucher.transfer.history',['kind'=>$kind]) }}"
     data-source-url="{{ route('finance.voucher.transfer.sources',['kind'=>$kind]) }}"
@@ -125,7 +126,12 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             </div>
             <form id="bankTransferCreateForm" novalidate>
                 <div class="modal-body">
-                    <div class="alert alert-info py-2">Voucher number is assigned by the posting workflow. {{ $kind === 'deposit' ? 'Bank debit / Cash credit' : 'Cash debit / Bank credit' }}.</div>
+                    <div class="form-group">
+                        <label for="btVoucherNumber">Voucher No.</label>
+                        <input id="btVoucherNumber" class="form-control" value="{{ $kind === 'deposit' ? 'BD' : 'BW' }} — loading" readonly aria-readonly="true">
+                        <small class="text-muted">Next project-specific number. Final serial is reserved during save.</small>
+                    </div>
+                    <div class="alert alert-info py-2">{{ $kind === 'deposit' ? 'Bank debit / Cash credit' : 'Cash debit / Bank credit' }}.</div>
                     @if($kind === 'withdrawal')
                     <div class="form-group"><label for="chequeSource">Verified cleared cheque (optional)</label>
                         <select id="chequeSource" class="form-control fvc-tom-select"><option value="">Manual bank withdrawal</option></select>
@@ -476,6 +482,17 @@ $(function () {
         syncSelect('#cashAccount,#bankAccount,#chequeSource');
         $('#voucherAmount').prop('readonly',false);
         $('#transferFormError').addClass('d-none');
+        if(!editingBatch){
+            $('#btVoucherNumber').val('Loading…');
+            $.ajax({url:$root.attr('data-next-number-url'),type:'GET',dataType:'json'})
+            .done(function(data){$('#btVoucherNumber').val(data.voucher_number);})
+            .fail(function(xhr){
+                $('#btVoucherNumber').val('Unavailable');
+                showError($('#transferFormError'),xhr,'Cannot load the next voucher number');
+            });
+        }else{
+            $('#btVoucherNumber').val('Existing voucher');
+        }
         if(editingBatch){
             $('#chequeSource').prop('disabled',true);
             $.ajax({url:$root.attr('data-update-base')+'/'+encodeURIComponent(editingBatch)+'/details',
