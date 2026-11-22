@@ -1274,7 +1274,32 @@ class VoucherController extends Controller
                         'approval_status'=>(string)$draft->status,'reversed'=>false];
                 });
         }
-        return response()->json(['data'=>$active->concat($pending)
+        // The original Plot Receive Payment register uses booking_vouchers.
+        // Preserve that production history on the modern PPR page. It remains
+        // read-only here; legacy receipts keep their original workflow/print.
+        $legacy = collect();
+        if (Schema::hasTable('booking_vouchers')) {
+            $legacy = DB::table('booking_vouchers as bv')
+                ->leftJoin('leads as customer', 'customer.id', '=', 'bv.customer_id')
+                ->where('bv.project_id', $projectId)->where('bv.voucher_series', 'PPR')
+                ->where('bv.is_active', 1)
+                ->orderByDesc('bv.receipt_date')->orderByDesc('bv.id')
+                ->limit(2000)
+                ->get(['bv.id','bv.voucher_number','bv.receipt_date','bv.amount',
+                    'bv.description','bv.is_approve','customer.first_name',
+                    'customer.last_name','customer.business'])
+                ->map(fn($row) => [
+                    'id'=>null,'legacy_id'=>(int)$row->id,
+                    'number'=>'PPR-'.(int)$row->voucher_number,
+                    'date'=>substr((string)$row->receipt_date,0,10),
+                    'customer'=>trim((string)$row->first_name.' '.(string)$row->last_name)
+                        ?: (string)($row->business??'Customer'),
+                    'amount'=>(string)$row->amount,'narration'=>(string)$row->description,
+                    'reversed'=>false,'legacy'=>true,
+                    'approval_status'=>(int)$row->is_approve===1?'approved':'pending',
+                ]);
+        }
+        return response()->json(['data'=>$active->concat($pending)->concat($legacy)
             ->sortByDesc(fn($row)=>($row['date']??'').'|'.($row['number']??''))
             ->values()]);
     }
