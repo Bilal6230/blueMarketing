@@ -34,7 +34,8 @@ final class BankManagementMutationController extends Controller
     public function show(Request $request,string $method,int $id)
     {
         abort_unless(in_array($method,['online','cheque'],true),404);
-        $this->authorizeAction($request,$method,'edit');
+        abort_unless($request->user()?->can('finance '.$method.' edit')
+            || $request->user()?->can('finance '.$method.' correct'),403);
         $project=$this->project();
         $table=$method==='online'?'finance_online_intakes':'finance_cheque_intakes';
         $record=DB::table($table)->where('project_id',$project)->where('id',$id)->first();
