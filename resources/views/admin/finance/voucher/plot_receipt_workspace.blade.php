@@ -425,6 +425,56 @@
   }).always(function(){$button.prop('disabled',false);});
  });
  @endcan
+ // Original single-booking PPR form uses the existing booking source writer.
+ var fillOriginalCustomers=function(){
+  var names={},$customers=$('#prOriginalCustomer').empty();
+  $customers.append($('<option>',{value:'',text:'Select customer'}));
+  bookings.forEach(function(b){names[b.customer_id]=b.customer;});
+  Object.keys(names).sort(function(a,b){return names[a].localeCompare(names[b]);}).forEach(function(id){
+   $customers.append($('<option>',{value:id,text:names[id]}));
+  });
+  $('#prOriginalPlot').empty().append($('<option>',{value:'',text:'Select plot'}));
+ };
+ $('#prOriginalCustomer').on('change',function(){
+  var id=Number($(this).val()),seen={};
+  var $plots=$('#prOriginalPlot').empty().append($('<option>',{value:'',text:'Select plot'}));
+  bookings.filter(function(b){return Number(b.customer_id)===id;}).forEach(function(b){
+   if(seen[b.plot_id])return;seen[b.plot_id]=true;
+   $plots.append($('<option>',{value:b.plot_id,text:b.plot+' · Booking #'+b.booking_id}));
+  });
+ });
+ $('#prOriginalPayment').on('change',function(){
+  var bank=String($(this).val())!=='1',cheque=String($(this).val())==='3';
+  $('.pr-original-bank').toggleClass('d-none',!bank);
+  $('.pr-original-cheque').toggleClass('d-none',!cheque);
+  $('#prOriginalForm [name="t_number"],#prOriginalForm [name="bank_id"],#prOriginalForm [name="passing_date"]').prop('required',bank);
+  $('#prOriginalForm [name="cheque_purpose"]').prop('required',cheque);
+ });
+ $('#prNewVoucher').on('click.originalPpr',function(){
+  $('#prOriginalForm')[0].reset();$('#prOriginalError').addClass('d-none').text('');
+  fillOriginalCustomers();$('#prOriginalPayment').trigger('change');
+  ajax($root.attr('data-number-preview-url'),'GET').done(function(data){
+   $('#prOriginalNumber').val(data.voucher_number);
+  }).fail(function(){
+   $('#prOriginalError').removeClass('d-none').text('Cannot refresh PPR number.');
+  });
+ });
+ $('#prOriginalForm').on('submit',function(event){
+  event.preventDefault();
+  var $form=$(this),$save=$('#prOriginalSave').prop('disabled',true);
+  $('#prOriginalError').addClass('d-none');
+  $.ajax({url:$form.attr('action'),type:'POST',data:$form.serialize(),dataType:'json',
+   headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
+   .done(function(response){
+    $('#prOriginalCreateModal').modal('hide');
+    notify('success',response.message||'PPR voucher saved.');
+    loadHistory();
+   }).fail(function(xhr){
+    var data=xhr.responseJSON||{};
+    $('#prOriginalError').removeClass('d-none')
+     .text(data.message||Object.values(data.errors||{}).flat().join(' ')||'PPR voucher could not be saved.');
+   }).always(function(){$save.prop('disabled',false);});
+ });
  $('#prCustomer').on('change',drawBookings);
  $('#prSearch').on('input',drawBookings);
  $('#prBookingRows').on('change','.pr-check',function(){$(this).closest('tr').toggleClass('pr-picked',$(this).prop('checked'));recalc();})
