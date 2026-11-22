@@ -34,6 +34,8 @@ final class VoucherSettingsController extends Controller
         'PPR' => ['label'=>'Plot Receive Payment Voucher', 'supported'=>true],
         'PP' => ['label'=>'Plot Purchase Voucher', 'supported'=>true],
         'SV' => ['label'=>'Sales Voucher', 'supported'=>true],
+        'ONL_CORR' => ['label'=>'Online Transaction Correction', 'supported'=>true],
+        'CHQ_CORR' => ['label'=>'Cheque Correction', 'supported'=>true],
     ];
 
     private function authorizeSettings(): int
@@ -95,7 +97,7 @@ final class VoucherSettingsController extends Controller
         );
         return response()->json([
             'success'=>true,
-            'message'=>$type.' approval policy saved for the selected project. Changes apply to new vouchers only.',
+            'message'=>$type.' approval policy saved for the selected project. Changes apply to new correction requests or vouchers only.',
             'data'=>['voucher_type'=>$type,'approval_required'=>$required,'approver_user_id'=>$approverId],
         ]);
     }
