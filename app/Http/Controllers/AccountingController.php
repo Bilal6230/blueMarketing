@@ -1081,6 +1081,12 @@ class AccountingController extends Controller
             ->whereBetween('date', [$fdate, $tdate])
             ->where('is_active', 1)
             ->get();
+        // Resolve voucher labels through verified, project-owned source FKs;
+        // never infer a source from a reused type_id alone.
+        $voucherDisplay = app(\App\Services\Finance\LedgerVoucherDisplayService::class);
+        $ledgerDetails->each(function ($ledger) use ($voucherDisplay, $projects_id) {
+            $ledger->display_voucher_number = $voucherDisplay->display($ledger, (int)$projects_id);
+        });
 
         // Fetch party details
         $partyDetails = ProjectHeadSubhead::whereIn('id', $projectHeadSubheads)
