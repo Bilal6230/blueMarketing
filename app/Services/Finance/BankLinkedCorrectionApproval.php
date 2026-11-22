@@ -106,7 +106,7 @@ final class BankLinkedCorrectionApproval
                 $result=app(BankLinkedCorrection::class)->confirm($projectId,
                     (string)$request->source_method,(int)$request->source_id,$actorId,
                     (string)$request->reason,$request->proposed_amount,$proposed,
-                    (string)$request->fingerprint);
+                    (string)$request->fingerprint,(int)$request->submitted_by);
             }
             DB::table('finance_bank_correction_requests')->where('id',$requestId)
                 ->where('project_id',$projectId)->update([
