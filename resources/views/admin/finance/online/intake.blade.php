@@ -225,6 +225,10 @@ $(function(){
  var confirmUrlTemplate=@json(route('finance.online.confirm',['id'=>'__ONLINE_ID__']));
  var historyUrlTemplate=@json(route('finance.online.history',['id'=>'__ONLINE_ID__']));
  var linkedPrintUrlTemplate=@json(route('finance.bank_source.linked_print',['method'=>'online','source'=>'__ONLINE_ID__']));
+ var bankMutationUrl=@json(route('finance.bank-management.update',['method'=>'online','id'=>'__SOURCE_ID__']));
+ var bankMutationEditUrl=@json(route('finance.bank-management.edit',['method'=>'online','id'=>'__SOURCE_ID__']));
+ var bankMutationDeleteUrl=@json(route('finance.bank-management.delete',['method'=>'online','id'=>'__SOURCE_ID__']));
+ var editingOnlineId=null;
  var mappings=@json($mappings);
  function fit(){
   var $page=$('.online-register-page');
@@ -328,6 +332,11 @@ $(function(){
   $('#online-file-name').text(files&&files.length?files[0].name:'No file selected');
  });
  function resetEntry(){
+  editingOnlineId=null;
+  $entry.attr('action',@json(route('finance.online.store')));
+  $modal.find('.modal-title').text('Add Online Transaction');
+  $('#online-save').text('Save Transaction');
+  $('#online-proof').prop('disabled',false);
   $entry.trigger('reset');
   tsSet($('#online-entry-type'),'receipt');
   tsSet($('#online-head'),'');
@@ -335,7 +344,7 @@ $(function(){
   $('#online-file-name').text('No file selected');
   clearErrors();
  }
- $('#online-add').on('click',function(){clearErrors();$modal.modal('show');});
+ $('#online-add').on('click',function(){resetEntry();$modal.modal('show');});
  function filters(page){
   var payload={page:page,per_page:$('#online-per-page').val()};
   $.each($('#online-filters').serializeArray(),function(_,f){if(f.value)payload[f.name]=f.value;});
@@ -372,6 +381,16 @@ $(function(){
     .text('Confirm').appendTo($actions);
   }
   @endcan
+  if(x.status==='pending' && @json(auth()->user()->can('finance online edit'))){
+   $('<button type="button">').addClass('btn btn-outline-primary btn-sm mr-1 online-edit-button')
+    .attr('data-id',x.id).text('Edit').appendTo($actions);
+  }
+  if(@json(auth()->user()->can('finance online delete')) &&
+     (x.status==='pending' || (Number(x.linked_voucher_count||0)>0 &&
+       @json(auth()->user()->can('delete voucher')) && @json(auth()->user()->hasRole('Super Admin'))))){
+   $('<button type="button">').addClass('btn btn-outline-danger btn-sm mr-1 online-delete-button')
+    .attr('data-id',x.id).text('Delete').appendTo($actions);
+  }
   if(@json(auth()->user()->can('finance online history')) && Number(x.linked_voucher_count||0)>0){
    $('<button type="button">').addClass('btn btn-outline-primary btn-sm mr-1 online-history-button')
     .attr({'data-id':x.id,'data-reference':x.reference,'title':'Open linked voucher allocation history'})
@@ -463,13 +482,21 @@ $(function(){
   if(!window.Swal||!$.isFunction(window.Swal.fire)){toast('Confirmation popup unavailable.',true);return;}
   window.Swal.fire({
    icon:'question',title:'Confirm Online Transaction',
-   text:'Save this '+($('#online-entry-type').val()==='receipt'?'Receipt':'Payment')+' as Pending? No bank voucher or ledger posting will be created.',
+   text:(editingOnlineId?'Update this unlinked Pending transaction?':'Save this Pending transaction?')+' No bank voucher or ledger posting will be created.',
    showCancelButton:true,confirmButtonText:'Yes, Save Pending',cancelButtonText:'Cancel',confirmButtonColor:'#168348'
   }).then(function(result){
    if(!result.isConfirmed||busy)return;
    busy=true;$('#online-save').prop('disabled',true);
+   var payload=new FormData($entry[0]);
+   if(editingOnlineId){
+    payload.append('_method','PUT');
+    var head=$('#online-head').val(),child=$('#online-child').val();
+    var account=$.grep(mappings,function(m){return String(m.head_id)===String(head)&&String(m.child_id)===String(child);})[0];
+    if(!account){toast('Select a valid project account.',true);busy=false;$('#online-save').prop('disabled',false);return;}
+    payload.set('account_mapping_id',String(account.id));
+   }
    $.ajax({
-    url:$entry.attr('action'),method:'POST',data:new FormData($entry[0]),
+    url:$entry.attr('action'),method:'POST',data:payload,
     processData:false,contentType:false,dataType:'json',headers:{Accept:'application/json'}
    }).done(function(data){
     toast(data.message||'Online transaction saved.',false);
@@ -489,6 +516,46 @@ $(function(){
     toast(msg,true);window.Swal.fire({icon:'error',title:'Online Transaction Not Saved',text:msg});
    }).always(function(){busy=false;$('#online-save').prop('disabled',false);});
   });
+ });
+ // Source edit is permitted only before bank confirmation and before any
+ // historical allocation or claim; the server repeats all checks under lock.
+ $rows.on('click','.online-edit-button',function(){
+  var id=String($(this).attr('data-id'));
+  $.ajax({url:bankMutationEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
+   .done(function(response){
+    if(!response.cascade_impact||!response.cascade_impact.can_edit_directly){
+     toast(response.cascade_impact&&response.cascade_impact.reason||'Source cannot be edited.',true);return;
+    }
+    resetEntry();editingOnlineId=id;
+    var record=response.data;
+    $entry.attr('action',bankMutationUrl.replace('__SOURCE_ID__',id));
+    $modal.find('.modal-title').text('Edit Online Transaction');
+    $('#online-save').text('Update Transaction');
+    $('#online-proof').prop('disabled',true);
+    $.each(['reference','transaction_date','amount','sending_bank','sending_account',
+     'receiving_bank','receiving_account','sender_name','receiver_name','purpose'],function(_,field){
+     $entry.find('[name="'+field+'"]').val(record[field]||'');
+    });
+    tsSet($('#online-entry-type'),record.type);
+    var mapping=$.grep(mappings,function(m){return Number(m.id)===Number(record.account_mapping_id);})[0];
+    if(mapping){tsSet($('#online-head'),mapping.head_id);children(mapping.head_id,false);tsSet($('#online-child'),mapping.child_id);}
+    $modal.modal('show');
+   }).fail(function(xhr){toast(xhr.responseJSON&&xhr.responseJSON.message||'Cannot load source for editing.',true);});
+ });
+ $rows.on('click','.online-delete-button',function(){
+  var id=String($(this).attr('data-id'));
+  if(!window.Swal)return;
+  window.Swal.fire({title:'Withdraw Online Transaction?',text:'Verified linked vouchers will be voided and allocations released atomically. Original evidence is retained.',
+   input:'textarea',inputPlaceholder:'Required reason (3–500 characters)',showCancelButton:true,
+   confirmButtonText:'Withdraw',confirmButtonColor:'#d33',inputValidator:function(value){
+    if(!value||value.trim().length<3)return 'Please enter a reason of at least 3 characters.';
+   }}).then(function(result){
+    if(!result.isConfirmed)return;
+    $.ajax({url:bankMutationDeleteUrl.replace('__SOURCE_ID__',id),method:'DELETE',
+     data:{_token:$entry.find('[name="_token"]').val(),reason:result.value},dataType:'json'})
+     .done(function(data){toast(data.message||'Source withdrawn.',false);load(1);})
+     .fail(function(xhr){toast(xhr.responseJSON&&xhr.responseJSON.message||'Withdrawal refused.',true);});
+   });
  });
  // 02.2: read-only project-scoped history for all records.
  $rows.on('click','.online-history-button',function(){
