@@ -17,7 +17,7 @@ final class BankManagementMutationContractTest extends TestCase
             self::assertStringContainsString("name('$name')",$routes);
             self::assertStringContainsString("'$name'",$access);
         }
-        self::assertStringContainsString("return [$method, $name === 'finance.bank-management.delete' ? 'delete' : 'edit']", $access);
+        self::assertStringContainsString('return [$method, $name === \'finance.bank-management.delete\' ? \'delete\' : \'edit\']', $access);
         self::assertStringContainsString('VoucherApproverAccess::isSuperAdmin($user)', $controller);
         self::assertStringContainsString("->lockForUpdate()->first()", $controller);
     }
@@ -31,7 +31,7 @@ final class BankManagementMutationContractTest extends TestCase
         self::assertStringContainsString('->withdraw($projectId,$method,$sourceId,$actorId,$reason)', $mutation);
         self::assertStringContainsString('\'status\']=\'pending\'', $mutation);
         self::assertStringContainsString('\'status\']=$changes[\'direction\']===\'out\'?\'issued\':\'received\'', $mutation);
-        self::assertStringContainsString("bank voucher", strtolower($mutation));
+        self::assertStringContainsString('finance_bank_voucher_allocations', $mutation);
     }
 
     public function test_online_and_cheque_management_forms_use_jquery_and_distinct_edit_delete_controls(): void
