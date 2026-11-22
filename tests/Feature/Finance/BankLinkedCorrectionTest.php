@@ -3,6 +3,7 @@
 namespace Tests\Feature\Finance;
 
 use App\Services\Finance\BankLinkedCorrection;
+use App\Services\Finance\BankLinkedCorrectionApproval;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -79,6 +80,21 @@ final class BankLinkedCorrectionTest extends TestCase
             $t->longText('proposed_snapshot'); $t->string('reason');
             $t->unsignedBigInteger('submitted_by');
             $t->unsignedBigInteger('decided_by')->nullable(); $t->timestamps();
+        });
+        Schema::create('daily_voucher_approval_policies', function (Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('project_id');
+            $t->string('voucher_type'); $t->boolean('approval_required');
+            $t->unsignedBigInteger('approver_user_id')->nullable(); $t->timestamps();
+        });
+        Schema::create('finance_bank_correction_requests', function (Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('project_id');
+            $t->string('source_method'); $t->unsignedBigInteger('source_id');
+            $t->unsignedBigInteger('submitted_by'); $t->unsignedBigInteger('assigned_approver_id')->nullable();
+            $t->unsignedBigInteger('decided_by')->nullable(); $t->string('status');
+            $t->string('fingerprint'); $t->decimal('proposed_amount',18,2);
+            $t->longText('proposed_vouchers_json'); $t->string('reason');
+            $t->string('decision_reason')->nullable(); $t->timestamp('decided_at')->nullable();
+            $t->timestamps();
         });
         DB::table('projects')->insert([['id'=>1],['id'=>2]]);
         DB::table('project_head_subheads')->insert([['id'=>7,'project_id'=>1],['id'=>9,'project_id'=>2]]);
@@ -236,6 +252,37 @@ final class BankLinkedCorrectionTest extends TestCase
         self::assertEquals(200,DB::table('ledgers')->where('customer_ledger_id',41)->value('amount_in'));
         self::assertEquals(450,DB::table('finance_cheque_intakes')->where('id',77)->value('amount'));
         self::assertSame(1,DB::table('finance_bank_voucher_allocations')->count());
+    }
+
+    public function test_approval_off_applies_same_id_partial_correction_immediately(): void
+    {
+        $this->voucher(41,'BOR','cheque',77,'200.00');
+        $plan=app(BankLinkedCorrection::class)->preview(1,'cheque',77,'420.00',[41=>'200.00']);
+        $result=app(BankLinkedCorrectionApproval::class)->submit(
+            1,'cheque',77,7,'Correct remaining unallocated amount',
+            '420.00',[41=>'200.00'],$plan['fingerprint']);
+        self::assertFalse($result['pending']);
+        self::assertSame(0,DB::table('finance_bank_correction_requests')->count());
+        self::assertEquals(420,DB::table('finance_cheque_intakes')->where('id',77)->value('amount'));
+        self::assertEquals(200,DB::table('ledgers')->where('customer_ledger_id',41)->value('amount_in'));
+    }
+
+    public function test_existing_pending_request_prevents_direct_new_correction(): void
+    {
+        $this->voucher(41,'BOR','cheque',77,'200.00');
+        DB::table('finance_bank_correction_requests')->insert([
+            'project_id'=>1,'source_method'=>'cheque','source_id'=>77,
+            'submitted_by'=>7,'assigned_approver_id'=>8,'status'=>'pending',
+            'fingerprint'=>str_repeat('a',64),'proposed_amount'=>420,
+            'proposed_vouchers_json'=>'{}','reason'=>'Earlier correction',
+            'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        $plan=app(BankLinkedCorrection::class)->preview(1,'cheque',77,'430.00',[41=>'200.00']);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('already awaits approval');
+        app(BankLinkedCorrectionApproval::class)->submit(
+            1,'cheque',77,7,'Second correction should be blocked',
+            '430.00',[41=>'200.00'],$plan['fingerprint']);
     }
 
     public function test_cross_project_cannot_read_or_correct_linked_cheque(): void
