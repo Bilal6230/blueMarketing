@@ -33,8 +33,8 @@ jQuery(function($) {
                 var row=rows.filter(function(x){return String(x.id)===String($select.val());})[0];
                 if(!row)return;
                 var proposed=JSON.parse(row.proposed_vouchers_json||'{}');
-                $details.text('Source amount: '+row.proposed_amount+'\\n'+
-                    'Voucher proposals: '+JSON.stringify(proposed,null,2)+'\\nReason: '+row.reason);
+                $details.text('Source amount: '+row.proposed_amount+'\n'+
+                    'Voucher proposals: '+JSON.stringify(proposed,null,2)+'\nReason: '+row.reason);
             }
             $select.on('change',draw);draw();
             $layout.append($('<label class="d-block mt-2">').text('Decision'));
