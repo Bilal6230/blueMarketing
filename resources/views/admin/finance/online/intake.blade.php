@@ -397,6 +397,10 @@ $(function(){
    $('<button type="button">').addClass('btn btn-outline-primary btn-sm mr-1 online-edit-button')
     .attr('data-id',x.id).text('Edit').appendTo($actions);
   }
+  if(x.status==='confirmed' && @json(auth()->user()->can('finance online correct'))) {
+    $('<button type="button" class="btn btn-outline-info btn-sm mr-1 online-correct-source">')
+     .attr('data-id',x.id).text('Correct').appendTo($actions);
+  }
   if(@json(auth()->user()->can('finance online delete')) &&
      (x.status==='pending' || (x.status==='confirmed' &&
        @json(auth()->user()->can('delete voucher')) && @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))))){
@@ -543,6 +547,17 @@ $(function(){
  });
  // Source edit is permitted only before bank confirmation and before any
  // historical allocation or claim; the server repeats all checks under lock.
+ $rows.on('click','.online-correct-source',function(){
+  var id=String($(this).attr('data-id'));
+  $.getJSON(bankMutationEditUrl.replace('__SOURCE_ID__',id))
+   .done(function(response){
+    $(document).trigger('bank-linked-correction-direct',[{
+     method:'online',id:id,record:response.data,
+     impact:response.cascade_impact,verified:true,
+     reloadSelector:'#online-filters'
+    }]);
+   }).fail(function(xhr){toast(xhr.responseJSON&&xhr.responseJSON.message||'Cannot open correction.',true);});
+ });
  $rows.on('click','.online-edit-button',function(){
   var id=String($(this).attr('data-id'));
   $.ajax({url:bankMutationEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
@@ -559,7 +574,7 @@ $(function(){
     editingOnlineReplacement=!!response.cascade_impact.requires_cascade || record.status==='confirmed';
     $(document).trigger('bank-linked-correction-ready',[{
      method:'online',id:id,record:record,impact:response.cascade_impact,
-     verified:record.status==='confirmed' && @json(auth()->user()->can('delete voucher')),saveSelector:'#online-save',
+     verified:record.status==='confirmed' && @json(auth()->user()->can('finance online correct')),saveSelector:'#online-save',
      modalSelector:'#online-entry-modal',reloadSelector:'#online-filters'
     }]);
     $('#online-replacement-reason-wrap').toggleClass('d-none',!editingOnlineReplacement);
