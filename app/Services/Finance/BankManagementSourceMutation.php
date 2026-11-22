@@ -61,6 +61,12 @@ final class BankManagementSourceMutation
                     ->where('id', (int) $updates['account_mapping_id'])->exists();
                 if (!$mapping) throw new \DomainException('Account mapping belongs to another project.');
             }
+            if ($method === 'cheque' && isset($updates['account_mapping_id'])
+                && Schema::hasColumn('project_head_subheads','customer_id')) {
+                $updates['customer_id']=DB::table('project_head_subheads')
+                    ->where('project_id',$projectId)
+                    ->where('id',(int)$updates['account_mapping_id'])->value('customer_id');
+            }
             $updates['updated_at'] = now();
             DB::table($table)->where('project_id', $projectId)->where('id', $sourceId)
                 ->update($updates);
@@ -219,7 +225,10 @@ final class BankManagementSourceMutation
                     'amount','bank_name','branch','received_from','purpose','account_mapping_id']));
                 $row['cheque_number']=$number;
                 $row['bank_name']=$bank;
-                $row['customer_id']=$source->customer_id;
+                $row['customer_id']=Schema::hasColumn('project_head_subheads','customer_id')
+                    ? DB::table('project_head_subheads')->where('project_id',$projectId)
+                        ->where('id',(int)$changes['account_mapping_id'])->value('customer_id')
+                    : $source->customer_id;
                 $row['attachment_path']=null; // Old cheque image belongs only to the archived source.
                 $row['customer_ledger_id']=null;
                 $row['status']=$changes['direction']==='out'?'issued':'received';
