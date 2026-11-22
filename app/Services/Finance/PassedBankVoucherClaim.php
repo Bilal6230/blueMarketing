@@ -33,15 +33,23 @@ final class PassedBankVoucherClaim
         $source=DB::table($intake)->where('project_id',$projectId)->where('id',$id)
             ->lockForUpdate()->first();
         if(!$source)throw new \DomainException('Bank source is not available in selected project.');
+        if (Schema::hasTable('finance_bank_correction_requests') &&
+            DB::table('finance_bank_correction_requests')->where('project_id',$projectId)
+                ->where('source_method',$kind)->where('source_id',$id)
+                ->where('status','pending')->exists()) {
+            throw new \DomainException('Bank correction awaits approval; new vouchers are temporarily blocked.');
+        }
         // Legacy single-use claims stay fully reserved, never silently reallocated.
         if(DB::table($table)->where('project_id',$projectId)->where($column,$id)->exists())
             throw new \DomainException('This source was fully claimed by an earlier voucher.');
         if($kind==='online'){
             $evidence=DB::table($events)->where('project_id',$projectId)
                 ->where('online_intake_id',$id)->where('from_status','pending')
-                ->where('to_status','confirmed')->where('original_amount',$source->amount)
+                ->where('to_status','confirmed')
                 ->where('transaction_type',$source->type)->first();
-            $valid=$source->status==='confirmed' && $source->type===$direction && $evidence;
+            $valid=$source->status==='confirmed' && $source->type===$direction && $evidence
+                && BankSourceCorrectionEvidence::matchesOnlineAmount($projectId,$id,
+                    $evidence->original_amount,$source->amount);
             $sourceNumber=(string)$source->reference;
         }else{
             $evidence=DB::table($events)->where('project_id',$projectId)
