@@ -93,7 +93,21 @@ final class BankManagementSourceMutation
                 ->lockForUpdate()->get(['id','voucher_id','voucher_type']);
             $releases = [];
             if ($allocations->isEmpty()) {
-                $this->assertUnlinkedAndEditable($projectId, $method, $sourceId, $source);
+                $verified = $method === 'online'
+                    ? (string)$source->status === 'confirmed'
+                    : in_array((string)$source->status,['cleared','returned','rejected'],true);
+                if ($verified) {
+                    // Verified unallocated sources may be retired, but only if
+                    // no historic claim has reserved the instrument.
+                    $claimTable=$method==='online'?'finance_online_voucher_claims':'finance_cheque_voucher_claims';
+                    $claimColumn=$method==='online'?'online_intake_id':'cheque_intake_id';
+                    if (!Schema::hasTable($claimTable) || DB::table($claimTable)
+                        ->where('project_id',$projectId)->where($claimColumn,$sourceId)->exists()) {
+                        throw new \DomainException('Unreleased historical claim or unavailable evidence.');
+                    }
+                } else {
+                    $this->assertUnlinkedAndEditable($projectId, $method, $sourceId, $source);
+                }
             } else {
                 // Historical fully released allocations remain immutable.
                 foreach ($allocations as $allocation) {
@@ -161,7 +175,8 @@ final class BankManagementSourceMutation
             $links=DB::table('finance_bank_voucher_allocations')
                 ->where('project_id',$projectId)->where('source_method',$method)
                 ->where('source_id',$sourceId)->exists();
-            if (!$links) throw new \DomainException('Use ordinary Edit for an unlinked source.');
+            // Verified sources, with or without allocations, are replaced
+            // rather than overwritten; unverified sources use ordinary Edit.
             if ($method==='online' && (string)$source->status!=='confirmed') {
                 throw new \DomainException('Only confirmed linked online sources may be replaced.');
             }
