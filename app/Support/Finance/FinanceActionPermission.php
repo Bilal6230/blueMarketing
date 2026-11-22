@@ -215,6 +215,12 @@ final class FinanceActionPermission
             return [self::sourceModule((int)$route->parameter('customerLedger')),'print'];
         }
         if (isset($fixed[$name])) return $fixed[$name];
+        if (in_array($name, ['finance.bank-management.edit',
+            'finance.bank-management.update','finance.bank-management.delete'], true)) {
+            $method = (string) $request->route('method');
+            if (!in_array($method, ['online','cheque'],true)) return null;
+            return [$method, $name === 'finance.bank-management.delete' ? 'delete' : 'edit'];
+        }
         if ($name === 'finance.cheques.action') {
             return ['cheque', $request->input('action') === 'withdrawal' ? 'withdraw' : 'clear'];
         }
