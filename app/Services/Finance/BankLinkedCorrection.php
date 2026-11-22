@@ -60,7 +60,8 @@ final class BankLinkedCorrection
      * voucher, ledger and evidence writes share one database transaction.
      */
     public function confirm(int $projectId, string $method, int $sourceId, int $actorId,
-        string $reason, mixed $newAmount, array $voucherAmounts, string $expectedFingerprint): array
+        string $reason, mixed $newAmount, array $voucherAmounts, string $expectedFingerprint,
+        ?int $submittedBy=null): array
     {
         $reason = trim($reason);
         if ($actorId < 1 || mb_strlen($reason) < 3 || mb_strlen($reason) > 500
@@ -68,7 +69,7 @@ final class BankLinkedCorrection
             throw new \DomainException('A valid actor, reason and reviewed correction fingerprint are required.');
         }
         return DB::transaction(function () use ($projectId,$method,$sourceId,$actorId,$reason,
-            $newAmount,$voucherAmounts,$expectedFingerprint): array {
+            $newAmount,$voucherAmounts,$expectedFingerprint,$submittedBy): array {
             $plan = $this->inspectLocked($projectId,$method,$sourceId,
                 $this->money($newAmount),$voucherAmounts);
             if (!hash_equals($plan['fingerprint'],$expectedFingerprint)) {
@@ -112,7 +113,7 @@ final class BankLinkedCorrection
                         'allocation_id'=>$item['allocation_id'],'ledger_id'=>$item['ledger_id'],
                         'voucher_type'=>$item['series'],'amount'=>$new
                     ],JSON_THROW_ON_ERROR),
-                    'reason'=>$reason,'submitted_by'=>$actorId,'decided_by'=>$actorId,
+                    'reason'=>$reason,'submitted_by'=>$submittedBy??$actorId,'decided_by'=>$actorId,
                     'created_at'=>$now,'updated_at'=>$now,
                 ]);
             }
