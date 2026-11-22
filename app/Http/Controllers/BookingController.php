@@ -3236,6 +3236,20 @@ class BookingController extends Controller
                         }
 
                         $this->syncBookingVoucherRecord($customerLedger, $ledger, $displayVoucherNumber > 0 ? $displayVoucherNumber : null);
+                        // The original single-booking PPR flow must honor the
+                        // same per-project approval policy as the modern writer.
+                        // Keep the source and linked ledger inactive until the
+                        // assigned approver decides; the booking voucher itself
+                        // remains visible in the approval/history register.
+                        if (!$duplicateLedger) {
+                            $approvalPending = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
+                                ->submitIfRequired($projectId, 'PPR', 'customer_ledger',
+                                    (int)$customerLedger->id, (int)Auth::id());
+                            if ($approvalPending) {
+                                $customerLedger->forceFill(['is_active' => 0, 'is_approve' => 0])->save();
+                                $ledger->forceFill(['is_active' => 0])->save();
+                            }
+                        }
                     });
 
 
