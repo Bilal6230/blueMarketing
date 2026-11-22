@@ -415,6 +415,8 @@ final class OnlineIntakeController extends Controller
             'transaction'=>$record,'events'=>$events,
             'linked_vouchers'=>app(\App\Services\Finance\BankSourceLinkedVoucherHistory::class)
                 ->forSource($project,'online',$id),
+            'cascade_impact'=>app(\App\Services\Finance\BankManagementCascadePlanner::class)
+                ->inspect($project,'online',$id),
             'eligibility'=>[
                 'eligible'=>$eligibleForFutureVoucher,
                 'reason'=>$eligibilityReason,
