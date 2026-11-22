@@ -136,7 +136,7 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
   </div>
  </div>
 </div>
-@if(auth()->user()->can('finance online create') || auth()->user()->can('finance online edit'))
+@if(auth()->user()->can('finance online create') || auth()->user()->can('finance online edit') || auth()->user()->can('finance online correct'))
 <div class="modal fade" id="online-entry-modal" tabindex="-1" role="dialog" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title">Add Online Transaction</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
@@ -338,6 +338,7 @@ $(function(){
  });
  function resetEntry(){
   editingOnlineId=null;editingOnlineReplacement=false;editingOnlineCorrection=false;
+  $entry.find('[name=reference]').prop('readonly',false);
   $('#online-replacement-reason-wrap').addClass('d-none');
   $('#online-replacement-reason').prop('required',false).val('');
   $entry.attr('action',@json(route('finance.online.store')));
