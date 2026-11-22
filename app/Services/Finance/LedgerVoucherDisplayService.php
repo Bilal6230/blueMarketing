@@ -43,6 +43,15 @@ final class LedgerVoucherDisplayService
                                 ->where('voucher_series','PPR')->value('voucher_number');
                             if ((int)$booking > 0) return 'PPR-'.(int)$booking;
                         }
+                        if ($type === 'CP'
+                            && Schema::hasTable('project_voucher_display_numbers')
+                            && DB::table('project_voucher_display_numbers')
+                                ->where('project_id',$projectId)
+                                ->where('source_kind','customer_ledger')
+                                ->where('source_id',(int)$owned->customer_ledger_id)
+                                ->where('series','DR')->exists()) {
+                            return 'DR-'.(int)$source->type_id;
+                        }
                         return $type.'-'.(int)$source->type_id;
                     }
                     // Preserve old CP ledger/source identities in their
