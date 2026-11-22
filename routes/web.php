@@ -356,6 +356,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::get('finance/voucher/bank/{direction}/history', 'bankVoucherHistory')->where('direction', 'receipt|payment')->name('finance.voucher.bank.history');
         Route::get('finance/voucher/bank/{direction}/{postingBatch}/print', 'printBankVoucher')->where(['direction' => 'receipt|payment', 'postingBatch' => '[0-9]+'])->name('finance.voucher.bank.print');
         Route::get('finance/voucher/bank-transfer/{kind}', 'transferVoucherWorkspace')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.workspace');
+        Route::get('finance/voucher/bank-transfer/{kind}/next-number', 'transferVoucherNextNumber')
+            ->where('kind','deposit|withdrawal')->name('finance.voucher.transfer.next-number');
         Route::get('finance/voucher/bank-transfer/{kind}/sources', 'transferVoucherSources')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.sources');
         Route::get('finance/voucher/bank-transfer/{kind}/history', 'transferVoucherHistory')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.history');
         Route::post('finance/voucher/bank-transfer/{kind}', 'postTransferVoucher')->where('kind', 'deposit|withdrawal')->name('finance.voucher.transfer.post');
