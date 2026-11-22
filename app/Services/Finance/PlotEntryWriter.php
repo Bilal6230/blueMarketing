@@ -127,13 +127,13 @@ final class PlotEntryWriter
         PostedVoucherLedgerGate::assertLinked($project, (int) $batch->id);
         return ['source_id'=>(int)$link->source_id,'posting_batch_id'=>(int)$batch->id,'replayed'=>true];
     }
-    private function post(int $project, string $key, string $series, string $kind, string $date, array $lines, string $payloadHash, ?int $actor): int
+    private function post(int $project, string $key, string $series, string $kind, string $date, array $lines, string $payloadHash, ?int $actor, int $voucherNumber): int
     {
         $debit=0; $credit=0;
         foreach ($lines as $line) { $debit += $this->cents($line['debit']); $credit += $this->cents($line['credit']); }
         if ($debit < 1 || $debit !== $credit) throw new \DomainException('V2_PLOT_POSTING_UNBALANCED');
         $batch=DB::table('finance_posting_batches')->insertGetId([
-            'project_id'=>$project,'voucher_series'=>$series,'voucher_number'=>null,'request_key'=>$key,
+            'project_id'=>$project,'voucher_series'=>$series,'voucher_number'=>$voucherNumber,'request_key'=>$key,
             'payload_sha256'=>$payloadHash,'effective_date'=>$date,'posted_by'=>$actor,'posted_at'=>now(),'created_at'=>now(),'updated_at'=>now(),
         ]);
         DB::table('finance_posting_source_claims')->insert(['posting_batch_id'=>$batch,'source_kind'=>$kind]);
@@ -196,12 +196,20 @@ final class PlotEntryWriter
             $hash=hash('sha256',json_encode([$project,$customer,$data['date'],$this->money($total),$data['narration'],$bank,$allocations,$lines],JSON_THROW_ON_ERROR));
             $replay=$this->existingReplay($project,$key,'plot_receipt',$hash); if($replay) return $replay;
             $number=trim($data['receipt_number']);
+            if(!preg_match('/^PPR-([1-9][0-9]*)$/D',$number,$match)) {
+                throw new \DomainException('PLOT_VOUCHER_NUMBER_INVALID');
+            }
+            $voucherNumber=(int)$match[1];
+            if($approvedDraftId===null) {
+                $allocated=app(ProjectVoucherAllocator::class)->next($project,'PPR');
+                if($allocated!==$voucherNumber)throw new \DomainException('PLOT_VOUCHER_NUMBER_CHANGED_REFRESH_FORM');
+            }
             $this->assertApprovalReservation($project,'PPR',$number,$approvedDraftId);
             if(DB::table('finance_plot_receipts')->where('project_id',$project)->where('receipt_number',$number)->exists()) throw new \DomainException('V2_PLOT_RECEIPT_NUMBER_EXISTS');
             $source=DB::table('finance_plot_receipts')->insertGetId(['project_id'=>$project,'customer_id'=>$customer,'receipt_number'=>$number,
                 'receipt_date'=>$data['date'],'amount'=>$this->money($total),'narration'=>$data['narration'],'created_by'=>$actor,'created_at'=>now(),'updated_at'=>now()]);
             foreach($allocations as $allocation) DB::table('finance_plot_receipt_allocations')->insert($allocation+['receipt_id'=>$source,'created_at'=>now(),'updated_at'=>now()]);
-            $batch=$this->post($project,$key,'PR','plot_receipt',$data['date'],$lines,$hash,$actor);
+            $batch=$this->post($project,$key,'PR','plot_receipt',$data['date'],$lines,$hash,$actor,$voucherNumber);
             DB::table('finance_plot_receipt_postings')->insert(['posting_batch_id'=>$batch,'source_id'=>$source,'source_kind'=>'plot_receipt']);
             // The same posting transaction must persist authentic general ledger
             // debit/credit lines; existing typed rows remain linked evidence.
@@ -245,6 +253,14 @@ final class PlotEntryWriter
             $hash=hash('sha256',json_encode([$project,$data['date'],$data['purchase_number'],$this->money($total),$seller,$data['narration'],$items,$lines],JSON_THROW_ON_ERROR));
             $replay=$this->existingReplay($project,$key,'plot_purchase',$hash);if($replay)return $replay;
             $number=trim($data['purchase_number']);
+            if(!preg_match('/^PP-([1-9][0-9]*)$/D',$number,$match)) {
+                throw new \DomainException('PLOT_VOUCHER_NUMBER_INVALID');
+            }
+            $voucherNumber=(int)$match[1];
+            if($approvedDraftId===null) {
+                $allocated=app(ProjectVoucherAllocator::class)->next($project,'PP');
+                if($allocated!==$voucherNumber)throw new \DomainException('PLOT_VOUCHER_NUMBER_CHANGED_REFRESH_FORM');
+            }
             $this->assertApprovalReservation($project,'PP',$number,$approvedDraftId);
             if(DB::table('finance_plot_purchases')->where('project_id',$project)->where('purchase_number',$number)->exists())throw new \DomainException('V2_PLOT_PURCHASE_NUMBER_EXISTS');
             $source=DB::table('finance_plot_purchases')->insertGetId(['project_id'=>$project,'seller_account_id'=>$seller,'purchase_number'=>$number,'purchase_date'=>$data['date'],
@@ -254,7 +270,7 @@ final class PlotEntryWriter
                 $stored = collect($item)->only(['plot_code','description','area','unit','unit_rate','amount','inventory_account_id'])->all();
                 DB::table('finance_plot_purchase_items')->insert($stored+['purchase_id'=>$source,'legacy_plot_id'=>$plotId,'created_at'=>now(),'updated_at'=>now()]);
             }
-            $batch=$this->post($project,$key,'PP','plot_purchase',$data['date'],$lines,$hash,$actor);
+            $batch=$this->post($project,$key,'PP','plot_purchase',$data['date'],$lines,$hash,$actor,$voucherNumber);
             DB::table('finance_plot_purchase_postings')->insert(['posting_batch_id'=>$batch,'source_id'=>$source,'source_kind'=>'plot_purchase']);
             // The same posting transaction must persist authentic general ledger
             // debit/credit lines; existing typed rows remain linked evidence.
