@@ -798,19 +798,8 @@ body {
                             @php
                                 $balance += $ledger->amount_in - $ledger->amount_out;
                                 $balanceClass = $balance < 0 ? 'balance-negative' : 'balance-positive';
-                                  $voucherNumber = $ledger->voucher_number;
-
-                if ($ledger->type === 'JV' && !empty($ledger->type_id)) {
-                    $journalVoucher = App\Models\JournalVoucher::where('id', $ledger->type_id)
-                        ->select('id', 'voucher_number')
-                        ->first();
-
-                    if ($journalVoucher && !empty($journalVoucher->voucher_number)) {
-                        $voucherNumber = $journalVoucher->voucher_number;
-                    }
-                }
-
-                $number =  ($ledger->type ?? '') . '-' . $voucherNumber;
+                                  $number = $ledger->display_voucher_number
+                                    ?: (($ledger->type ?? '') . '-' . ($ledger->voucher_number ?? ''));
                             @endphp
                             <tr>
                                 <td class="col-index">{{ $index + 1 }}</td>
