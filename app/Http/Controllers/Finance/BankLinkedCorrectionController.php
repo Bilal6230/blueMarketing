@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
-use App\Services\Finance\BankLinkedCorrection;
+use App\Services\Finance\BankSourceReissueCorrection;
 use App\Services\Finance\VoucherApproverAccess;
 use App\Services\Finance\BankLinkedCorrectionApproval;
 use Illuminate\Http\Request;
@@ -27,26 +27,39 @@ final class BankLinkedCorrectionController extends Controller
         return $project;
     }
 
-    private function validated(Request $request, bool $confirm): array
+    private function validated(Request $request,string $method,bool $confirm): array
     {
-        $rules=[
-            'amount'=>['required','numeric','gt:0','max:9999999999999.99','decimal:0,2'],
-            'vouchers'=>['sometimes','array','max:500'],
-            'vouchers.*'=>['required','numeric','gt:0','max:9999999999999.99','decimal:0,2'],
-        ];
-        if ($confirm) {
+        $fields=$method==='online'
+            ? ['transaction_date','amount','sending_bank','sending_account',
+                'receiving_bank','receiving_account','sender_name','receiver_name',
+                'purpose','account_mapping_id']
+            : ['cheque_title','cheque_date','received_date','amount','branch',
+                'received_from','purpose','account_mapping_id'];
+        $rules=['changes'=>['required','array']];
+        foreach($fields as $field) {
+            $rules['changes.'.$field]=$field==='branch'
+                ? ['nullable','string','max:150']
+                : ($field==='amount'
+                    ? ['required','numeric','gt:0','max:9999999999999.99','decimal:0,2']
+                    : ($field==='account_mapping_id'
+                        ? ['required','integer','min:1']
+                        : (str_ends_with($field,'date')
+                            ? ['required','date_format:Y-m-d']
+                            : ['required','string','max:500'])));
+        }
+        if($confirm) {
             $rules['reason']=['required','string','min:3','max:500'];
             $rules['fingerprint']=['required','string','regex:/^[a-f0-9]{64}$/D'];
         }
         return $request->validate($rules);
     }
 
-    public function preview(Request $request,string $method,int $id,BankLinkedCorrection $correction)
+    public function preview(Request $request,string $method,int $id,BankSourceReissueCorrection $correction)
     {
         $project=$this->authorizeCorrection($request,$method);
-        $data=$this->validated($request,false);
+        $data=$this->validated($request,$method,false);
         try {
-            $plan=$correction->preview($project,$method,$id,$data['amount'],$data['vouchers']??[]);
+            $plan=$correction->preview($project,$method,$id,$data['changes']);
         } catch (\DomainException $e) {
             throw ValidationException::withMessages(['source'=>$e->getMessage()]);
         }
@@ -57,17 +70,18 @@ final class BankLinkedCorrectionController extends Controller
     public function confirm(Request $request,string $method,int $id,BankLinkedCorrectionApproval $approval)
     {
         $project=$this->authorizeCorrection($request,$method);
-        $data=$this->validated($request,true);
+        $data=$this->validated($request,$method,true);
         try {
-            $result=$approval->submit($project,$method,$id,(int)$request->user()->id,
-                $data['reason'],$data['amount'],$data['vouchers']??[],$data['fingerprint']);
+            $result=$approval->submitReissue($project,$method,$id,
+                (int)$request->user()->id,$data['reason'],$data['changes'],$data['fingerprint']);
         } catch (\DomainException $e) {
             throw ValidationException::withMessages(['source'=>$e->getMessage()]);
         }
         return response()->json([
-            'status'=>'success','message'=>$result['pending']
-                ? 'Correction submitted for approval. Original source and linked vouchers remain unchanged.'
-                : 'Source and linked voucher amounts corrected atomically; original IDs preserved.',
+            'status'=>'success',
+            'message'=>$result['pending']
+                ? 'Correction sent for approval. Original vouchers remain posted until approval.'
+                : 'Source corrected; linked vouchers soft-voided and allocations released. Create fresh vouchers from the same verified source.',
             'data'=>$result,
         ])->header('Cache-Control','private, no-store');
     }
