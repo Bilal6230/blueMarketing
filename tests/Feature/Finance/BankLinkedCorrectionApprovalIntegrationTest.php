@@ -197,6 +197,8 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
         self::assertSame(1,DB::table('finance_cheque_intakes')->count());
         self::assertSame(1,DB::table('customer_ledger')->count());
         self::assertSame(1,DB::table('ledgers')->count());
+        self::assertSame(2,DB::table('daily_voucher_edit_snapshots')
+            ->where('submitted_by',7)->where('decided_by',8)->count());
         self::assertSame('BOR-0041',DB::table('project_voucher_display_numbers')
             ->where('source_id',41)->value('display_number'));
     }
