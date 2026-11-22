@@ -47,17 +47,32 @@ final class BankManagementCascadePlanner
         foreach ($allocations as $allocation) {
             $voucher = DB::table('customer_ledger')
                 ->where('project_id', $projectId)->where('id', $allocation->voucher_id)
-                ->first(['id', 'transaction_type', 'type_id', 'is_active', 'is_approve']);
+                ->first(['id', 'transaction_type', 'type_id', 'is_active', 'is_approve',
+                    'payment_type','amount_in','amount_out']);
             $legs = DB::table('ledgers as l')
                 ->join('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
                 ->where('a.project_id', $projectId)
                 ->where('l.customer_ledger_id', $allocation->voucher_id)
                 ->get(['l.id', 'l.type', 'l.is_active', 'l.amount_in', 'l.amount_out']);
 
+            $allowedSourceTypes = match ((string)$allocation->voucher_type) {
+                'CR' => ['CR'], 'DR' => ['DR','CP'],
+                'BOR' => ['BOR','CR'], 'BOP' => ['BOP','CP'],
+                default => [],
+            };
             $matches = $voucher !== null
-                && (string) $voucher->transaction_type === (string) $allocation->voucher_type
+                && in_array((string)$voucher->transaction_type, $allowedSourceTypes, true)
                 && $legs->count() === 1
-                && (string) $legs->first()->type === (string) $voucher->transaction_type;
+                && (string)$legs->first()->type === (string)$voucher->transaction_type
+                && (int)$voucher->payment_type === ($method === 'online' ? 2 : 3);
+            if ($matches) {
+                try {
+                    BankVoucherLegIntegrity::assert((string)$allocation->voucher_type,
+                        $voucher,$legs->first(),(float)$allocation->amount);
+                } catch (\DomainException $e) {
+                    $matches = false;
+                }
+            }
             $pendingApproval = Schema::hasTable('daily_voucher_approvals')
                 && DB::table('daily_voucher_approvals')
                     ->where('project_id', $projectId)
