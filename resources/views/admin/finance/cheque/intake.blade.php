@@ -738,7 +738,7 @@ $(function () {
             editingChequeReplacement=!!response.cascade_impact.requires_cascade || record.status==='cleared';
             $(document).trigger('bank-linked-correction-ready',[{
                 method:'cheque',id:id,record:record,impact:response.cascade_impact,
-                verified:record.status==='cleared',saveSelector:'#cheque-save',
+                verified:record.status==='cleared' && @json(auth()->user()->can('delete voucher')),saveSelector:'#cheque-save',
                 modalSelector:'#cheque-create-modal',reloadSelector:'#cheque-filter-form'
             }]);
   $('#cheque-replacement-reason-wrap').toggleClass('d-none',!editingChequeReplacement);
