@@ -21,6 +21,25 @@ return new class extends Migration {
                 );
             }
         }
+        if (Schema::hasTable('roles') && Schema::hasTable('role_has_permissions')
+            && Schema::hasTable('permissions')) {
+            $superAdminRoleIds=\Illuminate\Support\Facades\DB::table('roles')
+                ->whereIn('name',['superadmin','super-admin'])
+                ->where('guard_name','web')->pluck('id');
+            $permissionIds=\Illuminate\Support\Facades\DB::table('permissions')
+                ->where('guard_name','web')->whereIn('name',[
+                    'finance online correct','finance cheque correct',
+                    'finance online correction approve','finance cheque correction approve'
+                ])->pluck('id');
+            foreach($superAdminRoleIds as $roleId) foreach($permissionIds as $permissionId) {
+                $exists=\Illuminate\Support\Facades\DB::table('role_has_permissions')
+                    ->where('role_id',$roleId)->where('permission_id',$permissionId)->exists();
+                if(!$exists) \Illuminate\Support\Facades\DB::table('role_has_permissions')->insert([
+                    'role_id'=>$roleId,'permission_id'=>$permissionId
+                ]);
+            }
+            app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        }
         if (Schema::hasTable('finance_bank_correction_requests')) return;
         Schema::create('finance_bank_correction_requests', function (Blueprint $t) {
             $t->id();
