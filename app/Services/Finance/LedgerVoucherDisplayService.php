@@ -50,16 +50,18 @@ final class LedgerVoucherDisplayService
                         return 'DR-'.(int)$source->type_id;
                     }
                 }
-                if ($type === 'JV' && (int)$owned->journal_voucher_detail_id > 0
+                if (in_array($type,['JV','SV'],true) && (int)$owned->journal_voucher_detail_id > 0
                     && Schema::hasTable('journal_voucher_details')
                     && Schema::hasTable('journal_vouchers')) {
                     $header = DB::table('journal_voucher_details as d')
                         ->join('journal_vouchers as h','h.id','=','d.journal_voucher_id')
                         ->where('d.id',(int)$owned->journal_voucher_detail_id)
-                        ->where('h.project_id',$projectId)->where('h.type','JV')
+                        ->where('h.project_id',$projectId)->where('h.type',$type)
                         ->where('h.id',(int)$owned->type_id)->value('h.voucher_number');
                     if ((int)$header > 0) {
-                        return 'JV-'.str_pad((string)(int)$header,7,'0',STR_PAD_LEFT);
+                        return $type === 'JV'
+                            ? 'JV-'.str_pad((string)(int)$header,7,'0',STR_PAD_LEFT)
+                            : 'SV-'.(int)$header;
                     }
                 }
                 if ($type === 'CV' && (int)$owned->commision_voucher_detail_id > 0
