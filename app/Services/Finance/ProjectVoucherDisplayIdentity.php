@@ -77,8 +77,19 @@ final class ProjectVoucherDisplayIdentity
                 ->lockForUpdate()->exists();
             if ($alreadyUsed) throw new \DomainException('BANK_VOUCHER_NUMBER_ALREADY_RESERVED');
         } else {
-            $sequence = app(ProjectVoucherFiscalSequence::class)->next($projectId, $series, $date);
-            $display = app(ProjectVoucherDisplay::class)->format($projectId, $series, $sequence, $date);
+            [$table,$column] = match ($sourceKind) {
+                'journal_voucher' => ['journal_vouchers','voucher_number'],
+                'commission_voucher' => ['commision_vouchers','voucher_number'],
+                'booking_voucher' => ['booking_vouchers','voucher_number'],
+                'customer_ledger' => ['customer_ledger','type_id'],
+                default => ['ledgers','voucher_number'],
+            };
+            $query = DB::table($table)->where('id',$sourceId);
+            if ($sourceKind !== 'ledger') $query->where('project_id',$projectId);
+            $raw = (string)$query->value($column);
+            if (!preg_match('/^(?:'.preg_quote($series,'/').'-)?([0-9]+)$/D',$raw,$match) || (int)$match[1]<1)
+                throw new \DomainException('VOUCHER_SOURCE_NUMBER_INVALID');
+            $display = $series.'-'.(int)$match[1];
         }
         DB::table('project_voucher_display_numbers')->insert([
             'project_id' => $projectId, 'source_kind' => $sourceKind, 'source_id' => $sourceId,
