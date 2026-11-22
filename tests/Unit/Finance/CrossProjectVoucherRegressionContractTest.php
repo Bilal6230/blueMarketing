@@ -29,6 +29,13 @@ final class CrossProjectVoucherRegressionContractTest extends TestCase
         self::assertStringContainsString("where('bv.voucher_series', 'PPR')", $controller);
         self::assertStringContainsString("'legacy'=>true", $controller);
         self::assertStringContainsString('if(r.legacy)', $view);
+        self::assertStringContainsString("data-target=\"#prOriginalCreateModal\"", $view);
+        self::assertStringContainsString("original_ppr_create_modal", $view);
+        self::assertStringContainsString("$('#prOriginalForm').on('submit'", $view);
+        $modernPpr = file_get_contents(base_path('resources/views/admin/finance/voucher/original_ppr_create_modal.blade.php'));
+        self::assertStringContainsString("route('booking.customer.deposit')", $modernPpr);
+        self::assertStringContainsString('name="payment_type"', $modernPpr);
+        self::assertStringContainsString('name="cheque_purpose"', $modernPpr);
         self::assertStringContainsString("data-legacy-print-base", $view);
     }
 
