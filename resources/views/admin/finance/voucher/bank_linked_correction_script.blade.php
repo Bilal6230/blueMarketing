@@ -4,7 +4,8 @@ jQuery(function($) {
     var current=null, busy=false;
     var previewUrl=@json(route('finance.bank-management.correction.preview',['method'=>'__METHOD__','id'=>'__SOURCE_ID__']));
     var confirmUrl=@json(route('finance.bank-management.correction.confirm',['method'=>'__METHOD__','id'=>'__SOURCE_ID__']));
-    var canDecide=@json(auth()->user()->can('finance online correction approve') || auth()->user()->can('finance cheque correction approve'));
+    var canDecide=@json(\App\Services\Finance\VoucherApproverAccess::mayApprove(auth()->user()) &&
+        (auth()->user()->can('finance online correction approve') || auth()->user()->can('finance cheque correction approve')));
     var pendingUrl=@json(route('finance.bank-management.correction.pending'));
     var decideUrl=@json(route('finance.bank-management.correction.decide',['requestId'=>'__REQUEST_ID__']));
     if(canDecide){
