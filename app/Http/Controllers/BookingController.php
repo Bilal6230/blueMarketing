@@ -2989,7 +2989,8 @@ class BookingController extends Controller
             'plot_id' => 'required',
             'amount' => 'required',
             'detail' => 'required',
-            'payment_type' => 'required|in:1,2,3',
+            'payment_type' => $request->input('action') === 'extra_charge'
+                ? 'nullable|in:0,1' : 'required|in:1,2,3',
             'cheque_purpose' => 'required_if:payment_type,3|nullable|string|max:500',
             'reference' => 'required',
 
