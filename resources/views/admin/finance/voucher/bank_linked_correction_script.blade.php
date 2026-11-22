@@ -4,6 +4,67 @@ jQuery(function($) {
     var current=null, busy=false;
     var previewUrl=@json(route('finance.bank-management.correction.preview',['method'=>'__METHOD__','id'=>'__SOURCE_ID__']));
     var confirmUrl=@json(route('finance.bank-management.correction.confirm',['method'=>'__METHOD__','id'=>'__SOURCE_ID__']));
+    var canDecide=@json(auth()->user()->can('finance online correction approve') || auth()->user()->can('finance cheque correction approve'));
+    var pendingUrl=@json(route('finance.bank-management.correction.pending'));
+    var decideUrl=@json(route('finance.bank-management.correction.decide',['requestId'=>'__REQUEST_ID__']));
+    if(canDecide){
+        var $toolbar=$('#cheque-add-btn').length?$('#cheque-add-btn'):$('#online-add');
+        if(!$toolbar.length)$toolbar=$('.vs-head');
+        $('<button type="button" id="bank-correction-approval-open" class="btn btn-outline-warning btn-sm ml-2">')
+            .text('Pending Bank Corrections').insertAfter($toolbar);
+    }
+    $(document).on('click','#bank-correction-approval-open',function(){
+        if(busy||!window.Swal)return;
+        $.getJSON(pendingUrl).done(function(resp){
+            var rows=resp.data||[], $layout=$('<div class="text-left">');
+            if(!rows.length){window.Swal.fire({icon:'info',title:'Bank Corrections',text:'No pending correction assigned to you.'});return;}
+            $layout.append($('<label class="d-block">').text('Correction awaiting approval'));
+            var $select=$('<select class="form-control bank-decision-request mb-3">');
+            $.each(rows,function(_,r){
+                $select.append($('<option>').val(r.id).text(
+                    (r.source_method==='online'?'Online':'Cheque')+' #'+r.source_id+
+                    ' · Rs. '+r.proposed_amount+' · Request '+r.id));
+            });
+            $layout.append($select);
+            $layout.append($('<p class="small text-muted">').text('Inspect the proposed voucher amounts below. Approval rechecks current ledger ownership and amounts before posting.'));
+            var $details=$('<pre class="small bank-decision-preview p-2">').css({maxHeight:'190px',overflow:'auto'});
+            $layout.append($details);
+            function draw(){
+                var row=rows.filter(function(x){return String(x.id)===String($select.val());})[0];
+                if(!row)return;
+                var proposed=JSON.parse(row.proposed_vouchers_json||'{}');
+                $details.text('Source amount: '+row.proposed_amount+'\\n'+
+                    'Voucher proposals: '+JSON.stringify(proposed,null,2)+'\\nReason: '+row.reason);
+            }
+            $select.on('change',draw);draw();
+            $layout.append($('<label class="d-block mt-2">').text('Decision'));
+            var $decision=$('<select class="form-control bank-decision-choice mb-2">')
+                .append($('<option value="approved">').text('Approve correction'))
+                .append($('<option value="rejected">').text('Reject correction'));
+            $layout.append($decision);
+            $layout.append($('<textarea class="form-control bank-decision-reason" rows="2" maxlength="500" placeholder="Reason (mandatory for reject)">'));
+            window.Swal.fire({title:'Review Bank Correction',html:$layout[0],width:690,
+                showCancelButton:true,confirmButtonText:'Submit Decision',focusConfirm:false,
+                preConfirm:function(){
+                    var d=$decision.val(), reason=$.trim($('.bank-decision-reason').val());
+                    if(d==='rejected' && reason.length<3){
+                        window.Swal.showValidationMessage('Enter a rejection reason of at least 3 characters.');return false;
+                    }
+                    return {id:$select.val(),decision:d,reason:reason};
+                }
+            }).then(function(result){
+                if(!result.isConfirmed)return;
+                var data=result.value;
+                $.ajax({url:decideUrl.replace('__REQUEST_ID__',data.id),method:'POST',
+                    data:{_token:$('meta[name="csrf-token"]').attr('content'),decision:data.decision,reason:data.reason},
+                    dataType:'json',headers:{Accept:'application/json'}})
+                .done(function(resp){
+                    window.Swal.fire({icon:'success',title:'Decision Saved',text:'Correction '+resp.data.status+'.'});
+                    $('#cheque-filter-form,#online-filters').filter(':first').trigger('submit');
+                }).fail(function(xhr){window.Swal.fire({icon:'error',title:'Decision Refused',text:error(xhr)});});
+            });
+        }).fail(function(xhr){window.Swal.fire({icon:'error',title:'Cannot Load Approvals',text:error(xhr)});});
+    });
     function endpoint(template, cfg) {
         return template.replace('__METHOD__',cfg.method).replace('__SOURCE_ID__',String(cfg.id));
     }
