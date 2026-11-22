@@ -342,15 +342,7 @@
   });
  });
  @endcan
- $('#prNewVoucher').on('click',function(){
-  editReceiptId=null;editAllocations=[];pendingKey=null;
-  $('#prCreateTitle').text('New Plot Receive Payment');$('#prPost').text('Post receipt');
-  $('#prNumber').val(@json($nextVoucherNumber));$('#prNarration,#prSearch').val('');$('#prSearch').prop('disabled',false);
-   $.ajax({url:$root.attr('data-number-preview-url'),type:'GET',dataType:'json'}).done(function(data){
-     if(!editReceiptId){$('#prNumber').val(data.voucher_number);recalc();}
-    }).fail(function(){notify('danger','Could not refresh the next PPR voucher number.');});
-  $('#prCustomer,#prAccount').val('');drawBookings();
- });
+
  @can('finance plot-receipt edit')
   $('#prHistoryRows').on('click','.pr-narration',function(){
    var id=$(this).attr('data-id'),record=history.find(function(row){return String(row.id)===String(id);});
