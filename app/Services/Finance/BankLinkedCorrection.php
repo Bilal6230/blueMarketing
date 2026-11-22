@@ -196,7 +196,7 @@ final class BankLinkedCorrection
             $legs=DB::table('ledgers as l')
                 ->join('project_head_subheads as p','p.id','=','l.project_head_subheads_id')
                 ->where('p.project_id',$projectId)->where('l.customer_ledger_id',$voucherId)
-                ->lockForUpdate()->get(['l.id','l.type','l.is_active','l.amount_in','l.amount_out']);
+                ->lockForUpdate()->get(['l.id','l.type','l.is_active','l.amount_in','l.amount_out','l.project_head_subheads_id']);
             $approval=DB::table('daily_voucher_approvals')
                 ->where('project_id',$projectId)->where('source_table','customer_ledger')
                 ->where('source_id',$voucherId)->lockForUpdate()->first();
@@ -226,6 +226,7 @@ final class BankLinkedCorrection
                 'allocation_id'=>(int)$allocation->id,'voucher_id'=>$voucherId,
                 'voucher_number'=>(string)$identity->display_number,
                 'series'=>$series,'ledger_id'=>(int)$legs->first()->id,
+                'ledger_account_id'=>(int)$legs->first()->project_head_subheads_id,
                 'approval_id'=>$approval?->id,
                 'amount_before'=>$this->money($allocation->amount),
                 'amount_after'=>$after,
@@ -238,6 +239,10 @@ final class BankLinkedCorrection
             throw new \DomainException('Proposed allocations exceed the corrected bank source amount.');
         }
         $before=$this->money($source->amount);
+        if ($before===$amount && !collect($rows)->contains(
+            fn (array $row) => $row['amount_before'] !== $row['amount_after'])) {
+            throw new \DomainException('No financial correction was proposed.');
+        }
         $state=['project_id'=>$projectId,'method'=>$method,'source_id'=>$sourceId,
             'status'=>(string)$source->status,'account_mapping_id'=>(int)$source->account_mapping_id,
             'bank_identity'=>$method==='online'
