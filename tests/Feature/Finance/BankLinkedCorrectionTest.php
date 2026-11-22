@@ -44,6 +44,14 @@ final class BankLinkedCorrectionTest extends TestCase
         Schema::create('finance_bank_voucher_allocation_releases', function (Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('allocation_id');
         });
+        Schema::create('finance_online_voucher_claims', function (Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('project_id');
+            $t->unsignedBigInteger('online_intake_id');
+        });
+        Schema::create('finance_cheque_voucher_claims', function (Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('project_id');
+            $t->unsignedBigInteger('cheque_intake_id');
+        });
         Schema::create('project_voucher_display_numbers', function (Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('project_id');
             $t->string('source_kind'); $t->unsignedBigInteger('source_id');
