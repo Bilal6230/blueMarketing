@@ -18,6 +18,7 @@
 <main class="container-fluid bm-ui bm-voucher-directory bm-voucher-workspace pp-page" id="plotPurchaseApp"
  style="--voucher-accent:#1769e0;--voucher-tint:#eaf2ff"
  data-options-url="{{ route('finance.voucher.plot-purchase.options') }}"
+ data-number-preview-url="{{ route('check_new_voucher_number') }}"
  data-history-url="{{ route('finance.voucher.plot-purchase.history') }}"
  data-post-url="{{ route('finance.voucher.plot-purchase.post') }}"
  data-details-base="{{ url('admin/finance/voucher/plot-purchase') }}"
@@ -70,7 +71,7 @@
   <div class="modal-body">
 <div id="ppAlert" class="alert d-none" role="status"></div>
 <div class="pp-body">
-   <div class="form-row"><div class="form-group col-md-6"><label>Purchase voucher no.</label><input id="ppNumber" class="form-control" maxlength="64" placeholder="e.g. PP-2026-0001"></div><div class="form-group col-md-6"><label>Date</label><input id="ppDate" type="date" class="form-control" value="{{ now()->toDateString() }}"></div></div>
+   <div class="form-row"><div class="form-group col-md-6"><label>Purchase voucher no.</label><input id="ppNumber" class="form-control" maxlength="64" value="{{ $nextVoucherNumber }}" readonly aria-readonly="true"></div><div class="form-group col-md-6"><label>Date</label><input id="ppDate" type="date" class="form-control" value="{{ now()->toDateString() }}"></div></div>
    <div class="form-group"><label>Seller / payable account</label><select id="ppSeller" class="form-control"><option value="">Select project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
    <div class="form-group"><label>Narration</label><textarea id="ppNarration" class="form-control" rows="2" maxlength="2000" placeholder="Purchase agreement, seller reference, or notes"></textarea></div>
    <div class="d-flex justify-content-between align-items-center mb-2"><b>Purchased plots</b><button type="button" id="ppAdd" class="btn btn-sm btn-outline-primary">+ Add plot</button></div>
