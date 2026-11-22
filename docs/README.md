@@ -15,9 +15,17 @@
 | 01 | Nonblocking loading and voucher-tinted skeletons | **COMPLETE** — owner browser + PHP tests PASS |
 | 02 | Action-specific permissions, Roles page and backend enforcement | **PARTIAL ACCEPTANCE** — implemented, tests PASS, owner confirmed CR Edit visibly works; complete cross-module browser permission matrix not yet accepted |
 | **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. Plot/JV/CV differential correction owner-accepted; Approved CV browser PASS, 16 tests PASS / 139 assertions. BD/BW same-batch Edit/Delete local **13 tests PASS / 102 assertions**, posting audit 6 projects clean (BD/BW browser still pending). SV production Create/Post and exact typed/legacy Edit/Delete now committed, **SV tests/browser pending**. PPR/EC/ECP and Stock/Labour remaining source-domain lifecycle acceptance incomplete. |
-| 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **NOT STARTED under new rules** |
+| 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **STARTED — PRE-FLIGHT IMPLEMENTED**. Exact linked allocation impact now shown in Online/Cheque history; actual linked Edit/Delete transaction, releases and reallocation remain pending. |
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
+
+## Milestone 04 — Batch 1 (2026-11-22): linked voucher impact preflight
+
+- Implemented `BankManagementCascadePlanner`, a project-scoped **read-only** dependency view for confirmed Online and cleared Cheque management sources, using immutable `finance_bank_voucher_allocations` IDs and recorded releases. It reports linked voucher source/ledger validity, pending approval, released state and whether a controlled cascade is required.
+- Both Online and Cheque history JSON now include `cascade_impact`; their existing history modals display a clear warning about dependent vouchers. No new tables, migrations or financial updates.
+- Regression coverage: `BankManagementCascadePlannerContractTest`. Local owner PHP/browser execution pending.
+- **Not yet implemented:** management source Edit/Delete forms/routes, atomic linked approved voucher retraction, multi-allocation cascade, status/evidence corrections, full project browser acceptance. Do not call Milestone 04 complete or attempt to alter linked sources based only on this preview.
+- The correct next batch is transactional management Edit/Delete with verified allocation and voucher ownership, approval state and balance assertions; retain immutable source, ledger and release evidence with no duplicate postings.
 
 ## Milestone 03 — Verified work
 
