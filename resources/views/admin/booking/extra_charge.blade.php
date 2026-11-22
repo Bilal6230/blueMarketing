@@ -56,7 +56,7 @@
                                                                     <input type="text" value="extra_charge" name="action"
                                                                         hidden />
                                                                     <input type="text" class="form-control " name="voucher"
-                                                                        value="EC-{{ app(\App\Services\Finance\ProjectVoucherAllocator::class)->preview((int) getSelectedTown(), 'EC') }}"
+                                                                        value="{{ (int)getSelectedTown() > 0 ? 'EC-'.app(\App\Services\Finance\ProjectVoucherAllocator::class)->preview((int)getSelectedTown(),'EC') : 'Select a project first' }}"
                                                                         autocomplete="off" readonly>
 
                                                                 </div>
