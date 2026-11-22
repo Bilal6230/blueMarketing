@@ -34,8 +34,17 @@ final class FinanceWorkflowAccess
         abort_unless(self::mergedWriterAllowed(), 409, 'Finance connection is not configured.');
         FinanceConnectionGuard::assertAllowed();
         $user = Auth::user();
-        abort_unless($user && $projectId > 0 && Gate::has('finance-post'), 403);
-        Gate::authorize('finance-post');
+        abort_unless($user && $projectId > 0, 403);
+        if (Gate::has('finance-post')) {
+            Gate::authorize('finance-post');
+        } else {
+            // Finance actions are authorized by their existing granular route
+            // permissions. Do not block them on an undefined legacy gate.
+            $ability = \App\Support\Finance\FinanceActionPermission::forRequest(request());
+            abort_unless($ability && $user->can(
+                \App\Support\Finance\FinanceActionPermission::name($ability[0], $ability[1])
+            ), 403);
+        }
         abort_unless($user->hasRole('superadmin') || (int) $user->project_id === $projectId, 403);
         abort_unless(DB::table('projects')->where('id', $projectId)->where('is_active', 1)->exists(), 403);
     }
@@ -45,8 +54,17 @@ final class FinanceWorkflowAccess
         abort_unless(self::mergedWriterAllowed(), 409, 'Finance connection is not configured.');
         FinanceConnectionGuard::assertAllowed();
         $user = Auth::user();
-        abort_unless($user && $projectId > 0 && Gate::has('finance-read'), 403);
-        Gate::authorize('finance-read');
+        abort_unless($user && $projectId > 0, 403);
+        if (Gate::has('finance-read')) {
+            Gate::authorize('finance-read');
+        } else {
+            // Respect the per-voucher route permission when no finance-read
+            // gate is registered. Project ownership is checked below.
+            $ability = \App\Support\Finance\FinanceActionPermission::forRequest(request());
+            abort_unless($ability && $user->can(
+                \App\Support\Finance\FinanceActionPermission::name($ability[0], $ability[1])
+            ), 403);
+        }
         abort_unless($user->hasRole('superadmin') || (int) $user->project_id === $projectId, 403);
         abort_unless(DB::table('projects')->where('id', $projectId)->where('is_active', 1)->exists(), 403);
     }
