@@ -199,7 +199,7 @@ final class BankLinkedCorrectionTest extends TestCase
         $this->voucher(41,'BOR','cheque',77,'500.00');
         $allocationId=(int)DB::table('finance_bank_voucher_allocations')->where('voucher_id',41)->value('id');
         DB::table('finance_bank_voucher_allocation_releases')->insert(['allocation_id'=>$allocationId]);
-        $this->expectException(\\DomainException::class);
+        $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('Previously released allocation');
         app(BankLinkedCorrection::class)->preview(1,'cheque',77,'450.00',[41=>'450.00']);
     }
