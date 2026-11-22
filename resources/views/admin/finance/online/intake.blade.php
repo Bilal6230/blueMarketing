@@ -383,7 +383,7 @@ $(function(){
   @endcan
   if(@json(auth()->user()->can('finance online edit')) &&
       (x.status==='pending' && Number(x.linked_voucher_count||0)===0 ||
-       x.status==='confirmed' && Number(x.linked_voucher_count||0)>0 &&
+       x.status==='confirmed' &&
        @json(auth()->user()->can('finance online delete')) &&
        @json(auth()->user()->can('delete voucher')) &&
        @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
@@ -391,7 +391,7 @@ $(function(){
     .attr('data-id',x.id).text('Edit').appendTo($actions);
   }
   if(@json(auth()->user()->can('finance online delete')) &&
-     (x.status==='pending' || (Number(x.linked_voucher_count||0)>0 &&
+     (x.status==='pending' || (x.status==='confirmed' &&
        @json(auth()->user()->can('delete voucher')) && @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))))){
    $('<button type="button">').addClass('btn btn-outline-danger btn-sm mr-1 online-delete-button')
     .attr('data-id',x.id).text('Delete').appendTo($actions);
@@ -537,13 +537,13 @@ $(function(){
   $.ajax({url:bankMutationEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
    .done(function(response){
     if(!response.cascade_impact||!response.cascade_impact.can_edit_directly){
-     if(!(response.cascade_impact&&response.cascade_impact.requires_cascade &&
+     if(!(response.cascade_impact&&(response.cascade_impact.requires_cascade || response.data.status==='confirmed') &&
        @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
       toast(response.cascade_impact&&response.cascade_impact.reason||'Source cannot be edited.',true);return;
      }
     }
     resetEntry();editingOnlineId=id;
-    editingOnlineReplacement=!!response.cascade_impact.requires_cascade;
+    editingOnlineReplacement=!!response.cascade_impact.requires_cascade || record.status==='confirmed';
     var record=response.data;
     $entry.attr('action',bankMutationUrl.replace('__SOURCE_ID__',id));
     $modal.find('.modal-title').text(editingOnlineReplacement?'Replace Linked Online Transaction':'Edit Online Transaction');
