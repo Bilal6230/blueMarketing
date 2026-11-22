@@ -26,12 +26,22 @@ final class BankLinkedCorrection
 
     private function money(mixed $value): string
     {
-        if (!is_numeric($value) || !is_finite((float)$value)
-            || (float)$value <= 0 || (float)$value > 9999999999999.99
-            || !preg_match('/^\\d+(?:\\.\\d{1,2})?$/D', (string)$value)) {
+        $value=trim((string)$value);
+        if (!preg_match('/^(?:0|[1-9][0-9]{0,12})(?:\\.[0-9]{1,2})?$/D',$value)) {
             throw new \DomainException('Enter a positive amount with no more than two decimals.');
         }
-        return number_format((float)$value, 2, '.', '');
+        [$whole,$fraction]=array_pad(explode('.',$value,2),2,'');
+        $cents=((int)$whole)*100+(int)str_pad($fraction,2,'0');
+        if($cents<1 || $cents>999999999999999) {
+            throw new \DomainException('Amount is outside the permitted range.');
+        }
+        return $whole.'.'.str_pad($fraction,2,'0');
+    }
+
+    private function cents(mixed $value): int
+    {
+        [$whole,$fraction]=explode('.',$this->money($value));
+        return ((int)$whole)*100+(int)$fraction;
     }
 
     /**
@@ -217,9 +227,9 @@ final class BankLinkedCorrection
                 throw new \DomainException('Linked voucher identity, status or ledger ownership is invalid.');
             }
             BankVoucherLegIntegrity::assert($series,$voucher,$legs->first(),(float)$allocation->amount);
-            $originalCents += (int)round((float)$allocation->amount*100);
+            $originalCents += $this->cents($allocation->amount);
             $after = $this->money($voucherAmounts[$voucherId]);
-            $sumCents += (int)round((float)$after*100);
+            $sumCents += $this->cents($after);
             $rows[]=[
                 'allocation_id'=>(int)$allocation->id,'voucher_id'=>$voucherId,
                 'voucher_number'=>(string)$identity->display_number,
@@ -230,15 +240,15 @@ final class BankLinkedCorrection
                 'amount_after'=>$after,
             ];
         }
-        if ($originalCents > (int)round((float)$source->amount*100)) {
+        if ($originalCents > $this->cents($source->amount)) {
             throw new \DomainException('Existing allocations exceed the original verified source amount.');
         }
-        if ($sumCents > (int)round((float)$amount*100)) {
+        if ($sumCents > $this->cents($amount)) {
             throw new \DomainException('Proposed allocations exceed the corrected bank source amount.');
         }
         $before=$this->money($source->amount);
-        $unallocatedBefore=number_format((float)$before - $originalCents / 100,2,'.','');
-        $unallocatedAfter=number_format((float)$amount - $sumCents / 100,2,'.','');
+        $unallocatedBefore=sprintf('%d.%02d',intdiv($this->cents($before)-$originalCents,100),($this->cents($before)-$originalCents)%100);
+        $unallocatedAfter=sprintf('%d.%02d',intdiv($this->cents($amount)-$sumCents,100),($this->cents($amount)-$sumCents)%100);
         if ($before===$amount && !collect($rows)->contains(
             fn (array $row) => $row['amount_before'] !== $row['amount_after'])) {
             throw new \DomainException('No financial correction was proposed.');
@@ -249,8 +259,8 @@ final class BankLinkedCorrection
                 ? [(string)$source->reference,(string)$source->transaction_date]
                 : [(string)$source->cheque_number,(string)$source->bank_name,(string)$source->cheque_date],
             'amount_before'=>$before,'amount_after'=>$amount,
-            'allocated_before'=>number_format($originalCents/100,2,'.',''),
-            'allocated_after'=>number_format($sumCents/100,2,'.',''),
+            'allocated_before'=>sprintf('%d.%02d',intdiv($originalCents,100),$originalCents%100),
+            'allocated_after'=>sprintf('%d.%02d',intdiv($sumCents,100),$sumCents%100),
             'unallocated_before'=>$unallocatedBefore,'unallocated_after'=>$unallocatedAfter,
             'historical_released_count'=>$allocations->count()-$activeAllocations->count(),
             'vouchers'=>$rows];
