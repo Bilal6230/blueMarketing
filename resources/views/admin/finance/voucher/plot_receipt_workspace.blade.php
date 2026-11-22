@@ -36,7 +36,7 @@
     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
     <button type="button" id="prResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
     @can('finance plot-receipt create')
-    <button type="button" id="prNewVoucher" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotReceiptCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
+    <button type="button" id="prNewVoucher" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#prOriginalCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
     @endcan
    </div>
   </form>
@@ -86,6 +86,7 @@
   <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button><button id="prPost" type="button" class="btn btn-primary btn-sm" disabled><i class="fas fa-check-circle mr-1"></i> Post receipt</button></div>
  </div></div>
 </div>
+@include('admin.finance.voucher.original_ppr_create_modal')
 <div class="modal fade" id="prDetailsModal" tabindex="-1" role="dialog" aria-labelledby="prDetailsTitle" aria-hidden="true">
  <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title" id="prDetailsTitle">Receipt details</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
