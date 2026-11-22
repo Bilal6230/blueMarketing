@@ -753,7 +753,8 @@ $(function () {
         $.ajax({url:bankEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
          .done(function(response){
             if(!response.cascade_impact||!response.cascade_impact.can_edit_directly){
-                if(!(correctionMode || (response.cascade_impact&&(response.cascade_impact.requires_cascade || response.data.status==='cleared') &&
+                if(!correctionMode && !(response.cascade_impact &&
+                    (response.cascade_impact.requires_cascade || response.data.status==='cleared') &&
                     @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
                     toast(response.cascade_impact&&response.cascade_impact.reason||'Source is linked or verified.',true);return;
                 }
@@ -766,9 +767,9 @@ $(function () {
   $('#cheque-replacement-reason').prop('required',editingChequeReplacement||editingChequeCorrection);
             $form.attr('action',bankUpdateUrl.replace('__SOURCE_ID__',id));
             $('#cheque-create-title').text(editingChequeCorrection?'Correct Cleared Cheque':(editingChequeReplacement?'Replace Cleared Linked Cheque':'Edit Cheque'));
-            $('#cheque-number').prop('readonly',editingChequeCorrection);
+            $form.find('[name=cheque_number],[name=bank_name]').prop('readonly',editingChequeCorrection);
             $('#cheque-save').text(editingChequeCorrection?'Review Correction':(editingChequeReplacement?'Replace & Reverify':'Update Cheque'));
-            $('#cheque-direction').prop('disabled',editingChequeCorrection);
+            // Keep TomSelect enabled for validation; verified direction is enforced by the backend.
             $('#cheque-attachment').prop('disabled',true);
 
             $.each(['cheque_number','cheque_title','cheque_date','received_date','amount','bank_name',
