@@ -540,6 +540,10 @@ class LedgerController extends Controller
                 ]);
                 // The form determines the persisted voucher family. Never
                 // relabel a new CR/DR as CCR/CDR/BOR/BOP based on method.
+                $requestedDisplaySeries = strtoupper(trim((string)$request->input('display_series','')));
+                if ($requestedDisplaySeries !== '' && $requestedDisplaySeries !== $voucherPrefix) {
+                    throw new \DomainException('VOUCHER_SERIES_FORM_MISMATCH');
+                }
                 $displaySeries = $voucherPrefix;
                 $allowedPaymentMethods = match ($displaySeries) {
                     'BOR','BOP' => [2,3],
