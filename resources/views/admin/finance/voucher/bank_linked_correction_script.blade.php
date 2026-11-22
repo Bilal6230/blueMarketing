@@ -9,7 +9,7 @@ jQuery(function($) {
     var decideUrl=@json(route('finance.bank-management.correction.decide',['requestId'=>'__REQUEST_ID__']));
     if(canDecide){
         var $toolbar=$('#cheque-add-btn').length?$('#cheque-add-btn'):$('#online-add');
-        if(!$toolbar.length)$toolbar=$('.cheque-heading h4,.online-heading h4').first();
+        if(!$toolbar.length)$toolbar=$('.cheque-heading h4,.online-heading h4,.vap-heading h4').first();
         $('<button type="button" id="bank-correction-approval-open" class="btn btn-outline-warning btn-sm ml-2">')
             .text('Pending Bank Corrections').insertAfter($toolbar);
     }
