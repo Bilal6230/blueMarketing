@@ -123,8 +123,9 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
             ['id' => 32, 'customer_ledger_id' => 7, 'type' => 'CR', 'type_id' => 7, 'project_head_subheads_id' => 12, 'is_active' => 0],
         ]);
         $workflow = app(DailyVoucherApprovalWorkflow::class);
-        $this->assertFalse($workflow->submitIfRequired(1, 'CR', 'customer_ledger', 7, 10));
-        $this->seedPreviouslySubmittedApproval('CR', 'customer_ledger', 7);
+        $this->assertTrue($workflow->submitIfRequired(1, 'CR', 'customer_ledger', 7, 10));
+        $this->assertSame('pending', DB::table('daily_voucher_approvals')
+            ->where('source_id',7)->value('status'));
         $approval = DailyVoucherApproval::query()->firstOrFail();
         $this->expectException(\DomainException::class);
         try { $workflow->decide($approval, 10, 'approved'); } finally {
@@ -181,10 +182,7 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
         $this->assertSame(1, (int) DB::table('ledgers')->where('id', 41)->value('is_active'));
         $this->assertSame(0, (int) DB::table('ledgers')->where('id', 42)->value('is_active'));
     }
-    /**
-     * Legacy pending approvals must remain decidable even though the unified
-     * ERP no longer creates new CR/CP approval requests.
-     */
+    /** Seed an earlier pending request for testing approve/reject decisions. */
     private function seedPreviouslySubmittedApproval(string $type,string $sourceTable,int $sourceId): void
     {
         $id=DB::table('daily_voucher_approvals')->insertGetId([
