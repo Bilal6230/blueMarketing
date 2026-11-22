@@ -241,7 +241,6 @@ final class FinanceActionPermission
                 ? ['bank-'.$kind,$transfers[$name]] : null;
         }
         $plot = [
-            'finance.voucher.plot-next-number'=>'view',
             'finance.voucher.plot-receipt.workspace'=>'view',
             'finance.voucher.plot-receipt.options'=>'view',
             'finance.voucher.plot-receipt.history'=>'history',
