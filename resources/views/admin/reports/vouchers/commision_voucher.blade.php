@@ -48,7 +48,7 @@ html body .main-content.page-content>.content-wrapper{margin:0!important;padding
                                         <div class="input-group">
                                             <input type="text" value="1" name="action" hidden />
                                             <input type="text" class="form-control " name="voucher_number"
-                                                value="{{ \App\Services\Finance\CommissionVoucherNumber::display($nextCommissionNumber) }}"
+                                                value="{{ $nextCommissionNumber !== null ? \App\Services\Finance\CommissionVoucherNumber::display($nextCommissionNumber) : 'Select a project first' }}"
                                                 autocomplete="off" readonly>
                                         </div>
                                     </div>
