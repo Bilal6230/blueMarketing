@@ -191,6 +191,11 @@
                         </label><input id="cheque-attachment" class="cheque-file" type="file" name="attachment" accept=".jpg,.jpeg,.png,.pdf"></div>
                     </div>
                 </div>
+<div id="cheque-replacement-reason-wrap" class="form-group d-none mt-3">
+<label for="cheque-replacement-reason">Reason for replacing linked/verified cheque *</label>
+<textarea id="cheque-replacement-reason" name="reason" class="form-control" rows="3" minlength="3" maxlength="500" placeholder="Explain why this verified source and its linked vouchers must be replaced"></textarea>
+<small class="text-muted">Mandatory 3–500 characters. Original audit evidence is retained.</small>
+</div>
                 <small class="text-muted">Receiving record only — no bank clearance or accounting voucher is posted.</small>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button><button type="submit" id="cheque-save" class="btn btn-success">Save Cheque</button></div>
@@ -412,6 +417,8 @@ $(function () {
     });
     function resetForm() {
         editingChequeId=null;editingChequeReplacement=false;
+  $('#cheque-replacement-reason-wrap').addClass('d-none');
+  $('#cheque-replacement-reason').prop('required',false).val('');
         $form.attr('action',@json(route('finance.cheques.store')));
         $('#cheque-create-title').text('Add New Cheque');
         $('#cheque-save').text('Save Cheque');
@@ -582,6 +589,15 @@ $(function () {
             }
             return;
         }
+        if(editingChequeReplacement){
+            var reason=$.trim($('#cheque-replacement-reason').val());
+            if(reason.length<3 || reason.length>500){
+                $('#cheque-replacement-reason').addClass('is-invalid').trigger('focus');
+                toast('Replacement reason must be 3–500 characters.',true);
+                return;
+            }
+            $('#cheque-replacement-reason').removeClass('is-invalid');
+        }
         if(!window.Swal || !$.isFunction(window.Swal.fire)) {
             toast('Confirmation dialog is unavailable. Please reload the page.',true);
             return;
@@ -592,11 +608,6 @@ $(function () {
             text:editingChequeReplacement
                 ?'Original linked vouchers will be voided; a NEW cheque reference must complete bank clearance again.'
                 :(editingChequeId?'Update this unlinked cheque?':'Save this cheque receiving record?'),
-            input:editingChequeReplacement?'textarea':undefined,
-            inputPlaceholder:editingChequeReplacement?'Mandatory replacement reason (3–500 characters)':undefined,
-            inputValidator:editingChequeReplacement?function(value){
-                if(!value||value.trim().length<3)return 'Enter a reason of at least 3 characters.';
-            }:undefined,
             showCancelButton:true,
             confirmButtonText:'Yes, Save Cheque',
             cancelButtonText:'Cancel',
@@ -609,7 +620,7 @@ $(function () {
             var payload=new FormData($form[0]);
             if(editingChequeId){
                 payload.append('_method','PUT');
-                if(editingChequeReplacement)payload.set('reason',result.value);
+                if(editingChequeReplacement)payload.set('reason',$.trim($('#cheque-replacement-reason').val()));
                 var selected=$.grep(mappingOptions,function(item){
                     return String(item.head_id)===String($('#cheque-head-account').val())
                         && String(item.subhead_id)===String($('#cheque-child-account').val());
@@ -725,6 +736,8 @@ $(function () {
             resetForm();editingChequeId=id;
             var record=response.data;
             editingChequeReplacement=!!response.cascade_impact.requires_cascade || record.status==='cleared';
+  $('#cheque-replacement-reason-wrap').toggleClass('d-none',!editingChequeReplacement);
+  $('#cheque-replacement-reason').prop('required',editingChequeReplacement);
             $form.attr('action',bankUpdateUrl.replace('__SOURCE_ID__',id));
             $('#cheque-create-title').text(editingChequeReplacement?'Replace Cleared Linked Cheque':'Edit Cheque');
             $('#cheque-save').text(editingChequeReplacement?'Replace & Reverify':'Update Cheque');
