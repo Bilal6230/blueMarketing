@@ -153,7 +153,7 @@
     </div>
 </div>
 
-@if(auth()->user()->can('finance cheque create') || auth()->user()->can('finance cheque edit'))
+@if(auth()->user()->can('finance cheque create') || auth()->user()->can('finance cheque edit') || auth()->user()->can('finance cheque correct'))
 <div class="modal fade" id="cheque-create-modal" tabindex="-1" role="dialog" aria-labelledby="cheque-create-title" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title" id="cheque-create-title">Add New Cheque</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
@@ -417,6 +417,7 @@ $(function () {
     });
     function resetForm() {
         editingChequeId=null;editingChequeReplacement=false;editingChequeCorrection=false;
+        $form.find('[name=cheque_number],[name=bank_name]').prop('readonly',false);
   $('#cheque-replacement-reason-wrap').addClass('d-none');
   $('#cheque-replacement-reason').prop('required',false).val('');
         $form.attr('action',@json(route('finance.cheques.store')));
