@@ -99,6 +99,9 @@ final class BankManagementSourceMutation
                 ->lockForUpdate()->get(['id','voucher_id','voucher_type']);
             $releases = [];
             if ($allocations->isEmpty()) {
+                if ($method==='cheque' && (int)($source->customer_ledger_id??0)>0) {
+                    throw new \DomainException('Cheque retains a legacy customer ledger link; manual reconciliation required.');
+                }
                 $verified = $method === 'online'
                     ? (string)$source->status === 'confirmed'
                     : in_array((string)$source->status,['cleared','returned','rejected'],true);
@@ -272,6 +275,9 @@ final class BankManagementSourceMutation
         if (DB::table('finance_bank_voucher_allocations')->where('project_id',$projectId)
             ->where('source_method',$method)->where('source_id',$id)->exists()) {
             throw new \DomainException('Linked source cannot be edited directly.');
+        }
+        if ($method==='cheque' && (int)($source->customer_ledger_id??0)>0) {
+            throw new \DomainException('Legacy linked cheque must be reconciled before direct edit.');
         }
         $claimTable = $method === 'online'?'finance_online_voucher_claims':'finance_cheque_voucher_claims';
         $claimColumn = $method === 'online'?'online_intake_id':'cheque_intake_id';
