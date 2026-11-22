@@ -217,7 +217,7 @@ final class BankLinkedCorrection
             $legs=DB::table('ledgers as l')
                 ->join('project_head_subheads as p','p.id','=','l.project_head_subheads_id')
                 ->where('p.project_id',$projectId)->where('l.customer_ledger_id',$voucherId)
-                ->lockForUpdate()->get(['l.id','l.type','l.is_active','l.amount_in','l.amount_out','l.project_head_subheads_id']);
+                ->lockForUpdate()->get(['l.id','l.type','l.is_active','l.amount_in','l.amount_out','l.project_head_subheads_id','l.updated_at']);
             $approval=DB::table('daily_voucher_approvals')
                 ->where('project_id',$projectId)->where('source_table','customer_ledger')
                 ->where('source_id',$voucherId)->lockForUpdate()->first();
@@ -249,6 +249,9 @@ final class BankLinkedCorrection
                 'series'=>$series,'ledger_id'=>(int)$legs->first()->id,
                 'ledger_account_id'=>(int)$legs->first()->project_head_subheads_id,
                 'approval_id'=>$approval?->id,
+                'approval_status'=>$approval?->status,
+                'voucher_updated_at'=>(string)($voucher->updated_at??''),
+                'ledger_updated_at'=>(string)($legs->first()->updated_at??''),
                 'amount_before'=>$this->money($allocation->amount),
                 'amount_after'=>$after,
             ];
@@ -268,6 +271,7 @@ final class BankLinkedCorrection
         }
         $state=['project_id'=>$projectId,'method'=>$method,'source_id'=>$sourceId,
             'status'=>(string)$source->status,'account_mapping_id'=>(int)$source->account_mapping_id,
+            'source_updated_at'=>(string)($source->updated_at??''),
             'bank_identity'=>$method==='online'
                 ? [(string)$source->reference,(string)$source->transaction_date]
                 : [(string)$source->cheque_number,(string)$source->bank_name,(string)$source->cheque_date],
