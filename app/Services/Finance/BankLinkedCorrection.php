@@ -165,6 +165,18 @@ final class BankLinkedCorrection
         $allocations = DB::table('finance_bank_voucher_allocations')
             ->where('project_id',$projectId)->where('source_method',$method)
             ->where('source_id',$sourceId)->orderBy('id')->lockForUpdate()->get();
+        if ($allocations->isEmpty()) {
+            // A historical claim without exact allocation evidence must never
+            // be mistaken for safely unallocated funds.
+            $claimTable=$method==='online'
+                ? 'finance_online_voucher_claims':'finance_cheque_voucher_claims';
+            $claimColumn=$method==='online'?'online_intake_id':'cheque_intake_id';
+            if (Schema::hasTable($claimTable) &&
+                DB::table($claimTable)->where('project_id',$projectId)
+                    ->where($claimColumn,$sourceId)->exists()) {
+                throw new \DomainException('Unreconciled bank claim prevents unallocated correction.');
+            }
+        }
         // A verified source can still have a wholly unallocated balance.
         // Historical released links remain immutable and are not active allocations.
         $activeAllocations=$allocations->filter(fn ($allocation) =>
