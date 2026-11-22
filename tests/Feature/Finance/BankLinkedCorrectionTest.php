@@ -248,6 +248,16 @@ final class BankLinkedCorrectionTest extends TestCase
         self::assertSame(0,DB::table('ledgers')->count());
     }
 
+    public function test_unallocated_source_with_unreconciled_claim_is_refused(): void
+    {
+        DB::table('finance_online_voucher_claims')->insert([
+            'project_id'=>1,'online_intake_id'=>55
+        ]);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Unreconciled bank claim');
+        app(BankLinkedCorrection::class)->preview(1,'online',55,'420.00',[]);
+    }
+
     public function test_partially_allocated_cheque_retains_unallocated_balance_and_voucher_ids(): void
     {
         $this->voucher(41,'BOR','cheque',77,'200.00');
