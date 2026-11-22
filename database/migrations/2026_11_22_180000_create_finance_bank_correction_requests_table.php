@@ -12,6 +12,15 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasTable('permissions')) {
+            foreach (['finance online correct','finance cheque correct',
+                'finance online correction approve','finance cheque correction approve'] as $permission) {
+                \Illuminate\Support\Facades\DB::table('permissions')->updateOrInsert(
+                    ['name'=>$permission,'guard_name'=>'web'],
+                    ['updated_at'=>now(), 'created_at'=>now()]
+                );
+            }
+        }
         if (Schema::hasTable('finance_bank_correction_requests')) return;
         Schema::create('finance_bank_correction_requests', function (Blueprint $t) {
             $t->id();
