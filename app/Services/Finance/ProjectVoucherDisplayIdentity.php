@@ -72,6 +72,13 @@ final class ProjectVoucherDisplayIdentity
             if ($bankSequence === null || $bankSequence < 1) {
                 throw new \DomainException('BANK_VOUCHER_SEQUENCE_REQUIRED');
             }
+            $source = DB::table('customer_ledger')->where('id',$sourceId)
+                ->where('project_id',$projectId)->lockForUpdate()
+                ->first(['transaction_type','type_id']);
+            if (!$source || (string)$source->transaction_type !== $series
+                || (int)$source->type_id !== $bankSequence) {
+                throw new \DomainException('BANK_VOUCHER_SOURCE_SERIES_MISMATCH');
+            }
             $display = $series . '-' . $bankSequence;
             $alreadyUsed = DB::table('project_voucher_display_numbers')
                 ->where('project_id', $projectId)->where('source_kind', 'customer_ledger')
