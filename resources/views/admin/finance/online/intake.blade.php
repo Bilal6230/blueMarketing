@@ -173,6 +173,7 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
    <div class="table-responsive online-history-table"><table class="table table-sm table-bordered">
     <thead><tr><th>Time / Actor</th><th>From → To</th><th>Bank Statement Ref</th><th>Verification Date</th><th>Original Amount</th><th>Remarks</th></tr></thead>
     <tbody id="online-history-rows"></tbody></table></div>
+   <div id="online-cascade-impact" class="alert alert-light border small" role="status">Loading linked-voucher change impact...</div>
    <h6 class="mt-3 font-weight-bold">Linked Voucher Allocations</h6>
   <a id="online-linked-vouchers-print" class="btn btn-sm btn-outline-primary mb-2" target="_blank" rel="noopener" href="#" aria-label="Print linked voucher allocation history"><i class="fas fa-print mr-1"></i> Print Linked History</a>
    <div class="table-responsive online-history-table"><table class="table table-sm table-bordered">
@@ -504,6 +505,11 @@ $(function(){
    .done(function(result){
     $body.empty();
     $.bankLinkedHistory.render($('#online-linked-voucher-rows'),result.linked_vouchers||[]);
+    var impact=result.cascade_impact||{};
+    $('#online-cascade-impact').removeClass('alert-light alert-success alert-warning')
+      .addClass(impact.can_edit_directly?'alert-success':'alert-warning')
+      .text(impact.reason||'The linked-voucher correction impact could not be verified.');
+
     var eligibility=result.eligibility||{};
     $('#online-eligibility-status')
       .removeClass('alert-light alert-success alert-warning')
