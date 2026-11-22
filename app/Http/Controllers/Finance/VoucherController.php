@@ -1668,6 +1668,19 @@ class VoucherController extends Controller
         return view('admin.finance.voucher.plot_purchase_print', $details);
     }
 
+    /** Non-consuming BD/BW serial preview for the selected project. */
+    public function transferVoucherNextNumber(string $kind)
+    {
+        abort_unless(in_array($kind,['deposit','withdrawal'],true),404);
+        $projectId=(int)getSelectedTown();
+        \App\Services\Finance\FinanceWorkflowAccess::authorizeRead($projectId);
+        $series=$kind==='deposit'?'BD':'BW';
+        return response()->json([
+            'voucher_number'=>$series.'-'.app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                ->preview($projectId,$series),
+        ]);
+    }
+
     public function transferVoucherSources(string $kind)
     {
         abort_unless($kind === 'withdrawal', 404);
