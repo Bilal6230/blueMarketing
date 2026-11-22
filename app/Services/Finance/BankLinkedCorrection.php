@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
  * Milestone 04 / Batch 03: same-ID review and atomic correction of
  * verified bank-source amounts and their exact allocated voucher legs.
  *
- * No route invokes this service yet. Batch 04 adds explicit confirmation UX.
+ * The dedicated permission-guarded controller exposes explicit preview/confirm.
  * This service deliberately never changes bank references or silently
  * reallocates voucher amounts, account identities or posted approvals.
  */
