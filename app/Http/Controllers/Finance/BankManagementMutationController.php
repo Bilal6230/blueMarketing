@@ -112,16 +112,22 @@ final class BankManagementMutationController extends Controller
         $this->authorizeAction($request,$method,'delete');
         $project=$this->project();
         $input=$request->validate(['reason'=>['required','string','min:3','max:500']]);
-        // Require elevated permission before entering any linked financial cascade.
-        abort_unless(\Illuminate\Support\Facades\Schema::hasTable('finance_bank_voucher_allocations'),409,
-            'Bank allocation evidence is unavailable.');
-        $allocationExists=DB::table('finance_bank_voucher_allocations')
-            ->where('project_id',$project)->where('source_method',$method)
-            ->where('source_id',$id)->exists();
-        if ($allocationExists) $this->authorizeAction($request,$method,'delete',true);
+        // The authorization decision and source mutation share the project
+        // lock. No concurrent voucher writer may insert an allocation between
+        // checking privileges and performing a linked cascade.
         try {
-            $result=app(BankManagementSourceMutation::class)->withdraw(
-                $project,$method,$id,(int)$request->user()->id,$input['reason']);
+            $result=DB::transaction(function()use($request,$method,$id,$project,$input) {
+                DB::table('projects')->where('id',$project)->lockForUpdate()->first()
+                    ?: abort(403);
+                abort_unless(\Illuminate\Support\Facades\Schema::hasTable('finance_bank_voucher_allocations'),409,
+                    'Bank allocation evidence is unavailable.');
+                $linked=DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$project)->where('source_method',$method)
+                    ->where('source_id',$id)->exists();
+                if ($linked) $this->authorizeAction($request,$method,'delete',true);
+                return app(BankManagementSourceMutation::class)->withdraw(
+                    $project,$method,$id,(int)$request->user()->id,$input['reason']);
+            },3);
         } catch (\DomainException $error) {
             return response()->json(['status'=>'error','message'=>$error->getMessage()],409);
         }
