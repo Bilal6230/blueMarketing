@@ -24,7 +24,7 @@ final class ProjectVoucherAllocator
         $counter = Schema::hasTable('ledger_voucher_counters')
             ? (int) DB::table('ledger_voucher_counters')->where('project_id', $projectId)
                 ->where('voucher_type', $series)->value('last_number') : 0;
-        return max($series === 'JV' ? 0 : $counter, $this->highestExisting($projectId, $series)) + 1;
+        return max(in_array($series,['JV','PPR'],true) ? 0 : $counter, $this->highestExisting($projectId, $series)) + 1;
     }
 
     private function highestExisting(int $projectId, string $series): int
@@ -49,7 +49,7 @@ final class ProjectVoucherAllocator
         // BOR/BOP are independent bank voucher series. Historical CR/CP-derived
         // source and ledger IDs must never inflate their displayed sequence.
         // JV also uses its journal headers, not unrelated typed ledger IDs.
-        if (!in_array($series, ['BOR','BOP','JV'], true)) {
+        if (!in_array($series, ['BOR','BOP','JV','PPR'], true)) {
             $numeric('customer_ledger', 'type_id', ['transaction_type' => $series]);
         }
         if (!in_array($series, ['BOR','BOP','JV'], true) && Schema::hasTable('ledgers') && Schema::hasTable('project_head_subheads')) {
@@ -57,16 +57,14 @@ final class ProjectVoucherAllocator
                 ->join('project_head_subheads as p', 'p.id', '=', 'l.project_head_subheads_id')
                 ->where('p.project_id', $projectId)->where('l.type', $series)->max('l.voucher_number'));
         }
-        $numeric('finance_posting_batches', 'voucher_number', ['voucher_series' => $series]);
-        $text('project_voucher_display_numbers', 'display_number', ['series' => $series]);
+        if (!in_array($series, ['JV','PPR'], true)) {
+            $numeric('finance_posting_batches', 'voucher_number', ['voucher_series' => $series]);
+            $text('project_voucher_display_numbers', 'display_number', ['series' => $series]);
+        }
         if ($series === 'JV') $max = max($max, $this->journalSequenceBaseline($projectId));
         if ($series === 'SV') $numeric('journal_vouchers', 'voucher_number', ['type' => $series]);
         if ($series === 'CV') $text('commision_vouchers', 'voucher_number');
-        if ($series === 'PPR') {
-            $numeric('booking_vouchers', 'voucher_number', ['voucher_series' => 'PPR']);
-            $numeric('finance_posting_batches', 'voucher_number', ['voucher_series' => 'PR']);
-            $text('finance_plot_receipts', 'receipt_number');
-        }
+        if ($series === 'PPR') $max = max($max, $this->plotReceiptSequenceBaseline($projectId));
         if ($series === 'PP') $text('finance_plot_purchases', 'purchase_number');
         if (in_array($series, ['PPR','PP'], true)) {
             $text('finance_plot_approval_drafts', 'source_number', ['voucher_type' => $series]);
@@ -102,6 +100,24 @@ final class ProjectVoucherAllocator
             $baseline = $number;
         }
         return $baseline;
+    }
+
+    /** Booking voucher PPR history is the canonical original receipt series. */
+    private function plotReceiptSequenceBaseline(int $projectId): int
+    {
+        $base = Schema::hasTable('booking_vouchers')
+            ? (int) DB::table('booking_vouchers')->where('project_id',$projectId)
+                ->where('voucher_series','PPR')->max('voucher_number') : 0;
+        if (!Schema::hasTable('finance_plot_receipts')) return $base;
+        $numbers = DB::table('finance_plot_receipts')->where('project_id',$projectId)
+            ->pluck('receipt_number')->map(function($value) {
+                return preg_match('/^PPR-([1-9][0-9]*)$/D',(string)$value,$m) ? (int)$m[1] : 0;
+            })->filter()->sort()->values();
+        foreach ($numbers as $number) {
+            if ($base > 0 && $number-$base > 100) break;
+            $base=max($base,$number);
+        }
+        return $base;
     }
 
     /** Allocate a CustomerLedger type_id from its own retained sequence. */
@@ -192,7 +208,7 @@ final class ProjectVoucherAllocator
             throw new \DomainException('VOUCHER_PROJECT_NOT_FOUND');
         }
         $highestExisting = max($this->highestExisting($projectId, $series),
-            $series === 'JV' ? 0 : $additionalMax);
+            in_array($series,['JV','PPR'],true) ? 0 : $additionalMax);
 
         // Share the retained counter with legacy getVocuherNumber() callers.
         // This keeps all migrated writers in one project/type lock domain and
@@ -200,7 +216,7 @@ final class ProjectVoucherAllocator
         if (Schema::hasTable('ledger_voucher_counters')) {
             $counter = DB::table('ledger_voucher_counters')->where('project_id', $projectId)
                 ->where('voucher_type', $series)->lockForUpdate()->first();
-            $next = max($series === 'JV' ? 0 : (int) ($counter->last_number ?? 0), $highestExisting) + 1;
+            $next = max(in_array($series,['JV','PPR'],true) ? 0 : (int) ($counter->last_number ?? 0), $highestExisting) + 1;
             if ($series === 'JV') {
                 while (DB::table('journal_vouchers')->where('project_id', $projectId)
                     ->where('type', 'JV')->where('voucher_number', $next)->exists()) $next++;
