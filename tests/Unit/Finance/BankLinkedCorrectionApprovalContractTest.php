@@ -30,7 +30,7 @@ final class BankLinkedCorrectionApprovalContractTest extends TestCase
         self::assertStringContainsString('approval_required',$service);
         self::assertStringContainsString("->where('status','pending')",$service);
         self::assertStringContainsString('VoucherApproverAccess::mayDecide',$service);
-        self::assertStringContainsString('BankLinkedCorrection::class',$service);
+        self::assertStringContainsString('BankSourceReissueCorrection::class',$service);
         self::assertStringContainsString('hash_equals',$service);
         self::assertStringContainsString('DB::transaction',$service);
         self::assertStringNotContainsString('migrate:fresh',$service);
