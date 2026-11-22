@@ -367,6 +367,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
             ->middleware(['throttle:10,1'])->name('finance.voucher.transfer.reverse');
         Route::get('finance/voucher/bank-transfer/{kind}/{postingBatch}/print', 'printTransferVoucher')->where(['kind' => 'deposit|withdrawal', 'postingBatch' => '[0-9]+'])->name('finance.voucher.transfer.print');
         Route::get('finance/voucher/plot-receipt', 'plotReceiptWorkspace')->name('finance.voucher.plot-receipt.workspace');
+        Route::get('finance/voucher/plot-next-number/{series}', 'plotVoucherNextNumber')
+            ->where('series','PPR|PP')->name('finance.voucher.plot-next-number');
         Route::get('finance/voucher/plot-receipt/options', 'plotReceiptOptions')->name('finance.voucher.plot-receipt.options');
         Route::get('finance/voucher/plot-receipt/history', 'plotReceiptHistory')->name('finance.voucher.plot-receipt.history');
         Route::post('finance/voucher/plot-receipt', 'postPlotReceipt')->name('finance.voucher.plot-receipt.post');
