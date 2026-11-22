@@ -11,7 +11,7 @@ final class PlotVoucherSeriesNumberingContractTest extends TestCase
         $controller = file_get_contents(base_path('app/Http/Controllers/Finance/VoucherController.php'));
         $routes = file_get_contents(base_path('routes/web.php'));
         self::assertStringContainsString('function plotVoucherNextNumber(', $controller);
-        self::assertStringContainsString("->preview($projectId,$series)", $controller);
+        self::assertStringContainsString('->preview($projectId,$series)', $controller);
         self::assertStringContainsString("where('series','PPR|PP')", $routes);
 
         foreach ([
@@ -30,12 +30,12 @@ final class PlotVoucherSeriesNumberingContractTest extends TestCase
     {
         $writer = file_get_contents(base_path('app/Services/Finance/PlotEntryWriter.php'));
         $draft = file_get_contents(base_path('app/Services/Finance/PlotVoucherApprovalDraftWriter.php'));
-        self::assertStringContainsString("'voucher_number'=>$voucherNumber", $writer);
+        self::assertStringContainsString("'voucher_number'=>\$voucherNumber", $writer);
         self::assertStringContainsString("PLOT_VOUCHER_NUMBER_CHANGED_REFRESH_FORM", $writer);
         self::assertStringContainsString("PLOT_VOUCHER_NUMBER_INVALID", $writer);
-        self::assertStringContainsString("->next($project,'PPR')", $writer);
-        self::assertStringContainsString("->next($project,'PP')", $writer);
-        self::assertStringContainsString("->next($projectId,$type)", $draft);
+        self::assertStringContainsString('->next($project,\'PPR\')', $writer);
+        self::assertStringContainsString('->next($project,\'PP\')', $writer);
+        self::assertStringContainsString('->next($projectId,$type)', $draft);
         self::assertStringContainsString("PLOT_VOUCHER_NUMBER_CHANGED_REFRESH_FORM", $draft);
     }
 
