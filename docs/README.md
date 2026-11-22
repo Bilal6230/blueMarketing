@@ -19,6 +19,50 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 04 — REVISED source correction + soft-void and reissue (2026-11-22)
+
+**New flow supersedes prior same-ID voucher amount editing. Code pushed; owner terminal and browser acceptance PENDING.**
+
+- **Correct** on cleared Cheque / confirmed Online opens original source fields; verified cheque number, bank identity, reference and direction cannot silently change. Genuine instrument changes still use separate **Replace & Reverify**.
+- **Review Correction** shows before/after fields and active linked voucher impacts. No manual per-voucher redistribution.
+- Approval OFF: one project-locked transaction revalidates source/ledger/approval identities; BankVoucherAllocationRelease soft-voids EVERY active linked voucher, releases allocations, retains original voucher IDs/numbers and posting history; then updates SAME verified source ID, preserves cleared/confirmed state and records bank_source_fix before/after snapshot. All-or-nothing rollback. Works with zero, partial or full allocation.
+- Approval ON: same proposal persists in existing finance_bank_correction_requests; old vouchers remain posted until authorized independent approval. Approve revalidates fingerprint and atomically releases vouchers/updates source; Reject keeps originals. Source cannot create vouchers while correction pending.
+- Existing original online bank confirmation event stays immutable. PassedBankSourcePickerController and PassedBankVoucherClaim now honor latest audited correction snapshot for corrected amount, so updated source becomes available for fresh new voucher numbers/IDs. Historical released allocations remain retained, not deleted.
+- Verified source picker returns Online Reference, Sending Bank, Receiving Bank, Clearing Date; or Cheque Title, masked last four digits, Bank and Clearing Date. Selection appends replaceable [BANK SOURCE] detail block to voucher Details, preserving manual narration, preventing duplicate blocks, validating maxlength 255.
+- Correction permission remains independent from delete rights. Legacy BankLinkedCorrection is not invoked by the public correction path; its old per-voucher wizard removed.
+- Migration / permission policies unchanged from previous batch: existing CHQ_CORR and ONL_CORR policy switches and finance_bank_correction_requests table reused. No additional table created for revised reissue flow.
+
+### Revised flow local gate (disposable local database)
+
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/BankSourceReissueCorrection.php
+php -l app/Services/Finance/BankSourceCorrectionEvidence.php
+php -l app/Services/Finance/BankLinkedCorrectionApproval.php
+php -l app/Http/Controllers/Finance/BankLinkedCorrectionController.php
+php artisan view:cache
+php artisan test --filter=BankLinkedCorrection
+php artisan test --filter=BankManagementLinkedCascadeTest
+php artisan test --filter=BankVoucherAllocationReleaseTest
+php artisan finance:audit-posting-balances
+php artisan migrate:status
+```
+
+Only if previously added correction request migration is not applied, use `php artisan migrate --path=database/migrations/2026_11_22_180000_create_finance_bank_correction_requests_table.php` on disposable local database. Never run migrate:fresh.
+
+### Browser acceptance REQUIRED after green local tests
+
+1. Correction approval OFF: cleared cheque Rs 10,000 with zero vouchers -> Correct to Rs 9,000. Same ID, no ledger created, full Rs 9,000 available to source picker.
+2. Partially allocated Rs 10,000 source with Rs 6,000 linked approved voucher -> correct to Rs 9,000. Review shows 1 voucher; confirm soft-voids exactly one voucher, preserves historical ID, frees full Rs 9,000 for NEW voucher number.
+3. Fully allocated Rs 10,000 with Rs 6,000 + Rs 4,000 vouchers -> both soft-voided after correction, both audited releases retained, source ID unchanged, fresh voucher numbers. Stale/invalid/pending linked vouchers must fail atomically.
+4. Correction approval ON: submitter sends request -> original vouchers remain active; other eligible approver Approve -> atomic source/ledger mutation; Reject -> no changes. Pending source hidden from new voucher picker.
+5. Repeat all on confirmed Online source and check original confirmation evidence remains. Verify fresh voucher passed-source chooser and Details auto-append for Online and Cheque, clearing date, last 4 masked digits, manual narration preservation, and no duplicate block on changing selection.
+6. Deny unauthorized/cross-project corrections and verify original genuine replacement remains separate. Run all-project finance:audit-posting-balances after tests.
+
+**Do not mark Milestone 04 accepted until user terminal/browser confirmation.**
+
 ## Milestone 04 — Safe Partial/Full/Zero Allocation Bank Correction + Independent Approval (2026-11-22)
 
 **New code committed, OWNER LOCAL TESTS AND BROWSER ACCEPTANCE PENDING. Do not mark Milestone 04 complete.**
