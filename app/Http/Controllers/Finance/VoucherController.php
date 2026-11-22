@@ -1766,7 +1766,8 @@ class VoucherController extends Controller
             ->when(Schema::hasColumn('finance_bank_transfer_sources','deleted_at'),
                 fn($q)=>$q->whereNull('source.deleted_at'))
             ->first(['source.bank_account_id','source.linked_customer_ledger_id',
-                'source.amount','source.narration','batch.effective_date','batch.reversal_of_batch_id']);
+                'source.amount','source.narration','batch.effective_date','batch.reversal_of_batch_id',
+                'batch.voucher_series','batch.voucher_number']);
         abort_unless($row,404);
         $mappedBank=DB::table('project_bank_accounts')
             ->where('id',$row->bank_account_id)->where('project_id',$projectId)
@@ -1781,7 +1782,9 @@ class VoucherController extends Controller
         $cash=$activeLegs->filter(fn($leg)=>
             (int)$leg->project_head_subhead_id!==(int)$mappedBank)->values();
         return response()->json(['status'=>'success','data'=>[
-            'posting_batch_id'=>$postingBatch,'bank_account_id'=>(int)$row->bank_account_id,
+            'posting_batch_id'=>$postingBatch,
+            'voucher'=>((string)$row->voucher_series).'-'.((int)$row->voucher_number ?: $postingBatch),
+            'bank_account_id'=>(int)$row->bank_account_id,
             'cash_account_id'=>$cash->count()===1?(int)$cash[0]->project_head_subhead_id:null,
             'date'=>substr((string)$row->effective_date,0,10),
             'amount'=>(string)$row->amount,'narration'=>(string)$row->narration,
