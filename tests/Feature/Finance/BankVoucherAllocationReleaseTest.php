@@ -14,6 +14,9 @@ final class BankVoucherAllocationReleaseTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        self::assertSame('sqlite', DB::getDefaultConnection());
+        self::assertSame(':memory:', DB::connection()->getDatabaseName());
+        Schema::dropAllTables();
         Schema::create('projects', fn(Blueprint $t) => $t->id());
         Schema::create('customer_ledger', function(Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('project_id');
@@ -60,7 +63,17 @@ final class BankVoucherAllocationReleaseTest extends TestCase
             $t->string('voucher_type'); $t->unsignedBigInteger('voucher_id');
             $t->decimal('amount',18,2);
         });
-        (require base_path('database/migrations/2026_11_12_000044_create_finance_bank_voucher_allocation_releases.php'))->up();
+        // Isolated SQLite fixture: do not require retired MySQL-only migration files.
+        // Production schema is managed by the current one-table baseline migration.
+        Schema::create('finance_bank_voucher_allocation_releases', function(Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('project_id');
+            $t->unsignedBigInteger('allocation_id')->unique();
+            $t->string('source_method'); $t->unsignedBigInteger('source_id');
+            $t->string('voucher_type'); $t->unsignedBigInteger('voucher_id');
+            $t->decimal('amount',18,2); $t->string('action',24);
+            $t->string('reason',500); $t->unsignedBigInteger('released_by');
+            $t->timestamp('released_at'); $t->timestamps();
+        });
         DB::table('projects')->insert(['id'=>1]);
         DB::table('project_head_subheads')->insert(['id'=>3,'project_id'=>1]);
         DB::table('finance_online_intakes')->insert(['id'=>7,'project_id'=>1]);
