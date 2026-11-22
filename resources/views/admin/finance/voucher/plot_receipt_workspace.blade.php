@@ -20,6 +20,7 @@
  data-post-url="{{ route('finance.voucher.plot-receipt.post') }}"
  data-details-base="{{ url('admin/finance/voucher/plot-receipt') }}"
  data-print-base="{{ url('admin/finance/voucher/plot-receipt') }}"
+ data-legacy-print-base="{{ url('admin/booking/plot/voucher/print') }}"
  data-void-base="{{ url('admin/finance/voucher/plot-receipt') }}">
  <div class="bm-voucher-heading pr-heading d-flex align-items-center justify-content-between">
   <div><h2>Plot Receive Payment</h2><div class="bm-voucher-subtitle pr-subtitle">Selected project records · Full voucher Edit</div></div>
@@ -223,7 +224,7 @@
    $row.append($('<td>').text(start+index+1),$('<td>').text(r.date));
    $row.append($('<td>').append($('<strong>').text(r.number)));
    $row.append($('<td>').text(r.customer),$('<td>').text(r.narration));
-   var status=r.approval_draft_id
+   var status=r.legacy ? (r.approval_status==='approved'?'Posted':'Pending approval') : r.approval_draft_id
       ?(r.approval_status==='rejected'?'Rejected':'Pending')
       :(r.reversed?'Reversed':'Posted');
    $row.append($('<td>',{'class':'text-right'}).text(money(r.amount)),$('<td>').text(status));
@@ -231,6 +232,13 @@
     $row.append($('<td>',{'class':'blue-actions-cell'}).text(status==='Pending'
       ?'Awaiting approval':'No posting'));
     $body.append($row);return;
+   }
+   if(r.legacy){
+    var $legacyActions=$('<td>',{'class':'blue-actions-cell'}).append(
+     $('<a>',{'class':'btn btn-sm btn-outline-primary',target:'_blank',rel:'noopener',
+      href:$root.attr('data-legacy-print-base')+'/'+encodeURIComponent(r.legacy_id),
+      text:'View / Print'}));
+    $row.append($legacyActions);$body.append($row);return;
    }
    var $actions=$('<td>',{'class':'blue-actions-cell'}).append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-primary pr-detail','data-id':r.id,text:'Details'}));
    @can('finance plot-receipt edit')
