@@ -155,10 +155,12 @@ final class BankLinkedCorrection
         $allocations = DB::table('finance_bank_voucher_allocations')
             ->where('project_id',$projectId)->where('source_method',$method)
             ->where('source_id',$sourceId)->orderBy('id')->lockForUpdate()->get();
-        if ($allocations->isEmpty()) {
-            throw new \DomainException('This batch handles verified linked sources only.');
-        }
-        $ids = $allocations->pluck('voucher_id')->map(fn ($v)=>(int)$v)->all();
+        // A verified source can still have a wholly unallocated balance.
+        // Historical released links remain immutable and are not active allocations.
+        $activeAllocations=$allocations->filter(fn ($allocation) =>
+            !DB::table('finance_bank_voucher_allocation_releases')
+                ->where('allocation_id',$allocation->id)->exists())->values();
+        $ids = $activeAllocations->pluck('voucher_id')->map(fn ($v)=>(int)$v)->all();
         if (count($ids)!==count(array_unique($ids))) {
             throw new \DomainException('Ambiguous duplicate voucher allocation.');
         }
@@ -178,11 +180,7 @@ final class BankLinkedCorrection
         $rows = [];
         $sumCents = 0;
         $originalCents = 0;
-        foreach ($allocations as $allocation) {
-            if (DB::table('finance_bank_voucher_allocation_releases')
-                ->where('allocation_id',$allocation->id)->exists()) {
-                throw new \DomainException('Previously released allocation cannot be rewritten.');
-            }
+        foreach ($activeAllocations as $allocation) {
             $voucherId=(int)$allocation->voucher_id;
             $series=(string)$allocation->voucher_type;
             if (!in_array($series,['CR','DR','BOR','BOP'],true)) {
@@ -239,6 +237,8 @@ final class BankLinkedCorrection
             throw new \DomainException('Proposed allocations exceed the corrected bank source amount.');
         }
         $before=$this->money($source->amount);
+        $unallocatedBefore=number_format((float)$before - $originalCents / 100,2,'.','');
+        $unallocatedAfter=number_format((float)$amount - $sumCents / 100,2,'.','');
         if ($before===$amount && !collect($rows)->contains(
             fn (array $row) => $row['amount_before'] !== $row['amount_after'])) {
             throw new \DomainException('No financial correction was proposed.');
@@ -248,7 +248,12 @@ final class BankLinkedCorrection
             'bank_identity'=>$method==='online'
                 ? [(string)$source->reference,(string)$source->transaction_date]
                 : [(string)$source->cheque_number,(string)$source->bank_name,(string)$source->cheque_date],
-            'amount_before'=>$before,'amount_after'=>$amount,'vouchers'=>$rows];
+            'amount_before'=>$before,'amount_after'=>$amount,
+            'allocated_before'=>number_format($originalCents/100,2,'.',''),
+            'allocated_after'=>number_format($sumCents/100,2,'.',''),
+            'unallocated_before'=>$unallocatedBefore,'unallocated_after'=>$unallocatedAfter,
+            'historical_released_count'=>$allocations->count()-$activeAllocations->count(),
+            'vouchers'=>$rows];
         $state['fingerprint']=hash('sha256',json_encode($state,JSON_THROW_ON_ERROR));
         return $state;
     }
