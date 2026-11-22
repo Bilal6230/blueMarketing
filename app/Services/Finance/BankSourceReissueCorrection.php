@@ -55,7 +55,10 @@ final class BankSourceReissueCorrection
             || (float)$updates['amount']<=0) {
             throw new \DomainException('Invalid corrected amount.');
         }
-        $updates['amount']=number_format((float)$updates['amount'],2,'.','');
+        [$whole,$fraction]=array_pad(explode('.',$updates['amount'],2),2,'');
+        $fraction=str_pad($fraction,2,'0');
+        if($whole==='0' && $fraction==='00') throw new \DomainException('Amount must be positive.');
+        $updates['amount']=$whole.'.'.$fraction;
         foreach ($method==='online'?['transaction_date']:['cheque_date','received_date'] as $field) {
             $date=\DateTimeImmutable::createFromFormat('!Y-m-d',$updates[$field]);
             if (!$date || $date->format('Y-m-d')!==$updates[$field]) {
@@ -147,7 +150,9 @@ final class BankSourceReissueCorrection
                 || DB::table('ledgers')->where('customer_ledger_id',$id)->count()!==1
                 || (int)$voucher->is_active!==1 || (int)$legs->first()->is_active!==1
                 || (int)$voucher->payment_type!==($method==='online'?2:3)
-                || ($approval && !in_array($approval->status,['approved','posted'],true))) {
+                || (Schema::hasColumn('customer_ledger','deleted_at') && $voucher->deleted_at!==null)
+                || ($approval && ((string)$approval->voucher_type!==(string)$allocation->voucher_type
+                    || !in_array($approval->status,['approved','posted'],true)))) {
                 throw new \DomainException('Linked voucher is not a safely posted single-leg entry.');
             }
             BankVoucherLegIntegrity::assert((string)$allocation->voucher_type,
@@ -164,13 +169,13 @@ final class BankSourceReissueCorrection
                 'voucher_updated'=>(string)($voucher->updated_at??''),
                 'leg_updated'=>(string)($legs->first()->updated_at??'')];
         }
-        if($allocations->isEmpty()) {
-            $claimTable=$method==='online'?'finance_online_voucher_claims':'finance_cheque_voucher_claims';
-            $claimColumn=$method==='online'?'online_intake_id':'cheque_intake_id';
-            if(!Schema::hasTable($claimTable) || DB::table($claimTable)
-                ->where('project_id',$projectId)->where($claimColumn,$sourceId)->exists()) {
-                throw new \DomainException('Unreconciled historical bank claim prevents correction.');
-            }
+        // A legacy single-use claim may coexist with partial allocation history.
+        // Never advertise that source as reusable until the claim is reconciled.
+        $claimTable=$method==='online'?'finance_online_voucher_claims':'finance_cheque_voucher_claims';
+        $claimColumn=$method==='online'?'online_intake_id':'cheque_intake_id';
+        if(!Schema::hasTable($claimTable) || DB::table($claimTable)
+            ->where('project_id',$projectId)->where($claimColumn,$sourceId)->exists()) {
+            throw new \DomainException('Unreconciled historical bank claim prevents correction.');
         }
         $state=['project_id'=>$projectId,'method'=>$method,'source_id'=>$sourceId,
             'status'=>(string)$source->status,
