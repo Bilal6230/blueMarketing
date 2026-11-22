@@ -543,8 +543,9 @@ $(function(){
      }
     }
     resetEntry();editingOnlineId=id;
-    editingOnlineReplacement=!!response.cascade_impact.requires_cascade || record.status==='confirmed';
+    
     var record=response.data;
+    editingOnlineReplacement=!!response.cascade_impact.requires_cascade || record.status==='confirmed';
     $entry.attr('action',bankMutationUrl.replace('__SOURCE_ID__',id));
     $modal.find('.modal-title').text(editingOnlineReplacement?'Replace Linked Online Transaction':'Edit Online Transaction');
     $('#online-save').text(editingOnlineReplacement?'Replace & Reverify':'Update Transaction');
