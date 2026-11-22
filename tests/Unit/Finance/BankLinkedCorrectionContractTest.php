@@ -23,8 +23,8 @@ final class BankLinkedCorrectionContractTest extends TestCase
         self::assertStringContainsString('assertNoPendingCorrection(', $source);
         self::assertStringContainsString('finance_bank_voucher_allocation_releases', $source);
         self::assertStringContainsString('daily_voucher_edit_snapshots', $source);
-        self::assertStringContainsString("->where('id',$item['voucher_id'])", $source);
-        self::assertStringContainsString("->where('id',$item['ledger_id'])", $source);
+        self::assertStringContainsString('->where(\'id\',$item[\'voucher_id\'])', $source);
+        self::assertStringContainsString('->where(\'id\',$item[\'ledger_id\'])', $source);
         self::assertStringNotContainsString('insertGetId(', $source);
         self::assertStringNotContainsString('->delete(', $source);
         self::assertStringNotContainsString('BankVoucherAllocationRelease::class', $source);
