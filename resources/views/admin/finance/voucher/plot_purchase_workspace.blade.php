@@ -18,7 +18,7 @@
 <main class="container-fluid bm-ui bm-voucher-directory bm-voucher-workspace pp-page" id="plotPurchaseApp"
  style="--voucher-accent:#1769e0;--voucher-tint:#eaf2ff"
  data-options-url="{{ route('finance.voucher.plot-purchase.options') }}"
- data-number-preview-url="{{ route('check_new_voucher_number') }}"
+ data-number-preview-url="{{ route('finance.voucher.plot-next-number','PP') }}"
  data-history-url="{{ route('finance.voucher.plot-purchase.history') }}"
  data-post-url="{{ route('finance.voucher.plot-purchase.post') }}"
  data-details-base="{{ url('admin/finance/voucher/plot-purchase') }}"
