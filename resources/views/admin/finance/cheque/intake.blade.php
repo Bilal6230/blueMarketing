@@ -723,13 +723,13 @@ $(function () {
                 }
             }
             resetForm();editingChequeId=id;
-            
+            var record=response.data;
+            editingChequeReplacement=!!response.cascade_impact.requires_cascade || record.status==='cleared';
             $form.attr('action',bankUpdateUrl.replace('__SOURCE_ID__',id));
             $('#cheque-create-title').text(editingChequeReplacement?'Replace Cleared Linked Cheque':'Edit Cheque');
             $('#cheque-save').text(editingChequeReplacement?'Replace & Reverify':'Update Cheque');
             $('#cheque-attachment').prop('disabled',true);
-            var record=response.data;
-    editingChequeReplacement=!!response.cascade_impact.requires_cascade || record.status==='cleared';
+
             $.each(['cheque_number','cheque_title','cheque_date','received_date','amount','bank_name',
                 'branch','received_from','purpose'],function(_,field){
                 $form.find('[name="'+field+'"]').val(record[field]||'');
