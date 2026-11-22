@@ -318,6 +318,15 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         [\App\Http\Controllers\Finance\BankManagementMutationController::class, 'destroy'])
         ->where(['method'=>'online|cheque','id'=>'[0-9]+'])->name('finance.bank-management.delete');
 
+    Route::post('finance/bank-management/{method}/{id}/correction/preview',
+        [\\App\\Http\\Controllers\\Finance\\BankLinkedCorrectionController::class,'preview'])
+        ->where(['method'=>'online|cheque','id'=>'[0-9]+'])
+        ->middleware(['throttle:30,1'])->name('finance.bank-management.correction.preview');
+    Route::post('finance/bank-management/{method}/{id}/correction/confirm',
+        [\\App\\Http\\Controllers\\Finance\\BankLinkedCorrectionController::class,'confirm'])
+        ->where(['method'=>'online|cheque','id'=>'[0-9]+'])
+        ->middleware(['throttle:10,1'])->name('finance.bank-management.correction.confirm');
+
     Route::get('finance/voucher/passed-sources', [\App\Http\Controllers\Finance\PassedBankSourcePickerController::class,'index'])
         ->name('finance.voucher.passed_sources');
 
