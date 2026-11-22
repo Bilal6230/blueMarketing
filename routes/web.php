@@ -327,6 +327,14 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         ->where(['method'=>'online|cheque','id'=>'[0-9]+'])
         ->middleware(['throttle:10,1'])->name('finance.bank-management.correction.confirm');
 
+    Route::get('finance/bank-management/correction-requests/pending',
+        [\App\Http\Controllers\Finance\BankLinkedCorrectionController::class,'pending'])
+        ->name('finance.bank-management.correction.pending');
+    Route::post('finance/bank-management/correction-requests/{requestId}/decide',
+        [\App\Http\Controllers\Finance\BankLinkedCorrectionController::class,'decide'])
+        ->whereNumber('requestId')->middleware(['throttle:15,1'])
+        ->name('finance.bank-management.correction.decide');
+
     Route::get('finance/voucher/passed-sources', [\App\Http\Controllers\Finance\PassedBankSourcePickerController::class,'index'])
         ->name('finance.voucher.passed_sources');
 
