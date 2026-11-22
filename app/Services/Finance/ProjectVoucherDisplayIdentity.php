@@ -54,15 +54,17 @@ final class ProjectVoucherDisplayIdentity
         if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP','CCR','CDR'], true)) {
             $source = DB::table('customer_ledger')->where('id', $sourceId)
                 ->where('project_id', $projectId)->lockForUpdate()
-                ->first(['transaction_type', 'type_id']);
-            if (!$source || !in_array($source->transaction_type, ['CR','CP','CCR','CDR'], true) ||
-                (int)$source->type_id <= 0 ||
-                (($series === 'CCR' || $series === 'CDR')
-                    ? $series !== $source->transaction_type
-                    : (($series === 'CR') !== ($source->transaction_type === 'CR')))) {
+                ->first(['transaction_type','type_id']);
+            // Only old CP rows may be presented as DR. New sources must
+            // retain their actual, independent type and serial.
+            $matches = $source && (
+                (string)$source->transaction_type === $series
+                || ($series === 'DR' && (string)$source->transaction_type === 'CP')
+            );
+            if (!$matches || (int)$source->type_id <= 0) {
                 throw new \DomainException('VOUCHER_SOURCE_IDENTITY_MISMATCH');
             }
-            $display = ($source->transaction_type === 'CP' ? 'DR' : $source->transaction_type).'-'.$source->type_id;
+            $display = $series.'-'.(int)$source->type_id;
         } elseif ($sourceKind === 'customer_ledger' && in_array($series, ['BOR','BOP'], true) && $bankSequence !== null) {
             // This is a real, retained BOR/BOP display-series identity, separate
             // from the legacy CR/CP accounting type and number. The caller has
