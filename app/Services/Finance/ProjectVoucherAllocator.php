@@ -13,8 +13,13 @@ final class ProjectVoucherAllocator
      */
     public function preview(int $projectId, string $series): int
     {
-        if ($projectId < 1 || !preg_match('/^[A-Z]{2,4}$/D', $series)) {
+        if (!preg_match('/^[A-Z]{2,4}$/D', $series)) {
             throw new \DomainException('INVALID_VOUCHER_ALLOCATION_SCOPE');
+        }
+        // Preview is used while the project selector may still be unset.
+        // Avoid rendering an exception page; actual saves still require a valid project.
+        if ($projectId < 1) {
+            return 1;
         }
         $counter = Schema::hasTable('ledger_voucher_counters')
             ? (int) DB::table('ledger_voucher_counters')->where('project_id', $projectId)
