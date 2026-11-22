@@ -1884,6 +1884,43 @@
             // Avoid the named-route lookup during Blade render while route caches are refreshed.
             const passedBankUrl=@json($passedBankSourceUrl);
             const passedBankDirection=@json($passedBankDirection);
+            // Auto-generated source evidence belongs to the selected verified
+            // instrument, not to user-written narration. It is replaced (never
+            // duplicated) when the selected source changes.
+            function setPassedBankNarration(source){
+                const $detail=$('#detail');
+                if(!$detail.length)return true;
+                const previous=String($detail.val()||'');
+                const manual=$.trim(previous.replace(
+                    /\n?\[BANK SOURCE\][\s\S]*?\[\/BANK SOURCE\]/g,''));
+                if(!source){
+                    $detail.val(manual).trigger('input');
+                    return true;
+                }
+                const items=source.method==='online'
+                    ? [
+                        'Transaction ID / Reference: '+String(source.reference||''),
+                        'Sending Bank: '+String(source.sending_bank||''),
+                        'Receiving Bank: '+String(source.receiving_bank||''),
+                        'Clearing Date: '+String(source.passing_date||'')
+                    ]
+                    : [
+                        'Cheque Title: '+String(source.cheque_title||''),
+                        'Cheque Number: ****'+String(source.cheque_last4||String(source.reference||'').slice(-4)),
+                        'Bank Name: '+String(source.bank||''),
+                        'Clearing Date: '+String(source.passing_date||'')
+                    ];
+                const block='[BANK SOURCE]\n'+items.join('\n')+'\n[/BANK SOURCE]';
+                const next=manual?(manual+'\n'+block):block;
+                const max=Number($detail.attr('maxlength')||255);
+                if(next.length>max){
+                    window.Swal.fire({icon:'warning',title:'Narration too long',
+                        text:'Bank details need '+block.length+' characters. Shorten manual narration to stay within '+max+' characters.'});
+                    return false;
+                }
+                $detail.val(next).trigger('input');
+                return true;
+            }
             function resetPassedBankSelection(){
                 const hadSource=!!$('#passed_source_id').val();
                 $('#passed_source_id,#passed_source_method').val('');
@@ -1895,6 +1932,7 @@
                 $('#submitForm,#submit-button').prop('disabled',false);
                 $('#t_number').prop('readonly',false);
                 if(hadSource){
+                    setPassedBankNarration(null);
                     $('#t_number,#passing_date,#cheque_purpose').val('').trigger('change');
                     const $bank=$('#bank_id'),select=$bank.prop('tomselect');
                     if(select)select.clear(true);else $bank.val('').trigger('change');
@@ -1980,8 +2018,11 @@
                 if(!source){$('#passed-bank-error').removeClass('d-none').text('Select one verified record.');return;}
                 const payment=String($('#payment_type').val()||'');
                 if(source.method!==(payment==='2'?'online':'cheque'))return;
+                // Check narration capacity before selecting an instrument.
+                if(!setPassedBankNarration(source))return;
                 resetPassedBankSelection();
                 $('#passed_source_id').val(source.id);
+                setPassedBankNarration(source);
                 $('#passed_source_method').val(source.method);
                 $('#t_number').val(source.reference).prop('readonly',true).trigger('change');
                 selectedPassedRemainingCents=Math.round(Number(source.remaining_amount)*100);
