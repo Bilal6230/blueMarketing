@@ -81,12 +81,18 @@ final class BankManagementMutationController extends Controller
         $linked=\Illuminate\Support\Facades\Schema::hasTable('finance_bank_voucher_allocations')
             && DB::table('finance_bank_voucher_allocations')->where('project_id',$project)
                 ->where('source_method',$method)->where('source_id',$id)->exists();
-        if ($linked) {
+        $table=$method==='online'?'finance_online_intakes':'finance_cheque_intakes';
+        $status=DB::table($table)->where('project_id',$project)->where('id',$id)->value('status');
+        abort_unless($status!==null,404);
+        $verified=($method==='online' && $status==='confirmed')
+            || ($method==='cheque' && $status==='cleared');
+        $replacement=$linked || $verified;
+        if ($replacement) {
             $this->authorizeAction($request,$method,'delete',true);
             $reason=$request->validate(['reason'=>['required','string','min:3','max:500']])['reason'];
         }
         try {
-            $updated=$linked
+            $updated=$replacement
                 ? app(BankManagementSourceMutation::class)->replace(
                     $project,$method,$id,(int)$request->user()->id,$reason,$input)
                 : app(BankManagementSourceMutation::class)->update($project,$method,$id,$input);
@@ -94,8 +100,8 @@ final class BankManagementMutationController extends Controller
             throw ValidationException::withMessages(['source'=>$error->getMessage()]);
         }
         return response()->json(['status'=>'success',
-            'message'=>$linked
-                ? 'Old verified source and linked postings withdrawn; a NEW unconfirmed replacement is ready for bank verification.'
+            'message'=>$replacement
+                ? 'Original verified source archived and linked postings released if present; NEW unconfirmed replacement requires bank verification.'
                 : 'Bank management source updated without changing any voucher posting.',
             'data'=>$updated]);
     }
