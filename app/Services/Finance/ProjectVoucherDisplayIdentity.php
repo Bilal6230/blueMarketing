@@ -89,7 +89,9 @@ final class ProjectVoucherDisplayIdentity
             $raw = (string)$query->value($column);
             if (!preg_match('/^(?:'.preg_quote($series,'/').'-)?([0-9]+)$/D',$raw,$match) || (int)$match[1]<1)
                 throw new \DomainException('VOUCHER_SOURCE_NUMBER_INVALID');
-            $display = $series.'-'.(int)$match[1];
+            $display = $series.'-'.($series === 'JV'
+                ? str_pad((string)(int)$match[1],7,'0',STR_PAD_LEFT)
+                : (string)(int)$match[1]);
         }
         DB::table('project_voucher_display_numbers')->insert([
             'project_id' => $projectId, 'source_kind' => $sourceKind, 'source_id' => $sourceId,
