@@ -328,6 +328,10 @@ $(function () {
     'use strict';
     var currentPage=1, listRequest=null, saveBusy=false, searchTimer=null, listSeq=0;
     var $form=$('#cheque-intake-form'), $create=$('#cheque-create-modal');
+    var bankEditUrl=@json(route('finance.bank-management.edit',['method'=>'cheque','id'=>'__SOURCE_ID__']));
+    var bankUpdateUrl=@json(route('finance.bank-management.update',['method'=>'cheque','id'=>'__SOURCE_ID__']));
+    var bankDeleteUrl=@json(route('finance.bank-management.delete',['method'=>'cheque','id'=>'__SOURCE_ID__']));
+    var editingChequeId=null;
     var actionUrlTemplate=@json(route('finance.cheques.action',['id'=>'__CHEQUE_ID__']));
     var finalizeUrlTemplate=@json(route('finance.cheques.finalize',['id'=>'__CHEQUE_ID__']));
     var historyUrlTemplate=@json(route('finance.cheques.history',['id'=>'__CHEQUE_ID__']));
@@ -470,6 +474,17 @@ $(function () {
                     .text(item[1]).appendTo($actions);
             });
         }
+        if((r.status==='received'||r.status==='issued') && @json(auth()->user()->can('finance cheque edit'))){
+            $('<button type="button">').addClass('btn btn-sm btn-outline-primary mr-1 cheque-edit-source')
+             .attr('data-id',r.id).text('Edit').appendTo($actions);
+        }
+        if(@json(auth()->user()->can('finance cheque delete')) &&
+          (r.status==='received'||r.status==='issued'||
+           (Number(r.linked_voucher_count||0)>0 && @json(auth()->user()->can('delete voucher')) &&
+            @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))))){
+            $('<button type="button">').addClass('btn btn-sm btn-outline-danger mr-1 cheque-delete-source')
+             .attr('data-id',r.id).text('Delete').appendTo($actions);
+        }
         if(@json(auth()->user()->can('finance cheque history')) && Number(r.linked_voucher_count||0)>0){
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-history mr-1')
                 .attr({'data-id':r.id,'data-cheque':r.cheque_number,'title':'Open linked voucher allocation history'})
@@ -533,7 +548,7 @@ $(function () {
             toast('Cheque list could not be loaded.',true);
         });
     }
-    $('#cheque-add-btn').on('click',function(){clearErrors();$create.modal('show');});
+    $('#cheque-add-btn').on('click',function(){resetForm();$create.modal('show');});
     $('#cheque-filter-form').on('submit',function(e){e.preventDefault();load(1);});
     $('#cheque-reset').on('click',function(){
         $('#cheque-filter-form').trigger('reset');
@@ -574,8 +589,18 @@ $(function () {
             if(!result.isConfirmed || saveBusy) return;
             saveBusy=true;
             $('#cheque-save').prop('disabled',true);
+            var payload=new FormData($form[0]);
+            if(editingChequeId){
+                payload.append('_method','PUT');
+                var selected=$.grep(mappingOptions,function(item){
+                    return String(item.head_id)===String($('#cheque-head-account').val())
+                        && String(item.subhead_id)===String($('#cheque-child-account').val());
+                })[0];
+                if(!selected){toast('Select a valid project account.',true);saveBusy=false;$('#cheque-save').prop('disabled',false);return;}
+                payload.set('account_mapping_id',String(selected.id));
+            }
             $.ajax({
-                url:$form.attr('action'),method:'POST',data:new FormData($form[0]),
+                url:$form.attr('action'),method:'POST',data:payload,
                 processData:false,contentType:false,dataType:'json',headers:{Accept:'application/json'}
             }).done(function(data){
                 toast(data.message||'Cheque saved successfully.',false);
@@ -669,6 +694,47 @@ $(function () {
             .text($(this).val()==='out'?'Issued To *':'Received From *');
     });
     initChequeTomSelects();
+    $('#cheque-table-body').on('click','.cheque-edit-source',function(){
+        var id=String($(this).attr('data-id'));
+        $.ajax({url:bankEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
+         .done(function(response){
+            if(!response.cascade_impact||!response.cascade_impact.can_edit_directly){
+                toast(response.cascade_impact&&response.cascade_impact.reason||'Source is linked or verified.',true);return;
+            }
+            resetForm();editingChequeId=id;
+            $form.attr('action',bankUpdateUrl.replace('__SOURCE_ID__',id));
+            $('#cheque-create-title').text('Edit Cheque');
+            $('#cheque-save').text('Update Cheque');
+            $('#cheque-attachment').prop('disabled',true);
+            var record=response.data;
+            $.each(['cheque_number','cheque_title','cheque_date','received_date','amount','bank_name',
+                'branch','received_from','purpose'],function(_,field){
+                $form.find('[name="'+field+'"]').val(record[field]||'');
+            });
+            setTs($('#cheque-direction'),record.direction);
+            var mapping=$.grep(mappingOptions,function(item){return Number(item.id)===Number(record.account_mapping_id);})[0];
+            if(mapping){
+                setTs($head,mapping.head_id);refreshChildren(mapping.head_id,false);
+                setTs($child,mapping.subhead_id);
+            }
+            $create.modal('show');
+         }).fail(function(xhr){toast(xhr.responseJSON&&xhr.responseJSON.message||'Unable to open cheque editor.',true);});
+    });
+    $('#cheque-table-body').on('click','.cheque-delete-source',function(){
+        var id=String($(this).attr('data-id'));
+        if(!window.Swal)return;
+        window.Swal.fire({title:'Withdraw Cheque Source?',text:'Linked voucher postings will be voided and their allocations released in one transaction. Bank evidence remains.',
+            input:'textarea',inputPlaceholder:'Reason (3–500 characters)',showCancelButton:true,
+            confirmButtonText:'Withdraw',confirmButtonColor:'#d33',inputValidator:function(value){
+                if(!value||value.trim().length<3)return 'Enter a reason of at least 3 characters.';
+            }}).then(function(result){
+                if(!result.isConfirmed)return;
+                $.ajax({url:bankDeleteUrl.replace('__SOURCE_ID__',id),method:'DELETE',
+                    data:{_token:$form.find('[name="_token"]').val(),reason:result.value},dataType:'json'})
+                .done(function(data){toast(data.message||'Cheque source withdrawn.',false);load(1);})
+                .fail(function(xhr){toast(xhr.responseJSON&&xhr.responseJSON.message||'Cheque withdrawal blocked.',true);});
+            });
+        });
     // Bank-clearing / direct-withdrawal workflows. No accounting postings are made here.
     @if(auth()->user()->can('finance cheque clear') || auth()->user()->can('finance cheque withdraw') || auth()->user()->can('finance cheque return') || auth()->user()->can('finance cheque reject'))
     $('#cheque-table-body').on('click','.cheque-action',function(){
