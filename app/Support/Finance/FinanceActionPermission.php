@@ -227,6 +227,7 @@ final class FinanceActionPermission
         $transfers = [
             'finance.voucher.transfer.workspace'=>'view',
             'finance.voucher.transfer.sources'=>'view',
+            'finance.voucher.transfer.next-number'=>'view',
             'finance.voucher.transfer.history'=>'history',
             'finance.voucher.transfer.post'=>'create',
             'finance.voucher.transfer.details'=>'edit',
