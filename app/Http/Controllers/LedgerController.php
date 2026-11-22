@@ -518,7 +518,7 @@ class LedgerController extends Controller
                 }
 
                 $customerLedger = CustomerLedger::create([
-                    'transaction_type' => $effectiveVoucherType,
+                    'transaction_type' => $voucherPrefix,
                     'type_id' => $resolvedVoucherNumber,
                     'reference' => $request->input('reference'),
                     'project_id' => $selectedProjectId ?? null,
