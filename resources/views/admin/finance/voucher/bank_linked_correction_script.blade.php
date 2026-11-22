@@ -28,6 +28,11 @@ jQuery(function($) {
         $modal.one('hidden.bs.modal',function(){openEditor(cfg,allocations);});
         $modal.modal('hide');
     });
+    $(document).on('bank-linked-correction-direct',function(_,cfg){
+        if(busy||!window.Swal)return;
+        current=cfg;
+        openEditor(cfg,(cfg.impact&&cfg.impact.allocations||[]).filter(function(a){return !a.released;}));
+    });
     function openEditor(cfg,allocations) {
         var $layout=$('<div class="text-left">');
         $layout.append($('<label class="d-block">').text('Corrected source amount (PKR)'));
