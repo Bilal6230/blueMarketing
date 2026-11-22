@@ -26,6 +26,6 @@ final class ProjectVoucherDisplay
                 ->where('project_id', $projectId)->where('series', $series)->value('prefix') ?: $prefix;
             if ($series === 'CP' && $prefix === 'CP') $prefix = 'DR';
         }
-        return $prefix.'-'.substr($date, 0, 4).'-'.str_pad((string) $number, 4, '0', STR_PAD_LEFT);
+        return $series.'-'.$number;
     }
 }
