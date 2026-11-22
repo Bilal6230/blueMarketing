@@ -164,7 +164,9 @@
  };
  var getValue=function(row,field){
   var map={date:row.date,number:row.number,customer:row.customer,detail:row.narration,
-   amount:row.amount,status:row.approval_draft_id
+   amount:row.amount,status:row.legacy
+    ?(row.approval_status==='approved'?'Posted':'Pending approval')
+    :row.approval_draft_id
     ?(row.approval_status==='rejected'?'Rejected':'Pending')
     :(row.reversed?'Reversed':'Posted')};
   return String(map[field]==null?'':map[field]);
