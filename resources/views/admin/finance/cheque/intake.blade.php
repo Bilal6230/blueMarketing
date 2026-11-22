@@ -331,7 +331,7 @@ $(function () {
     var bankEditUrl=@json(route('finance.bank-management.edit',['method'=>'cheque','id'=>'__SOURCE_ID__']));
     var bankUpdateUrl=@json(route('finance.bank-management.update',['method'=>'cheque','id'=>'__SOURCE_ID__']));
     var bankDeleteUrl=@json(route('finance.bank-management.delete',['method'=>'cheque','id'=>'__SOURCE_ID__']));
-    var editingChequeId=null;
+    var editingChequeId=null,editingChequeReplacement=false;
     var actionUrlTemplate=@json(route('finance.cheques.action',['id'=>'__CHEQUE_ID__']));
     var finalizeUrlTemplate=@json(route('finance.cheques.finalize',['id'=>'__CHEQUE_ID__']));
     var historyUrlTemplate=@json(route('finance.cheques.history',['id'=>'__CHEQUE_ID__']));
@@ -411,7 +411,7 @@ $(function () {
         $('#cheque-file-name').text(files&&files.length?files[0].name:'No file selected');
     });
     function resetForm() {
-        editingChequeId=null;
+        editingChequeId=null;editingChequeReplacement=false;
         $form.attr('action',@json(route('finance.cheques.store')));
         $('#cheque-create-title').text('Add New Cheque');
         $('#cheque-save').text('Save Cheque');
@@ -479,7 +479,12 @@ $(function () {
                     .text(item[1]).appendTo($actions);
             });
         }
-        if((r.status==='received'||r.status==='issued') && @json(auth()->user()->can('finance cheque edit'))){
+        if(@json(auth()->user()->can('finance cheque edit')) &&
+            ((r.status==='received'||r.status==='issued') && Number(r.linked_voucher_count||0)===0 ||
+             r.status==='cleared' && Number(r.linked_voucher_count||0)>0 &&
+             @json(auth()->user()->can('finance cheque delete')) &&
+             @json(auth()->user()->can('delete voucher')) &&
+             @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary mr-1 cheque-edit-source')
              .attr('data-id',r.id).text('Edit').appendTo($actions);
         }
@@ -584,7 +589,14 @@ $(function () {
         window.Swal.fire({
             icon:'question',
             title:'Confirm Cheque Receiving',
-            text:'Save this In/Out cheque record? No bank clearance or accounting voucher will be created.',
+            text:editingChequeReplacement
+                ?'Original linked vouchers will be voided; a NEW cheque reference must complete bank clearance again.'
+                :(editingChequeId?'Update this unlinked cheque?':'Save this cheque receiving record?'),
+            input:editingChequeReplacement?'textarea':undefined,
+            inputPlaceholder:editingChequeReplacement?'Mandatory replacement reason (3–500 characters)':undefined,
+            inputValidator:editingChequeReplacement?function(value){
+                if(!value||value.trim().length<3)return 'Enter a reason of at least 3 characters.';
+            }:undefined,
             showCancelButton:true,
             confirmButtonText:'Yes, Save Cheque',
             cancelButtonText:'Cancel',
@@ -597,6 +609,7 @@ $(function () {
             var payload=new FormData($form[0]);
             if(editingChequeId){
                 payload.append('_method','PUT');
+                if(editingChequeReplacement)payload.set('reason',result.value);
                 var selected=$.grep(mappingOptions,function(item){
                     return String(item.head_id)===String($('#cheque-head-account').val())
                         && String(item.subhead_id)===String($('#cheque-child-account').val());
@@ -704,12 +717,16 @@ $(function () {
         $.ajax({url:bankEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
          .done(function(response){
             if(!response.cascade_impact||!response.cascade_impact.can_edit_directly){
-                toast(response.cascade_impact&&response.cascade_impact.reason||'Source is linked or verified.',true);return;
+                if(!(response.cascade_impact&&response.cascade_impact.requires_cascade &&
+                    @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
+                    toast(response.cascade_impact&&response.cascade_impact.reason||'Source is linked or verified.',true);return;
+                }
             }
             resetForm();editingChequeId=id;
+            editingChequeReplacement=!!response.cascade_impact.requires_cascade;
             $form.attr('action',bankUpdateUrl.replace('__SOURCE_ID__',id));
-            $('#cheque-create-title').text('Edit Cheque');
-            $('#cheque-save').text('Update Cheque');
+            $('#cheque-create-title').text(editingChequeReplacement?'Replace Cleared Linked Cheque':'Edit Cheque');
+            $('#cheque-save').text(editingChequeReplacement?'Replace & Reverify':'Update Cheque');
             $('#cheque-attachment').prop('disabled',true);
             var record=response.data;
             $.each(['cheque_number','cheque_title','cheque_date','received_date','amount','bank_name',
