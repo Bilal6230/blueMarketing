@@ -52,7 +52,7 @@ final class ProjectVoucherAllocator
         if (!in_array($series, ['BOR','BOP','JV','PPR'], true)) {
             $numeric('customer_ledger', 'type_id', ['transaction_type' => $series]);
         }
-        if (!in_array($series, ['BOR','BOP','JV'], true) && Schema::hasTable('ledgers') && Schema::hasTable('project_head_subheads')) {
+        if (!in_array($series, ['BOR','BOP','JV','PPR'], true) && Schema::hasTable('ledgers') && Schema::hasTable('project_head_subheads')) {
             $max = max($max, (int) DB::table('ledgers as l')
                 ->join('project_head_subheads as p', 'p.id', '=', 'l.project_head_subheads_id')
                 ->where('p.project_id', $projectId)->where('l.type', $series)->max('l.voucher_number'));
@@ -66,7 +66,7 @@ final class ProjectVoucherAllocator
         if ($series === 'CV') $text('commision_vouchers', 'voucher_number');
         if ($series === 'PPR') $max = max($max, $this->plotReceiptSequenceBaseline($projectId));
         if ($series === 'PP') $text('finance_plot_purchases', 'purchase_number');
-        if (in_array($series, ['PPR','PP'], true)) {
+        if ($series === 'PP') {
             $text('finance_plot_approval_drafts', 'source_number', ['voucher_type' => $series]);
         }
         if (in_array($series, ['BD','BW'], true)) {
