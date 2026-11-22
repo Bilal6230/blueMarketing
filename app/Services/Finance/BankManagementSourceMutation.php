@@ -140,6 +140,93 @@ final class BankManagementSourceMutation
         }, 3);
     }
 
+    /**
+     * Linked Edit is an audited replacement, never an in-place mutation of
+     * evidence already used to confirm a bank transaction. The replacement is
+     * unconfirmed and must pass bank management again before voucher creation.
+     */
+    public function replace(int $projectId, string $method, int $sourceId,
+        int $actorId, string $reason, array $changes): array
+    {
+        $table=$this->table($method);
+        $reason=trim($reason);
+        if ($actorId<1 || mb_strlen($reason)<3 || mb_strlen($reason)>500) {
+            throw new \DomainException('An audited replacement reason of 3–500 characters is required.');
+        }
+        return DB::transaction(function () use ($projectId,$method,$sourceId,$actorId,$reason,$changes,$table): array {
+            $this->lockProject($projectId);
+            $source=DB::table($table)->where('project_id',$projectId)
+                ->where('id',$sourceId)->lockForUpdate()->first();
+            if (!$source) throw new \DomainException('BANK_MANAGEMENT_SOURCE_NOT_FOUND');
+            $links=DB::table('finance_bank_voucher_allocations')
+                ->where('project_id',$projectId)->where('source_method',$method)
+                ->where('source_id',$sourceId)->exists();
+            if (!$links) throw new \DomainException('Use ordinary Edit for an unlinked source.');
+            if ($method==='online' && (string)$source->status!=='confirmed') {
+                throw new \DomainException('Only confirmed linked online sources may be replaced.');
+            }
+            if ($method==='cheque' && (string)$source->status!=='cleared') {
+                throw new \DomainException('Only cleared linked cheques may be replaced.');
+            }
+            if (!DB::table('project_head_subheads')->where('project_id',$projectId)
+                ->where('id',(int)($changes['account_mapping_id']??0))->exists()) {
+                throw new \DomainException('Replacement account does not belong to this project.');
+            }
+            if ($method==='online') {
+                $reference=trim((string)($changes['reference']??''));
+                $key=mb_strtoupper($reference,'UTF-8');
+                if ($key==='' || DB::table($table)->where('project_id',$projectId)
+                    ->where('reference_key',$key)->exists()) {
+                    throw new \DomainException('A replacement requires a NEW unique online reference.');
+                }
+            } else {
+                $number=strtoupper(trim((string)($changes['cheque_number']??'')));
+                $bank=trim((string)($changes['bank_name']??''));
+                if ($number==='' || $bank==='' ||
+                    DB::table($table)->where('project_id',$projectId)
+                        ->where('bank_name',$bank)->where('cheque_number',$number)->exists()) {
+                    throw new \DomainException('A replacement requires a NEW unique cheque/bank reference.');
+                }
+            }
+            $withdrawn=$this->withdraw($projectId,$method,$sourceId,$actorId,$reason);
+            if ($method==='online') {
+                $row=array_intersect_key($changes,array_flip([
+                    'reference','transaction_date','amount','type','sending_bank','sending_account',
+                    'receiving_bank','receiving_account','sender_name','receiver_name','purpose',
+                    'account_mapping_id']));
+                $row += ['proof_path'=>$source->proof_path];
+                $row['reference_key']=$key;
+                $row['remarks']='Audited replacement for Online #'.$sourceId.': '.$reason;
+                $row['status']='pending';
+            } else {
+                $row=array_intersect_key($changes,array_flip([
+                    'cheque_number','cheque_title','direction','cheque_date','received_date',
+                    'amount','bank_name','branch','received_from','purpose','account_mapping_id']));
+                $row['cheque_number']=$number;
+                $row['bank_name']=$bank;
+                $row['customer_id']=$source->customer_id;
+                $row['attachment_path']=$source->attachment_path;
+                $row['customer_ledger_id']=null;
+                $row['status']=$changes['direction']==='out'?'issued':'received';
+            }
+            $row['project_id']=$projectId;
+            $row['created_by']=$actorId;
+            $row['created_at']=now();
+            $row['updated_at']=now();
+            $replacementId=(int)DB::table($table)->insertGetId($row);
+            if ($method==='cheque' && Schema::hasTable('finance_cheque_intake_actions')) {
+                DB::table('finance_cheque_intake_actions')
+                    ->where('project_id',$projectId)->where('cheque_intake_id',$sourceId)
+                    ->where('action','withdrawn')->where('actor_id',$actorId)
+                    ->orderByDesc('id')->limit(1)
+                    ->update(['remarks'=>'Replaced by cheque source #'.$replacementId]);
+            }
+            return ['old_source_id'=>$sourceId,'replacement_source_id'=>$replacementId,
+                'new_status'=>$row['status'],'released_count'=>$withdrawn['released_count'],
+                'method'=>$method];
+        },3);
+    }
+
     private function lockProject(int $projectId): void
     {
         if ($projectId < 1 || !DB::table('projects')->where('id',$projectId)->lockForUpdate()->first()) {
