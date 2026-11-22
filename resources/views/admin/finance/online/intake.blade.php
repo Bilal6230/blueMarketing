@@ -557,6 +557,11 @@ $(function(){
     
     var record=response.data;
     editingOnlineReplacement=!!response.cascade_impact.requires_cascade || record.status==='confirmed';
+    $(document).trigger('bank-linked-correction-ready',[{
+     method:'online',id:id,record:record,impact:response.cascade_impact,
+     verified:record.status==='confirmed',saveSelector:'#online-save',
+     modalSelector:'#online-entry-modal',reloadSelector:'#online-filters'
+    }]);
     $('#online-replacement-reason-wrap').toggleClass('d-none',!editingOnlineReplacement);
     $('#online-replacement-reason').prop('required',editingOnlineReplacement);
     $entry.attr('action',bankMutationUrl.replace('__SOURCE_ID__',id));
@@ -697,4 +702,5 @@ $(function(){
  load(1);
 });
 </script>
+@include('admin.finance.voucher.bank_linked_correction_script')
 @endpush
