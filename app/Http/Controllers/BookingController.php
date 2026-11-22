@@ -1062,9 +1062,11 @@ class BookingController extends Controller
         return $detail;
     }
 
-    private function createSalesVoucherLedger(JournalVoucher $voucher, array $payload): Ledger
+    private function createSalesVoucherLedger(JournalVoucher $voucher, JournalVoucherDetail $detail, array $payload): Ledger
     {
         return Ledger::firstOrCreate([
+            'journal_voucher_detail_id' => $detail->id,
+        ], [
             'type' => 'SV',
             'type_id' => $voucher->id,
             'voucher_number' => $voucher->voucher_number,
@@ -1074,7 +1076,6 @@ class BookingController extends Controller
             'amount_out' => $this->pvMoneyToDecimal2($payload['amount_out'] ?? 0),
             'detail' => trim((string) ($payload['description'] ?? 'Sales Voucher')),
             'date' => $payload['date'],
-        ], [
             'customer_ledger_id' => $payload['customer_ledger_id'] ?? null,
             'is_active' => $payload['is_active'] ?? 1,
             'create_by' => $payload['create_by'] ?? Auth::id(),
@@ -1085,8 +1086,8 @@ class BookingController extends Controller
 
     private function recordSalesVoucherEntry(JournalVoucher $voucher, array $payload): void
     {
-        $this->addSalesVoucherDetail($voucher, $payload);
-        $this->createSalesVoucherLedger($voucher, $payload);
+        $detail = $this->addSalesVoucherDetail($voucher, $payload);
+        $this->createSalesVoucherLedger($voucher, $detail, $payload);
     }
 
     private function syncSalesVoucherTotals(JournalVoucher $voucher): void
