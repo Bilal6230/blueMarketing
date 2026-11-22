@@ -23,7 +23,13 @@ final class BankManagementLinkedCascadeTest extends TestCase
         Schema::create('finance_online_intakes', function(Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('project_id');
             $t->string('status'); $t->decimal('amount',18,2);
-            $t->text('remarks')->nullable(); $t->timestamps();
+            $t->string('reference')->nullable(); $t->string('reference_key')->nullable();
+            $t->string('transaction_date')->nullable(); $t->string('type')->nullable();
+            foreach (['sending_bank','sending_account','receiving_bank','receiving_account',
+                'sender_name','receiver_name','purpose'] as $field) $t->string($field)->nullable();
+            $t->unsignedBigInteger('account_mapping_id')->nullable();
+            $t->unsignedBigInteger('created_by')->nullable();
+            $t->string('proof_path')->nullable(); $t->text('remarks')->nullable(); $t->timestamps();
         });
         Schema::create('finance_cheque_intakes', function(Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('project_id');
@@ -117,6 +123,31 @@ final class BankManagementLinkedCascadeTest extends TestCase
         self::assertSame(0,DB::table('customer_ledger')->where('is_active',1)->count());
         self::assertSame(0,DB::table('ledgers')->where('is_active',1)->count());
         self::assertSame(2,DB::table('finance_bank_voucher_allocations')->count());
+    }
+
+    public function test_linked_online_edit_creates_new_unconfirmed_source_without_reusing_old_ledger(): void
+    {
+        DB::table('finance_online_intakes')->where('id',55)->update([
+            'reference'=>'ORIGINAL','reference_key'=>'ORIGINAL',
+        ]);
+        $this->voucher(31,'BOR','approved',500);
+        $result=app(BankManagementSourceMutation::class)->replace(
+            3,'online',55,7,'Correct bank statement amount',[
+                'reference'=>'CORRECTED-1','transaction_date'=>'2026-11-22',
+                'amount'=>'500.00','type'=>'receipt','sending_bank'=>'A',
+                'sending_account'=>'123','receiving_bank'=>'B','receiving_account'=>'456',
+                'sender_name'=>'Customer','receiver_name'=>'Office','purpose'=>'Corrected',
+                'account_mapping_id'=>7,
+            ]);
+        self::assertSame('pending',$result['new_status']);
+        self::assertNotSame(55,$result['replacement_source_id']);
+        self::assertSame('withdrawn',DB::table('finance_online_intakes')->where('id',55)->value('status'));
+        self::assertSame('pending',DB::table('finance_online_intakes')
+            ->where('id',$result['replacement_source_id'])->value('status'));
+        self::assertSame('CORRECTED-1',DB::table('finance_online_intakes')
+            ->where('id',$result['replacement_source_id'])->value('reference'));
+        self::assertSame(0,(int)DB::table('ledgers')->where('customer_ledger_id',31)->value('is_active'));
+        self::assertSame(1,DB::table('finance_bank_voucher_allocation_releases')->count());
     }
 
     public function test_pending_second_voucher_rolls_back_first_release_and_source_status(): void
