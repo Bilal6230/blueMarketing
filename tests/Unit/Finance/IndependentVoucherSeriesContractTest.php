@@ -18,6 +18,16 @@ final class IndependentVoucherSeriesContractTest extends TestCase
         self::assertStringContainsString("'type_id' => \$resolvedVoucherNumber", $controller);
         self::assertStringContainsString("\$displaySeries = \$voucherPrefix;", $controller);
         self::assertStringContainsString("'BOR','BOP' => [2,3]", $controller);
+        // Prevent a missing local variable from turning a bank save into
+        // the generic 500 error reported by the confirmation modal.
+        self::assertStringContainsString(
+            "\$requestedDisplaySeries = strtoupper(trim((string)\$request->input('display_series','')));",
+            $controller
+        );
+        self::assertStringContainsString(
+            "\$displaySeries !== \$requestedDisplaySeries || !\$linkedVerifiedSource",
+            $controller
+        );
         self::assertStringContainsString("'CCR','CDR','CP' => [1]", $controller);
         self::assertStringNotContainsString("\$displaySeries = match ([\$effectiveVoucherType, \$paymentType])", $controller);
         self::assertStringNotContainsString("->update(['transaction_type'=>\$displaySeries])", $controller);
