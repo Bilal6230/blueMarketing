@@ -78,12 +78,26 @@ final class BankManagementMutationController extends Controller
                 'purpose'=>['required','string','max:500'],
                 'account_mapping_id'=>['required','integer','min:1'],
             ]);
+        $linked=\Illuminate\Support\Facades\Schema::hasTable('finance_bank_voucher_allocations')
+            && DB::table('finance_bank_voucher_allocations')->where('project_id',$project)
+                ->where('source_method',$method)->where('source_id',$id)->exists();
+        if ($linked) {
+            $this->authorizeAction($request,$method,'delete',true);
+            $reason=$request->validate(['reason'=>['required','string','min:3','max:500']])['reason'];
+        }
         try {
-            $updated=app(BankManagementSourceMutation::class)->update($project,$method,$id,$input);
+            $updated=$linked
+                ? app(BankManagementSourceMutation::class)->replace(
+                    $project,$method,$id,(int)$request->user()->id,$reason,$input)
+                : app(BankManagementSourceMutation::class)->update($project,$method,$id,$input);
         } catch (\DomainException $error) {
             throw ValidationException::withMessages(['source'=>$error->getMessage()]);
         }
-        return response()->json(['status'=>'success','message'=>'Bank management source updated without changing any voucher posting.','data'=>$updated]);
+        return response()->json(['status'=>'success',
+            'message'=>$linked
+                ? 'Old verified source and linked postings withdrawn; a NEW unconfirmed replacement is ready for bank verification.'
+                : 'Bank management source updated without changing any voucher posting.',
+            'data'=>$updated]);
     }
 
     public function destroy(Request $request,string $method,int $id)
@@ -93,6 +107,8 @@ final class BankManagementMutationController extends Controller
         $project=$this->project();
         $input=$request->validate(['reason'=>['required','string','min:3','max:500']]);
         // Require elevated permission before entering any linked financial cascade.
+        abort_unless(\Illuminate\Support\Facades\Schema::hasTable('finance_bank_voucher_allocations'),409,
+            'Bank allocation evidence is unavailable.');
         $allocationExists=DB::table('finance_bank_voucher_allocations')
             ->where('project_id',$project)->where('source_method',$method)
             ->where('source_id',$id)->exists();
