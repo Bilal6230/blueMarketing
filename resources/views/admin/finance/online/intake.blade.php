@@ -228,7 +228,7 @@ $(function(){
  var bankMutationUrl=@json(route('finance.bank-management.update',['method'=>'online','id'=>'__SOURCE_ID__']));
  var bankMutationEditUrl=@json(route('finance.bank-management.edit',['method'=>'online','id'=>'__SOURCE_ID__']));
  var bankMutationDeleteUrl=@json(route('finance.bank-management.delete',['method'=>'online','id'=>'__SOURCE_ID__']));
- var editingOnlineId=null;
+ var editingOnlineId=null,editingOnlineReplacement=false;
  var mappings=@json($mappings);
  function fit(){
   var $page=$('.online-register-page');
@@ -332,7 +332,7 @@ $(function(){
   $('#online-file-name').text(files&&files.length?files[0].name:'No file selected');
  });
  function resetEntry(){
-  editingOnlineId=null;
+  editingOnlineId=null;editingOnlineReplacement=false;
   $entry.attr('action',@json(route('finance.online.store')));
   $modal.find('.modal-title').text('Add Online Transaction');
   $('#online-save').text('Save Transaction');
@@ -381,7 +381,12 @@ $(function(){
     .text('Confirm').appendTo($actions);
   }
   @endcan
-  if(x.status==='pending' && @json(auth()->user()->can('finance online edit'))){
+  if(@json(auth()->user()->can('finance online edit')) &&
+      (x.status==='pending' && Number(x.linked_voucher_count||0)===0 ||
+       x.status==='confirmed' && Number(x.linked_voucher_count||0)>0 &&
+       @json(auth()->user()->can('finance online delete')) &&
+       @json(auth()->user()->can('delete voucher')) &&
+       @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
    $('<button type="button">').addClass('btn btn-outline-primary btn-sm mr-1 online-edit-button')
     .attr('data-id',x.id).text('Edit').appendTo($actions);
   }
@@ -482,7 +487,14 @@ $(function(){
   if(!window.Swal||!$.isFunction(window.Swal.fire)){toast('Confirmation popup unavailable.',true);return;}
   window.Swal.fire({
    icon:'question',title:'Confirm Online Transaction',
-   text:(editingOnlineId?'Update this unlinked Pending transaction?':'Save this Pending transaction?')+' No bank voucher or ledger posting will be created.',
+   text:editingOnlineReplacement
+    ?'Linked vouchers will be voided and allocations released. A NEW pending reference must be bank-verified again.'
+    :(editingOnlineId?'Update this unlinked Pending transaction?':'Save this Pending transaction?'),
+   input:editingOnlineReplacement?'textarea':undefined,
+   inputPlaceholder:editingOnlineReplacement?'Required audit reason (3–500 chars)':undefined,
+   inputValidator:editingOnlineReplacement?function(value){
+    if(!value||value.trim().length<3)return 'Enter a reason (minimum 3 characters).';
+   }:undefined,
    showCancelButton:true,confirmButtonText:'Yes, Save Pending',cancelButtonText:'Cancel',confirmButtonColor:'#168348'
   }).then(function(result){
    if(!result.isConfirmed||busy)return;
@@ -490,6 +502,7 @@ $(function(){
    var payload=new FormData($entry[0]);
    if(editingOnlineId){
     payload.append('_method','PUT');
+    if(editingOnlineReplacement)payload.set('reason',result.value);
     var head=$('#online-head').val(),child=$('#online-child').val();
     var account=$.grep(mappings,function(m){return String(m.head_id)===String(head)&&String(m.child_id)===String(child);})[0];
     if(!account){toast('Select a valid project account.',true);busy=false;$('#online-save').prop('disabled',false);return;}
@@ -524,13 +537,17 @@ $(function(){
   $.ajax({url:bankMutationEditUrl.replace('__SOURCE_ID__',id),dataType:'json'})
    .done(function(response){
     if(!response.cascade_impact||!response.cascade_impact.can_edit_directly){
-     toast(response.cascade_impact&&response.cascade_impact.reason||'Source cannot be edited.',true);return;
+     if(!(response.cascade_impact&&response.cascade_impact.requires_cascade &&
+       @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
+      toast(response.cascade_impact&&response.cascade_impact.reason||'Source cannot be edited.',true);return;
+     }
     }
     resetEntry();editingOnlineId=id;
+    editingOnlineReplacement=!!response.cascade_impact.requires_cascade;
     var record=response.data;
     $entry.attr('action',bankMutationUrl.replace('__SOURCE_ID__',id));
-    $modal.find('.modal-title').text('Edit Online Transaction');
-    $('#online-save').text('Update Transaction');
+    $modal.find('.modal-title').text(editingOnlineReplacement?'Replace Linked Online Transaction':'Edit Online Transaction');
+    $('#online-save').text(editingOnlineReplacement?'Replace & Reverify':'Update Transaction');
     $('#online-proof').prop('disabled',true);
     $.each(['reference','transaction_date','amount','sending_bank','sending_account',
      'receiving_bank','receiving_account','sender_name','receiver_name','purpose'],function(_,field){
