@@ -27,15 +27,19 @@ jQuery(function($) {
                     ' · Rs. '+r.proposed_amount+' · Request '+r.id));
             });
             $layout.append($select);
-            $layout.append($('<p class="small text-muted">').text('Inspect the proposed voucher amounts below. Approval rechecks current ledger ownership and amounts before posting.'));
+            $layout.append($('<p class="small text-muted">').text('Review the new source fields and vouchers to archive. Approval rechecks each linked ledger and source before applying.'));
             var $details=$('<pre class="small bank-decision-preview p-2">').css({maxHeight:'190px',overflow:'auto'});
             $layout.append($details);
             function draw(){
                 var row=rows.filter(function(x){return String(x.id)===String($select.val());})[0];
                 if(!row)return;
                 var proposed=JSON.parse(row.proposed_vouchers_json||'{}');
-                $details.text('Source amount: '+row.proposed_amount+'\n'+
-                    'Voucher proposals: '+JSON.stringify(proposed,null,2)+'\nReason: '+row.reason);
+                var impacted=(proposed.released_vouchers||[]);
+                $details.text('Corrected source amount: '+row.proposed_amount+'\n'+
+                    'Fields to change: '+JSON.stringify(proposed.changes||{},null,2)+'\n'+
+                    'Vouchers to soft-void on approval: '+impacted.length+'\n'+
+                    impacted.map(function(v){return v.voucher_type+' / '+v.voucher_id+' / Rs. '+v.amount;}).join('\n')+
+                    '\nReason: '+row.reason);
             }
             $select.on('change',draw);draw();
             $layout.append($('<label class="d-block mt-2">').text('Decision'));
