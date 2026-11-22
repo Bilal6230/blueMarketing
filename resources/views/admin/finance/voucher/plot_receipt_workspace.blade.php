@@ -15,7 +15,7 @@
 <div class="container-fluid bm-ui bm-voucher-directory bm-voucher-workspace pr-page" id="plotReceiptApp"
  style="--voucher-accent:#1769e0;--voucher-tint:#eaf2ff"
  data-options-url="{{ route('finance.voucher.plot-receipt.options') }}"
- data-number-preview-url="{{ route('check_new_voucher_number') }}"
+ data-number-preview-url="{{ route('finance.voucher.plot-next-number','PPR') }}"
  data-history-url="{{ route('finance.voucher.plot-receipt.history') }}"
  data-post-url="{{ route('finance.voucher.plot-receipt.post') }}"
  data-details-base="{{ url('admin/finance/voucher/plot-receipt') }}"
@@ -337,10 +337,8 @@
   editReceiptId=null;editAllocations=[];pendingKey=null;
   $('#prCreateTitle').text('New Plot Receive Payment');$('#prPost').text('Post receipt');
   $('#prNumber').val(@json($nextVoucherNumber));$('#prNarration,#prSearch').val('');$('#prSearch').prop('disabled',false);
-   $.ajax({url:$root.attr('data-number-preview-url'),type:'POST',dataType:'json',
-    headers:{'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
-    data:{type:'PPR'}}).done(function(data){
-     if(!editReceiptId){$('#prNumber').val('PPR-'+data.latest_voucher_number);recalc();}
+   $.ajax({url:$root.attr('data-number-preview-url'),type:'GET',dataType:'json'}).done(function(data){
+     if(!editReceiptId){$('#prNumber').val(data.voucher_number);recalc();}
     }).fail(function(){notify('danger','Could not refresh the next PPR voucher number.');});
   $('#prCustomer,#prAccount').val('');drawBookings();
  });
