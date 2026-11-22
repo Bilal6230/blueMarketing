@@ -207,7 +207,7 @@ final class BankLinkedCorrection
             ];
         }
         if (round($originalSum,2)>round((float)$source->amount,2)) {
-            throw new \\DomainException('Existing allocations exceed the original verified source amount.');
+            throw new \DomainException('Existing allocations exceed the original verified source amount.');
         }
         if (round($sum,2)>round((float)$amount,2)) {
             throw new \DomainException('Proposed allocations exceed the corrected bank source amount.');
