@@ -34,7 +34,12 @@ final class BankVoucherAllocationRelease
             $series=(string)$identity->series;
             $source=DB::table('customer_ledger')->where('project_id',$projectId)
                 ->where('id',$voucherId)->lockForUpdate()->first();
-            if(!$source || (string)$source->transaction_type!==(in_array($series,['CR','BOR'],true)?'CR':'CP')
+            if(!$source || !in_array((string)$source->transaction_type,
+                    match ($series) {
+                        'CR' => ['CR'], 'DR' => ['DR','CP'],
+                        'BOR' => ['BOR','CR'], 'BOP' => ['BOP','CP'],
+                        default => [],
+                    },true)
                 || !in_array((int)$source->payment_type,[2,3],true)
                 || (\Illuminate\Support\Facades\Schema::hasColumn('customer_ledger','deleted_at')
                     && $source->deleted_at!==null)) {
