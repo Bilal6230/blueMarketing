@@ -305,7 +305,10 @@
   $('#ppNewVoucher').on('click',function(){
    editPurchaseId=null;pendingRequestKey=null;
    $('#ppCreateTitle').text('New Plot Purchase Voucher');$('#ppPost').text('Post purchase');
-   $('#ppNumber,#ppNarration').val('');$('#ppSeller').val('');
+   $('#ppNumber').val(@json($nextVoucherNumber));$('#ppNarration').val('');$('#ppSeller').val('');
+   $.ajax({url:root.dataset.numberPreviewUrl,type:'GET',dataType:'json'}).done(function(data){
+     if(!editPurchaseId){$('#ppNumber').val(data.voucher_number);recalc();}
+   }).fail(function(){alert('danger','Could not refresh PP voucher number.');});
    $('#ppAdd').prop('disabled',false);$('#ppItems').empty();row();
   });
  @can('finance plot-purchase edit')
