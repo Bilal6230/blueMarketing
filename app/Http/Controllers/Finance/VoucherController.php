@@ -460,10 +460,18 @@ class VoucherController extends Controller
             : null;
         $x['displayNumber'] ??= app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
             ->lookup($projectId, 'ledger', (int) $x['voucher']->id);
+        $x['displayNumber'] ??= app(\App\Services\Finance\LedgerVoucherDisplayService::class)
+            ->display($x['voucher'], $projectId);
         $x['voucherTitle'] ??= match ((string) $x['voucher']->type) {
             'CR' => 'Cash Receipt Voucher',
             'CP' => 'Debit Voucher',
             'DR' => 'Debit Voucher',
+            'CCR' => 'Cash Credit Voucher',
+            'CDR' => 'Cash Debit Voucher',
+            'BOR' => 'Bank Receipt Voucher',
+            'BOP' => 'Bank Payment Voucher',
+            'EC' => 'Extra Charge',
+            'ECP' => 'Extra Charge Payment',
             default => (string) $x['voucher']->type . ' Voucher',
         };
         return view('admin.finance.voucher.print-eng', $x);
