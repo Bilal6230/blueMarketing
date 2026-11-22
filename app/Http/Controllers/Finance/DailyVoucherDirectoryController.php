@@ -153,7 +153,7 @@ final class DailyVoucherDirectoryController extends Controller
                 $methodSeries = [
                     'CR' => [['CR'], [1, 2, 3]],
                     'CP' => [['CP','DR'], 1], 'DR' => [['DR','CP'], [1, 2, 3]],
-                    'CCR' => [['CCR','CR'], 1], 'CDR' => [['CDR','CP'], 1],
+                    'CCR' => [['CCR'], 1], 'CDR' => [['CDR'], 1],
                     'BOR' => [['BOR','CR'], [2, 3]], 'BOP' => [['BOP','CP'], [2, 3]],
                 ];
                 if (isset($methodSeries[$filters['type']])) {
