@@ -243,4 +243,5 @@ $(function(){
  });
 });
 </script>
+@include('admin.finance.voucher.bank_linked_correction_script')
 @endpush
