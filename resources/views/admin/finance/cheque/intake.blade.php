@@ -306,6 +306,7 @@
                     <tbody id="cheque-history-rows"></tbody>
                 </table>
             </div>
+            <div id="cheque-cascade-impact" class="alert alert-light border small" role="status">Loading linked-voucher change impact...</div>
             <h6 class="mt-3 font-weight-bold">Linked Voucher Allocations</h6>
   <a id="cheque-linked-vouchers-print" class="btn btn-sm btn-outline-primary mb-2" target="_blank" rel="noopener" href="#" aria-label="Print linked voucher allocation history"><i class="fas fa-print mr-1"></i> Print Linked History</a>
             <div class="table-responsive" style="max-height:35vh;overflow:auto">
@@ -749,6 +750,11 @@ $(function () {
         $.ajax({url:historyUrlTemplate.replace('__CHEQUE_ID__',id),dataType:'json'}).done(function(result){
             $body.empty();
             $.bankLinkedHistory.render($('#cheque-linked-voucher-rows'),result.linked_vouchers||[]);
+            var impact=result.cascade_impact||{};
+            $('#cheque-cascade-impact').removeClass('alert-light alert-success alert-warning')
+                .addClass(impact.can_edit_directly?'alert-success':'alert-warning')
+                .text(impact.reason||'The linked-voucher correction impact could not be verified.');
+
             var events=result.events||[];
             if(!events.length){
                 $('<tr>').append($('<td colspan="5">').text('Cheque received. No bank lifecycle actions recorded yet.')).appendTo($body);
