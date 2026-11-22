@@ -351,7 +351,7 @@ $(function(){
   $('#online-file-name').text('No file selected');
   clearErrors();
  }
- $('#online-add').on('click',function(){resetEntry();$modal.modal('show');});
+ $('#online-add').on('click',function(){resetEntry();$('#bank-linked-correct-button').remove();$modal.modal('show');});
  function filters(page){
   var payload={page:page,per_page:$('#online-per-page').val()};
   $.each($('#online-filters').serializeArray(),function(_,f){if(f.value)payload[f.name]=f.value;});
