@@ -152,6 +152,7 @@ final class BankLinkedCorrection
 
         $rows = [];
         $sum = 0.0;
+        $originalSum = 0.0;
         foreach ($allocations as $allocation) {
             if (DB::table('finance_bank_voucher_allocation_releases')
                 ->where('allocation_id',$allocation->id)->exists()) {
@@ -193,6 +194,7 @@ final class BankLinkedCorrection
                 throw new \DomainException('Linked voucher identity, status or ledger ownership is invalid.');
             }
             BankVoucherLegIntegrity::assert($series,$voucher,$legs->first(),(float)$allocation->amount);
+            $originalSum += (float)$allocation->amount;
             $after = $this->money($voucherAmounts[$voucherId]);
             $sum += (float)$after;
             $rows[]=[
@@ -204,12 +206,18 @@ final class BankLinkedCorrection
                 'amount_after'=>$after,
             ];
         }
+        if (round($originalSum,2)>round((float)$source->amount,2)) {
+            throw new \\DomainException('Existing allocations exceed the original verified source amount.');
+        }
         if (round($sum,2)>round((float)$amount,2)) {
             throw new \DomainException('Proposed allocations exceed the corrected bank source amount.');
         }
         $before=$this->money($source->amount);
         $state=['project_id'=>$projectId,'method'=>$method,'source_id'=>$sourceId,
             'status'=>(string)$source->status,'account_mapping_id'=>(int)$source->account_mapping_id,
+            'bank_identity'=>$method==='online'
+                ? [(string)$source->reference,(string)$source->transaction_date]
+                : [(string)$source->cheque_number,(string)$source->bank_name,(string)$source->cheque_date],
             'amount_before'=>$before,'amount_after'=>$amount,'vouchers'=>$rows];
         $state['fingerprint']=hash('sha256',json_encode($state,JSON_THROW_ON_ERROR));
         return $state;
