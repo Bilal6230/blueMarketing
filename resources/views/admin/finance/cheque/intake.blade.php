@@ -153,7 +153,7 @@
     </div>
 </div>
 
-@can('finance cheque create')
+@if(auth()->user()->can('finance cheque create') || auth()->user()->can('finance cheque edit'))
 <div class="modal fade" id="cheque-create-modal" tabindex="-1" role="dialog" aria-labelledby="cheque-create-title" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
         <div class="modal-header"><h5 class="modal-title" id="cheque-create-title">Add New Cheque</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
@@ -197,7 +197,7 @@
         </form>
     </div></div>
 </div>
-@endcan
+@endif
 
 <div class="modal fade" id="cheque-action-modal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document"><div class="modal-content">
