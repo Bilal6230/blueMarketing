@@ -104,7 +104,7 @@ final class BankLinkedCorrectionController extends Controller
         try {
             $result=$approval->decide($project,$requestId,(int)$request->user()->id,
                 $data['decision'],$data['reason']??null);
-        } catch (\\DomainException $e) {
+        } catch (\DomainException $e) {
             throw ValidationException::withMessages(['source'=>$e->getMessage()]);
         }
         return response()->json(['status'=>'success','data'=>$result])
