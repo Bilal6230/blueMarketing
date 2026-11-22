@@ -157,6 +157,11 @@ body.online-page-active .main-footer{position:fixed!important;bottom:0;left:0;ri
     <div class="form-group col-md-8"><label>Description / Purpose *</label><textarea name="purpose" class="form-control form-control-sm" maxlength="500" rows="2" required></textarea></div>
     <div class="form-group col-md-4"><label>Supporting Proof (PDF / JPG / PNG, max 5 MB)</label><div class="online-upload"><label for="online-proof"><i class="fas fa-cloud-upload-alt text-success"></i> <strong class="text-success">Choose file</strong><span id="online-file-name" class="d-block small text-muted">No file selected</span></label><input type="file" name="proof" id="online-proof" accept=".pdf,.jpg,.jpeg,.png"></div></div>
    </div>
+   <div id="online-replacement-reason-wrap" class="form-group d-none mt-3">
+    <label for="online-replacement-reason">Reason for replacing verified transaction *</label>
+    <textarea id="online-replacement-reason" name="reason" class="form-control" rows="3" minlength="3" maxlength="500" placeholder="Why must this verified source and its linked vouchers be replaced?"></textarea>
+    <small class="text-muted">Mandatory 3–500 characters. Original bank and voucher evidence is retained.</small>
+   </div>
    <div id="online-errors" class="text-danger small" role="alert"></div>
    <small class="text-muted">Saving only creates a Pending source. No bank posting or accounting voucher will be generated.</small>
    </div>
@@ -333,6 +338,8 @@ $(function(){
  });
  function resetEntry(){
   editingOnlineId=null;editingOnlineReplacement=false;
+  $('#online-replacement-reason-wrap').addClass('d-none');
+  $('#online-replacement-reason').prop('required',false).val('');
   $entry.attr('action',@json(route('finance.online.store')));
   $modal.find('.modal-title').text('Add Online Transaction');
   $('#online-save').text('Save Transaction');
@@ -484,17 +491,21 @@ $(function(){
  });
  $entry.on('submit',function(e){
   e.preventDefault();if(busy||!validate())return;
+  if(editingOnlineReplacement){
+   var reason=$.trim($('#online-replacement-reason').val());
+   if(reason.length<3 || reason.length>500){
+    $('#online-replacement-reason').addClass('is-invalid').trigger('focus');
+    toast('Replacement reason must be 3–500 characters.',true);
+    return;
+   }
+   $('#online-replacement-reason').removeClass('is-invalid');
+  }
   if(!window.Swal||!$.isFunction(window.Swal.fire)){toast('Confirmation popup unavailable.',true);return;}
   window.Swal.fire({
    icon:'question',title:'Confirm Online Transaction',
    text:editingOnlineReplacement
     ?'Linked vouchers will be voided and allocations released. A NEW pending reference must be bank-verified again.'
     :(editingOnlineId?'Update this unlinked Pending transaction?':'Save this Pending transaction?'),
-   input:editingOnlineReplacement?'textarea':undefined,
-   inputPlaceholder:editingOnlineReplacement?'Required audit reason (3–500 chars)':undefined,
-   inputValidator:editingOnlineReplacement?function(value){
-    if(!value||value.trim().length<3)return 'Enter a reason (minimum 3 characters).';
-   }:undefined,
    showCancelButton:true,confirmButtonText:'Yes, Save Pending',cancelButtonText:'Cancel',confirmButtonColor:'#168348'
   }).then(function(result){
    if(!result.isConfirmed||busy)return;
@@ -502,7 +513,7 @@ $(function(){
    var payload=new FormData($entry[0]);
    if(editingOnlineId){
     payload.append('_method','PUT');
-    if(editingOnlineReplacement)payload.set('reason',result.value);
+    if(editingOnlineReplacement)payload.set('reason',$.trim($('#online-replacement-reason').val()));
     var head=$('#online-head').val(),child=$('#online-child').val();
     var account=$.grep(mappings,function(m){return String(m.head_id)===String(head)&&String(m.child_id)===String(child);})[0];
     if(!account){toast('Select a valid project account.',true);busy=false;$('#online-save').prop('disabled',false);return;}
@@ -546,6 +557,8 @@ $(function(){
     
     var record=response.data;
     editingOnlineReplacement=!!response.cascade_impact.requires_cascade || record.status==='confirmed';
+    $('#online-replacement-reason-wrap').toggleClass('d-none',!editingOnlineReplacement);
+    $('#online-replacement-reason').prop('required',editingOnlineReplacement);
     $entry.attr('action',bankMutationUrl.replace('__SOURCE_ID__',id));
     $modal.find('.modal-title').text(editingOnlineReplacement?'Replace Linked Online Transaction':'Edit Online Transaction');
     $('#online-save').text(editingOnlineReplacement?'Replace & Reverify':'Update Transaction');
