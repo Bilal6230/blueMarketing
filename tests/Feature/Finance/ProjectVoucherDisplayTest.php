@@ -24,9 +24,11 @@ class ProjectVoucherDisplayTest extends TestCase
         DB::table('project_voucher_display_settings')->insert(['project_id' => 1, 'series' => 'CR', 'prefix' => 'REC']);
 
         $display = new ProjectVoucherDisplay();
-        $this->assertSame('REC-2026-0042', $display->format(1, 'CR', 42, '2026-11-04'));
-        $this->assertSame('CR-2026-0042', $display->format(2, 'CR', 42, '2026-11-04'));
-        $this->assertSame('CP-2026-0042', $display->format(1, 'CP', 42, '2026-11-04'));
+        // New vouchers always use their actual independent series; no year
+        // and no project-specific custom prefix can override accounting type.
+        $this->assertSame('CR-42', $display->format(1, 'CR', 42, '2026-11-04'));
+        $this->assertSame('CR-42', $display->format(2, 'CR', 42, '2026-11-04'));
+        $this->assertSame('CP-42', $display->format(1, 'CP', 42, '2026-11-04'));
         $this->assertDatabaseHas('ledgers', ['id' => 7, 'type' => 'CR', 'voucher_number' => 42]);
         $this->expectException(\DomainException::class);
         $display->format(1, 'CR', 42, '2026-02-30');
