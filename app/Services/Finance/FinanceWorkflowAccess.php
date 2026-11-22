@@ -45,7 +45,10 @@ final class FinanceWorkflowAccess
                 \App\Support\Finance\FinanceActionPermission::name($ability[0], $ability[1])
             ), 403);
         }
-        abort_unless($user->hasRole('superadmin') || (int) $user->project_id === $projectId, 403);
+        // This ERP has a project selector. A permitted finance user may work in
+        // any selected active project; the route's granular permission remains
+        // mandatory, and every finance query/write is scoped to $projectId.
+        abort_unless((int) getSelectedTown() === $projectId, 403);
         abort_unless(DB::table('projects')->where('id', $projectId)->where('is_active', 1)->exists(), 403);
     }
 
@@ -65,7 +68,10 @@ final class FinanceWorkflowAccess
                 \App\Support\Finance\FinanceActionPermission::name($ability[0], $ability[1])
             ), 403);
         }
-        abort_unless($user->hasRole('superadmin') || (int) $user->project_id === $projectId, 403);
+        // This ERP has a project selector. A permitted finance user may work in
+        // any selected active project; the route's granular permission remains
+        // mandatory, and every finance query/write is scoped to $projectId.
+        abort_unless((int) getSelectedTown() === $projectId, 403);
         abort_unless(DB::table('projects')->where('id', $projectId)->where('is_active', 1)->exists(), 403);
     }
 }
