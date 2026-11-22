@@ -15,7 +15,7 @@
         @endcan
 
         @canany(['delete jv','finance sv delete'])
-            @if(!($approvalPending ?? false) && ($salesEditable || ($voucher->type !== 'SV' && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))))
+            @if($voucher->type !== 'SV' && !($approvalPending ?? false) && (!($approvalTracked ?? false) || (\App\Services\Finance\FinanceWorkflowAccess::normalErpMode() && !($canResubmit ?? false))))
             <button class="btn btn-sm btn-danger delete-btn" data-id="{{ $voucher->id }}">
                 <i class="fas fa-undo"></i> {{ $voucher->type === 'SV' ? 'Delete' : 'Reverse' }}
             </button>
