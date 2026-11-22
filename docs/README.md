@@ -19,6 +19,48 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 04 — Safe Partial/Full/Zero Allocation Bank Correction + Independent Approval (2026-11-22)
+
+**New code committed, OWNER LOCAL TESTS AND BROWSER ACCEPTANCE PENDING. Do not mark Milestone 04 complete.**
+
+- Verified/cleared Online/Cheque management sources may have **0, some, or all** amount allocated to posted vouchers. `BankLinkedCorrection` accepts exactly the active unreleased voucher IDs (including empty array for zero allocations), excludes released history from writable legs, requires total proposed active allocations <= corrected source amount and displays before/after **allocated and remaining** amounts. Unmatched historical claims are refused. No automatic pro-rata voucher adjustments. All original IDs and voucher numbers remain unchanged.
+- **Separate Correct action** in Cheque and Online registers directly opens the review wizard, not the misleading Replace & Reverify modal. Existing Edit/Replace/Delete remain independent. Active voucher amounts, source amount, remaining balance, historical release count and before/after preview are shown. Approval ON yields **Submitted for Approval** rather than claiming save.
+- **Independent Spatie permissions** added by one additive migration: `finance cheque correct`, `finance online correct`, `finance cheque correction approve`, `finance online correction approve`. Existing Super Admin roles receive these automatically; others must be granted deliberately through Roles/Permissions. No blanket `delete voucher` requirement for ordinary correction.
+- **Independent approval settings** `CHQ_CORR` and `ONL_CORR` reuse `daily_voucher_approval_policies` on `/admin/finance/voucher-settings`. OFF -> permissioned correction applied atomically after Preview/Confirm. ON -> proposed changes queued with **NO** financial mutation; assigned project approver (or authorized Super Admin) decides from **Pending Bank Corrections** button in Cheque/Online registers or central Approval Dashboard. Approve rechecks locked source/voucher/ledger fingerprint and updates exactly once; Reject leaves all originals intact. Original staff submitter and deciding approver separately recorded. Requests must be resolved before another correction of that source.
+- **Exactly ONE added table** `finance_bank_correction_requests`, because existing `daily_voucher_approvals` has unique `(source_table, source_id)` and cannot safely represent repeat bank corrections. Existing `daily_voucher_edit_snapshots` continues storing source and voucher before/after history. No duplicate per-voucher audit tables or isolated V2 connections.
+- **Safety scope:** This batch enables correction of bank source and linked voucher **AMOUNTS** only. Head/Subhead, Customer/Plot mapping, bank reference, identity, dates and bank-confirmed evidence are NOT auto-rewritten in a linked correction; those fields require exact relationship validation and where relevant re-verification. Existing genuine replacement remains separate. Do not mark full-field correction implemented.
+- **Latest tests added but not yet owner-run:** `BankLinkedCorrectionTest` (zero/partial/full/released allocations, source identity and rollback), `BankLinkedCorrectionApprovalIntegrationTest` (approval ON pending/approve/reject/stale/unauthorized), `BankLinkedCorrectionApprovalContractTest`, `BankLinkedCorrectionHttpContractTest`, and existing `BankLinkedCorrectionContractTest`. Previous owner PASS 9 tests/66 assertions and 6-project balance audit predate these changes.
+
+**Owner local verification order (configured disposable local database only):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php -l app/Services/Finance/BankLinkedCorrection.php
+php -l app/Services/Finance/BankLinkedCorrectionApproval.php
+php -l app/Http/Controllers/Finance/BankLinkedCorrectionController.php
+php -l database/migrations/2026_11_22_180000_create_finance_bank_correction_requests_table.php
+php -l tests/Feature/Finance/BankLinkedCorrectionApprovalIntegrationTest.php
+php artisan view:cache
+php artisan test --filter=BankLinkedCorrection
+php artisan finance:audit-posting-balances
+php artisan migrate:status
+# ONLY when tests are green and correct disposable local database is selected:
+php artisan migrate --path=database/migrations/2026_11_22_180000_create_finance_bank_correction_requests_table.php
+php artisan permission:cache-reset
+php artisan optimize:clear
+php artisan view:cache
+```
+
+**BROWSER TESTING REQUIRED** after tests and migration:
+1. Super Admin opens `/admin/finance/voucher-settings`: check CHQ_CORR and ONL_CORR switches separately. Grant `finance cheque correct` or `finance online correct` to a test staff user; grant corresponding correction approve and `voucher approver` to a different active project user.
+2. On **test project** `/admin/finance/cheques`, create and clear a *new disposable* cheque amount Rs 10,000: use Correct with **zero vouchers**, change to 9,500, Preview -> Submit/Apply, confirm same source ID and no ledger/voucher creation.
+3. Create a separate cleared cheque Rs 10,000, post just Rs 6,000 BOR/BOP, keep Rs 4,000 unallocated. Correct source amount to Rs 9,000 but leave existing voucher Rs 6,000; Preview should show **Rs 3,000 remaining**. Confirm preserves original voucher and ledger IDs/number.
+4. Fully allocate another Rs 10,000 source (two approved vouchers Rs 6,000 + Rs 4,000). Change source to 9,000 and explicitly adjust one voucher to Rs 5,000. Preview should show Rs 0 remaining; ledger and Party Ledger reflect corrected amounts. Trying to lower source below unchanged allocations must give a clear refusal with no DB changes. Repeat same cases on Online Management `/admin/finance/online-transactions`.
+5. Turn CHQ_CORR approval **ON** and select a *different* eligible approver. Submit a correction: source and vouchers remain unchanged; approver opens `/admin/finance/daily-vouchers/approvals` -> Pending Bank Corrections -> Approve; only then amounts apply. Submit another and Reject; amounts must remain unchanged. Permission-off users get 403, cross-project sources cannot be touched, repeat confirm must not duplicate rows, and stale request approval must refuse. Turn policy OFF afterwards if appropriate. Verify report and all-project posting audit.
+
+**Owner acceptance:** Only mark code tests and browser scenarios PASS after actual terminal/browser evidence. No browser testing on real customer cheque data.
+
 ## Milestone 04 — Batch 03 Update (2026-11-22): reviewed amount correction web integration — LOCAL/BROWSER GATE OPEN
 
 - Owner verified previous service-only tests: `BankLinkedCorrectionContractTest` **2 PASS / 19 assertions**, `BankLinkedCorrectionTest` **7 PASS / 47 assertions**, and read-only posting integrity audit all 6 projects **zero findings**. This acceptance PRECEDES the following web integration changes.
