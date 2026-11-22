@@ -101,11 +101,17 @@ final class LinkedVoucherNumberDisplayTest extends TestCase
         DB::table('commision_voucher_details')->insert([
             'id'=>52,'commision_voucher_id'=>51,
         ]);
+        // Laravel bulk-insert sorts associative keys; every row needs the
+        // same columns, otherwise the FK can be written into the id column.
         DB::table('ledgers')->insert([
-            ['id'=>30,'project_head_subheads_id'=>7,'type'=>'PPR','type_id'=>53,'voucher_number'=>500,'customer_ledger_id'=>15],
-            ['id'=>31,'project_head_subheads_id'=>7,'type'=>'JV','type_id'=>31,'voucher_number'=>900,'journal_voucher_detail_id'=>41],
-            ['id'=>32,'project_head_subheads_id'=>7,'type'=>'SV','type_id'=>32,'voucher_number'=>900,'journal_voucher_detail_id'=>42],
-            ['id'=>33,'project_head_subheads_id'=>7,'type'=>'CV','type_id'=>51,'voucher_number'=>900,'commision_voucher_detail_id'=>52],
+            ['id'=>30,'project_head_subheads_id'=>7,'type'=>'PPR','type_id'=>53,'voucher_number'=>500,
+                'customer_ledger_id'=>15,'journal_voucher_detail_id'=>null,'commision_voucher_detail_id'=>null],
+            ['id'=>31,'project_head_subheads_id'=>7,'type'=>'JV','type_id'=>31,'voucher_number'=>900,
+                'customer_ledger_id'=>null,'journal_voucher_detail_id'=>41,'commision_voucher_detail_id'=>null],
+            ['id'=>32,'project_head_subheads_id'=>7,'type'=>'SV','type_id'=>32,'voucher_number'=>900,
+                'customer_ledger_id'=>null,'journal_voucher_detail_id'=>42,'commision_voucher_detail_id'=>null],
+            ['id'=>33,'project_head_subheads_id'=>7,'type'=>'CV','type_id'=>51,'voucher_number'=>900,
+                'customer_ledger_id'=>null,'journal_voucher_detail_id'=>null,'commision_voucher_detail_id'=>52],
         ]);
         $service = new LedgerVoucherDisplayService();
         self::assertSame('PPR-54',$service->display(DB::table('ledgers')->find(30),3));
