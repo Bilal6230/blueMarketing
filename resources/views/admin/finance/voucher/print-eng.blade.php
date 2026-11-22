@@ -98,13 +98,16 @@
     @php
         $branding = getProjectPrintBranding(optional(optional($voucher)->projectHeadSubhead)->project);
         $voucherBadge = '';
-        if (isset($voucherTitle) && in_array($voucher->type, ['CR', 'CP'], true)) {
-            $voucherBadge = '<div class="voucher-name">' . e(strtoupper($voucherTitle)) . '</div>';
-        } elseif ($voucher->type == 'CR') {
-            $voucherBadge = '<div class="voucher-name">CREDIT VOUCHER</div>';
-        } elseif ($voucher->type == 'CP' || $voucher->type == 'BO') {
-            $voucherBadge = '<div class="voucher-name">PAYMENT VOUCHER</div>';
-        }
+        $voucherNames = [
+            'CR'=>'Credit Voucher', 'DR'=>'Debit Voucher',
+            'CP'=>'Payment Voucher', 'CCR'=>'Cash Credit Voucher',
+            'CDR'=>'Cash Debit Voucher', 'BOR'=>'Bank Receipt Voucher',
+            'BOP'=>'Bank Payment Voucher', 'EC'=>'Extra Charge',
+            'ECP'=>'Extra Charge Payment', 'PPR'=>'Plot Receive Payment',
+        ];
+        $voucherBadge = '<div class="voucher-name">'
+            .e(strtoupper($voucherTitle ?? ($voucherNames[$voucher->type] ?? $voucher->type)))
+            .'</div>';
     @endphp
 
     <div class="voucher">
@@ -149,12 +152,9 @@
                 </tr>
             </thead>
             @php
-                if($voucher->type == 'CP' || $voucher->type == 'BO'){
-                    $amount = $voucher->amount_out;
-                }else if($voucher->type == 'CR'){
-                    $amount = $voucher->amount_in;
-                }
-                $amount = (float) ($amount ?? 0);
+                $amount = in_array((string)$voucher->type,['CP','DR','CDR','BOP','BO'],true)
+                    ? (float)$voucher->amount_out
+                    : (float)$voucher->amount_in;
             @endphp
             <tbody>
                 <tr>
