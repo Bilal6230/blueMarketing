@@ -145,7 +145,8 @@ final class BankLinkedCorrectionTest extends TestCase
         self::assertEquals(250.00,DB::table('customer_ledger')->where('id',31)->value('amount_in'));
         self::assertEquals(250.00,DB::table('ledgers')->where('customer_ledger_id',31)->value('amount_in'));
         self::assertEquals(200.00,DB::table('ledgers')->where('customer_ledger_id',32)->value('amount_out'));
-        self::assertSame(1,DB::table('daily_voucher_edit_snapshots')->count());
+        self::assertSame(2,DB::table('daily_voucher_edit_snapshots')->count());
+        self::assertSame(1,DB::table('daily_voucher_edit_snapshots')->where('status','bank_source_fix')->count());
         self::assertSame('BOR-0031',DB::table('project_voucher_display_numbers')->where('source_id',31)->value('display_number'));
         self::assertSame('approved',DB::table('daily_voucher_approvals')->where('source_id',31)->value('status'));
     }
@@ -191,6 +192,16 @@ final class BankLinkedCorrectionTest extends TestCase
         $service=app(BankLinkedCorrection::class);
         $this->expectException(\DomainException::class);
         $service->preview(1,'cheque',77,'450.00',[41=>'450.00']);
+    }
+
+    public function test_released_linked_voucher_is_not_silently_corrected(): void
+    {
+        $this->voucher(41,'BOR','cheque',77,'500.00');
+        $allocationId=(int)DB::table('finance_bank_voucher_allocations')->where('voucher_id',41)->value('id');
+        DB::table('finance_bank_voucher_allocation_releases')->insert(['allocation_id'=>$allocationId]);
+        $this->expectException(\\DomainException::class);
+        $this->expectExceptionMessage('Previously released allocation');
+        app(BankLinkedCorrection::class)->preview(1,'cheque',77,'450.00',[41=>'450.00']);
     }
 
     public function test_cross_project_cannot_read_or_correct_linked_cheque(): void
