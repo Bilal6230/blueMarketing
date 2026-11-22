@@ -1247,7 +1247,7 @@ class VoucherController extends Controller
             ->when(Schema::hasColumn('finance_plot_receipts','is_active'), fn ($query) => $query->where('receipt.is_active',1))
             ->when(Schema::hasColumn('finance_plot_receipts','deleted_at'), fn ($query) => $query->whereNull('receipt.deleted_at'))
             ->orderByDesc('receipt.receipt_date')->orderByDesc('receipt.id')
-            ->limit(250)->get(['receipt.id', 'receipt.receipt_number', 'receipt.receipt_date', 'receipt.amount', 'receipt.narration',
+            ->get(['receipt.id', 'receipt.receipt_number', 'receipt.receipt_date', 'receipt.amount', 'receipt.narration',
                 'customer.first_name', 'customer.last_name', 'customer.business', 'void_batch.id as reversal_batch_id']);
         $active=$rows->map(fn ($row) => [
             'id' => (int) $row->id, 'number' => (string) $row->receipt_number, 'date' => substr((string) $row->receipt_date, 0, 10),
@@ -1284,7 +1284,6 @@ class VoucherController extends Controller
                 ->where('bv.project_id', $projectId)->where('bv.voucher_series', 'PPR')
                 ->where('bv.is_active', 1)
                 ->orderByDesc('bv.receipt_date')->orderByDesc('bv.id')
-                ->limit(2000)
                 ->get(['bv.id','bv.voucher_number','bv.receipt_date','bv.amount',
                     'bv.description','bv.is_approve','customer.first_name',
                     'customer.last_name','customer.business'])
