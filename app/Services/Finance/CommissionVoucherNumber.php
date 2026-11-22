@@ -2,8 +2,6 @@
 
 namespace App\Services\Finance;
 
-use Illuminate\Support\Facades\DB;
-
 final class CommissionVoucherNumber
 {
     public static function display(mixed $number): string
@@ -18,12 +16,6 @@ final class CommissionVoucherNumber
     /** A form preview only. Creation still checks uniqueness under project lock. */
     public static function next(int $projectId): int
     {
-        $max = 0;
-        foreach (DB::table('commision_vouchers')->where('project_id', $projectId)->pluck('voucher_number') as $number) {
-            if (preg_match('/^(?:CV-)?([0-9]{1,15})$/D', (string) $number, $match)) {
-                $max = max($max, (int) $match[1]);
-            }
-        }
-        return $max + 1;
+        return app(ProjectVoucherAllocator::class)->preview($projectId, 'CV');
     }
 }
