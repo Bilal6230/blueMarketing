@@ -301,17 +301,8 @@ class VoucherController extends Controller
      */
     private function previewCanonicalCashNumber(int $projectId, string $type): int
     {
-        abort_unless($projectId > 0 && in_array($type, ['CR','DR','CP','CCR','CDR','BOR','BOP'], true), 422);
-        $sourceMax = (int) DB::table('customer_ledger')->where('project_id', $projectId)
-            ->where('transaction_type', $type)->max('type_id');
-        $ledgerMax = (int) DB::table('ledgers as ledger')
-            ->join('project_head_subheads as account','account.id','=','ledger.project_head_subheads_id')
-            ->where('account.project_id',$projectId)->where('ledger.type',$type)
-            ->max('ledger.voucher_number');
-        $counterMax = Schema::hasTable('ledger_voucher_counters')
-            ? (int) DB::table('ledger_voucher_counters')->where('project_id',$projectId)
-                ->where('voucher_type',$type)->value('last_number') : 0;
-        return max($sourceMax,$ledgerMax,$counterMax) + 1;
+        abort_unless($projectId > 0 && in_array($type, ['CR','DR','CP','CCR','CDR','BOR','BOP','PPR','PP','EC','ECP','JV','SV','CV','BD','BW'], true), 422);
+        return app(\App\Services\Finance\ProjectVoucherAllocator::class)->preview($projectId, $type);
     }
 
     private function cashVoucherPaymentType(?string $method): ?int
@@ -2542,14 +2533,14 @@ class VoucherController extends Controller
     public function checkNewVoucherNumber(Request $request)
     {
         $data = $request->validate([
-            'type' => ['required','string','in:CR,DR,CP,CCR,CDR,BOR,BOP'],
+            'type' => ['required','string','in:CR,DR,CP,CCR,CDR,BOR,BOP,PPR,PP,EC,ECP,JV,SV,CV,BD,BW'],
             'number' => ['nullable','integer','min:1'],
         ]);
         $projectId = (int) getSelectedTown();
         abort_unless($projectId > 0,403);
         return response()->json([
             'latest_voucher_number' => $this->previewCanonicalCashNumber($projectId,
-                $data['type'] === 'DR' ? 'CP' : $data['type']),
+                $data['type']),
         ]);
     }
     public function updateVoucherNumber()
