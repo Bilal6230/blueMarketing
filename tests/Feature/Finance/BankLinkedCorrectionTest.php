@@ -272,20 +272,27 @@ final class BankLinkedCorrectionTest extends TestCase
         self::assertSame(1,DB::table('finance_bank_voucher_allocations')->count());
     }
 
-    public function test_approval_off_applies_same_id_partial_correction_immediately(): void
+    public function test_legacy_same_id_amount_approval_entrypoint_refuses_mutation(): void
     {
+        // The product flow has switched to source correction + archived linked
+        // vouchers. This old writer is not allowed to bypass that workflow.
         $this->voucher(41,'BOR','cheque',77,'200.00');
-        $plan=app(BankLinkedCorrection::class)->preview(1,'cheque',77,'420.00',[41=>'200.00']);
-        $result=app(BankLinkedCorrectionApproval::class)->submit(
-            1,'cheque',77,7,'Correct remaining unallocated amount',
-            '420.00',[41=>'200.00'],$plan['fingerprint']);
-        self::assertFalse($result['pending']);
-        self::assertSame(0,DB::table('finance_bank_correction_requests')->count());
-        self::assertEquals(420,DB::table('finance_cheque_intakes')->where('id',77)->value('amount'));
+        $plan=app(BankLinkedCorrection::class)->preview(
+            1,'cheque',77,'420.00',[41=>'200.00']);
+        try {
+            app(BankLinkedCorrectionApproval::class)->submit(
+                1,'cheque',77,7,'Old direct amount edit must be refused',
+                '420.00',[41=>'200.00'],$plan['fingerprint']);
+            self::fail('Retired correction path should not mutate posted vouchers.');
+        } catch (\DomainException $exception) {
+            self::assertStringContainsString('audited voucher reissue',$exception->getMessage());
+        }
+        self::assertEquals(500,DB::table('finance_cheque_intakes')->where('id',77)->value('amount'));
         self::assertEquals(200,DB::table('ledgers')->where('customer_ledger_id',41)->value('amount_in'));
+        self::assertSame(0,DB::table('finance_bank_correction_requests')->count());
     }
 
-    public function test_existing_pending_request_prevents_direct_new_correction(): void
+    public function test_legacy_entrypoint_cannot_bypass_existing_pending_reissue_request(): void
     {
         $this->voucher(41,'BOR','cheque',77,'200.00');
         DB::table('finance_bank_correction_requests')->insert([
@@ -295,12 +302,20 @@ final class BankLinkedCorrectionTest extends TestCase
             'proposed_vouchers_json'=>'{}','reason'=>'Earlier correction',
             'created_at'=>now(),'updated_at'=>now(),
         ]);
-        $plan=app(BankLinkedCorrection::class)->preview(1,'cheque',77,'430.00',[41=>'200.00']);
-        $this->expectException(\DomainException::class);
-        $this->expectExceptionMessage('already awaits approval');
-        app(BankLinkedCorrectionApproval::class)->submit(
-            1,'cheque',77,7,'Second correction should be blocked',
-            '430.00',[41=>'200.00'],$plan['fingerprint']);
+        $plan=app(BankLinkedCorrection::class)->preview(
+            1,'cheque',77,'430.00',[41=>'200.00']);
+        try {
+            app(BankLinkedCorrectionApproval::class)->submit(
+                1,'cheque',77,7,'Old path must not bypass pending approval',
+                '430.00',[41=>'200.00'],$plan['fingerprint']);
+            self::fail('Legacy endpoint unexpectedly accepted a correction.');
+        } catch (\DomainException $exception) {
+            self::assertStringContainsString('audited voucher reissue',$exception->getMessage());
+        }
+        self::assertSame('pending',DB::table('finance_bank_correction_requests')
+            ->where('source_method','cheque')->where('source_id',77)->value('status'));
+        self::assertEquals(500,DB::table('finance_cheque_intakes')->where('id',77)->value('amount'));
+        self::assertEquals(200,DB::table('ledgers')->where('customer_ledger_id',41)->value('amount_in'));
     }
 
     public function test_cross_project_cannot_read_or_correct_linked_cheque(): void
