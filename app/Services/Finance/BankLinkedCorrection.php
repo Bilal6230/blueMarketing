@@ -172,8 +172,10 @@ final class BankLinkedCorrection
             $claimTable=$method==='online'
                 ? 'finance_online_voucher_claims':'finance_cheque_voucher_claims';
             $claimColumn=$method==='online'?'online_intake_id':'cheque_intake_id';
-            if (Schema::hasTable($claimTable) &&
-                DB::table($claimTable)->where('project_id',$projectId)
+            if (!Schema::hasTable($claimTable)) {
+                throw new \DomainException('Bank claim evidence unavailable for unallocated correction.');
+            }
+            if (DB::table($claimTable)->where('project_id',$projectId)
                     ->where($claimColumn,$sourceId)->exists()) {
                 throw new \DomainException('Unreconciled bank claim prevents unallocated correction.');
             }
