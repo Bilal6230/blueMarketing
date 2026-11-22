@@ -19,13 +19,17 @@ final class ProjectVoucherDisplayIdentity
             $source = DB::table('customer_ledger')->where('id',$sourceId)
                 ->where('project_id',$projectId)->first(['transaction_type','type_id']);
             if ($source && (int)$source->type_id > 0) {
-                $label = $source->transaction_type === 'CP' ? 'DR' : $source->transaction_type;
+                // Retain DR only for an explicitly DR-labelled old CP source.
+                // New CP and DR are independent voucher families.
+                $label = ($source->transaction_type === 'CP' && $identity->series === 'DR')
+                    ? 'DR' : $source->transaction_type;
                 return $label.'-'.$source->type_id;
             }
         }
         $number = $identity->display_number ?? null;
-        // CP is the immutable legacy source type; show its user-facing label as DR.
-        return $number ? preg_replace('/^CP-/', 'DR-', (string) $number) : null;
+        // A retained DR label is authoritative only for an old DR display
+        // identity. Do not relabel a newly created CP voucher as DR.
+        return $number ? (string)$number : null;
     }
 
     public function series(int $projectId, string $sourceKind, int $sourceId): ?string
