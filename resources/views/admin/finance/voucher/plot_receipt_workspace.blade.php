@@ -66,7 +66,7 @@
     <div class="form-group col-md-6"><label for="prNumber">Voucher No.</label><input id="prNumber" class="form-control" maxlength="64" value="{{ $nextVoucherNumber }}" readonly aria-readonly="true"></div>
     <div class="form-group col-md-6"><label for="prDate">Date</label><input id="prDate" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
     <div class="form-group col-md-6"><label for="prCustomer">Customer</label><select id="prCustomer" class="form-control"><option value="">Loading customers…</option></select></div>
-    <div class="form-group col-md-6"><label for="prAccount">Receiving Account</label><select id="prAccount" class="form-control"><option value="">Select active project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
+    <div class="form-group col-md-6"><label for="prAccount">Debit Account (Cash / Bank)</label><select id="prAccount" class="form-control"><option value="">Select active project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
     <div class="form-group col-md-6"><label for="prTypedPayment">Payment Type <span class="text-danger">*</span></label>
       <select id="prTypedPayment" class="form-control">
        <option value="1">Cash</option>
