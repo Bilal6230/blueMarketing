@@ -441,6 +441,86 @@
    $plots.append($('<option>',{value:b.plot_id,text:b.plot+' · Booking #'+b.booking_id}));
   });
  });
+ var prVerifiedRows=[],prVerifiedTimer=null,prVerifiedRequest=null;
+ var clearPprBankSource=function(){
+  prVerifiedRows=[];
+  $('#prPassedId,#prPassedMethod,#prPassedLabel').val('');
+ };
+ var loadPprBankSources=function(){
+  var method=String($('#prOriginalPayment').val())==='2'?'online':
+   (String($('#prOriginalPayment').val())==='3'?'cheque':'');
+  if(!method)return;
+  if(prVerifiedRequest&&prVerifiedRequest.readyState!==4)prVerifiedRequest.abort();
+  $('#prPassedError').addClass('d-none').text('');
+  var $tbody=$('#prPassedRows').empty().append($('<tr>').append($('<td>',{colspan:5,'class':'text-center text-muted',text:'Loading verified sources…'})));
+  $('#prApplyPassed').prop('disabled',true);
+  prVerifiedRequest=$.ajax({
+   url:@json(url('admin/finance/voucher/passed-sources')),
+   type:'GET',dataType:'json',headers:{Accept:'application/json'},
+   data:{method:method,direction:'receipt',voucher_series:'PPR',search:$('#prPassedSearch').val()}
+  }).done(function(result){
+   prVerifiedRows=result.data||[];
+   $tbody.empty();
+   if(!prVerifiedRows.length)$tbody.append($('<tr>').append($('<td>',{colspan:5,'class':'text-center text-muted',text:'No eligible verified source with remaining balance.'})));
+   $.each(prVerifiedRows,function(_,item){
+    var $row=$('<tr>');
+    $row.append($('<td>').append($('<input>',{type:'radio',name:'prPassedChoice',value:item.id,'aria-label':'Select source '+item.reference})));
+    $row.append($('<td>').text(item.reference||'—'));
+    $row.append($('<td>').text(item.passing_date||'—'));
+    $row.append($('<td>').text(item.remaining_amount||'0.00'));
+    $row.append($('<td>').text(item.bank||'—'));
+    $tbody.append($row);
+   });
+  }).fail(function(xhr,status){
+   if(status==='abort')return;
+   $tbody.empty();
+   $('#prPassedError').removeClass('d-none').text((xhr.responseJSON||{}).message||'Unable to load verified sources.');
+  });
+ };
+ $('#prOriginalPayment').on('change.pprBankPicker',function(){
+  clearPprBankSource();
+  $('#prPassedSearch').val('');
+  if(['2','3'].includes(String($(this).val()))){
+   $('#prPassedPickerModal').modal('show');
+  }
+ });
+ $('#prOpenPassedPicker').on('click',function(){
+  if(['2','3'].includes(String($('#prOriginalPayment').val())))$('#prPassedPickerModal').modal('show');
+ });
+ $('#prPassedPickerModal').on('show.bs.modal',function(){
+  $(this).css('z-index',1065);
+  loadPprBankSources();
+ }).on('shown.bs.modal',function(){
+  $('.modal-backdrop').last().css('z-index',1060);
+  $('body').addClass('modal-open');
+ }).on('hidden.bs.modal',function(){
+  if($('#prOriginalCreateModal').hasClass('show'))$('body').addClass('modal-open');
+ });
+ $('#prPassedSearch').on('input',function(){
+  clearTimeout(prVerifiedTimer);
+  prVerifiedTimer=setTimeout(loadPprBankSources,250);
+ });
+ $('#prPassedRows').on('change','input[name="prPassedChoice"]',function(){
+  $('#prApplyPassed').prop('disabled',!$(this).val());
+ });
+ $('#prApplyPassed').on('click',function(){
+  var id=$('#prPassedRows input[name="prPassedChoice"]:checked').val();
+  var item=prVerifiedRows.find(function(row){return String(row.id)===String(id);});
+  if(!item)return;
+  $('#prPassedId').val(item.id);$('#prPassedMethod').val(item.method);
+  $('#prPassedLabel').val((item.method==='online'?'Online: ':'Cheque: ')+item.reference+' · Available '+item.remaining_amount);
+  $('#prOriginalForm [name="t_number"]').val(item.reference);
+  $('#prOriginalForm [name="passing_date"]').val(String(item.passing_date||'').slice(0,10));
+  $('#prOriginalForm [name="reference"]').val(item.reference);
+  $('#prOriginalForm [name="amount"]').val(item.remaining_amount).attr('max',item.remaining_amount);
+  if(item.purpose)$('#prOriginalForm [name="detail"]').val(item.purpose);
+  var $bank=$('#prOriginalForm [name="bank_id"]'),bankText=String(item.bank||'').trim().toLowerCase();
+  if(bankText){
+   var option=$bank.find('option').filter(function(){return $(this).text().trim().toLowerCase()===bankText;}).first();
+   if(option.length)$bank.val(option.val()).trigger('change');
+  }
+  $('#prPassedPickerModal').modal('hide');
+ });
  $('#prOriginalPayment').on('change',function(){
   var bank=String($(this).val())!=='1',cheque=String($(this).val())==='3';
   $('.pr-original-bank').toggleClass('d-none',!bank);
@@ -459,6 +539,12 @@
  });
  $('#prOriginalForm').on('submit',function(event){
   event.preventDefault();
+  var bankPayment=['2','3'].includes(String($('#prOriginalPayment').val()));
+  if(bankPayment&&(!$('#prPassedId').val()||!$('#prPassedMethod').val())){
+   $('#prOriginalError').removeClass('d-none').text('Select a cleared Cheque or confirmed Online transaction before saving.');
+   $('#prPassedPickerModal').modal('show');return;
+  }
+
   var $form=$(this),$save=$('#prOriginalSave').prop('disabled',true);
   $('#prOriginalError').addClass('d-none');
   $.ajax({url:$form.attr('action'),type:'POST',data:$form.serialize(),dataType:'json',
