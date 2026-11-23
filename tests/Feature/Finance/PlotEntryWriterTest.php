@@ -844,8 +844,9 @@ class PlotEntryWriterTest extends TestCase
         $this->assertCount(3,$lines); // removed booking leg is retained as archived evidence
         $this->assertSame(0,(int)$lines[1]->is_active);
         $this->assertSame(1,(int)$lines[2]->is_active);
-        $this->assertSame(81.5,(float)$lines->sum('debit'));
-        $this->assertSame(81.5,(float)$lines->sum('credit'));
+        $this->assertSame(81.5,(float)$lines->where('is_active',1)->sum('debit'));
+        $this->assertSame(81.5,(float)$lines->where('is_active',1)->sum('credit'));
+        $this->assertSame(70.0,(float)$lines->where('is_active',0)->sum('credit'));
         $this->assertSame(103,(int)$lines[2]->project_head_subhead_id);
         $this->assertDatabaseCount('finance_posting_batches',1);
         $this->assertDatabaseHas('daily_voucher_edit_snapshots',['project_id'=>1,'source_id'=>$original['source_id'],
@@ -1103,9 +1104,9 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame(2,DB::table('finance_plot_receipt_allocations')
             ->where('receipt_id',$created['source_id'])->where('is_active',1)->count());
         $this->assertSame(90.0,(float)DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',1)->sum('debit'));
         $this->assertSame(90.0,(float)DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',1)->sum('credit'));
         $editor->receipt(1,$created['source_id'],[
             'customer_id'=>5,'receipt_number'=>'PR-COUNT-FINAL','date'=>'2026-11-07',
             'amount'=>'55.00','cash_account_id'=>101,'narration'=>'One allocation',
@@ -1120,9 +1121,9 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame(1,DB::table('finance_posting_lines')
             ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',0)->count());
         $this->assertSame(55.0,(float)DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',1)->sum('debit'));
         $this->assertSame(55.0,(float)DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',1)->sum('credit'));
         $this->assertCount(1,(new PlotEntryWriter())->receipt(1,$created['source_id'])['allocations']);
         // Reintroduce previously archived booking #31. The UNIQUE
         // (receipt_id, booking_id) constraint must reuse its original row.
@@ -1143,7 +1144,7 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame($archivedId,(int)DB::table('finance_plot_receipt_allocations')
             ->where('receipt_id',$created['source_id'])->where('booking_id',31)->value('id'));
         $this->assertSame(80.0,(float)DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',1)->sum('credit'));
         $this->assertDatabaseCount('finance_posting_batches',1);
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',3);
         // Another Edit after archive + restore must resolve the booking by
@@ -1159,7 +1160,7 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame(2,DB::table('finance_plot_receipt_allocations')
             ->where('receipt_id',$created['source_id'])->count());
         $this->assertSame(80.0,(float)DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',1)->sum('credit'));
         $this->assertDatabaseCount('finance_posting_batches',1);
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',4);
     }
@@ -1325,7 +1326,7 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame(2,DB::table('finance_plot_purchase_items')
             ->where('purchase_id',$created['source_id'])->where('is_active',1)->count());
         $this->assertSame(200.0,(float)DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',1)->sum('debit'));
         $newId=(int)DB::table('finance_plot_purchase_items')->where('purchase_id',$created['source_id'])
             ->where('plot_code','LAND-DYN-NEW')->value('legacy_plot_id');
         $this->assertGreaterThan(0,$newId);
@@ -1344,9 +1345,9 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame(0,(int)DB::table('plots')->where('id',$oldId)->value('is_active'));
         $this->assertSame(1,(int)DB::table('plots')->where('id',$newId)->value('is_active'));
         $this->assertSame(90.0,(float)DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',1)->sum('debit'));
         $this->assertSame(90.0,(float)DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$created['posting_batch_id'])->sum('credit'));
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',1)->sum('credit'));
         $this->assertCount(1,$writer->purchaseDetails(1,$created['source_id'])['items']);
         $reconciliation=(new \App\Services\Finance\PlotPurchaseReconciliation())->audit(1);
         $this->assertTrue($reconciliation[0]['ok'],implode(',',$reconciliation[0]['issues']));
@@ -1365,7 +1366,7 @@ class PlotEntryWriterTest extends TestCase
         $this->assertSame(2,DB::table('finance_plot_purchase_items')
             ->where('purchase_id',$created['source_id'])->count());
         $this->assertSame(95.0,(float)DB::table('finance_posting_lines')
-            ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
+            ->where('posting_batch_id',$created['posting_batch_id'])->where('is_active',1)->sum('debit'));
         $this->assertDatabaseCount('finance_posting_batches',1);
     }
 
