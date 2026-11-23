@@ -65,6 +65,7 @@ class TypedPlotReceiptBankCustodyTest extends PlotEntryWriterTest
     private function typedPayload(string $number='PPR-1'): array
     {
         return [
+            'customer_id'=>5,
             'date'=>'2026-11-23','receipt_number'=>$number,
             'amount'=>'70.00','cash_account_id'=>101,
             'narration'=>'Multi-plot verified cheque receipt',
