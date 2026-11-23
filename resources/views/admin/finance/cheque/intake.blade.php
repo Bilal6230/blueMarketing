@@ -488,17 +488,14 @@ $(function () {
             });
         }
         if(@json(auth()->user()->can('finance cheque edit')) &&
-            ((r.status==='received'||r.status==='issued') && Number(r.linked_voucher_count||0)===0 ||
-             r.status==='cleared' &&
-             @json(auth()->user()->can('finance cheque delete')) &&
-             @json(auth()->user()->can('delete voucher')) &&
-             @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
+            (r.status==='received'||r.status==='issued') && Number(r.linked_voucher_count||0)===0){
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary mr-1 cheque-edit-source')
              .attr('data-id',r.id).text(r.status==='cleared'?'Replace':'Edit').appendTo($actions);
         }
-        if(r.status==='cleared' && @json(auth()->user()->can('finance cheque correct'))) {
+        if(@json(auth()->user()->can('finance cheque correct')) &&
+            ['received','issued','pending_clearing','cleared','returned','rejected','withdrawn'].indexOf(r.status)!==-1) {
             $('<button type="button" class="btn btn-sm btn-outline-info mr-1 cheque-correct-source">')
-                .attr('data-id',r.id).text('Correct').appendTo($actions);
+                .attr('data-id',r.id).text(Number(r.linked_voucher_count||0)>0?'Correct / Reissue':'Edit').appendTo($actions);
         }
         if(@json(auth()->user()->can('finance cheque delete')) &&
           (r.status==='received'||r.status==='issued'||
