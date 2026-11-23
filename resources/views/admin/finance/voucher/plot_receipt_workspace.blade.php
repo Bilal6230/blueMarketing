@@ -516,7 +516,10 @@
   var $slip=$('#prOriginalForm [name="reference"]');
   if(!$.trim($slip.val()))$slip.val($('#prOriginalNumber').val()||'');
   $('#prOriginalForm [name="amount"]').val(item.remaining_amount).attr('max',item.remaining_amount);
-  if(item.purpose)$('#prOriginalForm [name="detail"]').val(item.purpose);
+  if(item.purpose){
+   $('#prOriginalForm [name="detail"]').val(item.purpose);
+   if(item.method==='cheque')$('#prOriginalForm [name="cheque_purpose"]').val(item.purpose);
+  }
   var $bank=$('#prOriginalForm [name="bank_id"]'),bankText=String(item.bank||'').trim().toLowerCase();
   if(bankText){
    var option=$bank.find('option').filter(function(){return $(this).text().trim().toLowerCase()===bankText;}).first();
