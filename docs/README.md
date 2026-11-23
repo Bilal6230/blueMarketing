@@ -19,6 +19,31 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 03 — Universal standard voucher two-leg accounting implementation (2026-11-23)
+
+**Current branch code batch (unverified locally):** CR/DR and CCR/CDR create forms now require one project-specific opposite ledger account, while the original Account Type / Accounts / Child Account still selects the party leg. BOR/BOP retain their active-project-bank-only counterpart. New CR/DR store and CCR/CDR cash-only writer post linked debit/credit ledger rows in the existing `ledgers` table and reject a same-account/cross-project/deactivated-account choice. CCR/CDR revalidate both accounts in their posting transaction; pending CCR/CDR and CR/DR approvals hold **both** legs inactive. No new financial table or migration.
+
+**Lifecycle:** `BalancedStandardVoucherIntegrity` validates exact CR/DR/CCR/CDR polarity, both equal amounts, two independent account mappings, and ledger series. `DailyVoucherApprovalWorkflow` checks pending two-leg sources before activation, preserving historical one-leg paths. `SameSourceCashVoucherEdit` supports same-ID **cash** CR/DR/CCR/CDR two-leg amount/account/date edits, two-leg pending before-image checks and simultaneous approval/direct updates; it also corrects DR amount_out proposal and DR source eligibility. New verified Online/Cheque CR/DR editing remains controlled via existing bank-source correction/release, not direct cash editing. M04 `BankVoucherAllocationRelease` and `BankManagementCascadePlanner` now validate and release both two-leg verified CR/DR entries; historic one-leg verified sources retain their original release contract. CR/DR/CCR/CDR cash and debit registers now show one canonical voucher row while the GL retains both ledger legs. The edit modal loads editable opposite account only for supported two-leg standard sources.
+
+**Tests added:** `BalancedStandardVoucherIntegrityTest`, `StandardVoucherBalancedLifecycleContractTest`, three new source-release scenarios in `BankVoucherAllocationReleaseTest`, updated `CashCreditDebitEditContractTest`. Dedicated M03 CI adds PHP syntax checks and new focused tests. CI execution outcome has not yet been independently verified, and the user's Windows/Laragon tests and browser sign-off remain necessary. Do not mark Milestone 03 closed from code commits alone.
+
+**Local gate (non-destructive):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=BalancedStandardVoucherIntegrityTest
+php artisan test --filter=StandardVoucherBalancedLifecycleContractTest
+php artisan test --filter=CashCreditDebitEditContractTest
+php artisan test --filter=BankVoucherAllocationReleaseTest
+php artisan test --filter=DailyVoucherApprovalWorkflowTest
+php artisan test --filter=BalancedBankVoucherAccountContractTest
+php artisan finance:audit-posting-balances
+```
+
+**Required browser sign-off:** create CR/DR/CCR/CDR each with distinct opposite project account, inspect exact two GL legs and one listing/print face amount; confirm two legs held inactive pending approval and activated together, rejected approval inactive; edit cash amount/party/counter account with same voucher ID and approval ON/OFF, then void with history; for verified CR/DR source release/replace verify both ledger legs retired and allocation immutable; retry cross-project/collision/same-source overspend; regress BOR/BOP, BD/BW and original/typed PPR. Existing pre-batch **9 tests / 47 assertions** and six-project audit are owner-verified PASS; this new batch still needs re-run locally.
+
 ## Milestone 03 — Bank selector double-border screenshot repair (2026-11-23)
 
 **Owner local gate confirmed PASS:** BalancedBankVoucherAccountContractTest 3 tests / 27 assertions, BalancedBankVoucherIntegrityTest 6 tests / 20 assertions, `view:cache` PASS, active posting balance audit six projects clean (before this UI-only adjustment).
