@@ -30,31 +30,31 @@
             20%,60% { transform:translateX(-5px) }
             40%,80% { transform:translateX(5px) }
         }
-        /* Keep the bank-side posting account visually consistent with
-           the shared voucher inputs in both full-page and embedded layouts. */
-        #voucherForm .bank-posting-account-row {
-            margin:0 0 14px;
-            padding:12px 14px;
-            background:var(--bs-tertiary-bg, #f7f9fc);
-            border:1px solid #e0e7ef;
-            border-radius:10px;
-        }
-        #voucherForm .bank-posting-account-row > [class*="col-"] {
+        /* A TomSelect wrapper is structural, not a second input border. */
+        #voucherForm .bank-posting-account .ts-wrapper {
+            padding:0 !important;
+            border:0 !important;
+            background:transparent !important;
+            box-shadow:none !important;
             min-width:0;
+            height:auto !important;
         }
-        #voucherForm .bank-posting-account-row .ts-wrapper,
-        #voucherForm .bank-posting-account-row .ts-control,
-        #voucherForm .bank-posting-account-row select {
+        #voucherForm .bank-posting-account .ts-control {
             width:100%;
-            min-width:0;
+            min-height:38px;
+            padding:7px 10px;
+            border:1px solid #ced4da;
+            border-radius:6px;
+            box-shadow:none;
+            background:#fff;
         }
-        #voucherForm .bank-posting-account-row .bank-posting-account-help {
-            display:block;
-            line-height:1.45;
-            margin-top:6px;
+        #voucherForm .bank-posting-account .ts-wrapper.focus .ts-control {
+            border-color:#80bdff;
+            box-shadow:0 0 0 3px rgba(0,123,255,.12);
         }
-        @media(max-width:575px) {
-            #voucherForm .bank-posting-account-row { padding:10px; }
+        #voucherForm .bank-posting-account select.tomselected,
+        #voucherForm .bank-posting-account select.ts-hidden-accessible {
+            display:none !important;
         }
         #numberInput.passed-bank-amount-shake,
         #voucherForm .voucher-error-shake,
@@ -273,27 +273,6 @@
                                         <input type="hidden" name="passed_source_method" id="passed_source_method" value="">
                                         <input type="hidden" name="passed_source_id" id="passed_source_id" value="">
                                         @endif
-                                        @if($isBankVoucherSeries)
-                                        <div class="row g-2 bank-posting-account-row">
-                                            <div class="col-12 col-md-6 col-lg-5">
-                                                <label class="fbox mb-1" for="voucher_bank_counter_account">
-                                                    {{ $displaySeries==='BOR' ? 'Debit Account (Bank)' : 'Credit Account (Bank)' }}
-                                                    <span class="text-danger">*</span>
-                                                </label>
-                                                <select id="voucher_bank_counter_account"
-                                                    name="bank_counter_account_id"
-                                                    class="form-control js-tomselect" required>
-                                                    <option value="">Select active project bank account</option>
-                                                    @foreach(($bankSettlementAccounts ?? collect()) as $bankOption)
-                                                        <option value="{{ $bankOption->id }}">
-                                                            {{ $bankOption->bank_name }} / {{ $bankOption->account_title }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                <small class="text-muted bank-posting-account-help">Project bank account for this posting. Select the opposite party account in Accounts / Child Account below.</small>
-                                            </div>
-                                        </div>
-                                        @endif
  @include('admin.finance.voucher.typed_posting_fields')
                                         <div class="row">
                                             <div class="col-10">
@@ -357,6 +336,25 @@
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
+
+                                                    @if($isBankVoucherSeries)
+                                                    <div class="col-12 col-md-6 col-lg-4 bank-posting-account">
+                                                        <label class="fbox mb-1" for="voucher_bank_counter_account">
+                                                            {{ $displaySeries==='BOR' ? 'Debit Account (Bank)' : 'Credit Account (Bank)' }}
+                                                            <span class="text-danger">*</span>
+                                                        </label>
+                                                        <select id="voucher_bank_counter_account"
+                                                            name="bank_counter_account_id"
+                                                            class="js-tomselect" required>
+                                                            <option value="">Select project bank account</option>
+                                                            @foreach(($bankSettlementAccounts ?? collect()) as $bankOption)
+                                                                <option value="{{ $bankOption->id }}">
+                                                                    {{ $bankOption->bank_name }} / {{ $bankOption->account_title }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                    @endif
 
                                                     {{-- Account Type (small) --}}
                                                     <div class="col-6 col-md-3 col-lg-2">
