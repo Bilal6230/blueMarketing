@@ -261,7 +261,7 @@ class LedgerController extends Controller
             && in_array($paymentType,[2,3],true)
             && $effectiveVoucherType==='CP'
             && (int)$request->input('selected_pending_payment_id')>0;
-        if(in_array($voucherPrefix,['CR','DR'],true)
+        if(in_array($voucherPrefix,['CR','DR','CP'],true)
             && !$reusingPendingBankClearance
             && !$request->filled('counter_account_id')) {
             return response()->json(['status'=>'error',
@@ -356,7 +356,7 @@ class LedgerController extends Controller
                     throw new \DomainException('CASH_VOUCHER_PROJECT_NOT_FOUND');
                 }
                 $standardCounter = null;
-                if(in_array($voucherPrefix,['CR','DR'],true) && !$isCashOutPendingClearance){
+                if(in_array($voucherPrefix,['CR','DR','CP'],true) && !$isCashOutPendingClearance){
                     $standardCounter=ProjectHeadSubhead::availableForPosting()
                         ->where('project_id',$selectedProjectId)
                         ->whereKey((int)$request->input('counter_account_id'))
@@ -699,7 +699,7 @@ class LedgerController extends Controller
                         'type'=>$displaySeries,'type_id'=>$resolvedVoucherNumber,
                         'project_head_subheads_id'=>$standardCounter->id,
                         'reference'=>$request->reference,
-                        'amount_in'=>$voucherPrefix==='DR'?$cleanAmount:0,
+                        'amount_in'=>in_array($voucherPrefix,['DR','CP'],true)?$cleanAmount:0,
                         'amount_out'=>$voucherPrefix==='CR'?$cleanAmount:0,
                         'is_active'=>1,'date'=>$request->date,
                         'detail'=>$detail,'update_by'=>Auth::id(),
