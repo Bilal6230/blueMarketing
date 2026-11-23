@@ -19,6 +19,16 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 03 — Latest owner regression follow-up (2026-11-23)
+
+**Owner run after prior fixture update:** `PlotEntryWriterTest` improved to **42 PASS / 3 FAIL**. Remaining failures were stale assertions summing historical inactive posting lines as if they were active. `BankTransferWriterTest` still **10 FAIL / 1 PASS** because `TypedLedgerBackfill` incorrectly reads `finance_bank_transfer_sources.id`, even though the table primary key is **`posting_batch_id`**, not `id`.
+
+**Committed corrections:** Fix the real BD/BW source identity bug in `TypedLedgerBackfill` to use `$link->posting_batch_id` (matches schema, claims, attributions); update the three Plot lifecycle tests to sum only active `finance_posting_lines.is_active=1`, while asserting archived historical credit remains untouched. Do not disable posting ledger gates, change existing printed numbers, or physically remove archived legs. No database migration.
+
+**Local execution still required:** `php artisan test --filter=BankTransferWriterTest`, `php artisan test --filter=PlotEntryWriterTest`, followed by the read-only six-project posting integrity audit.
+
+**Browser tests:** No new browser testing is necessary for the corrected *test assertions*. The BD/BW `TypedLedgerBackfill` runtime change **does** require a focused disposable-data browser check after passing tests: create a normal manual BD and BW in their existing screens, verify successful posting, balanced bank/cash ledgers and correct voucher numbers, then verify each voucher history. Do not test Cheque/Online linking from BD/BW yet: the seven-family source allocation/UI integration is still pending.
+
 ## Milestone 03 — Focused PHPUnit regression repair (2026-11-23)
 
 **Owner's latest Laragon log (initial 7-voucher batch, commit f22f826f):**
