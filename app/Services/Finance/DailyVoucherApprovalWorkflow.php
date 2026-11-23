@@ -316,23 +316,37 @@ final class DailyVoucherApprovalWorkflow
                     ->join('project_head_subheads as account','account.id','=','leg.project_head_subheads_id')
                     ->where('leg.customer_ledger_id',$source->id)
                     ->where('account.project_id',$approval->project_id)
-                    ->lockForUpdate()->get(['leg.id','leg.type','leg.amount_in','leg.amount_out','leg.is_active']);
-                if (!$identity || !$allocation || $legs->count()!==1
-                    || DB::table('ledgers')->where('customer_ledger_id',$source->id)->count()!==1
+                    ->lockForUpdate()->get(['leg.id','leg.type','leg.project_head_subheads_id',
+                        'leg.amount_in','leg.amount_out','leg.is_active']);
+                $balanced=$allocation && (int)($allocation->bank_account_id??0)>0;
+                $expectedLegs=$balanced?2:1;
+                if (!$identity || !$allocation || $legs->count()!==$expectedLegs
+                    || DB::table('ledgers')->where('customer_ledger_id',$source->id)
+                        ->count()!==$expectedLegs
                     || !Schema::hasTable('finance_bank_voucher_allocation_releases')
                     || DB::table('finance_bank_voucher_allocation_releases')
                         ->where('allocation_id',$allocation?->id)->exists()
-                    || !in_array((string)$legs->first()->type,[$sourceType,$series],true)
                     || ((int)$source->payment_type===2 && $allocation->source_method!=='online')
                     || ((int)$source->payment_type===3 && $allocation->source_method!=='cheque')
-                    || abs((float)$allocation->amount - max((float)$source->amount_in,(float)$source->amount_out))>0.001
-                    || abs(max((float)$legs->first()->amount_in,(float)$legs->first()->amount_out)
-                        - max((float)$source->amount_in,(float)$source->amount_out))>0.001
+                    || abs((float)$allocation->amount -
+                        max((float)$source->amount_in,(float)$source->amount_out))>0.001
                     || (int)$source->is_active!==0
-                    || (int)$legs->first()->is_active!==0) {
+                    || $legs->contains(fn($leg)=>(int)$leg->is_active!==0)) {
                     throw new \DomainException('BANK_APPROVAL_LEDGER_OR_ALLOCATION_MISMATCH');
                 }
-                BankVoucherLegIntegrity::assert($series,$source,$legs->first(),(float)$allocation->amount);
+                if($balanced){
+                    BalancedBankVoucherIntegrity::assert((int)$approval->project_id,
+                        $series,$source,$allocation,$legs);
+                }else{
+                    $leg=$legs->first();
+                    if(!in_array((string)$leg->type,[$sourceType,$series],true)
+                        || abs(max((float)$leg->amount_in,(float)$leg->amount_out)
+                            - max((float)$source->amount_in,(float)$source->amount_out))>0.001){
+                        throw new \DomainException('BANK_APPROVAL_LEGACY_LEDGER_INVALID');
+                    }
+                    BankVoucherLegIntegrity::assert($series,$source,$leg,
+                        (float)$allocation->amount);
+                }
             }
             // First approval must never activate malformed cash-only source
             // amounts or extra hidden/cross-project legs. An approver may
