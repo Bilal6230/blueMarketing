@@ -1815,7 +1815,12 @@ class VoucherController extends Controller
             'cash_account_id'=>$cash->count()===1?(int)$cash[0]->project_head_subhead_id:null,
             'date'=>substr((string)$row->effective_date,0,10),
             'amount'=>(string)$row->amount,'narration'=>(string)$row->narration,
-            'editable'=>$row->linked_customer_ledger_id===null
+            'editable'=>!(Schema::hasTable('finance_bank_voucher_allocations')
+                && DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$projectId)
+                    ->where('voucher_type',$kind==='deposit'?'BD':'BW')
+                    ->where('voucher_id',$postingBatch)->exists())
+                && $row->linked_customer_ledger_id===null
                 && $row->reversal_of_batch_id===null && $mappedBank!==null
                 && $cash->count()===1 && $activeLegs->count()===2
                 &&!DB::table('finance_posting_batches')
@@ -1922,21 +1927,28 @@ class VoucherController extends Controller
                 fn($q)=>$q->where('transfer.is_active',1))
             ->when(Schema::hasColumn('finance_bank_transfer_sources','deleted_at'),
                 fn($q)=>$q->whereNull('transfer.deleted_at'))
-            ->where(function ($query) {
-                $query->where('cash_head.name', 'LIKE', '%cash%')
-                    ->orWhere('cash_child.name', 'LIKE', '%cash%');
-            })->orderByDesc('batch.effective_date')->orderByDesc('batch.id')
+            // Verified BD/BW may settle a mapped customer/receivable, not only
+            // Cash in Hand. The original manual transfers still remain valid.
+            ->orderByDesc('batch.effective_date')->orderByDesc('batch.id')
             ->leftJoin('finance_posting_batches as reversed_batch', 'reversed_batch.reversal_of_batch_id', '=', 'batch.id')
             ->get(['transfer.posting_batch_id', 'transfer.amount', 'transfer.narration', 'bank.bank_name', 'bank.account_title',
                 'batch.voucher_series', 'batch.voucher_number', 'batch.effective_date', 'cash_head.name as cash_name', 'cash_child.name as cash_child_name', 'cheque.type_id as cheque_number', 'cheque.t_number as cheque_reference',
                 'reversed_batch.id as reversal_batch_id', 'transfer.linked_customer_ledger_id'])
-            ->unique('posting_batch_id')->values()->map(fn ($r) => ['posting_batch_id' => (int) $r->posting_batch_id,
+            ->unique('posting_batch_id')->values();
+        $verifiedBatches=Schema::hasTable('finance_bank_voucher_allocations')
+            ? DB::table('finance_bank_voucher_allocations')
+                ->where('project_id',$projectId)
+                ->where('voucher_type',$kind==='deposit'?'BD':'BW')
+                ->pluck('voucher_id')->map(fn($id)=>(int)$id)->all() : [];
+        $rows=$rows->map(fn ($r) => ['posting_batch_id' => (int) $r->posting_batch_id,
                 'voucher' => (string) $r->voucher_series.'-'.($r->voucher_number ?: $r->posting_batch_id), 'date' => substr((string) $r->effective_date, 0, 10),
                 'cash_account' => trim((string) $r->cash_name.' / '.(string) $r->cash_child_name, ' /'), 'bank' => trim((string) $r->bank_name.' / '.(string) $r->account_title, ' /'),
                 'cheque' => $r->cheque_number ? 'CP-'.$r->cheque_number.' / '.(string) $r->cheque_reference : '', 'amount' => (string) $r->amount, 'narration' => (string) $r->narration,
                 'reversed' => $r->reversal_batch_id !== null,
-                'can_reverse' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null,
-                'can_edit' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null]);
+                'can_reverse' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null
+                    && !in_array((int)$r->posting_batch_id,$verifiedBatches,true),
+                'can_edit' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null
+                    && !in_array((int)$r->posting_batch_id,$verifiedBatches,true)]);
         if(Schema::hasTable('finance_bank_transfer_approval_drafts')){
             $approvedStatuses=DB::table('finance_bank_transfer_approval_drafts')
                 ->where('project_id',$projectId)->where('transfer_kind',$kind)
