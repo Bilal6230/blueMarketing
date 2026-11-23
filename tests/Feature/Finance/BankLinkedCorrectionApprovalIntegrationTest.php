@@ -60,7 +60,8 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
             $t->string('from_status');$t->string('to_status');
             $t->date('action_date');$t->string('bank_name');
             $t->decimal('original_amount',18,2);$t->unsignedBigInteger('actor_id');
-            $t->string('reason')->nullable();$t->timestamp('verification_confirmed_at')->nullable();
+            $t->string('reason')->nullable();$t->text('remarks')->nullable();
+            $t->timestamp('verification_confirmed_at')->nullable();
             $t->timestamp('created_at')->nullable();
         });
         Schema::create('finance_online_voucher_claims', function (Blueprint $t) {
@@ -372,7 +373,47 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
         app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$this->correctedCheque());
     }
 
-    public function test_previously_cleared_withdrawn_cheque_can_be_restored_only_with_original_evidence(): void
+    public function test_audited_replacement_withdrawn_allows_original_verified_cheque_restoration(): void
+    {
+        DB::table('daily_voucher_approval_policies')
+            ->where('project_id',1)->where('voucher_type','CHQ_CORR')
+            ->update(['approval_required'=>false]);
+        DB::table('finance_cheque_intakes')->where('id',77)->update(['status'=>'withdrawn']);
+        DB::table('finance_cheque_intakes')->insert([
+            'id'=>78,'project_id'=>1,'status'=>'withdrawn','amount'=>'500.00',
+            'cheque_number'=>'CH78','bank_name'=>'Bank A',
+            'cheque_date'=>'2026-11-22','account_mapping_id'=>7,
+            'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        DB::table('finance_cheque_intake_actions')->insert([
+            'project_id'=>1,'cheque_intake_id'=>77,'action'=>'cleared',
+            'from_status'=>'pending_clearing','to_status'=>'cleared',
+            'action_date'=>'2026-11-22','bank_name'=>'Bank A',
+            'original_amount'=>'500.00','actor_id'=>7,
+            'verification_confirmed_at'=>now(),'created_at'=>now(),
+        ]);
+        DB::table('finance_cheque_intake_actions')->insert([
+            'project_id'=>1,'cheque_intake_id'=>77,'action'=>'withdrawn',
+            'from_status'=>'cleared','to_status'=>'withdrawn',
+            'action_date'=>'2026-11-22','bank_name'=>'Bank A',
+            'original_amount'=>'500.00','actor_id'=>7,
+            'remarks'=>'Replaced by cheque source #78','created_at'=>now(),
+        ]);
+        $changes=$this->correctedCheque('490.00');
+        $plan=app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$changes);
+        self::assertTrue($plan['ready_after_correction']);
+        $result=app(BankLinkedCorrectionApproval::class)->submitReissue(
+            1,'cheque',77,7,'Restore previously replaced cleared cheque',
+            $changes,$plan['fingerprint']);
+        self::assertFalse($result['pending']);
+        self::assertSame('cleared',DB::table('finance_cheque_intakes')
+            ->where('id',77)->value('status'));
+        self::assertSame(2,DB::table('finance_cheque_intakes')->count());
+        self::assertSame(1,DB::table('finance_cheque_intake_actions')
+            ->where('action','restored')->count());
+    }
+
+    public function test_genuinely_withdrawn_cleared_cheque_stays_withdrawn_after_edit(): void
     {
         DB::table('daily_voucher_approval_policies')
             ->where('project_id',1)->where('voucher_type','CHQ_CORR')
@@ -387,16 +428,11 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
         ]);
         $changes=$this->correctedCheque('490.00');
         $plan=app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$changes);
-        self::assertTrue($plan['ready_after_correction']);
-        $result=app(BankLinkedCorrectionApproval::class)->submitReissue(
-            1,'cheque',77,7,'Restore verified test cheque',
+        self::assertFalse($plan['ready_after_correction']);
+        app(BankLinkedCorrectionApproval::class)->submitReissue(
+            1,'cheque',77,7,'Update withdrawn record without renewing funds',
             $changes,$plan['fingerprint']);
-        self::assertFalse($result['pending']);
-        self::assertSame('cleared',DB::table('finance_cheque_intakes')
-            ->where('id',77)->value('status'));
-        self::assertSame(1,DB::table('finance_cheque_intakes')->count());
-        self::assertSame(1,DB::table('finance_cheque_intake_actions')
-            ->where('action','restored')->count());
+        self::assertSame('withdrawn',DB::table('finance_cheque_intakes')->where('id',77)->value('status'));
     }
 
     public function test_withdrawn_unverified_cheque_edit_does_not_fabricate_clearance(): void
