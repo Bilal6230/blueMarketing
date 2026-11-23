@@ -783,6 +783,19 @@ class VoucherController extends Controller
         if ($paymentType !== null) {
             $q->whereHas('customerLedger', fn ($source) => $source->where('payment_type', $paymentType));
         }
+        if(Schema::hasColumn('finance_bank_voucher_allocations','bank_account_id')){
+            // Only the opposite party leg is displayed in this legacy list.
+            // Both bank/party legs remain independently visible in the GL.
+            $q->whereNotExists(function($query)use($selectedProjectId){
+                $query->selectRaw('1')
+                    ->from('finance_bank_voucher_allocations as a')
+                    ->join('project_bank_accounts as bank','bank.id','=','a.bank_account_id')
+                    ->where('a.project_id',$selectedProjectId)
+                    ->whereIn('a.voucher_type',['BOR','BOP'])
+                    ->whereColumn('a.voucher_id','ledgers.customer_ledger_id')
+                    ->whereColumn('bank.account_mapping_id','ledgers.project_head_subheads_id');
+            });
+        }
         // Apply filters only if user has selected them
         $headIds = $request->input('head_account'); // from ajax: d.head_account = $('#filter_head_account').val()
 
@@ -901,6 +914,14 @@ class VoucherController extends Controller
             : collect();
         $data = $rows->map(function ($i) use ($displayNumbers, $ledgerDisplayNumbers) {
             $amount = in_array((string)$i->type,['CP','DR','CDR','BOP'],true) ? (float) $i->amount_out : (float) $i->amount_in;
+            if(in_array((string)$i->type,['BOR','BOP'],true) && $i->customer_ledger_id!==null){
+                // Balanced bank vouchers show the face amount from source;
+                // their party-side leg has the opposite posting polarity.
+                $source=$i->customerLedger;
+                $face=$i->type==='BOR'
+                    ?(float)($source?->amount_in??0):(float)($source?->amount_out??0);
+                if($face>0)$amount=$face;
+            }
 
             // Latest pending update (if any)
             $p = $i->latestPendingUpdate ?? PendingUpdate::where('table_name', 'ledgers')
@@ -2356,6 +2377,19 @@ class VoucherController extends Controller
         if ($paymentType !== null) {
             $q->whereHas('customerLedger', fn ($source) => $source->where('payment_type', $paymentType));
         }
+        if(Schema::hasColumn('finance_bank_voucher_allocations','bank_account_id')){
+            // Only the opposite party leg is displayed in this legacy list.
+            // Both bank/party legs remain independently visible in the GL.
+            $q->whereNotExists(function($query)use($selectedProjectId){
+                $query->selectRaw('1')
+                    ->from('finance_bank_voucher_allocations as a')
+                    ->join('project_bank_accounts as bank','bank.id','=','a.bank_account_id')
+                    ->where('a.project_id',$selectedProjectId)
+                    ->whereIn('a.voucher_type',['BOR','BOP'])
+                    ->whereColumn('a.voucher_id','ledgers.customer_ledger_id')
+                    ->whereColumn('bank.account_mapping_id','ledgers.project_head_subheads_id');
+            });
+        }
 
         // ----------------------------
         // Head Account filter (IDs)
@@ -2485,6 +2519,14 @@ class VoucherController extends Controller
             : collect();
         $data = $rows->map(function ($i) use ($displayNumbers, $ledgerDisplayNumbers) {
             $amount = in_array((string)$i->type,['CP','DR','CDR','BOP'],true) ? (float) $i->amount_out : (float) $i->amount_in;
+            if(in_array((string)$i->type,['BOR','BOP'],true) && $i->customer_ledger_id!==null){
+                // Balanced bank vouchers show the face amount from source;
+                // their party-side leg has the opposite posting polarity.
+                $source=$i->customerLedger;
+                $face=$i->type==='BOR'
+                    ?(float)($source?->amount_in??0):(float)($source?->amount_out??0);
+                if($face>0)$amount=$face;
+            }
 
             $p = $i->latestPendingUpdate ?? PendingUpdate::where('table_name', 'ledgers')
                 ->where('record_id', $i->id)
