@@ -3202,6 +3202,36 @@ class BookingController extends Controller
                             throw new \RuntimeException('Credit account ID not found.');
                         }
 
+                        // Keep the existing receivable ledger/booking FK unchanged.
+                        // The new bank/cash counterpart is a second real GL row.
+                        $counterAccountId=(int)$request->input('counter_account_id',0);
+                        $counterAccount=ProjectHeadSubhead::availableForPosting()
+                            ->where('project_id',$projectId)
+                            ->whereKey($counterAccountId)->lockForUpdate()->first();
+                        if(!$counterAccount || $counterAccountId===(int)$creditAccountId){
+                            throw new \DomainException('PPR_COUNTER_ACCOUNT_PROJECT_OR_COLLISION_INVALID');
+                        }
+                        if($isPendingBankPayment){
+                            if(!DB::table('project_bank_accounts')
+                                ->where('project_id',$projectId)
+                                ->where('account_mapping_id',$counterAccountId)
+                                ->where('is_active',1)->lockForUpdate()->exists()){
+                                throw new \DomainException('PPR_VERIFIED_PROJECT_BANK_COUNTER_REQUIRED');
+                            }
+                        }else{
+                            $cashAccount=ProjectHeadSubhead::availableForPosting()
+                                ->where('project_id',$projectId)->whereKey($counterAccountId)
+                                ->where(function($query){
+                                    $query->whereHas('headAccounting',
+                                        fn($head)=>$head->where('name','like','%cash%'))
+                                        ->orWhereHas('subheadAccounting',
+                                        fn($sub)=>$sub->where('name','like','%cash%'));
+                                })->exists();
+                            if(!$cashAccount){
+                                throw new \DomainException('PPR_CASH_COUNTER_ACCOUNT_REQUIRED');
+                            }
+                        }
+
                         $ledgerType = 'PPR';
                         $voucherNumber = $displayVoucherNumber;
 
@@ -3213,10 +3243,26 @@ class BookingController extends Controller
                             ->where('reference', $reference)
                             ->lockForUpdate()
                             ->get();
-                        if ($matchingPprLedgers->count() > 1) {
+                        $receivableCandidates=$matchingPprLedgers->filter(
+                            fn($row)=>(int)$row->project_head_subheads_id===(int)$creditAccountId);
+                        if($matchingPprLedgers->count()>2
+                            || $receivableCandidates->count()>1
+                            || ($matchingPprLedgers->isNotEmpty()
+                                && $receivableCandidates->count()!==1)){
                             throw new \RuntimeException('Duplicate PPR ledger postings require reconciliation.');
                         }
-                        $ledger = $matchingPprLedgers->first();
+                        $ledger = $receivableCandidates->first();
+                        if($matchingPprLedgers->count()===2){
+                            $other=$matchingPprLedgers->first(
+                                fn($row)=>(int)$row->id!==(int)$ledger?->id);
+                            if(!$duplicateLedger
+                                || !$other
+                                || (int)$other->project_head_subheads_id!==$counterAccountId){
+                                throw new \DomainException('Existing PPR counter posting identity mismatch.');
+                            }
+                            \App\Services\Finance\BalancedOriginalPprIntegrity::assert(
+                                $customerLedger,$matchingPprLedgers,(int)$ledger->id);
+                        }
                         if ($ledger && ((int) $ledger->customer_ledger_id !== (int) $customerLedger->id ||
                             (int) $ledger->project_head_subheads_id !== (int) $creditAccountId ||
                             (int) $ledger->is_active !== 1 ||
@@ -3273,6 +3319,23 @@ class BookingController extends Controller
                             ]);
                         }
 
+                        if(!$duplicateLedger){
+                            Ledger::create([
+                                'customer_ledger_id'=>$customerLedger->id,
+                                'type'=>'PPR',
+                                'voucher_number'=>$voucherNumber,
+                                'type_id'=>app(\App\Services\Finance\ProjectVoucherAllocator::class)
+                                    ->nextLedgerId((int)$projectId,'PPR'),
+                                'project_head_subheads_id'=>$counterAccountId,
+                                'reference'=>$reference,
+                                'amount_in'=>0,
+                                'amount_out'=>$rawAmount,
+                                'is_active'=>1,'date'=>$receiptDate,
+                                'detail'=>$pprLedgerDetail,
+                                'update_by'=>Auth::id(),
+                                'create_by'=>Auth::id(),'status'=>0,
+                            ]);
+                        }
                         $this->syncBookingVoucherRecord($customerLedger, $ledger, $displayVoucherNumber > 0 ? $displayVoucherNumber : null);
                         // The original single-booking PPR flow must honor the
                         // same per-project approval policy as the modern writer.
@@ -3293,7 +3356,8 @@ class BookingController extends Controller
                                     (int)$customerLedger->id, (int)Auth::id());
                             if ($approvalPending) {
                                 $customerLedger->forceFill(['is_active' => 0, 'is_approve' => 0])->save();
-                                $ledger->forceFill(['is_active' => 0])->save();
+                                DB::table('ledgers')->where('customer_ledger_id',$customerLedger->id)
+                                    ->where('type','PPR')->update(['is_active'=>0]);
                             }
                         }
                     });
