@@ -58,10 +58,11 @@ final class BookingReceiptCashEditor
                 ->join('project_head_subheads as account','account.id','=','leg.project_head_subheads_id')
                 ->where('leg.customer_ledger_id',$sourceId)->where('leg.type','PPR')
                 ->where('leg.is_active',1)->where('account.project_id',$projectId)
-                ->lockForUpdate()->get(['leg.id','leg.voucher_number','leg.amount_in',
-                    'leg.amount_out']);
-            if($ledgers->count()!==1||DB::table('ledgers')
-                ->where('customer_ledger_id',$sourceId)->count()!==1
+                ->orderBy('leg.id')->lockForUpdate()->get(['leg.id','leg.type',
+                    'leg.project_head_subheads_id','leg.voucher_number','leg.amount_in',
+                    'leg.amount_out','leg.is_active']);
+            if(!in_array($ledgers->count(),[1,2],true)||DB::table('ledgers')
+                ->where('customer_ledger_id',$sourceId)->count()!==$ledgers->count()
                 ||(float)$ledgers[0]->amount_in!==(float)$source->amount_out
                 ||(float)$ledgers[0]->amount_out!==0.0) {
                 throw new \DomainException('PPR ledger link or amount does not match.');
@@ -85,8 +86,11 @@ final class BookingReceiptCashEditor
                 ||(float)$bookings[0]->amount!==(float)$source->amount_out) {
                 throw new \DomainException('PPR BookingVoucher FK or amount does not match.');
             }
-            DB::table('ledgers')->where('id',$ledgers[0]->id)
-                ->where('customer_ledger_id',$sourceId)->where('is_active',1)
+            if($ledgers->count()===2){
+                BalancedOriginalPprIntegrity::assert($source,$ledgers,(int)$bookings[0]->ledger_id);
+            }
+            DB::table('ledgers')->where('customer_ledger_id',$sourceId)
+                ->whereIn('id',$ledgers->pluck('id')->all())->where('is_active',1)
                 ->update(['is_active'=>0,'updated_at'=>now()]);
             DB::table('booking_vouchers')->where('id',$bookings[0]->id)
                 ->where('project_id',$projectId)->where('customer_ledger_id',$sourceId)
@@ -145,10 +149,11 @@ final class BookingReceiptCashEditor
                 ->join('project_head_subheads as account','account.id','=','l.project_head_subheads_id')
                 ->where('l.customer_ledger_id',$sourceId)->where('l.type','PPR')
                 ->where('l.is_active',1)->where('account.project_id',$projectId)
-                ->lockForUpdate()->get(['l.id','l.type_id','l.voucher_number','l.reference',
-                    'l.amount_in','l.amount_out','l.project_head_subheads_id','l.is_active']);
-            if($leg->count()!==1||DB::table('ledgers')
-                ->where('customer_ledger_id',$sourceId)->count()!==1
+                ->orderBy('l.id')->lockForUpdate()->get(['l.id','l.type','l.type_id',
+                    'l.voucher_number','l.reference','l.amount_in','l.amount_out',
+                    'l.project_head_subheads_id','l.is_active']);
+            if(!in_array($leg->count(),[1,2],true)||DB::table('ledgers')
+                ->where('customer_ledger_id',$sourceId)->count()!==$leg->count()
                 ||(float)$leg[0]->amount_in!==(float)$source->amount_out
                 ||(float)$leg[0]->amount_out!==0.0) {
                 throw new \DomainException('Receipt and its exact ledger leg are inconsistent.');
@@ -170,6 +175,9 @@ final class BookingReceiptCashEditor
                 ||(float)$booking[0]->amount!==(float)$source->amount_out) {
                 throw new \DomainException('Receipt booking voucher or ledger FK does not match.');
             }
+            if($leg->count()===2){
+                BalancedOriginalPprIntegrity::assert($source,$leg,(int)$booking[0]->ledger_id);
+            }
             if(DB::table('customer_ledger')->where('project_id',$projectId)
                 ->where('transaction_type','PPR')->where('reference',$reference)
                 ->where('customer_id',$source->customer_id)->where('plot_id',$source->plot_id)
@@ -190,6 +198,13 @@ final class BookingReceiptCashEditor
                 ->update(['date'=>$date,'reference'=>$reference,
                     'detail'=>$description,'amount_in'=>$amount,'updated_at'=>now(),
                 ]);
+            if($leg->count()===2){
+                DB::table('ledgers')->where('id',$leg[1]->id)
+                    ->where('customer_ledger_id',$sourceId)->where('is_active',1)
+                    ->update(['date'=>$date,'reference'=>$reference,
+                        'detail'=>$description,'amount_in'=>0,'amount_out'=>$amount,
+                        'updated_at'=>now()]);
+            }
             DB::table('booking_vouchers')->where('id',$booking[0]->id)
                 ->where('project_id',$projectId)->where('customer_ledger_id',$sourceId)
                 ->where('ledger_id',$leg[0]->id)->update([
