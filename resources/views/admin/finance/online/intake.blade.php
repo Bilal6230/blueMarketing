@@ -585,15 +585,15 @@ $(function(){
     editingOnlineReplacement=!correctionMode && (!!response.cascade_impact.requires_cascade || record.status==='confirmed');
 
     $('#online-replacement-reason-wrap').toggleClass('d-none',!(editingOnlineReplacement||editingOnlineCorrection));
-    $('#online-replacement-reason-wrap label').text(editingOnlineCorrection?'Reason for correcting transaction and recreating linked vouchers *':'Reason for replacing verified transaction *');
+    $('#online-replacement-reason-wrap label').text(editingOnlineCorrection?'Reason for updating or replacing transaction *':'Reason for replacing verified transaction *');
     $('#online-replacement-reason').prop('required',editingOnlineReplacement||editingOnlineCorrection);
     $('#online-replacement-reason').attr('placeholder',editingOnlineCorrection
-      ? 'Explain what was entered incorrectly. Linked vouchers will be archived and recreated later.'
+      ? 'Explain correction. Linked transactions require a NEW unique reference and fresh confirmation.'
       : 'Explain why this verified instrument must be genuinely replaced.');
     $entry.attr('action',bankMutationUrl.replace('__SOURCE_ID__',id));
-    $modal.find('.modal-title').text(editingOnlineCorrection?'Correct Verified Online Transaction':(editingOnlineReplacement?'Replace Linked Online Transaction':'Edit Online Transaction'));
-    $entry.find('[name=reference]').prop('readonly',editingOnlineCorrection);
-    $('#online-save').text(editingOnlineCorrection?'Review Correction':(editingOnlineReplacement?'Replace & Reverify':'Update Transaction'));
+    $modal.find('.modal-title').text(editingOnlineCorrection?'Edit / Replace Online Transaction':(editingOnlineReplacement?'Replace Linked Online Transaction':'Edit Online Transaction'));
+    $entry.find('[name=reference]').prop('readonly',false);
+    $('#online-save').text(editingOnlineCorrection?'Review Update / Reverify':(editingOnlineReplacement?'Replace & Reverify':'Update Transaction'));
     // Type remains readable in TomSelect; backend disallows verified direction mutation.
     $('#online-proof').prop('disabled',true);
     $.each(['reference','transaction_date','amount','sending_bank','sending_account',
