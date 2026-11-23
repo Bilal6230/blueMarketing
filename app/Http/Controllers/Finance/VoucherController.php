@@ -796,6 +796,17 @@ class VoucherController extends Controller
                     ->whereColumn('bank.account_mapping_id','ledgers.project_head_subheads_id');
             });
         }
+        // One register row per voucher; the second balanced account leg
+        // remains visible in the General Ledger, never in this directory.
+        $q->where(function($outer){
+            $outer->whereNotIn('ledgers.type',['CR','DR','CCR','CDR'])
+                ->orWhereNotExists(function($sub){
+                    $sub->selectRaw('1')->from('ledgers as earlier')
+                        ->whereColumn('earlier.customer_ledger_id','ledgers.customer_ledger_id')
+                        ->whereColumn('earlier.type','ledgers.type')
+                        ->whereColumn('earlier.id','<','ledgers.id');
+                });
+        });
         // Apply filters only if user has selected them
         $headIds = $request->input('head_account'); // from ajax: d.head_account = $('#filter_head_account').val()
 
@@ -2399,6 +2410,17 @@ class VoucherController extends Controller
             });
         }
 
+        // One register row per voucher; the second balanced account leg
+        // remains visible in the General Ledger, never in this directory.
+        $q->where(function($outer){
+            $outer->whereNotIn('ledgers.type',['CR','DR','CCR','CDR'])
+                ->orWhereNotExists(function($sub){
+                    $sub->selectRaw('1')->from('ledgers as earlier')
+                        ->whereColumn('earlier.customer_ledger_id','ledgers.customer_ledger_id')
+                        ->whereColumn('earlier.type','ledgers.type')
+                        ->whereColumn('earlier.id','<','ledgers.id');
+                });
+        });
         // ----------------------------
         // Head Account filter (IDs)
         // ----------------------------
