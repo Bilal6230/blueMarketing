@@ -123,6 +123,42 @@ final class BookingReceiptCashEditorTest extends TestCase
         }
     }
 
+    public function test_balanced_cash_ppr_edit_preserves_receivable_fk_and_updates_both_ledger_legs(): void
+    {
+        DB::table('project_head_subheads')->insert(['id'=>102,'project_id'=>1]);
+        DB::table('ledgers')->insert([
+            'id'=>22,'customer_ledger_id'=>11,'type'=>'PPR','type_id'=>9,
+            'voucher_number'=>99,'project_head_subheads_id'=>102,
+            'amount_in'=>'0.00','amount_out'=>'80.00','reference'=>'PPR-OLD',
+            'detail'=>'Original receipt','date'=>'2026-11-18','is_active'=>1,
+        ]);
+        (new BookingReceiptCashEditor())->edit(1,11,[
+            'date'=>'2026-11-19','reference'=>'PPR-UPDATED',
+            'amount'=>'110.00','description'=>'Balanced receipt edit',
+        ],7);
+        $this->assertEquals(110,DB::table('ledgers')->where('id',21)->value('amount_in'));
+        $this->assertEquals(110,DB::table('ledgers')->where('id',22)->value('amount_out'));
+        $this->assertEquals(110,DB::table('customer_ledger')->where('id',11)->value('amount_out'));
+        $this->assertSame(21,(int)DB::table('booking_vouchers')->where('id',33)->value('ledger_id'));
+        $this->assertSame(2,DB::table('ledgers')->where('customer_ledger_id',11)->count());
+    }
+
+    public function test_balanced_cash_ppr_delete_retires_both_legs_without_deleting_evidence(): void
+    {
+        DB::table('project_head_subheads')->insert(['id'=>102,'project_id'=>1]);
+        DB::table('ledgers')->insert([
+            'id'=>22,'customer_ledger_id'=>11,'type'=>'PPR','type_id'=>9,
+            'voucher_number'=>99,'project_head_subheads_id'=>102,
+            'amount_in'=>'0.00','amount_out'=>'80.00','reference'=>'PPR-OLD',
+            'detail'=>'Original receipt','date'=>'2026-11-18','is_active'=>1,
+        ]);
+        (new BookingReceiptCashEditor())->delete(1,11);
+        $this->assertSame(2,DB::table('ledgers')->where('customer_ledger_id',11)->count());
+        $this->assertSame(2,DB::table('ledgers')
+            ->where('customer_ledger_id',11)->where('is_active',0)->count());
+        $this->assertSame(0,(int)DB::table('booking_vouchers')->where('id',33)->value('is_active'));
+    }
+
     public function test_typed_booking_owner_refuses_legacy_ppr_edit_and_delete_without_mutation(): void
     {
         Schema::create('finance_posting_booking_sources',function(Blueprint $t){
