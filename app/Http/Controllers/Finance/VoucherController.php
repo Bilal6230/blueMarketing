@@ -1211,8 +1211,12 @@ class VoucherController extends Controller
                     ->where('project_id',$projectId)->where('is_active',1)
                     ->select('account_mapping_id')))
             ->orderBy('id')->get();
+        $activeBankCounterIds=DB::table('project_bank_accounts')
+            ->where('project_id',$projectId)->where('is_active',1)
+            ->pluck('account_mapping_id')->map(fn($id)=>(int)$id)->all();
         $nextVoucherNumber = 'PPR-'.app(\App\Services\Finance\ProjectVoucherAllocator::class)->preview($projectId,'PPR');
-        return view('admin.finance.voucher.plot_receipt_workspace', compact('accounts','nextVoucherNumber'));
+        return view('admin.finance.voucher.plot_receipt_workspace',
+            compact('accounts','nextVoucherNumber','activeBankCounterIds'));
     }
 
     public function plotReceiptOptions(Request $request)
