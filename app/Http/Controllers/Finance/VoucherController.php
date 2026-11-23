@@ -1244,13 +1244,6 @@ class VoucherController extends Controller
 
     public function postPlotReceipt(Request $request)
     {
-        // Do not silently post an unlinked PPR when a caller selected a
-        // verified bank instrument. Typed bank allocation/approval custody
-        // must be wired end-to-end before this entry point can accept it.
-        abort_unless(!$request->filled('passed_source_id')
-            && !$request->filled('passed_source_method')
-            && !$request->filled('payment_type'), 422,
-            'PPR verified bank source posting requires the typed allocation workflow.');
         $projectId = (int) getSelectedTown();
         \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
         $data = $request->validate([
@@ -1258,11 +1251,23 @@ class VoucherController extends Controller
             'receipt_number' => ['required', 'string', 'max:64'], 'date' => ['required', 'date_format:Y-m-d'],
             'amount' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\.[0-9]{1,2})?$/D'],
             'cash_account_id' => ['required', 'integer', 'min:1'], 'narration' => ['required', 'string', 'max:2000'],
+            'payment_type' => ['nullable','integer','in:1,2,3'],
+            'passed_source_method' => ['nullable','in:online,cheque'],
+            'passed_source_id' => ['nullable','integer','min:1'],
             'allocations' => ['required', 'array', 'min:1', 'max:100'],
             'allocations.*.booking_id' => ['required', 'integer', 'min:1'], 'allocations.*.plot_id' => ['required', 'integer', 'min:1'],
             'allocations.*.receivable_account_id' => ['required', 'integer', 'min:1'],
             'allocations.*.amount' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\.[0-9]{1,2})?$/D'],
         ]);
+        $paymentType=(int)($data['payment_type']??1);
+        $method=$data['passed_source_method']??null;
+        $sourceId=isset($data['passed_source_id'])?(int)$data['passed_source_id']:null;
+        if(($paymentType===1 && ($method!==null || $sourceId!==null))
+            || ($paymentType!==1
+                && (($paymentType===2?'online':'cheque')!==$method || !$sourceId))){
+            return response()->json(['status'=>'error','message'=>
+                'Select a verified Cheque or Online source matching Payment Type.'],422);
+        }
         try{
             $approvalRequired=(bool)app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
                 ->policy($projectId,'PPR');
