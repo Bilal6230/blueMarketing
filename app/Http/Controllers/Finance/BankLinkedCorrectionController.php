@@ -102,7 +102,41 @@ final class BankLinkedCorrectionController extends Controller
                 return $request->user()->can('finance '.$row->source_method.' correction approve')
                     && (VoucherApproverAccess::isSuperAdmin($request->user())
                         || (int)$row->assigned_approver_id===(int)$request->user()->id);
-            })->values();
+            })->values()->map(function($row) use($project) {
+                // Existing pending requests predate the structured-review
+                // snapshot. Fall back to the CURRENT project-scoped source for
+                // those requests; the approval writer still validates its hash.
+                $proposal=json_decode((string)$row->proposed_vouchers_json,true);
+                $proposal=is_array($proposal)?$proposal:[];
+                $method=(string)$row->source_method;
+                $table=$method==='cheque'?'finance_cheque_intakes':'finance_online_intakes';
+                $source=DB::table($table)->where('project_id',$project)
+                    ->where('id',$row->source_id)->first();
+                $fields=$proposal['after']??$proposal['changes']??[];
+                $before=$proposal['before']??[];
+                if(!is_array($before)) $before=[];
+                foreach(array_keys(is_array($fields)?$fields:[]) as $field) {
+                    if(!array_key_exists($field,$before) && $source) {
+                        $before[$field]=$source->{$field}??null;
+                    }
+                }
+                $vouchers=is_array($proposal['released_vouchers']??null)
+                    ?$proposal['released_vouchers']:[];
+                $historyCount=(int)($proposal['linked_voucher_history_count']??
+                    DB::table('finance_bank_voucher_allocations')
+                        ->where('project_id',$project)->where('source_method',$method)
+                        ->where('source_id',$row->source_id)->count());
+                $row->review=[
+                    'before'=>$before,
+                    'after'=>is_array($fields)?$fields:[],
+                    'original_status'=>$proposal['original_status']??($source->status??null),
+                    'requires_replacement'=>$proposal['requires_replacement']??($historyCount>0),
+                    'linked_voucher_history_count'=>$historyCount,
+                    'historical_released_count'=>(int)($proposal['historical_released_count']??0),
+                    'vouchers'=>$vouchers,
+                ];
+                return $row;
+            });
         return response()->json(['data'=>$rows])->header('Cache-Control','private, no-store');
     }
 
