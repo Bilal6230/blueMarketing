@@ -37,7 +37,8 @@ jQuery(function($) {
                 var impacted=(proposed.released_vouchers||[]);
                 $details.text('Corrected source amount: '+row.proposed_amount+'\n'+
                     'Fields to change: '+JSON.stringify(proposed.changes||{},null,2)+'\n'+
-                    'Vouchers to soft-void on approval: '+impacted.length+'\n'+
+                    'Linked source: old record WITHDRAWN, new record requires bank re-verification; no-voucher source: original ID updated.\n'+
+                    'Vouchers to soft-void/cancel on approval: '+impacted.length+'\n'+
                     impacted.map(function(v){return v.voucher_type+' / '+v.voucher_id+' / Rs. '+v.amount;}).join('\n')+
                     '\nReason: '+row.reason);
             }
@@ -64,7 +65,15 @@ jQuery(function($) {
                     data:{_token:$('meta[name="csrf-token"]').attr('content'),decision:data.decision,reason:data.reason},
                     dataType:'json',headers:{Accept:'application/json'}})
                 .done(function(resp){
-                    window.Swal.fire({icon:'success',title:'Decision Saved',text:'Correction '+resp.data.status+'.'});
+                    var applied=resp.data&&resp.data.result||{};
+                    var selected=rows.filter(function(row){return String(row.id)===String(data.id);})[0];
+                    if(applied.replacement_source_id&&selected){
+                        resetReplacementRegisterFilters(selected.source_method);
+                    }
+                    window.Swal.fire({icon:'success',title:'Decision Saved',text:
+                        'Correction '+resp.data.status+'.'+(applied.replacement_source_id
+                            ? ' New source #'+applied.replacement_source_id+
+                              ' requires bank verification before fresh vouchers.' : '')});
                     $('#cheque-filter-form,#online-filters').filter(':first').trigger('submit');
                 }).fail(function(xhr){window.Swal.fire({icon:'error',title:'Decision Refused',text:error(xhr)});});
             });
