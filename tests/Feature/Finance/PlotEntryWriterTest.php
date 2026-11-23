@@ -24,6 +24,14 @@ class PlotEntryWriterTest extends TestCase
         ] as $name) Schema::create($name, fn (Blueprint $t) => $t->id());
         // Full typed posting needs 1:1 authentic general-ledger evidence.
         // These SQLite fixtures intentionally mirror the writer contract.
+        // PPR numbering reconciles the original booking receipt series too.
+        // The placeholder booking_vouchers table above must expose its real
+        // number columns even when this fixture has no legacy receipts.
+        Schema::table('booking_vouchers', function (Blueprint $t): void {
+            $t->unsignedBigInteger('project_id')->nullable();
+            $t->string('voucher_series')->nullable();
+            $t->unsignedBigInteger('voucher_number')->nullable();
+        });
         Schema::create('ledgers', function (Blueprint $t): void {
             $t->id(); $t->unsignedBigInteger('customer_ledger_id')->nullable();
             $t->unsignedBigInteger('project_head_subheads_id');
