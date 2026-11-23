@@ -387,7 +387,7 @@ final class DailyVoucherApprovalWorkflow
                     (int)$approval->source_id,(string)$approval->voucher_type,$actorId);
             }else{
                 $writer->reject((int)$approval->project_id,
-                    (int)$approval->source_id,(string)$approval->voucher_type);
+                    (int)$approval->source_id,(string)$approval->voucher_type,$actorId);
             }
             return;
         }
