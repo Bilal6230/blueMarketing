@@ -43,6 +43,13 @@ final class PlotVoucherEditor
         if (Schema::hasColumn($table,'deleted_at')) $sourceQuery->whereNull('deleted_at');
         $source=$sourceQuery->first();
         if (!$source) throw new \DomainException('Active voucher not found in selected project.');
+        if($kind==='plot_receipt' && Schema::hasTable('finance_bank_voucher_allocations')
+            && DB::table('finance_bank_voucher_allocations')
+                ->where('project_id',$project)
+                ->where('voucher_type',TypedPlotReceiptBankCustody::POSTED)
+                ->where('voucher_id',$id)->exists()){
+            throw new \DomainException('Typed PPR verified bank source must use audited correction before editing.');
+        }
         $linkTable=$kind==='plot_receipt'?'finance_plot_receipt_postings':'finance_plot_purchase_postings';
         $link=DB::table($linkTable.' as link')->join('finance_posting_batches as batch',
             'batch.id','=','link.posting_batch_id')
