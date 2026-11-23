@@ -31,7 +31,7 @@ final class BalancedStandardVoucherIntegrityTest extends TestCase
 
     public function test_each_standard_series_requires_exact_two_sided_posting(): void
     {
-        foreach(['CR','DR','CCR','CDR'] as $series){
+        foreach(['CR','DR','CP','CCR','CDR'] as $series){
             BalancedStandardVoucherIntegrity::assert($series,$this->source($series),$this->legs($series));
             $this->assertCount(2,$this->legs($series));
         }
