@@ -60,7 +60,8 @@ final class VoucherApprovalMutationGuard
             if (Schema::hasTable('finance_bank_voucher_allocations') &&
                 DB::table('finance_bank_voucher_allocations')
                     ->where('project_id',$projectId)
-                    ->where('voucher_id',$sourceId)->exists()) {
+                    ->where('voucher_id',$sourceId)
+                    ->whereIn('voucher_type',['CR','DR','BOR','BOP','PPR'])->exists()) {
                 throw new \DomainException(
                     'Verified bank allocation blocks legacy edit/delete/reversal. Use audited Release/Void.'
                 );
