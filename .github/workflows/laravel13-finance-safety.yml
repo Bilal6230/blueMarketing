@@ -351,6 +351,12 @@ jobs:
     steps:
       - name: Checkout verified branch
         uses: actions/checkout@v4
+      - name: Setup Node 22 for verified source narration
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify shared BOR/BOP BD/BW PPR source narration
+        run: node tests/JavaScript/verified-source-narration.test.cjs
       - name: PHP 8.3 with isolated SQLite
         uses: shivammathur/setup-php@v2
         with:
