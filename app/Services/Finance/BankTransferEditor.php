@@ -31,7 +31,7 @@ final class BankTransferEditor
         $series=(string)DB::table('finance_posting_batches')
             ->where('id',$batchId)->where('project_id',$projectId)->value('voucher_series');
         $sourceId=DB::table('finance_bank_transfer_sources')
-            ->where('posting_batch_id',$batchId)->where('project_id',$projectId)->value('id');
+            ->where('posting_batch_id',$batchId)->where('project_id',$projectId)->value('posting_batch_id');
         if(!$sourceId||!in_array($series,['BD','BW'],true))
             throw new \DomainException('BANK_LEDGER_SOURCE_INVALID');
         $lines=DB::table('finance_posting_lines')->where('posting_batch_id',$batchId)
