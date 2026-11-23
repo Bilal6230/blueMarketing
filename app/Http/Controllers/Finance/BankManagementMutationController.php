@@ -85,9 +85,9 @@ final class BankManagementMutationController extends Controller
         $table=$method==='online'?'finance_online_intakes':'finance_cheque_intakes';
         $status=DB::table($table)->where('project_id',$project)->where('id',$id)->value('status');
         abort_unless($status!==null,404);
-        $verified=($method==='online' && $status==='confirmed')
-            || ($method==='cheque' && $status==='cleared');
-        $replacement=$linked || $verified;
+        // Only actual voucher history requires an archived source + new ID.
+        // A cleared/confirmed source with ZERO vouchers keeps its own ID.
+        $replacement=$linked;
         if ($replacement) {
             $this->authorizeAction($request,$method,'delete',true);
             $reason=$request->validate(['reason'=>['required','string','min:3','max:500']])['reason'];
