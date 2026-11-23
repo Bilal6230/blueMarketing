@@ -1171,6 +1171,8 @@ class LedgerController extends Controller
         // The oldest linked row is the canonical party-side voucher leg.
         // Never edit the counter-leg as if it were the original account.
         $counterAccountId=null;
+        $bankCounterAccountId=null;
+        $bankCounterLabel=null;
         if($ledger->customer_ledger_id){
             $siblings=Ledger::query()
                 ->where('customer_ledger_id',$ledger->customer_ledger_id)
@@ -1178,10 +1180,26 @@ class LedgerController extends Controller
                 ->whereHas('projectHeadSubhead',fn($q)=>$q->where('project_id',getSelectedTown()))
                 ->orderBy('id')->get();
             if($siblings->count()===2){
-                $counterAccountId=in_array((string)$ledger->type,['CR','DR','CCR','CDR'],true)
-                    ? (int)$siblings->last()->project_head_subheads_id : null;
+                // The first row is always the party-side leg, even when
+                // an action was opened from the opposite GL row.
                 if($ledger->id!==$siblings->first()->id){
                     $ledger=(clone $base)->whereKey($siblings->first()->id)->firstOrFail();
+                }
+                $counterMappingId=(int)$siblings->last()->project_head_subheads_id;
+                $displaySeries=app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
+                    ->lookup((int)getSelectedTown(),'customer_ledger',(int)$ledger->customer_ledger_id);
+                $isBankDisplay=preg_match('/^(BOR|BOP)-/i',(string)$displaySeries)===1;
+                if($isBankDisplay && \Illuminate\Support\Facades\Schema::hasTable('project_bank_accounts')){
+                    $bank=DB::table('project_bank_accounts')
+                        ->where('project_id',getSelectedTown())
+                        ->where('account_mapping_id',$counterMappingId)
+                        ->first(['id','bank_name','account_title']);
+                    if($bank){
+                        $bankCounterAccountId=(int)$bank->id;
+                        $bankCounterLabel=trim((string)$bank->bank_name.' / '.(string)$bank->account_title,' /');
+                    }
+                }elseif(in_array((string)$ledger->type,['CR','DR','CP','CCR','CDR'],true)){
+                    $counterAccountId=$counterMappingId;
                 }
             }
         }
@@ -1208,6 +1226,8 @@ class LedgerController extends Controller
                 'amount_out' => (float) ($ledger->amount_out ?? 0),
                 'amount_display' => $amountDisplay,
                 'counter_account_id' => $counterAccountId,
+                'bank_counter_account_id' => $bankCounterAccountId,
+                'bank_counter_label' => $bankCounterLabel,
                 'account_type_id' => $accountTypeId,
                 'account_type_name' => getAccountTypeName($accountTypeId),
                 'head_accounting_id' => $headAccountingId,
