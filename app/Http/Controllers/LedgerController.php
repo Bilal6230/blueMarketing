@@ -691,8 +691,12 @@ class LedgerController extends Controller
                     // from posting reports until the assigned approver accepts them.
                     DB::table('customer_ledger')->where('id', $customerLedger->id)
                         ->where('project_id', $selectedProjectId)->update(['is_active' => 0, 'is_approve' => 0]);
-                    DB::table('ledgers')->where('id', $data->id)
-                        ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')->select('id')->where('project_id', $selectedProjectId))
+                    // Every linked posting leg must remain inactive until approval.
+                    // Restrict by both canonical source and project to avoid
+                    // leaving the BOR/BOP bank-side leg posted prematurely.
+                    DB::table('ledgers')->where('customer_ledger_id', $customerLedger->id)
+                        ->whereIn('project_head_subheads_id', DB::table('project_head_subheads')
+                            ->select('id')->where('project_id', $selectedProjectId))
                         ->update(['is_active' => 0]);
                 }
 
