@@ -35,7 +35,8 @@ final class DailyVoucherRevisionCounterAccountContractTest extends TestCase
         self::assertStringContainsString('name="counter_account_id"', $view);
         self::assertStringContainsString('@selected((int)$counterAccountId===(int)$counterOption->id)',$view);
         self::assertStringContainsString("'counter_account_id'=>['nullable','integer','min:1']",$controller);
-        self::assertStringContainsString("'counter_account_id'=>$legCount===2",$editor);
+        self::assertStringContainsString("'counter_account_id'=>\$legCount===2",$editor);
+        self::assertStringContainsString("? (int)(\$data['counter_account_id']??\$before['counter_account_id']) : null",$editor);
         self::assertStringContainsString('Debit and Credit accounts must be different.', $view);
         self::assertStringContainsString('cr-revise-counter-account',$view);
     }
@@ -45,8 +46,8 @@ final class DailyVoucherRevisionCounterAccountContractTest extends TestCase
         $root=dirname(__DIR__,3);
         $controller=file_get_contents($root.'/app/Http/Controllers/Finance/RejectedCashVoucherController.php');
         $view=file_get_contents($root.'/resources/views/admin/finance/voucher/rejected_cash_revision.blade.php');
-        self::assertStringContainsString("where('voucher_type',$revisionPolicyType)",$controller);
-        self::assertStringContainsString("where('account_mapping_id',$counterLeg->project_head_subheads_id)",$controller);
+        self::assertStringContainsString("where('voucher_type',\$revisionPolicyType)",$controller);
+        self::assertStringContainsString("where('account_mapping_id',\$counterLeg->project_head_subheads_id)",$controller);
         self::assertStringContainsString('id="cr-revise-bank-counter"',$view);
         self::assertStringContainsString('account changes require audited bank correction',strtolower($view));
         self::assertStringContainsString('Legacy voucher — no linked counter-account',$view);
