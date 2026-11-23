@@ -78,6 +78,17 @@ final class CashOnlyVoucherController extends Controller
             $result=DB::transaction(function()use($request,$projectId,$data,$series,$account,$counterAccount,$amount,$requestedNumber,$uploadedPath){
                 DB::table('projects')->where('id',$projectId)->lockForUpdate()->first()
                     ?:throw new \DomainException('Project not found.');
+                // Revalidate both mappings under the posting transaction;
+                // a stale browser choice must never create a foreign/colliding leg.
+                if(!ProjectHeadSubhead::availableForPosting()
+                    ->where('project_id',$projectId)->whereKey($account->id)
+                    ->lockForUpdate()->exists()
+                    || !ProjectHeadSubhead::availableForPosting()
+                        ->where('project_id',$projectId)->whereKey($counterAccount->id)
+                        ->lockForUpdate()->exists()
+                    || (int)$account->id===(int)$counterAccount->id) {
+                    throw new \DomainException('Project posting accounts changed. Refresh and reselect.');
+                }
                 $number=app(ProjectVoucherAllocator::class)->next($projectId,$series);
                 if($number!==$requestedNumber)
                     throw new \DomainException('Voucher number changed. Refresh the form and try again.');
