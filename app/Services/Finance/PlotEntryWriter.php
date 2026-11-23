@@ -176,6 +176,30 @@ final class PlotEntryWriter
             if (!DB::table('leads')->where('id',$customer)->where('project_id',$project)->exists()) throw new \DomainException('V2_PLOT_CUSTOMER_PROJECT_MISMATCH');
             $bank=(int)$data['cash_account_id'];
             if (!$this->projectAccount($project,$bank)) throw new \DomainException('V2_PLOT_ACCOUNT_PROJECT_MISMATCH');
+            $paymentType=(int)($data['payment_type']??1);
+            $passedMethod=(string)($data['passed_source_method']??'');
+            $passedId=(int)($data['passed_source_id']??0);
+            if(!in_array($paymentType,[1,2,3],true)
+                || ($paymentType===1 && ($passedMethod!=='' || $passedId>0))
+                || ($paymentType!==1 && (
+                    $passedMethod!==($paymentType===2?'online':'cheque') || $passedId<1))){
+                throw new \DomainException('PPR_TYPED_BANK_SOURCE_REQUIRED');
+            }
+            if($paymentType!==1){
+                // The debit leg must be a project-owned bank asset, not a
+                // customer/receivable mapping copied from the management source.
+                if(!DB::table('project_bank_accounts')
+                    ->where('project_id',$project)->where('account_mapping_id',$bank)
+                    ->where('is_active',1)->exists()){
+                    throw new \DomainException('PPR_TYPED_BANK_DEBIT_ACCOUNT_REQUIRED');
+                }
+                // Approved draft already reserves this capacity. The writer
+                // atomically promotes it after posting rather than double-reserving.
+                if($approvedDraftId===null){
+                    app(VerifiedBankInstrument::class)->inspectLocked(
+                        $project,'PPR',$passedMethod,$passedId,$this->money($total));
+                }
+            }
             if (count($data['allocations'])<1) throw new \DomainException('V2_PLOT_RECEIPT_REQUIRES_ALLOCATION');
             $allocations=[]; $sum=0; $seen=[]; $seenPlots=[]; $lines=[['account_id'=>$bank,'debit'=>$this->money($total),'credit'=>'0.00','description'=>$data['narration']]];
             foreach ($data['allocations'] as $allocation) {
@@ -193,7 +217,11 @@ final class PlotEntryWriter
                 $lines[]=['account_id'=>$account,'debit'=>'0.00','credit'=>$this->money($amount),'description'=>$data['narration']];
             }
             if ($sum!==$total) throw new \DomainException('V2_PLOT_ALLOCATION_TOTAL_MISMATCH');
-            $hash=hash('sha256',json_encode([$project,$customer,$data['date'],$this->money($total),$data['narration'],$bank,$allocations,$lines],JSON_THROW_ON_ERROR));
+            $fingerprint=[$project,$customer,$data['date'],$this->money($total),
+                $data['narration'],$bank,$allocations,$lines];
+            if($paymentType!==1)$fingerprint[]=[
+                'payment_type'=>$paymentType,'method'=>$passedMethod,'source_id'=>$passedId];
+            $hash=hash('sha256',json_encode($fingerprint,JSON_THROW_ON_ERROR));
             $replay=$this->existingReplay($project,$key,'plot_receipt',$hash); if($replay) return $replay;
             $number=trim($data['receipt_number']);
             if(!preg_match('/^PPR-([1-9][0-9]*)$/D',$number,$match)) {
@@ -220,6 +248,11 @@ final class PlotEntryWriter
                 throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
             }
             PostedVoucherLedgerGate::assertLinked($project, (int) $batch);
+            if($paymentType!==1){
+                app(TypedPlotReceiptBankCustody::class)->claimPosted(
+                    $project,(int)$source,$passedMethod,$passedId,
+                    $this->money($total),(int)$actor,$approvedDraftId);
+            }
             return ['source_id'=>$source,'posting_batch_id'=>$batch,'replayed'=>false];
         },3);
     }
