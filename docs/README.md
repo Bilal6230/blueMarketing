@@ -19,6 +19,52 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 03 — Verified BD/BW typed transfer integration (2026-11-23)
+
+**Implemented and committed (NOT YET LOCAL-TEST VERIFIED):** Bank Deposit (BD) and Bank Withdrawal (BW) now have a Payment Type selector (Cash/Manual, Online, Cheque) with a modern single-radio verified management source modal from the shared passed-source endpoint. The selected incoming/outgoing instrument's mapped project account is used as the **counter-account**; the active `project_bank_accounts` dropdown remains the bank-side debit/credit leg. Original Cash/Manual BD/BW remains available and unchanged. Voucher date, amount, reference, counter-account and narration use the existing Ajax modal. Cash/Manual exposes cash-only counter-accounts; verified Cheque/Online uses the source's current `project_head_subheads.account_mapping_id` and strictly rejects unverified/cross-project/mismatched amounts.
+
+**Backend custody/approvals:** `BankTransferWriter` accepts optional verified bank intake method/ID (separate from the old `linked_customer_ledger_id` Cheque flow), checks active source and amount in a project-locked posting transaction and creates `finance_bank_voucher_allocations` with type BD/BW and `voucher_id = finance_posting_batches.id` only AFTER balanced general ledger linkage is established. `BankTransferApprovalDraftWriter` reserves `BD_DRAFT`/`BW_DRAFT` allocation before returning a pending approval and persists the source identity in **two new nullable columns** on `finance_bank_transfer_approval_drafts`. `DailyVoucherApprovalWorkflow` transfers the immutable draft reservation to the posted batch via an append-only `approval_transfer` release; rejection cancels the draft claim. `TypedBankVoucherCustody` implements strict corrected-source withdrawal/cancellation with project, batch, typed ledgers, amounts and original allocation checks; M04 `BankManagementSourceMutation` dispatches typed source releases rather than erroneously using customer-ledger IDs. `BankManagementCascadePlanner` now includes BD/BW typed/draft dependencies. Linked typed vouchers cannot use ordinary Edit/Delete/Reverse; released source leaves history and typed ledger legs inactive. No new table. **Forward migration**: `2026_11_23_150000_add_verified_bank_source_to_transfer_approval_drafts.php`.
+
+**Existing current PPR:** Original single-booking PPR uses M04 `customer_ledger` allocation and is integrated as described below. The legacy typed **multi-plot** `PlotEntryWriter` API is separate and still rejects an injected bank source; the "New voucher" button intentionally uses the original single-booking PPR modal.
+
+**Focused code tests added:** `TypedBankVoucherCustodyTest` (isolated SQLite writer/custody plus inherited existing BD/BW tests); `SevenVoucherTypedBankCustodyContractTest`; updated `SevenFamilyBankSourcePickerContractTest`; PPR `BankVoucherAllocationReleaseTest` expanded; `PprVerifiedSourceContractTest`. **These have NOT run on user's Laragon yet.**
+
+**Run BEFORE browser testing**:
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan migrate
+php artisan view:cache
+php -l app/Services/Finance/TypedBankVoucherCustody.php
+php -l app/Services/Finance/BankTransferWriter.php
+php -l app/Services/Finance/BankTransferApprovalDraftWriter.php
+php -l app/Services/Finance/DailyVoucherApprovalWorkflow.php
+php -l app/Http/Controllers/Finance/VoucherController.php
+php -l app/Http/Controllers/BookingController.php
+php artisan test --filter=SevenVoucherTypedBankCustodyContractTest
+php artisan test --filter=TypedBankVoucherCustodyTest
+php artisan test --filter=PprVerifiedSourceContractTest
+php artisan test --filter=BankVoucherAllocationReleaseTest
+php artisan test --filter=SevenFamilyBankSourcePickerContractTest
+php artisan test --filter=BankTransferWriterTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=BankLinkedCorrectionApprovalIntegrationTest
+php artisan finance:audit-posting-balances
+```
+
+**Browser acceptance REQUIRED after local tests green**:
+- Manual BD and BW: create/edit/delete retains accepted cash behavior.
+- BD Cheque and BD Online: choose only cleared/confirmed **incoming** instrument in selected project; verify source mapping, source reference, amount <= remaining; Save with approval OFF posts exact balanced bank debit/counter credit and source allocation; repeat source over budget rejected.
+- BW Cheque and BW Online: only cleared/confirmed **outgoing**; bank credit/counter debit, source allocation, no double spend.
+- Approval ON for BD/BW: Save creates pending draft and source reservation with NO posting; approval creates original batch and audited transfer release; rejection releases pending capacity; correction/reissue while pending cancels draft and source claim without posting.
+- M04 source correction/reissue for posted BD/BW: retires exact source and all typed/legacy posting lines, appends single allocation release; history retained; no duplicate ledger effect; wrong project source rejected.
+- Original PPR Cheque/Online: source modal, source claim/booking voucher, approval and bank management reissue, as detailed below; original Cash PPR remains functional.
+- CR/DR/BOR/BOP: existing verified picker remains working; exercise cash/cheque/online accounting as appropriate.
+- Verify all-project `finance:audit-posting-balances` remains clean and report histories are correct.
+
+**Still open for full Milestone 03 closure:** BOR/BOP's requested **single real bank-only opposite posting account** is NOT implemented; original single-leg accounting writer must be reconciled to balanced posting first. Untouched typed multi-plot API still requires a distinct Cheque/Online allocation lifecycle if used as a new production form. All the current new typed/source features must pass local and browser acceptance before closed. Prior Milestone 03 batches beyond user's already accepted 1/2/3 still need independent confirmation. Do not mislabel M03 as 100% complete.
+
 ## Milestone 03 — Original PPR verified-source writer + release and modal (2026-11-23)
 
 **Implemented new functional PPR scope:** The current **New voucher** entry on Plot Receive Payment opens the original single-booking PPR modal (`prOriginalCreateModal`), which writes a `customer_ledger` PPR plus its canonical `booking_vouchers` and one receivable `ledgers` entry. This writer can use the already-installed M04 bank voucher allocation table. Online/Cheque Payment Type now opens the verified management source picker with project-scoped cleared incoming Cheque / Confirmed incoming Online only; chosen reference, verified passing date and available amount fill the form. Existing manual Cash selection remains unchanged. The separately available legacy *typed multi-plot* `postPlotReceipt()` still does not accept bank source fields and is NOT silently routed through the single-booking writer.
