@@ -25,23 +25,14 @@
  data-void-base="{{ url('admin/finance/voucher/plot-purchase') }}">
  <div class="bm-voucher-heading d-flex justify-content-between align-items-center">
   <div><h2>Plot Purchase Voucher</h2><div class="bm-voucher-subtitle">Selected project records · Full voucher Edit</div></div>
-  <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+  <div class="d-flex align-items-center" style="gap:8px">
+   <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+   @can('finance plot-purchase create')
+   <button type="button" id="ppNewVoucher" class="btn btn-primary btn-sm"
+       data-toggle="modal" data-target="#plotPurchaseCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
+   @endcan
+  </div>
  </div>
- <x-finance.voucher-filter-card class="bm-voucher-filter-card pp-filter-card">
-  <form id="ppFilterForm" class="bm-voucher-filter-grid">
-   <div><label for="ppFrom">From</label><input id="ppFrom" class="form-control" type="date"></div>
-   <div><label for="ppTo">To</label><input id="ppTo" class="form-control" type="date"></div>
-   <div><label for="ppSellerFilter">Seller</label><input id="ppSellerFilter" class="form-control" placeholder="Seller account"></div>
-   <div><label for="ppFilterSearch">Search</label><input id="ppFilterSearch" class="form-control" placeholder="Number, plot or details"></div>
-   <div class="bm-voucher-filter-actions">
-    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
-    <button type="button" id="ppResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
-    @can('finance plot-purchase create')
-    <button type="button" id="ppNewVoucher" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#plotPurchaseCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
-     @endcan
-   </div>
-  </form>
- </x-finance.voucher-filter-card>
  <x-finance.voucher-table-card class="bm-voucher-table-card pp-table-card">
   <div class="bm-voucher-table-toolbar bm-records-toolbar">
    <label>Show <select id="ppLength" class="form-control form-control-sm"><option>10</option><option selected>25</option><option>50</option><option>100</option></select> entries</label>
@@ -255,7 +246,7 @@
  async function init(){try{const r=await requestJson(root.dataset.optionsUrl,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}),j=await r.json();if(!r.ok)throw Error(j.message||'Could not load plot definitions');options=j;row();await loadHistory()}catch(e){alert('danger',e.message)}}
  purchaseColumns=$.blueVoucherColumnFilters.init({
    initialOptions:{head:[],subhead:[],account_relations:[]},
-   formSelector:'#ppFilterForm',quickSearchSelector:'#ppQuickSearch',
+   formSelector:'#plotPurchaseApp',quickSearchSelector:'#ppQuickSearch',
    triggerSelector:'#plotPurchaseApp .dv-excel-trigger',tableWrapSelector:'.pp-scroll',
    getStart:function(){return (historyPage-1)*(Number($('#ppLength').val())||25);},
    getLength:function(){return Number($('#ppLength').val())||25;},
@@ -263,17 +254,6 @@
    onSort:function(field,dir){historySort=field;historyDirection=dir;},
    onChange:function(){historyPage=1;drawHistory();},
    choicesFor:function(field){return Array.from(new Set(history.map(x=>historyValue(x,field)))).sort();}
- });
- $('#ppFilterForm').on('submit',function(event){event.preventDefault();applied={
-   from:$('#ppFrom').val(),to:$('#ppTo').val(),
-   seller:String($('#ppSellerFilter').val()||'').trim().toLowerCase(),
-   search:String($('#ppFilterSearch').val()||'').trim().toLowerCase()};
-   historyPage=1;drawHistory();
- });
- $('#ppResetFilters').on('click',function(){
-   $('#ppFilterForm')[0].reset();$('#ppQuickSearch').val('');
-   applied={from:'',to:'',seller:'',search:''};historySort='date';historyDirection='desc';
-   purchaseColumns.reset();historyPage=1;drawHistory();
  });
  $('#ppLength,#ppQuickSearch').on('input change',function(){historyPage=1;drawHistory();});
  @can('finance plot-purchase edit')
