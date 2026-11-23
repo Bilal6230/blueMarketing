@@ -3030,6 +3030,20 @@ class BookingController extends Controller
                             throw new \DomainException('PPR_PROJECT_NOT_FOUND');
                         }
                         $sourceKey = implode('|', [$projectId, 'PPR', $reference, (int) $customer_id, $plotId]);
+                        // A bank-funded PPR must claim an actual management
+                        // instrument. Never silently post a cheque/online PPR
+                        // from user-entered reference text alone.
+                        $passedMethod = (string)$request->input('passed_source_method','');
+                        $passedId = (int)$request->input('passed_source_id',0);
+                        if ($isPendingBankPayment &&
+                            (!in_array($passedMethod,['online','cheque'],true) || $passedId<1
+                                || ($passedMethod==='online'?2:3)!==(int)$payment_type)) {
+                            throw new \DomainException('PPR_VERIFIED_BANK_SOURCE_REQUIRED');
+                        }
+                        if (!$isPendingBankPayment && ($passedMethod!=='' || $passedId>0)) {
+                            throw new \DomainException('PPR_CASH_SOURCE_CONFLICT');
+                        }
+
                         if ($payment_type == 1) {
                             $t_number = $bank_id = null;
                         } else {
@@ -3086,6 +3100,13 @@ class BookingController extends Controller
 
                         // Reserve the same PPR serial for the original customer
                         // source, booking voucher and its linked ledger.
+                        if (!$duplicateLedger && $isPendingBankPayment) {
+                            app(\App\Services\Finance\PassedBankVoucherClaim::class)->verify(
+                                $projectId,$passedMethod,$passedId,'receipt',
+                                (int)$payment_type,(float)$rawAmount,(string)$t_number,
+                                0,(string)$request->input('passing_date',''),(int)$bank_id
+                            );
+                        }
                         $newPprNumber = $duplicateLedger ? null
                             : $this->allocateNextBookingVoucherNumber($projectId, 'PPR');
                         $customerLedger = $duplicateLedger ?: CustomerLedger::create([
@@ -3241,6 +3262,14 @@ class BookingController extends Controller
                         // Keep the source and linked ledger inactive until the
                         // assigned approver decides; the booking voucher itself
                         // remains visible in the approval/history register.
+                        if (!$duplicateLedger && $isPendingBankPayment) {
+                            // Same project-locked database transaction as PPR
+                            // source, booking-voucher and ledger creation.
+                            app(\App\Services\Finance\PassedBankVoucherClaim::class)->claim(
+                                $projectId,$passedMethod,$passedId,'PPR',
+                                (int)$customerLedger->id,(int)Auth::id(),(float)$rawAmount
+                            );
+                        }
                         if (!$duplicateLedger) {
                             $approvalPending = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
                                 ->submitIfRequired($projectId, 'PPR', 'customer_ledger',
