@@ -18,7 +18,7 @@ body{overflow:auto!important}
 .cr-revise h4{font-size:16px;color:{{ $editStatus === 'approved' ? '#1b7d52' : '#b17408' }};font-weight:700;margin:0 0 12px}
 .cr-revise label{font-size:13px;font-weight:700}
 .cr-revise .form-control{font-size:14px;min-height:34px;border-radius:5px}
-.cr-revise .fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:8px}.cr-revise .fields>.form-group{min-width:0}.cr-revise .form-group{margin-bottom:10px}.cr-revise textarea.form-control{min-height:72px}.cr-revise .alert{padding:10px 12px}.cr-revise button[type=submit]{background:{{ $editStatus === 'approved' ? '#18824a' : '#cf911a' }};border-color:transparent}.cr-revise .reason-label{font-weight:700}
+.cr-revise .fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:8px}.cr-revise .fields>.cr-revise-counter-field{grid-column:1/-1}.cr-revise .fields>.form-group{min-width:0}.cr-revise .form-group{margin-bottom:10px}.cr-revise textarea.form-control{min-height:72px}.cr-revise .alert{padding:10px 12px}.cr-revise button[type=submit]{background:{{ $editStatus === 'approved' ? '#18824a' : '#cf911a' }};border-color:transparent}.cr-revise .reason-label{font-weight:700}
 @media(max-width:650px){.cr-revise .fields{grid-template-columns:1fr}}
 </style>
 <div class="content-wrapper" style="margin:0!important;min-height:0!important;"><div class="cr-revise">
@@ -66,7 +66,7 @@ Voucher {{ $voucherDisplay }} will keep the same database ID and voucher number.
 </div>
 @if($counterLeg && !$isBankRevision)
 <div class="fields">
- <div class="form-group">
+ <div class="form-group cr-revise-counter-field">
   <label for="cr-revise-counter-account">{{ in_array((string)$source->transaction_type,['CR','CCR'],true) ? 'Credit Account' : 'Debit Account' }} *</label>
   <select id="cr-revise-counter-account" name="counter_account_id" class="form-control" required>
    <option value="">Select opposite posting account</option>
