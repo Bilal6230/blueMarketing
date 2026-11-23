@@ -111,16 +111,16 @@ final class BankVoucherAllocationRelease
             $pendingCancellation=$cancelPendingForSourceCorrection && $approval
                 && $approval->status==='pending';
             if($pendingCancellation && ((int)$source->is_active!==0
-                || (int)$legs->contains(fn($leg)=>(int)$leg->is_active!==0))) {
+                || $legs->contains(fn($leg)=>(int)$leg->is_active!==0))) {
                 throw new \DomainException('Pending voucher unexpectedly has an active posting; reconciliation required.');
             }
             $rejected=$approval && $approval->status==='rejected';
-            $posted=(int)$source->is_active===1 && (int)$legs->every(fn($leg)=>(int)$leg->is_active===1)
+            $posted=(int)$source->is_active===1 && $legs->every(fn($leg)=>(int)$leg->is_active===1)
                 && (!$approval || $approval->status==='approved' || $approval->status==='posted');
             if(!$pendingCancellation && !$rejected && !$posted) {
                 throw new \DomainException('Only rejected or active posted bank vouchers can be released.');
             }
-            if($rejected && ((int)$source->is_active!==0 || (int)$legs->first()->is_active!==0)){
+            if($rejected && ((int)$source->is_active!==0 || $legs->contains(fn($leg)=>(int)$leg->is_active!==0))){
                 throw new \DomainException('Rejected voucher unexpectedly has an active posting.');
             }
             $action=$pendingCancellation?'pending_cancel_release'
