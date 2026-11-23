@@ -212,37 +212,18 @@
             <div class="daily-voucher-muted">Selected project records · Read-only history</div>
         </div>
         <x-finance.voucher-directory-actions :approvals="true" />
+        @if($presetType ? auth()->user()->can('finance '.\App\Support\Finance\FinanceActionPermission::moduleForSeries($presetType).' create') : collect(['CR','DR','CCR','CDR','BOR','BOP'])->contains(fn($series)=>auth()->user()->can('finance '.strtolower($series).' create')))
+        <button class="btn btn-success btn-sm" type="button" id="dv-create-voucher"><i class="fas fa-plus mr-1"></i> New voucher</button>
+        @endif
     </div></section>
     <section class="content"><div class="container-fluid">
-        <x-finance.voucher-filter-card class="daily-voucher-card mb-3">
-            <form id="daily-voucher-filters" class="bm-filter daily-voucher-filters {{ $presetType ? 'dv-preset' : '' }}">
-                <div><label for="dv-from">From</label><input id="dv-from" name="from" type="date" class="form-control"></div>
-                <div><label for="dv-to">To</label><input id="dv-to" name="to" type="date" class="form-control"></div>
-                @if($presetType)
-                <input id="dv-type" name="type" type="hidden" value="{{ $presetType }}">
-                @else
-                <div><label for="dv-type">Voucher Type</label>
-                  <select id="dv-type" name="type" class="form-control">
-                    <option value="">All voucher types</option>
-                    @foreach(['CR','DR','CCR','CDR','BOR','BOP','CP','PPR','JV','CV','BR','BO','BW','BD','PR','PP'] as $type)
-                      @if(auth()->user()->can('finance '.\App\Support\Finance\FinanceActionPermission::moduleForSeries($type).' view'))
-                      <option value="{{ $type }}">{{ $type }}</option>
-                      @endif
-                    @endforeach
-                  </select>
-                </div>
-                @endif
-                <div><label for="dv-account">Account</label><select id="dv-account" name="account" class="form-control"><option value="">All accounts</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->head_name }}{{ $account->sub_name ? ' · '.$account->sub_name : '' }}</option>@endforeach</select></div>
-                <div><label for="dv-search">Search</label><input id="dv-search" name="search" class="form-control" maxlength="100" placeholder="Number, reference, account or detail"></div>
-                <div class="daily-voucher-actions">
-                    <button class="btn btn-primary" type="submit"><i class="fas fa-filter mr-1"></i> Apply</button>
-                    <button class="btn btn-outline-secondary" type="button" id="dv-reset-filters">Reset</button>
-                    @if($presetType ? auth()->user()->can('finance '.\App\Support\Finance\FinanceActionPermission::moduleForSeries($presetType).' create') : collect(['CR','DR','CCR','CDR','BOR','BOP'])->contains(fn($series)=>auth()->user()->can('finance '.strtolower($series).' create')))
-                    <button class="btn btn-success" type="button" id="dv-create-voucher"><i class="fas fa-plus mr-1"></i> New voucher</button>
-                    @endif
-                </div>
-            </form>
-            <div class="d-none" aria-hidden="true">
+        {{-- The old top filter card is intentionally not rendered. Column filters
+             and the table quick search remain available without initial flash. --}}
+        <form id="daily-voucher-filters" class="d-none" aria-hidden="true">
+            @if($presetType)<input id="dv-type" name="type" type="hidden" value="{{ $presetType }}">@endif
+        </form>
+        <div class="d-none" aria-hidden="true">
+
                 @foreach([
                     'CR' => ['Credit Voucher (CR)', route('finance.voucher.in', ['series'=>'CR','embed'=>1])],
                     'DR' => ['Debit Voucher (DR)', route('finance.voucher.out', ['series'=>'DR','embed'=>1])],
@@ -255,8 +236,7 @@
                     <button type="button" class="dv-create" data-url="{{$url}}" data-cheque-url="{{ in_array($series, ['BOR','BOP'], true) ? route($series === 'BOR' ? 'finance.voucher.in.method' : 'finance.voucher.out.method', ['method'=>'cheque','series'=>$series,'embed'=>1]) : '' }}" data-title="{{$label}}" data-series="{{$series}}"></button>
                     @endif
                 @endforeach
-            </div>
-        </x-finance.voucher-filter-card>
+        </div>
         <x-finance.voucher-table-card class="daily-voucher-card daily-voucher-table-card">
             <div class="dv-table-tools bm-records-toolbar">
                 <label for="dv-page-length">Show <select class="form-control form-control-sm" id="dv-page-length"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select> entries</label>
@@ -444,20 +424,6 @@
             activeController=null;
         });
     }
-    $('#daily-voucher-filters').on('submit',event=>{event.preventDefault();start=0;load();});
-    $('#dv-reset-filters').on('click',()=>{
-        $('#daily-voucher-filters')[0].reset();
-        $('#dv-from,#dv-to,#dv-account,#dv-search').val('');
-        if($('#dv-type').is('select'))$('#dv-type').val('');
-        $('#dv-table-search').val('');
-        voucherColumns.reset();
-        start=0;sortColumn='date';sortDirection='desc';updateSortArrows();load();
-    });
-    $('#dv-type').on('change',function(){
-        if($(this).is('select')){start=0;updateDirectoryTheme($(this).val());load();}
-    });
-    $('#dv-search').on('input',scheduleLoad);
-
     // The modal contains the real voucher form. No overlay, spinner or polling.
     const entryFrame=$('#dv-entry-frame')[0];
     const entryError=$('#dv-entry-error')[0];
