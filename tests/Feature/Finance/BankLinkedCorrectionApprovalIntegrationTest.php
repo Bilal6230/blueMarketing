@@ -383,7 +383,7 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
         app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$this->correctedCheque());
     }
 
-    public function test_audited_replacement_withdrawn_allows_original_verified_cheque_restoration(): void
+    public function test_withdrawn_unlinked_cheque_edits_original_id_without_restoration(): void
     {
         DB::table('daily_voucher_approval_policies')
             ->where('project_id',1)->where('voucher_type','CHQ_CORR')
@@ -416,10 +416,10 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
             1,'cheque',77,7,'Restore previously replaced cleared cheque',
             $changes,$plan['fingerprint']);
         self::assertFalse($result['pending']);
-        self::assertSame('cleared',DB::table('finance_cheque_intakes')
+        self::assertSame('withdrawn',DB::table('finance_cheque_intakes')
             ->where('id',77)->value('status'));
         self::assertSame(2,DB::table('finance_cheque_intakes')->count());
-        self::assertSame(1,DB::table('finance_cheque_intake_actions')
+        self::assertSame(0,DB::table('finance_cheque_intake_actions')
             ->where('action','restored')->count());
     }
 
@@ -436,7 +436,7 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
             'original_amount'=>'500.00','actor_id'=>7,
             'verification_confirmed_at'=>now(),'created_at'=>now(),
         ]);
-        $changes=$this->correctedCheque('490.00');
+        $changes=$this->correctedCheque('490.00',false);
         $plan=app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$changes);
         self::assertFalse($plan['ready_after_correction']);
         app(BankLinkedCorrectionApproval::class)->submitReissue(
