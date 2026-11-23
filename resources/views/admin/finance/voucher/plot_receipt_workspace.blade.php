@@ -513,8 +513,9 @@
   $('#prOriginalForm [name="passing_date"]').val(String(item.passing_date||'').slice(0,10));
   // PPR slip reference remains its own unique receipt identity. The bank
   // instrument reference is recorded separately as t_number + immutable claim.
-  var $slip=$('#prOriginalForm [name="reference"]');
-  if(!$.trim($slip.val()))$slip.val($('#prOriginalNumber').val()||'');
+  // The slip reference is a separate, required operator-supplied identity.
+  // Do NOT copy a project-specific voucher preview here: it can collide
+  // with another project's PPR slip in the global legacy ledger lookup.
   $('#prOriginalForm [name="amount"]').val(item.remaining_amount).attr('max',item.remaining_amount);
   if(item.purpose){
    $('#prOriginalForm [name="detail"]').val(item.purpose);
