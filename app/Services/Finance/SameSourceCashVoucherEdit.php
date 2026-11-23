@@ -287,7 +287,7 @@ final class SameSourceCashVoucherEdit
         $leg=DB::table('ledgers as l')->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
             ->where('l.id',$before['leg_id'])->where('l.customer_ledger_id',$approval->source_id)
             ->where('a.project_id',$approval->project_id)->lockForUpdate()
-            ->first(['l.id','l.project_head_subheads_id','l.voucher_number','l.reference',
+            ->first(['l.id','l.type','l.project_head_subheads_id','l.voucher_number','l.reference',
                 'l.amount_in','l.amount_out','l.is_active']);
         if (!$source || !$leg || (int)$source->type_id!==(int)$before['type_id'] ||
             $source->transaction_type!==$before['type'] ||
