@@ -5,6 +5,8 @@
    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
   <form id="prOriginalForm" method="POST" action="{{ route('booking.customer.deposit') }}">
    @csrf
+   <input type="hidden" name="passed_source_method" id="prPassedMethod" value="">
+   <input type="hidden" name="passed_source_id" id="prPassedId" value="">
    <input type="hidden" name="action" value="deposit">
    <div class="modal-body">
     <div class="alert alert-danger d-none" id="prOriginalError" role="alert"></div>
@@ -16,6 +18,11 @@
      <div class="form-group col-md-6"><label>Plot / Booking</label><select id="prOriginalPlot" name="plot_id" class="form-control" required><option value="">Select plot</option></select></div>
      <div class="form-group col-md-6"><label>Amount</label><input type="number" name="amount" class="form-control" min="0.01" step="0.01" required></div>
      <div class="form-group col-md-6"><label>Payment Type</label><select id="prOriginalPayment" name="payment_type" class="form-control" required><option value="1">Cash</option><option value="2">Online</option><option value="3">Cheque</option></select></div>
+     <div class="form-group col-12 pr-original-bank d-none"><label>Verified Cheque / Online Source <span class="text-danger">*</span></label>
+       <div class="input-group"><input id="prPassedLabel" class="form-control" placeholder="Select cleared cheque or confirmed online transaction" readonly>
+        <div class="input-group-append"><button type="button" id="prOpenPassedPicker" class="btn btn-outline-primary">Choose Source</button></div></div>
+       <small class="text-muted">Only verified incoming transactions with remaining balance are eligible. One source per PPR.</small>
+     </div>
      <div class="form-group col-md-4 pr-original-bank d-none"><label>Transaction / Cheque Number</label><input type="text" name="t_number" class="form-control" maxlength="255"></div>
      <div class="form-group col-md-4 pr-original-bank d-none"><label>Bank</label><select name="bank_id" class="form-control"><option value="">Select bank</option>@foreach(getPakistanBanks() as $bank)<option value="{{ $bank['id'] }}">{{ $bank['name'] }}</option>@endforeach</select></div>
      <div class="form-group col-md-4 pr-original-bank d-none"><label>Passing Date</label><input type="date" name="passing_date" class="form-control"></div>
@@ -27,5 +34,22 @@
    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
     <button type="submit" id="prOriginalSave" class="btn btn-primary btn-sm">Save PPR Voucher</button></div>
   </form>
+ </div></div>
+</div>
+
+<div class="modal fade" id="prPassedPickerModal" tabindex="-1" role="dialog" aria-label="Verified PPR bank source" aria-hidden="true">
+ <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Select Cleared Cheque / Confirmed Online Transaction</h5>
+   <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div>
+  <div class="modal-body">
+   <input id="prPassedSearch" class="form-control mb-2" placeholder="Search reference or cheque number" maxlength="120">
+   <div id="prPassedError" class="alert alert-danger d-none"></div>
+   <div class="table-responsive"><table class="table table-sm table-hover">
+    <thead><tr><th>Select</th><th>Reference</th><th>Passing date</th><th>Available</th><th>Bank</th></tr></thead>
+    <tbody id="prPassedRows"><tr><td colspan="5" class="text-muted text-center">Choose Online or Cheque to load available sources.</td></tr></tbody>
+   </table></div>
+  </div>
+  <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+   <button type="button" class="btn btn-primary" id="prApplyPassed" disabled>Apply selected source</button></div>
  </div></div>
 </div>
