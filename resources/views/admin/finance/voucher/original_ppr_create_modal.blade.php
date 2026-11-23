@@ -19,7 +19,7 @@
      <div class="form-group col-md-6"><label>Amount</label><input type="number" name="amount" class="form-control" min="0.01" step="0.01" required></div>
      <div class="form-group col-md-6"><label>Payment Type</label><select id="prOriginalPayment" name="payment_type" class="form-control" required><option value="1">Cash</option><option value="2">Online</option><option value="3">Cheque</option></select></div>
      <div class="form-group col-md-6"><label for="prOriginalCounterAccount">Credit Account (Cash / Bank) <span class="text-danger">*</span></label>
-       <select id="prOriginalCounterAccount" name="counter_account_id" class="form-control js-tomselect" required>
+       <select id="prOriginalCounterAccount" name="counter_account_id" class="form-control" required>
         <option value="">Select active project Cash / Bank account</option>
         @foreach(($accounts ?? collect()) as $postingAccount)
          <option value="{{ $postingAccount->id }}">
