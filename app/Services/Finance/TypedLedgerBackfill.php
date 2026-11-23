@@ -59,7 +59,9 @@ final class TypedLedgerBackfill
                     ||(int)$link->project_id!==$projectId){
                     throw new \DomainException('LEDGER_BACKFILL_SOURCE_PROJECT_MISMATCH');
                 }
-                $sourceId=(int)$link->id;
+                // Bank-transfer source is keyed by posting_batch_id, not id.
+                // Its FK is the immutable identity shared with posting claims.
+                $sourceId=(int)$link->posting_batch_id;
                 $isSourceActive=!isset($link->is_active)||(int)$link->is_active===1;
                 if(isset($link->deleted_at)&&$link->deleted_at!==null)$isSourceActive=false;
                 $voucherReference=$series.'-'.($batch->voucher_number?:$batch->id);
