@@ -40,7 +40,8 @@ final class BankManagementCascadePlanner
             ->where('a.source_method', $method)->where('a.source_id', $sourceId)
             ->orderBy('a.id')
             ->get(['a.id', 'a.voucher_id', 'a.voucher_type', 'a.amount',
-                'r.id as release_id', 'r.action as release_action']);
+                'r.id as release_id', 'r.action as release_action',
+                'a.bank_account_id']);
 
         $blocked = false;
         $details = [];
@@ -87,7 +88,8 @@ final class BankManagementCascadePlanner
                 ->join('project_head_subheads as a', 'a.id', '=', 'l.project_head_subheads_id')
                 ->where('a.project_id', $projectId)
                 ->where('l.customer_ledger_id', $allocation->voucher_id)
-                ->get(['l.id', 'l.type', 'l.is_active', 'l.amount_in', 'l.amount_out']);
+                ->get(['l.id', 'l.type', 'l.project_head_subheads_id',
+                    'l.is_active', 'l.amount_in', 'l.amount_out']);
 
             $allowedSourceTypes = match ((string)$allocation->voucher_type) {
                 'CR' => ['CR'], 'DR' => ['DR','CP'],
@@ -95,15 +97,24 @@ final class BankManagementCascadePlanner
                 'PPR' => ['PPR'],
                 default => [],
             };
+            $balanced=in_array((string)$allocation->voucher_type,['BOR','BOP'],true)
+                && (int)($allocation->bank_account_id??0)>0;
             $matches = $voucher !== null
                 && in_array((string)$voucher->transaction_type, $allowedSourceTypes, true)
-                && $legs->count() === 1
-                && (string)$legs->first()->type === (string)$voucher->transaction_type
+                && $legs->count() === ($balanced?2:1)
                 && (int)$voucher->payment_type === ($method === 'online' ? 2 : 3);
             if ($matches) {
                 try {
-                    BankVoucherLegIntegrity::assert((string)$allocation->voucher_type,
-                        $voucher,$legs->first(),(float)$allocation->amount);
+                    if($balanced){
+                        BalancedBankVoucherIntegrity::assert($projectId,
+                            (string)$allocation->voucher_type,$voucher,$allocation,$legs);
+                    }else{
+                        if((string)$legs->first()->type!==(string)$voucher->transaction_type){
+                            throw new \DomainException('Legacy bank source type mismatch.');
+                        }
+                        BankVoucherLegIntegrity::assert((string)$allocation->voucher_type,
+                            $voucher,$legs->first(),(float)$allocation->amount);
+                    }
                 } catch (\DomainException $e) {
                     $matches = false;
                 }
@@ -116,7 +127,7 @@ final class BankManagementCascadePlanner
                     ->where('status', 'pending')->exists();
             $unreleased = $allocation->release_id === null;
             $unsafe = !$matches || $pendingApproval
-                || ($unreleased && ((int) $voucher->is_active === 1 || (int) $legs->first()->is_active === 1));
+                || ($unreleased && ((int) $voucher->is_active === 1 || (int) $legs->contains(fn($leg)=>(int)$leg->is_active===1)));
             $blocked = $blocked || $unsafe;
             $details[] = [
                 'allocation_id' => (int) $allocation->id,
