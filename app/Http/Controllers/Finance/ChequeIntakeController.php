@@ -226,6 +226,14 @@ final class ChequeIntakeController extends Controller
             $cheque = DB::table('finance_cheque_intakes')->where('project_id', $project)
                 ->where('id', $id)->lockForUpdate()->first();
             abort_unless($cheque, 404);
+            if (Schema::hasTable('finance_bank_correction_requests') &&
+                DB::table('finance_bank_correction_requests')
+                    ->where('project_id',$project)->where('source_method','cheque')
+                    ->where('source_id',$id)->where('status','pending')->exists()) {
+                throw ValidationException::withMessages(['action'=>
+                    'Replacement correction is awaiting approval. Decide it before changing cheque status.']);
+            }
+
             $expectedStatus = ($cheque->direction ?? 'in') === 'out' ? 'issued' : 'received';
             if ($cheque->status !== $expectedStatus) {
                 throw ValidationException::withMessages(['action' => 'Cheque cannot be processed from its current status.']);
@@ -369,6 +377,14 @@ final class ChequeIntakeController extends Controller
                 $cheque = DB::table('finance_cheque_intakes')->where('project_id',$project)
                     ->where('id',$id)->lockForUpdate()->first();
                 abort_unless($cheque,404);
+                if (Schema::hasTable('finance_bank_correction_requests') &&
+                    DB::table('finance_bank_correction_requests')
+                        ->where('project_id',$project)->where('source_method','cheque')
+                        ->where('source_id',$id)->where('status','pending')->exists()) {
+                    throw ValidationException::withMessages(['action'=>
+                        'Replacement correction is awaiting approval. Decide it before changing cheque status.']);
+                }
+
                 if ($cheque->status !== 'pending_clearing') {
                     throw ValidationException::withMessages([
                         'decision'=>'Only cheques in Pending Clearing can be cleared, returned or rejected.'
