@@ -25,6 +25,20 @@ final class BalancedBankVoucherAccountContractTest extends TestCase
         self::assertStringContainsString("'bank_account_id')->nullable()", $schema);
     }
 
+    public function test_pending_approval_deactivates_every_linked_leg_not_just_party_leg(): void
+    {
+        $controller=file_get_contents(__DIR__.'/../../../app/Http/Controllers/LedgerController.php');
+        self::assertIsString($controller);
+        self::assertStringContainsString(
+            "where('customer_ledger_id', $"."customerLedger->id)",
+            $controller
+        );
+        self::assertStringNotContainsString(
+            "DB::table('ledgers')->where('id', $"."data->id)\n                        ->whereIn",
+            $controller
+        );
+    }
+
     public function test_approval_release_and_read_only_correction_support_both_ledger_legs(): void
     {
         $approval=file_get_contents(__DIR__.'/../../../app/Services/Finance/DailyVoucherApprovalWorkflow.php');
