@@ -373,7 +373,7 @@
                                                     </div>
                                                     @endif
 
-                                                    @if(in_array($displaySeries ?? '', ['CR','DR','CCR','CDR'], true))
+                                                    @if(in_array($displaySeries ?? '', ['CR','DR','CP','CCR','CDR'], true))
                                                     <div class="col-12 col-md-6 col-lg-4 standard-counter-account">
                                                         <label class="fbox mb-1" for="voucher_counter_account">
                                                             {{ in_array($displaySeries, ['CR','CCR'], true) ? 'Credit Account' : 'Debit Account' }}
