@@ -25,6 +25,19 @@ final class BalancedBankVoucherAccountContractTest extends TestCase
         self::assertStringContainsString("'bank_account_id')->nullable()", $schema);
     }
 
+    public function test_bank_picker_has_one_tomselect_control_inside_the_standard_form_grid(): void
+    {
+        $form=file_get_contents(__DIR__.'/../../../resources/views/admin/finance/voucher/cash_voucher.blade.php');
+        self::assertIsString($form);
+        self::assertStringContainsString('col-lg-4 bank-posting-account', $form);
+        self::assertStringContainsString('name="bank_counter_account_id"', $form);
+        self::assertStringContainsString('class="js-tomselect" required', $form);
+        self::assertStringContainsString('.bank-posting-account .ts-wrapper', $form);
+        self::assertStringContainsString('select.tomselected', $form);
+        self::assertStringNotContainsString('bank-posting-account-row', $form);
+        self::assertStringNotContainsString('class="form-control js-tomselect" required', $form);
+    }
+
     public function test_pending_approval_deactivates_every_linked_leg_not_just_party_leg(): void
     {
         $controller=file_get_contents(__DIR__.'/../../../app/Http/Controllers/LedgerController.php');
