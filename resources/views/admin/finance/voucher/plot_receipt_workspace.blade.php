@@ -80,6 +80,24 @@
     <div class="form-group col-md-6"><label for="prDate">Date</label><input id="prDate" type="date" class="form-control" value="{{ now()->toDateString() }}"></div>
     <div class="form-group col-md-6"><label for="prCustomer">Customer</label><select id="prCustomer" class="form-control"><option value="">Loading customers…</option></select></div>
     <div class="form-group col-md-6"><label for="prAccount">Receiving Account</label><select id="prAccount" class="form-control"><option value="">Select active project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
+    <div class="form-group col-md-6"><label for="prTypedPayment">Payment Type <span class="text-danger">*</span></label>
+      <select id="prTypedPayment" class="form-control">
+       <option value="1">Cash</option>
+       <option value="2">Online — Confirmed</option>
+       <option value="3">Cheque — Cleared</option>
+      </select>
+    </div>
+    <div class="form-group col-md-6 pr-typed-verified d-none">
+      <label>Verified Cheque / Online Source <span class="text-danger">*</span></label>
+      <div class="input-group">
+       <input id="prTypedPassedLabel" class="form-control" readonly placeholder="Choose confirmed or cleared source">
+       <div class="input-group-append"><button type="button" id="prTypedOpenPassedPicker" class="btn btn-outline-primary">Choose Source</button></div>
+      </div>
+      <input type="hidden" id="prTypedPassedId" value="">
+      <input type="hidden" id="prTypedPassedMethod" value="">
+      <small class="text-muted">For verified payments choose a project bank receiving account. Allocations cannot exceed remaining source balance.</small>
+    </div>
+
     <div class="form-group col-12"><label for="prNarration">Description / Narration</label><textarea id="prNarration" class="form-control" rows="2" maxlength="2000" placeholder="Payment details"></textarea></div>
    </div>
    <div class="d-flex align-items-center justify-content-between mb-2"><label for="prSearch" class="mb-0">Allocate to one or more active plot bookings</label><input id="prSearch" class="form-control form-control-sm" style="max-width:240px" placeholder="Search plots"></div>
