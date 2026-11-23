@@ -58,6 +58,7 @@ final class BankManagementCascadePlanner
             $allowedSourceTypes = match ((string)$allocation->voucher_type) {
                 'CR' => ['CR'], 'DR' => ['DR','CP'],
                 'BOR' => ['BOR','CR'], 'BOP' => ['BOP','CP'],
+                'PPR' => ['PPR'],
                 default => [],
             };
             $matches = $voucher !== null
