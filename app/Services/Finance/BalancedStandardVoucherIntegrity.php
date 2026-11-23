@@ -5,7 +5,7 @@ namespace App\Services\Finance;
 use Illuminate\Support\Collection;
 
 /**
- * Validates new two-sided standard CR/DR/CCR/CDR postings without
+ * Validates new two-sided standard CR/DR/CP/CCR/CDR postings without
  * rewriting historic one-sided vouchers. The oldest ledger is the
  * operator-selected party account; the second ledger is its counterpart.
  */
@@ -13,7 +13,7 @@ final class BalancedStandardVoucherIntegrity
 {
     public static function assert(string $series, object $source, Collection $legs): void
     {
-        if (!in_array($series, ['CR', 'DR', 'CCR', 'CDR'], true)
+        if (!in_array($series, ['CR', 'DR', 'CP', 'CCR', 'CDR'], true)
             || $legs->count() !== 2) {
             throw new \DomainException('STANDARD_VOUCHER_TWO_LEGS_REQUIRED');
         }
