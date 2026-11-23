@@ -505,6 +505,69 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
         self::assertSame(0,DB::table('finance_bank_voucher_allocation_releases')->count());
     }
 
+    public function test_linked_cheque_requires_new_unique_reference_without_mutating_original(): void
+    {
+        $this->voucher(41,'BOR','cheque',77,'200.00');
+        $changes=$this->correctedCheque('430.00',false);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('NEW unique cheque');
+        try {
+            app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$changes);
+        } finally {
+            self::assertSame(1,DB::table('finance_cheque_intakes')->count());
+            self::assertEquals(1,DB::table('ledgers')->where('customer_ledger_id',41)->value('is_active'));
+            self::assertSame(0,DB::table('finance_bank_voucher_allocation_releases')->count());
+        }
+    }
+
+    public function test_historical_released_voucher_still_requires_new_bank_source_id(): void
+    {
+        DB::table('daily_voucher_approval_policies')->where('project_id',1)
+            ->where('voucher_type','CHQ_CORR')->update(['approval_required'=>false]);
+        $this->voucher(41,'BOR','cheque',77,'200.00');
+        DB::table('customer_ledger')->where('id',41)->update(['is_active'=>0]);
+        DB::table('ledgers')->where('customer_ledger_id',41)->update(['is_active'=>0]);
+        DB::table('finance_bank_voucher_allocation_releases')->insert([
+            'project_id'=>1,'allocation_id'=>1,'source_method'=>'cheque','source_id'=>77,
+            'voucher_type'=>'BOR','voucher_id'=>41,'amount'=>'200.00',
+            'action'=>'posted_void_release','reason'=>'Earlier audited void','released_by'=>7,
+            'released_at'=>now(),'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        $changes=$this->correctedCheque('430.00');
+        $plan=app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$changes);
+        self::assertTrue($plan['requires_replacement']);
+        self::assertCount(0,$plan['active_vouchers']);
+        $result=app(BankLinkedCorrectionApproval::class)->submitReissue(
+            1,'cheque',77,7,'Correct already released voucher source',
+            $changes,$plan['fingerprint']);
+        self::assertFalse($result['pending']);
+        self::assertSame('withdrawn',DB::table('finance_cheque_intakes')->where('id',77)->value('status'));
+        self::assertSame('received',DB::table('finance_cheque_intakes')->where('cheque_number','CH78')->value('status'));
+        self::assertSame(2,DB::table('finance_cheque_intakes')->count());
+        self::assertSame(1,DB::table('finance_bank_voucher_allocation_releases')->count());
+    }
+
+    public function test_confirmed_online_without_vouchers_updates_original_id_not_replacement(): void
+    {
+        $changes=[
+            'reference'=>'TX55','type'=>'receipt','transaction_date'=>'2026-11-22',
+            'amount'=>'430.00','sending_bank'=>'Bank A','sending_account'=>'A1',
+            'receiving_bank'=>'Bank B','receiving_account'=>'B1',
+            'sender_name'=>'Sender','receiver_name'=>'Office',
+            'purpose'=>'Original unlinked source update','account_mapping_id'=>7,
+        ];
+        $plan=app(BankSourceReissueCorrection::class)->preview(1,'online',55,$changes);
+        self::assertFalse($plan['requires_replacement']);
+        $result=app(BankLinkedCorrectionApproval::class)->submitReissue(
+            1,'online',55,7,'Correct original online source before vouchers',
+            $changes,$plan['fingerprint']);
+        self::assertFalse($result['pending']);
+        self::assertSame(1,DB::table('finance_online_intakes')->count());
+        self::assertSame('confirmed',DB::table('finance_online_intakes')->where('id',55)->value('status'));
+        self::assertEquals(430,DB::table('finance_online_intakes')->where('id',55)->value('amount'));
+        self::assertSame(0,DB::table('finance_bank_voucher_allocation_releases')->count());
+    }
+
     protected function tearDown(): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
