@@ -6,12 +6,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Milestone 04: correct a verified bank management source IN PLACE while
- * retiring ALL active linked vouchers. New vouchers are subsequently created
- * using the existing partial allocation writer and fresh voucher identities.
- *
- * Original confirmation evidence, released allocation rows and voucher
- * history are never removed. All operations are project-locked and atomic.
+ * Milestone 04: source correction preview/confirm with immutable voucher history.
+ * Zero voucher allocations: edit ORIGINAL source ID in place.
+ * One or more historical allocations: archive old source as Withdrawn, safely
+ * cancel pending and void posted vouchers, then create a NEW unverified source
+ * ID requiring normal bank clearance/confirmation before fresh vouchers.
+ * All changes share one project-locked transaction; evidence is retained.
  */
 final class BankSourceReissueCorrection
 {
@@ -190,6 +190,9 @@ final class BankSourceReissueCorrection
             throw new \DomainException('Unreconciled historical bank claim prevents correction.');
         }
         $linked=$allocations->isNotEmpty();
+        if($linked && (string)$source->status==='withdrawn') {
+            throw new \DomainException('Original source is already withdrawn. Edit its active replacement instead.');
+        }
         if (!$changed && !$linked) {
             throw new \DomainException('No source changes or active linked vouchers to correct.');
         }
