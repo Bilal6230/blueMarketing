@@ -155,6 +155,17 @@ final class ChequeIntakeController extends Controller
                 ->selectRaw('COUNT(*) as allocations_count')
                 ->groupBy('source_id')->pluck('allocations_count', 'source_id');
         }
+        $pendingCorrections=collect();
+        if (Schema::hasTable('finance_bank_correction_requests') && count($items)) {
+            $pendingCorrections=DB::table('finance_bank_correction_requests')
+                ->where('project_id',$project)->where('source_method','cheque')
+                ->where('status','pending')->whereIn('source_id',collect($items)->pluck('id'))
+                ->pluck('id','source_id');
+        }
+        foreach ($items as $item) {
+            $item->correction_pending=$pendingCorrections->has($item->id);
+            $item->correction_request_id=$pendingCorrections->get($item->id);
+        }
         foreach ($items as $item) {
             $item->linked_voucher_count = (int) ($linkedCounts->get($item->id) ?? 0);
         }
