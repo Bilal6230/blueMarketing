@@ -80,7 +80,10 @@ final class VoucherApprovalDetailReader
                     ->leftJoin('head_accountings as h','h.id','=','a.head_accounting_id')
                     ->leftJoin('subhead_accountings as sub','sub.id','=','a.subhead_accounting_id')
                     ->where('a.project_id',$project)->where('l.customer_ledger_id',$s->id)
-                    ->where('l.type',$type)->orderBy('l.id')
+                    // BOR/BOP may have historical CR/CP source identity,
+                    // while their canonical linked ledger legs use BOR/BOP.
+                    ->whereIn('l.type',array_values(array_unique([$type,(string)$approval->voucher_type])))
+                    ->orderBy('l.id')
                     ->get(['h.name as head','sub.name as child','l.detail as description',
                         'l.amount_in','l.amount_out','l.is_active'])
                     ->map(fn($l)=>['account'=>trim(($l->head??'').' / '.($l->child??''),' /'),
