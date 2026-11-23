@@ -137,15 +137,22 @@ final class BankManagementCascadePlanner
             };
             $balanced=in_array((string)$allocation->voucher_type,['BOR','BOP'],true)
                 && (int)($allocation->bank_account_id??0)>0;
+            $standardBalanced=in_array($type,['CR','DR'],true) && $legs->count()===2;
             $matches = $voucher !== null
                 && in_array((string)$voucher->transaction_type, $allowedSourceTypes, true)
-                && $legs->count() === ($balanced?2:1)
+                && $legs->count() === (($balanced||$standardBalanced)?2:1)
                 && (int)$voucher->payment_type === ($method === 'online' ? 2 : 3);
             if ($matches) {
                 try {
                     if($balanced){
                         BalancedBankVoucherIntegrity::assert($projectId,
                             (string)$allocation->voucher_type,$voucher,$allocation,$legs);
+                    }elseif($standardBalanced){
+                        BalancedStandardVoucherIntegrity::assert($type,$voucher,$legs);
+                        if(round((float)$allocation->amount,2)!==
+                            round(max((float)$voucher->amount_in,(float)$voucher->amount_out),2)){
+                            throw new \DomainException('Standard verified source allocation mismatch.');
+                        }
                     }else{
                         if((string)$legs->first()->type!==(string)$voucher->transaction_type){
                             throw new \DomainException('Legacy bank source type mismatch.');
