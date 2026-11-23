@@ -1211,6 +1211,13 @@ class VoucherController extends Controller
 
     public function postPlotReceipt(Request $request)
     {
+        // Do not silently post an unlinked PPR when a caller selected a
+        // verified bank instrument. Typed bank allocation/approval custody
+        // must be wired end-to-end before this entry point can accept it.
+        abort_unless(!$request->filled('passed_source_id')
+            && !$request->filled('passed_source_method')
+            && !$request->filled('payment_type'), 422,
+            'PPR verified bank source posting requires the typed allocation workflow.');
         $projectId = (int) getSelectedTown();
         \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
         $data = $request->validate([
@@ -1712,6 +1719,13 @@ class VoucherController extends Controller
 
     public function postTransferVoucher(Request $request, string $kind)
     {
+        // Existing BD/BW writer represents cash-to-bank transfers, not yet
+        // an allocated Cheque/Online management claim. Refuse bank-linked
+        // fields rather than pretending to reserve or consume the source.
+        abort_unless(!$request->filled('passed_source_id')
+            && !$request->filled('passed_source_method')
+            && !$request->filled('payment_type'), 422,
+            'BD/BW verified bank source posting requires the typed allocation workflow.');
         abort_unless(in_array($kind, ['deposit', 'withdrawal'], true), 404);
         $projectId = (int) getSelectedTown();
         \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
