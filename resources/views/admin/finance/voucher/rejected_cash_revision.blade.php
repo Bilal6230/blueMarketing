@@ -64,6 +64,41 @@ Voucher {{ $voucherDisplay }} will keep the same database ID and voucher number.
 @endforeach
 </select></div>
 </div>
+@if($counterLeg && !$isBankRevision)
+<div class="fields">
+ <div class="form-group">
+  <label for="cr-revise-counter-account">{{ in_array((string)$source->transaction_type,['CR','CCR'],true) ? 'Credit Account' : 'Debit Account' }} *</label>
+  <select id="cr-revise-counter-account" name="counter_account_id" class="form-control" required>
+   <option value="">Select opposite posting account</option>
+   @foreach($accounts as $counterOption)
+    <option value="{{ $counterOption->id }}"
+      @selected((int)$counterAccountId===(int)$counterOption->id)>
+     {{ $counterOption->head_name }} / {{ $counterOption->sub_name }}
+    </option>
+   @endforeach
+  </select>
+  <small class="text-muted">Opposite Debit/Credit account linked to this voucher. It must differ from Child Account.</small>
+ </div>
+</div>
+@elseif($isBankRevision && $counterLeg)
+<div class="fields">
+ <div class="form-group">
+  <label for="cr-revise-bank-counter">{{ $revisionPolicyType==='BOR' ? 'Debit Account (Bank)' : 'Credit Account (Bank)' }}</label>
+  <input id="cr-revise-bank-counter" class="form-control" type="text"
+    value="{{ $bankCounterLabel ?? ('Linked bank account #'.$counterLeg->project_head_subheads_id) }}" readonly>
+  <small class="text-muted">Verified bank posting account is linked to the original source. Account changes require audited bank correction.</small>
+ </div>
+</div>
+@elseif(!$counterLeg)
+<div class="fields">
+ <div class="form-group">
+  <label for="cr-revise-legacy-counter">Opposite Posting Account</label>
+  <input id="cr-revise-legacy-counter" class="form-control" type="text"
+    value="Legacy voucher — no linked counter-account" readonly>
+  <small class="text-muted">This historical single-leg voucher is preserved; Edit cannot silently invent a second posting.</small>
+ </div>
+</div>
+@endif
 <div class="fields"><div class="form-group"><label>Payment Type</label><input class="form-control" value="{{ [1=>'Cash',2=>'Online',3=>'Cheque'][(int)$source->payment_type] ?? 'Unknown' }}" readonly></div></div>
 @if((int)$source->payment_type !== 1)
 <div class="fields">
@@ -130,6 +165,20 @@ $(function(){
    });
    if($child.find('option:selected').prop('disabled'))$child.val('');
  }
+ // Keep the main party account distinct from the opposite posting leg.
+ var $opposite=$('#cr-revise-counter-account');
+ function validateOppositeAccount(){
+   if(!$opposite.length)return true;
+   var party=String($child.val()||''),opposite=String($opposite.val()||'');
+   if(party && opposite && party===opposite){
+     $opposite[0].setCustomValidity('Debit and Credit accounts must be different.');
+     return false;
+   }
+   $opposite[0].setCustomValidity('');
+   return true;
+ }
+ $child.on('change',validateOppositeAccount);
+ $opposite.on('change',validateOppositeAccount);
  $type.on('change',function(){$head.val('');filterHeads();});
  $head.on('change',function(){$child.val('');filterChildren();});
  filterHeads();
@@ -137,6 +186,7 @@ $(function(){
  $form.on('submit',function(event){
   event.preventDefault();var $button=$('#cash-revision-save');
   if($button.prop('disabled'))return;
+  validateOppositeAccount();
   if(!$form[0].checkValidity()){$form[0].reportValidity();return;}
   $button.prop('disabled',true);$('#cash-revision-error').text('');
   $.ajax({url:$form.attr('action'),type:'POST',
