@@ -377,6 +377,42 @@ final class DailyVoucherApprovalWorkflow
                         max((float)$source->amount_in,(float)$source->amount_out));
                 }
             }
+            // Original single-booking PPR keeps its booking_vouchers.ledger_id
+            // receivable FK, plus one bank/cash counter row for NEW entries.
+            if((string)$approval->voucher_type==='PPR' && $active){
+                if((string)$source->transaction_type!=='PPR'){
+                    throw new \DomainException('PPR_APPROVAL_SOURCE_TYPE_INVALID');
+                }
+                $pprLegs=DB::table('ledgers as l')
+                    ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
+                    ->where('l.customer_ledger_id',$source->id)
+                    ->where('a.project_id',$approval->project_id)
+                    ->lockForUpdate()->get(['l.id','l.type','l.project_head_subheads_id',
+                        'l.amount_in','l.amount_out','l.is_active']);
+                $pprCount=$pprLegs->count();
+                if(!in_array($pprCount,[1,2],true)
+                    || DB::table('ledgers')->where('customer_ledger_id',$source->id)->count()!==$pprCount
+                    || (int)$source->is_active!==0
+                    || $pprLegs->contains(fn($l)=>(int)$l->is_active!==0)){
+                    throw new \DomainException('PPR_APPROVAL_POSTING_STATE_INVALID');
+                }
+                $booking=DB::table('booking_vouchers')
+                    ->where('project_id',$approval->project_id)
+                    ->where('customer_ledger_id',$source->id)
+                    ->where('voucher_series','PPR')->lockForUpdate()->first();
+                if(!$booking){
+                    throw new \DomainException('PPR_APPROVAL_BOOKING_LINK_MISSING');
+                }
+                if($pprCount===2){
+                    BalancedOriginalPprIntegrity::assert($source,$pprLegs,(int)$booking->ledger_id);
+                }else{
+                    $only=$pprLegs->first();
+                    if((int)$only->id!==(int)$booking->ledger_id){
+                        throw new \DomainException('PPR_APPROVAL_LEGACY_BOOKING_MISMATCH');
+                    }
+                    BankVoucherLegIntegrity::assert('PPR',$source,$only,(float)$source->amount_out);
+                }
+            }
             // First approval must never activate malformed cash-only source
             // amounts or extra hidden/cross-project legs. An approver may
             // still REJECT a malformed pending voucher without posting it.
