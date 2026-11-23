@@ -511,7 +511,10 @@
   $('#prPassedLabel').val((item.method==='online'?'Online: ':'Cheque: ')+item.reference+' · Available '+item.remaining_amount);
   $('#prOriginalForm [name="t_number"]').val(item.reference);
   $('#prOriginalForm [name="passing_date"]').val(String(item.passing_date||'').slice(0,10));
-  $('#prOriginalForm [name="reference"]').val(item.reference);
+  // PPR slip reference remains its own unique receipt identity. The bank
+  // instrument reference is recorded separately as t_number + immutable claim.
+  var $slip=$('#prOriginalForm [name="reference"]');
+  if(!$.trim($slip.val()))$slip.val($('#prOriginalNumber').val()||'');
   $('#prOriginalForm [name="amount"]').val(item.remaining_amount).attr('max',item.remaining_amount);
   if(item.purpose)$('#prOriginalForm [name="detail"]').val(item.purpose);
   var $bank=$('#prOriginalForm [name="bank_id"]'),bankText=String(item.bank||'').trim().toLowerCase();
