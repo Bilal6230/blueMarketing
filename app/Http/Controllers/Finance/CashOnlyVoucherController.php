@@ -40,6 +40,7 @@ final class CashOnlyVoucherController extends Controller
             'acct_type'=>['required','integer','min:1'],
             'accounts_id'=>['required','integer','min:1'],
             'subaccounts_id'=>['required','integer','min:1'],
+            'counter_account_id'=>['required','integer','min:1'],
             'detail'=>['required','string','max:255'],
             'payment_type'=>['required','integer','in:1'],
             'attachment'=>\App\Services\Finance\VoucherAttachmentRules::optional(),
@@ -56,6 +57,11 @@ final class CashOnlyVoucherController extends Controller
             ->where('subhead_accounting_id',$data['subaccounts_id'])->first();
         abort_unless($account && (int)$account->headAccounting?->acct_type===(int)$data['acct_type'],
             422,'Select a valid project account and matching account type.');
+        $counterAccount=ProjectHeadSubhead::availableForPosting()
+            ->where('project_id',$projectId)
+            ->whereKey((int)$data['counter_account_id'])->first();
+        abort_unless($counterAccount && (int)$counterAccount->id!==(int)$account->id,422,
+            'Select a different active project account for the opposite posting leg.');
         $amount=round((float)str_replace(',','',(string)$data['amount']),2);
         $requestedNumber=(int)substr($data['voucher'],strlen($series)+1);
         $uploadedPath=null;
@@ -69,7 +75,7 @@ final class CashOnlyVoucherController extends Controller
             }
         }
         try {
-            $result=DB::transaction(function()use($request,$projectId,$data,$series,$account,$amount,$requestedNumber,$uploadedPath){
+            $result=DB::transaction(function()use($request,$projectId,$data,$series,$account,$counterAccount,$amount,$requestedNumber,$uploadedPath){
                 DB::table('projects')->where('id',$projectId)->lockForUpdate()->first()
                     ?:throw new \DomainException('Project not found.');
                 $number=app(ProjectVoucherAllocator::class)->next($projectId,$series);
@@ -93,13 +99,25 @@ final class CashOnlyVoucherController extends Controller
                     'detail'=>$data['detail'],'is_active'=>1,'status'=>0,
                     'create_by'=>Auth::id(),'update_by'=>Auth::id(),
                 ]);
+                Ledger::create([
+                    'customer_ledger_id'=>$source->id,'voucher_number'=>$number,
+                    'type'=>$series,'type_id'=>$number,
+                    'project_head_subheads_id'=>$counterAccount->id,
+                    'reference'=>$source->reference,
+                    'amount_in'=>$incoming?0:$amount,
+                    'amount_out'=>$incoming?$amount:0,
+                    'date'=>$data['date'],'detail'=>$data['detail'],
+                    'is_active'=>1,'status'=>0,
+                    'create_by'=>Auth::id(),'update_by'=>Auth::id(),
+                ]);
                 $display=app(ProjectVoucherDisplayIdentity::class)
                     ->assign($projectId,'customer_ledger',(int)$source->id,$series,$data['date']);
                 $pending=app(DailyVoucherApprovalWorkflow::class)->submitIfRequired(
                     $projectId,$series,'customer_ledger',(int)$source->id,(int)Auth::id());
                 if($pending){
                     $source->forceFill(['is_active'=>0,'is_approve'=>0])->save();
-                    $ledger->forceFill(['is_active'=>0])->save();
+                    DB::table('ledgers')->where('customer_ledger_id',$source->id)
+                        ->update(['is_active'=>0]);
                 }
                 if($uploadedPath){
                     DB::table('cash_voucher_attachments')->insert([
