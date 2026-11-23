@@ -44,6 +44,30 @@ class BankTransferWriterTest extends TestCase
             $t->unsignedBigInteger('project_head_subheads_id')->nullable();
             $t->string('type',12)->nullable();
             $t->unsignedBigInteger('voucher_number')->nullable();
+            $t->unsignedBigInteger('type_id')->nullable();
+            $t->string('reference')->nullable();
+            $t->decimal('amount_in',18,2)->default(0);
+            $t->decimal('amount_out',18,2)->default(0);
+            $t->text('detail')->nullable();
+            $t->unsignedBigInteger('create_by')->nullable();
+            $t->date('date')->nullable();
+            $t->boolean('is_active')->default(true);
+            $t->string('status')->default('0');
+            $t->timestamps();
+        });
+        // Typed backfill requires a real legacy ledger row for every typed
+        // posting leg. Keep its 1:1 attribution fixture, not a bypass of the
+        // production PostedVoucherLedgerGate.
+        Schema::create('ledger_source_attributions', function (Blueprint $t): void {
+            $t->id();
+            $t->unsignedBigInteger('ledger_id')->unique();
+            $t->unsignedBigInteger('project_id');
+            $t->string('source_kind');
+            $t->unsignedBigInteger('source_id');
+            $t->string('evidence_kind');
+            $t->string('evidence_reference')->nullable();
+            $t->unsignedBigInteger('attributed_by')->nullable();
+            $t->timestamps();
         });
         Schema::create('finance_original_customer_requests', function (Blueprint $t): void {
             $t->id(); $t->unsignedBigInteger('project_id'); $t->unsignedBigInteger('customer_ledger_id'); $t->string('source_sha256');
