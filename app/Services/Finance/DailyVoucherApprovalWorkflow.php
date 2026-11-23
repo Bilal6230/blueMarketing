@@ -417,13 +417,23 @@ final class DailyVoucherApprovalWorkflow
                     [['account_id'=>(int)$draft->cash_account_id,
                       'amount'=>(string)$draft->amount]],
                     $actorId,$draft->linked_customer_ledger_id===null?null:
-                        (int)$draft->linked_customer_ledger_id,(int)$draft->id
+                        (int)$draft->linked_customer_ledger_id,(int)$draft->id,
+                    ($draft->passed_source_method??null)===null?null:(string)$draft->passed_source_method,
+                    ($draft->passed_source_id??null)===null?null:(int)$draft->passed_source_id
                 );
                 DB::table('finance_bank_transfer_approval_drafts')
                     ->where('id',$draft->id)->where('project_id',$approval->project_id)
                     ->update(['status'=>'approved','posting_batch_id'=>$result['posting_batch_id'],
                         'updated_at'=>now()]);
             }else{
+                if(($draft->passed_source_method??null)!==null){
+                    app(TypedBankVoucherCustody::class)->release(
+                        (int)$approval->project_id,
+                        (string)$approval->voucher_type.'_DRAFT',
+                        (int)$draft->id,$actorId,
+                        'Rejected typed bank voucher approval',true
+                    );
+                }
                 DB::table('finance_bank_transfer_approval_drafts')
                     ->where('id',$draft->id)->where('project_id',$approval->project_id)
                     ->update(['status'=>'rejected','updated_at'=>now()]);
