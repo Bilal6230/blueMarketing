@@ -25,6 +25,12 @@ final class BankVoucherAllocationReleaseTest extends TestCase
             $t->decimal('amount_out',18,2); $t->string('delete_reason')->nullable();
             $t->timestamps();
         });
+        Schema::create('booking_vouchers', function(Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('project_id');
+            $t->unsignedBigInteger('customer_ledger_id');
+            $t->string('voucher_series'); $t->boolean('is_active')->default(true);
+            $t->timestamps();
+        });
         Schema::create('project_voucher_display_numbers', function(Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('project_id');
             $t->string('source_kind'); $t->unsignedBigInteger('source_id');
@@ -84,11 +90,12 @@ final class BankVoucherAllocationReleaseTest extends TestCase
         float $amount=500.00,float $allocation=500.00): void
     {
         $receipt=in_array($series,['CR','BOR'],true);
+        $ledgerReceipt=$receipt || $series==='PPR';
         $isActive=in_array($status,['approved','posted'],true)?1:0;
         $project=1;
         DB::table('customer_ledger')->insert([
             'id'=>$id,'project_id'=>$project,
-            'transaction_type'=>$receipt?'CR':'CP',
+            'transaction_type'=>$series==='PPR'?'PPR':($receipt?'CR':'CP'),
             'payment_type'=>$method==='online'?2:3,
             'is_active'=>$isActive,
             'amount_in'=>$receipt?$amount:0,
@@ -105,16 +112,46 @@ final class BankVoucherAllocationReleaseTest extends TestCase
         ]);
         DB::table('ledgers')->insert([
             'customer_ledger_id'=>$id,'project_head_subheads_id'=>3,
-            'type'=>$receipt?'CR':'CP','is_active'=>$isActive,
-            'amount_in'=>$receipt?$amount:0,
-            'amount_out'=>$receipt?0:$amount,
+            'type'=>$series==='PPR'?'PPR':($receipt?'CR':'CP'),'is_active'=>$isActive,
+            'amount_in'=>$ledgerReceipt?$amount:0,
+            'amount_out'=>$ledgerReceipt?0:$amount,
         ]);
+        if($series==='PPR'){
+            DB::table('booking_vouchers')->insert([
+                'project_id'=>$project,'customer_ledger_id'=>$id,
+                'voucher_series'=>'PPR','is_active'=>1,
+                'created_at'=>now(),'updated_at'=>now(),
+            ]);
+        }
         if($status!=='posted'){
             DB::table('daily_voucher_approvals')->insert([
                 'project_id'=>$project,'source_table'=>'customer_ledger',
                 'source_id'=>$id,'voucher_type'=>$series,'status'=>$status,
             ]);
         }
+    }
+
+    public function test_posted_ppr_cheque_releases_once_and_retires_booking_voucher(): void
+    {
+        $this->source(16,'PPR','cheque','posted',325.00,325.00);
+        $release=app(BankVoucherAllocationRelease::class)
+            ->release(1,16,42,'Verified cheque PPR source replaced');
+        $this->assertSame('posted_void_release',$release['action']);
+        $this->assertSame(0,(int)DB::table('customer_ledger')->where('id',16)->value('is_active'));
+        $this->assertSame(0,(int)DB::table('ledgers')->where('customer_ledger_id',16)->value('is_active'));
+        $this->assertSame(0,(int)DB::table('booking_vouchers')->where('customer_ledger_id',16)->value('is_active'));
+        $this->assertSame(1,DB::table('finance_bank_voucher_allocations')->where('voucher_type','PPR')->count());
+        $this->assertSame(1,DB::table('finance_bank_voucher_allocation_releases')->where('voucher_type','PPR')->count());
+        $this->expectException(\DomainException::class);
+        app(BankVoucherAllocationRelease::class)->release(1,16,42,'Already released PPR');
+    }
+
+    public function test_pending_ppr_approval_cannot_release_without_cancellation(): void
+    {
+        $this->source(17,'PPR','online','pending',215.00,215.00);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('Pending approval');
+        app(BankVoucherAllocationRelease::class)->release(1,17,42,'Premature pending PPR');
     }
 
     public function test_rejected_cheque_release_is_audited_and_cannot_be_repeated(): void
