@@ -147,28 +147,50 @@ final class BankSourceReissueCorrection
             $legs=DB::table('ledgers as l')->join('project_head_subheads as m',
                 'm.id','=','l.project_head_subheads_id')
                 ->where('m.project_id',$projectId)->where('l.customer_ledger_id',$id)
-                ->lockForUpdate()->get(['l.id','l.type','l.amount_in','l.amount_out','l.is_active']);
+                ->lockForUpdate()->get(['l.id','l.type','l.project_head_subheads_id',
+                    'l.amount_in','l.amount_out','l.is_active','l.updated_at']);
             $approval=DB::table('daily_voucher_approvals')
                 ->where('project_id',$projectId)->where('source_table','customer_ledger')
                 ->where('source_id',$id)->lockForUpdate()->first();
-            if (!$voucher || $legs->count()!==1
-                || DB::table('ledgers')->where('customer_ledger_id',$id)->count()!==1
+            $series=(string)$allocation->voucher_type;
+            $bankBalanced=in_array($series,['BOR','BOP'],true)
+                && (int)($allocation->bank_account_id??0)>0;
+            $standardBalanced=in_array($series,['CR','DR'],true) && $legs->count()===2;
+            $expected=($bankBalanced||$standardBalanced)?2:1;
+            if (!$voucher || $legs->count()!==$expected
+                || DB::table('ledgers')->where('customer_ledger_id',$id)->count()!==$expected
                 || (int)$voucher->payment_type!==($method==='online'?2:3)
                 || (Schema::hasColumn('customer_ledger','deleted_at') && $voucher->deleted_at!==null)
-                || ($approval && ((string)$approval->voucher_type!==(string)$allocation->voucher_type
+                || ($approval && ((string)$approval->voucher_type!==$series
                     || !in_array($approval->status,['approved','posted','pending','rejected'],true)))
-                || (!$approval && ((int)$voucher->is_active!==1 || (int)$legs->first()->is_active!==1))) {
-                throw new \DomainException('Linked voucher is not a safely posted single-leg entry.');
+                || (!$approval && ((int)$voucher->is_active!==1
+                    || $legs->contains(fn($leg)=>(int)$leg->is_active!==1)))) {
+                throw new \DomainException('Linked voucher posting identity or ledger count invalid.');
             }
             $pendingOrRejected=$approval && in_array((string)$approval->status,['pending','rejected'],true);
-            if($pendingOrRejected && ((int)$voucher->is_active!==0 || (int)$legs->first()->is_active!==0)) {
+            if($pendingOrRejected && ((int)$voucher->is_active!==0
+                || $legs->contains(fn($leg)=>(int)$leg->is_active!==0))) {
                 throw new \DomainException('Unposted voucher has active ledger rows; manual reconciliation required.');
             }
-            if(!$pendingOrRejected && ((int)$voucher->is_active!==1 || (int)$legs->first()->is_active!==1)) {
+            if(!$pendingOrRejected && ((int)$voucher->is_active!==1
+                || $legs->contains(fn($leg)=>(int)$leg->is_active!==1))) {
                 throw new \DomainException('Posted voucher is not active; manual reconciliation required.');
             }
-            BankVoucherLegIntegrity::assert((string)$allocation->voucher_type,
-                $voucher,$legs->first(),(float)$allocation->amount);
+            if($bankBalanced){
+                BalancedBankVoucherIntegrity::assert($projectId,$series,$voucher,$allocation,$legs);
+            }elseif($standardBalanced){
+                BalancedStandardVoucherIntegrity::assert($series,$voucher,$legs);
+            }else{
+                if((string)$legs->first()->type!==(string)$voucher->transaction_type){
+                    throw new \DomainException('Legacy bank voucher ledger type invalid.');
+                }
+                BankVoucherLegIntegrity::assert($series,$voucher,$legs->first(),
+                    (float)$allocation->amount);
+            }
+            if(round((float)$allocation->amount,2)!==
+                round(max((float)$voucher->amount_in,(float)$voucher->amount_out),2)){
+                throw new \DomainException('Verified allocation face amount changed.');
+            }
             app(VoucherApprovalMutationGuard::class)->assertNoPendingCorrection($projectId,$id);
             if(DB::table('daily_voucher_edit_snapshots')->where('project_id',$projectId)
                 ->where('source_id',$id)->where('status','pending')->exists()) {
@@ -177,6 +199,13 @@ final class BankSourceReissueCorrection
             $active[]=['allocation_id'=>(int)$allocation->id,'voucher_id'=>$id,
                 'voucher_type'=>(string)$allocation->voucher_type,
                 'amount'=>(string)$allocation->amount,'leg_id'=>(int)$legs->first()->id,
+                'ledger_legs'=>$legs->sortBy('id')->map(fn($leg)=>[
+                    'id'=>(int)$leg->id,'account_id'=>(int)$leg->project_head_subheads_id,
+                    'amount_in'=>(string)$leg->amount_in,
+                    'amount_out'=>(string)$leg->amount_out,
+                    'is_active'=>(int)$leg->is_active,
+                    'updated_at'=>(string)($leg->updated_at??''),
+                ])->values()->all(),
                 'approval_status'=>$approval?->status,
                 'voucher_updated'=>(string)($voucher->updated_at??''),
                 'leg_updated'=>(string)($legs->first()->updated_at??'')];
