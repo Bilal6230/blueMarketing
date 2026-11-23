@@ -47,6 +47,12 @@ final class StandardVoucherBalancedLifecycleContractTest extends TestCase
         self::assertStringContainsString("whereColumn('earlier.id','<','ledgers.id')",$directory);
         self::assertStringContainsString("'counter_account_id' => $".'counterAccountId',$ledger);
         self::assertStringContainsString('id="edit_counter_account"',$view);
-        self::assertStringContainsString("counterTs?.setValue(counterId,true)",$view);
+        self::assertStringContainsString('counterTs.setValue(counterId,true)',$view);
+        self::assertStringContainsString("counter_account_id: $('#edit_counter_account').prop('disabled')",$view);
+        self::assertStringContainsString('counter-edit-field',$view);
+        self::assertStringContainsString("'bank_counter_account_id' => $"."bankCounterAccountId",$ledger);
+        self::assertStringContainsString('id="edit_bank_counter_account"',$view);
+        self::assertStringContainsString('bank-counter-edit-field',$view);
+        self::assertStringContainsString("['CR','DR','CP','CCR','CDR']",$ledger);
     }
 }
