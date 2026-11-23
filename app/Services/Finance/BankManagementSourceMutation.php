@@ -131,6 +131,12 @@ final class BankManagementSourceMutation
                         throw new \DomainException('Unreleased historical claim or unavailable evidence.');
                     }
                 } else {
+                    // Relaxed edit rules must NOT silently relax standalone
+                    // Delete/Withdraw permissions for in-flight bank states.
+                    if ($method==='online' && (string)$source->status!=='pending'
+                        || $method==='cheque' && !in_array((string)$source->status,['received','issued'],true)) {
+                        throw new \DomainException('This bank status cannot be directly withdrawn without bank lifecycle review.');
+                    }
                     $this->assertUnlinkedAndEditable($projectId, $method, $sourceId, $source);
                 }
             } else {
