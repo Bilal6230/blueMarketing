@@ -19,6 +19,40 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 03 — BOR/BOP bank-only opposite-side and balanced ledger integration (2026-11-23)
+
+**Owner accepted:** Original verified source narration **7/7 manual browser checks PASS** (CR/DR/BOR/BOP, BD/BW, PPR). Prior manual BD/BW checks also PASS.
+
+**Implemented in this batch:** The BOR and BOP voucher creation forms now expose ONE **project-active bank-only** dropdown. BOR label: **Debit Account (Bank)**; BOP label: **Credit Account (Bank)**. Bottom Account Type/Accounts/Child Account remains the opposite (party) account. Both controls are required. The bank picker is populated from `project_bank_accounts` scoped to the selected project and active records, and the POST writer revalidates project and mapped `project_head_subheads` under a project DB lock, prohibiting identical bank/party mappings. `LedgerController` atomically creates two `ledgers` rows for new bank vouchers: **BOR: Dr Bank / Cr Party**, **BOP: Dr Party / Cr Bank**. The original `customer_ledger` maintains the voucher identity and face amount. The immutable allocation now records the selected `bank_account_id` via a **single nullable column** added to the existing `finance_bank_voucher_allocations` table. There is no new table. Migration file: `2026_11_23_170000_add_bank_account_identity_to_finance_voucher_allocations.php`. Historical allocations with NULL bank ID retain existing single-leg shape and are NOT rewritten.
+
+**Approval and release:** `BalancedBankVoucherIntegrity` validates project bank identity, exact opposite account, both posting directions and amounts, and leg cardinality. The approval handler now activates the two pending legs only after integrity verification; M04 bank-source replace/withdraw releases both legs atomically without deleting financial history. The dependency planner accepts both balanced new vouchers and historical single-leg records. Existing bank source partial balance, permissions, and custody controls are unchanged. Cash voucher list filters out the additional bank-side row to avoid duplicate BOR/BOP display while the actual GL keeps both legs; listed/printed amounts come from the canonical `customer_ledger` face value, not the opposite-polarity party leg.
+
+**Tests:** Extended isolated `BankVoucherAllocationReleaseTest` with posted balanced BOR release and BOP wrong-direction rejection. Added `BalancedBankVoucherAccountContractTest` to guard form, migration, writer, release and non-duplicated list. Dedicated M03 GitHub CI job now lints `BalancedBankVoucherIntegrity`, `LedgerController` and migration, and runs the new contracts plus previous BD/BW/PPR financial regressions. CI PASS is not the same as actual Laragon browser sign-off; owner local testing remains required.
+
+**Run this migration and tests locally FIRST:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan migrate
+php artisan view:cache
+php artisan test --filter=BalancedBankVoucherAccountContractTest
+php artisan test --filter=BankVoucherAllocationReleaseTest
+php artisan test --filter=BankLinkedCorrectionApprovalIntegrationTest
+php artisan test --filter=TypedBankVoucherCustodyTest
+php artisan test --filter=PprVerifiedSourceContractTest
+php artisan finance:audit-posting-balances
+```
+
+**BOR/BOP browser tests REQUIRED (disposable records only):**
+1. BOR > New: only active banks for selected project appear in Debit Account (Bank). Choose separate Party Account, cleared incoming Cheque/Online source; save with approvals OFF. Confirm amount, BOTH real GL rows (Dr bank, Cr party), one voucher in listing, correct print amount, immutable source allocation, no duplicate.
+2. BOP > New: only active banks in Credit Account (Bank), cleared outgoing source; save. Confirm Dr party, Cr bank, one voucher, print amount.
+3. Approval ON: both bank and party legs inactive while pending; approving activates both and does not create extra legs; rejecting keeps both inactive. Cross-project bank ID and bank ID mapping equal to party account must reject.
+4. Bank management source replacement/withdrawal: old posted BOR/BOP source deactivates BOTH legs, one immutable release record, original evidence remains in historical view; replacement creates a new source ID and cannot falsely spend old balance.
+5. Previously posted single-leg BOR/BOP records still display in reports, print and release through their historical legacy path; they must NOT be rewritten. Finance audit should remain clean.
+
+**Remaining Milestone 03:** The separate typed multi-plot `postPlotReceipt()` API intentionally remains fail-closed for verified Cheque/Online custody because it has a different source/draft/release identity than the **original single-booking New PPR voucher** users select in the browser. Do not count this separate API as source-linked or claim all internal variants complete. User's 7 visible voucher forms now have the implemented source picker, but new BOR/BOP approval/browser acceptance is still pending.
+
 ## Milestone 03 — BOR/BOP narration parity for BD/BW and original PPR (2026-11-23)
 
 **User browser observation:** BOR/BOP verified Online descriptions automatically append `SOURCE Online | Transaction ID / Reference | Sending Bank | Receiving Bank | Clearing Date`. The same source evidence was not appended to BD/BW or original PPR; their picker previously overwrote manual narration with management `purpose`.
