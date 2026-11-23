@@ -571,6 +571,41 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
         self::assertSame(0,DB::table('finance_bank_voucher_allocation_releases')->count());
     }
 
+    public function test_verified_cheque_with_zero_vouchers_new_number_preserves_id_but_requires_reclearance(): void
+    {
+        DB::table('daily_voucher_approval_policies')->where('project_id',1)
+            ->where('voucher_type','CHQ_CORR')->update(['approval_required'=>false]);
+        $changes=$this->correctedCheque('410.00');
+        $plan=app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$changes);
+        self::assertFalse($plan['requires_replacement']);
+        app(BankLinkedCorrectionApproval::class)->submitReissue(
+            1,'cheque',77,7,'Correct wrong cheque digits before any voucher',
+            $changes,$plan['fingerprint']);
+        self::assertSame(1,DB::table('finance_cheque_intakes')->count());
+        self::assertSame('CH78',DB::table('finance_cheque_intakes')->where('id',77)->value('cheque_number'));
+        self::assertSame('received',DB::table('finance_cheque_intakes')->where('id',77)->value('status'));
+        self::assertSame(0,DB::table('finance_bank_voucher_allocation_releases')->count());
+    }
+
+    public function test_rejected_voucher_releases_without_reposting_and_creates_new_source(): void
+    {
+        DB::table('daily_voucher_approval_policies')->where('project_id',1)
+            ->where('voucher_type','CHQ_CORR')->update(['approval_required'=>false]);
+        $this->voucher(41,'BOR','cheque',77,'200.00','rejected');
+        $changes=$this->correctedCheque('410.00');
+        $plan=app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$changes);
+        self::assertTrue($plan['requires_replacement']);
+        app(BankLinkedCorrectionApproval::class)->submitReissue(
+            1,'cheque',77,7,'Replace source containing rejected voucher',
+            $changes,$plan['fingerprint']);
+        self::assertSame('withdrawn',DB::table('finance_cheque_intakes')->where('id',77)->value('status'));
+        self::assertSame('received',DB::table('finance_cheque_intakes')->where('cheque_number','CH78')->value('status'));
+        self::assertSame('rejected_release',
+            DB::table('finance_bank_voucher_allocation_releases')->where('voucher_id',41)->value('action'));
+        self::assertEquals(0,DB::table('customer_ledger')->where('id',41)->value('is_active'));
+        self::assertSame(2,DB::table('finance_cheque_intakes')->count());
+    }
+
     protected function tearDown(): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
