@@ -39,7 +39,7 @@
     #cheque-intake-form textarea[name=purpose] { min-height:61px; resize:vertical; }
     .cheque-status-badge{display:inline-block;border-radius:4px;padding:3px 6px;font-size:var(--bm-font-xs);font-weight:700;text-transform:capitalize}
     .cheque-status-cleared{background:#198754;color:white}.cheque-status-returned{background:#ffc107;color:#242424}.cheque-status-rejected{background:#dc3545;color:white}
-    .cheque-status-withdrawn{background:#0d6efd;color:white}.cheque-status-received,.cheque-status-issued{background:#6c757d;color:white}.cheque-status-pending_clearing{background:#17a2b8;color:white}
+    .cheque-status-withdrawn{background:#0d6efd;color:white}.cheque-status-correction-pending{background:#fef3c7;color:#92400e;border:1px solid #f59e0b}.cheque-status-received,.cheque-status-issued{background:#6c757d;color:white}.cheque-status-pending_clearing{background:#17a2b8;color:white}
     .cheque-direction-badge{display:inline-block;min-width:44px;padding:3px 8px;border-radius:4px;text-align:center;font-size:var(--bm-font-xs);font-weight:800;letter-spacing:.3px}
     .cheque-direction-in{background:#e2f4e9;color:#086d39;border:1px solid #7cc99a}
     .cheque-direction-out{background:#fff0e6;color:#a34400;border:1px solid #f4b37f}
@@ -456,7 +456,18 @@ $(function () {
         $('<td>').text(r.purpose||'').appendTo($tr);
         var amount=Number(r.amount);
         $('<td>').addClass('text-right').text(Number.isFinite(amount)?amount.toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}):'0.00').appendTo($tr);
-        $('<td>').append($('<span>').addClass('cheque-status-badge cheque-status-'+(r.status||'received')).text((r.status||'received').replace(/_/g,' '))).appendTo($tr);
+        var $statusCell=$('<td>');
+        if(r.correction_pending){
+            $('<span class="cheque-status-badge cheque-status-correction-pending">')
+                .text('Replacement Pending Approval')
+                .attr('title','Bank status: '+String(r.status||'—')+'; correction request #'+r.correction_request_id+' is awaiting approval')
+                .appendTo($statusCell);
+            $('<small class="d-block text-muted">').text('Bank: '+String(r.status||'—').replace(/_/g,' ')).appendTo($statusCell);
+        }else{
+            $('<span>').addClass('cheque-status-badge cheque-status-'+(r.status||'received'))
+                .text((r.status||'received').replace(/_/g,' ')).appendTo($statusCell);
+        }
+        $statusCell.appendTo($tr);
         var $slip=$('<td>').addClass('text-nowrap');
         if(@json(auth()->user()->can('finance cheque print'))) {
         $('<a>').addClass('btn btn-sm btn-outline-success mr-1').attr({
@@ -468,7 +479,7 @@ $(function () {
         }
         $slip.appendTo($tr);
         var $actions=$('<td>').addClass('blue-actions-cell');
-        if((r.status==='received'||r.status==='issued')) {
+        if(!r.correction_pending && (r.status==='received'||r.status==='issued')) {
             if(@json(auth()->user()->can('finance cheque clear')))
             $('<button type="button">').addClass('btn btn-sm btn-outline-success mr-1 cheque-action')
                 .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
@@ -478,7 +489,7 @@ $(function () {
                     .attr('data-id',r.id).attr('data-cheque',r.cheque_number)
                     .attr('data-amount',r.amount).attr('data-kind','withdrawal').text('Direct Withdrawal').appendTo($actions);
             }
-        } else if(r.status==='pending_clearing') {
+        } else if(!r.correction_pending && r.status==='pending_clearing') {
             var decisionPermissions={cleared:@json(auth()->user()->can('finance cheque clear')),returned:@json(auth()->user()->can('finance cheque return')),rejected:@json(auth()->user()->can('finance cheque reject'))};
             $.each([['cleared','Mark Cleared','success'],['returned','Returned / Bounced','warning'],['rejected','Rejected / Memo','danger']],function(_,item){
                 if(!decisionPermissions[item[0]])return;
@@ -487,22 +498,26 @@ $(function () {
                     .text(item[1]).appendTo($actions);
             });
         }
-        if(@json(auth()->user()->can('finance cheque edit')) &&
+        if(!r.correction_pending && @json(auth()->user()->can('finance cheque edit')) &&
             !@json(auth()->user()->can('finance cheque correct')) &&
             (r.status==='received'||r.status==='issued') && Number(r.linked_voucher_count||0)===0){
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary mr-1 cheque-edit-source')
              .attr('data-id',r.id).text(r.status==='cleared'?'Replace':'Edit').appendTo($actions);
         }
-        if(@json(auth()->user()->can('finance cheque correct'))) {
+        if(!r.correction_pending && @json(auth()->user()->can('finance cheque correct'))) {
             $('<button type="button" class="btn btn-sm btn-outline-info mr-1 cheque-correct-source">')
                 .attr('data-id',r.id).text(Number(r.linked_voucher_count||0)>0?'Replace & Reverify':'Edit').appendTo($actions);
         }
-        if(@json(auth()->user()->can('finance cheque delete')) &&
+        if(!r.correction_pending && @json(auth()->user()->can('finance cheque delete')) &&
           (r.status==='received'||r.status==='issued'||
            (r.status==='cleared' && @json(auth()->user()->can('delete voucher')) &&
             @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))))){
             $('<button type="button">').addClass('btn btn-sm btn-outline-danger mr-1 cheque-delete-source')
              .attr('data-id',r.id).text('Delete').appendTo($actions);
+        }
+        if(r.correction_pending){
+            $('<span class="small text-warning d-inline-block mr-2">')
+                .text('Request #'+r.correction_request_id+' awaiting decision').appendTo($actions);
         }
         if(@json(auth()->user()->can('finance cheque history')) && Number(r.linked_voucher_count||0)>0){
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-history mr-1')
