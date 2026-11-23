@@ -397,7 +397,7 @@ $(function(){
   }
   if(@json(auth()->user()->can('finance online correct'))) {
     $('<button type="button" class="btn btn-outline-info btn-sm mr-1 online-correct-source">')
-     .attr('data-id',x.id).text(Number(x.linked_voucher_count||0)>0?'Correct / Reissue':'Edit').appendTo($actions);
+     .attr('data-id',x.id).text(Number(x.linked_voucher_count||0)>0?'Replace & Reverify':'Edit').appendTo($actions);
   }
   if(@json(auth()->user()->can('finance online delete')) &&
      (x.status==='pending' || (x.status==='confirmed' &&
