@@ -36,6 +36,20 @@ final class DailyVoucherDrActionAndFilterContractTest extends TestCase
         self::assertStringContainsString('id="daily-voucher-filters" class="d-none"', $view);
     }
 
+    public function test_plot_purchase_and_receipt_top_filters_are_not_in_html(): void
+    {
+        $root=dirname(__DIR__,3);
+        foreach ([
+            'plot_purchase_workspace.blade.php'=>['ppQuickSearch','ppNewVoucher'],
+            'plot_receipt_workspace.blade.php'=>['prQuickSearch','prNewVoucher'],
+        ] as $name=>$required) {
+            $view=file_get_contents($root.'/resources/views/admin/finance/voucher/'.$name);
+            self::assertIsString($view);
+            self::assertStringNotContainsString('<x-finance.voucher-filter-card',$view,$name);
+            foreach($required as $id)self::assertStringContainsString('id="'.$id.'"',$view,$name);
+        }
+    }
+
     public function test_bd_bw_workspaces_have_no_rendered_top_filter_toolbar(): void
     {
         $root=dirname(__DIR__,3);
