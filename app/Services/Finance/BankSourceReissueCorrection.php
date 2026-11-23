@@ -237,7 +237,13 @@ final class BankSourceReissueCorrection
             $bankBalanced=in_array($series,['BOR','BOP'],true)
                 && (int)($allocation->bank_account_id??0)>0;
             $standardBalanced=in_array($series,['CR','DR'],true) && $legs->count()===2;
-            $expected=($bankBalanced||$standardBalanced)?2:1;
+            $pprBalanced=$series==='PPR' && $legs->count()===2;
+            $pprBooking=$pprBalanced && Schema::hasTable('booking_vouchers')
+                ? DB::table('booking_vouchers')
+                    ->where('project_id',$projectId)->where('customer_ledger_id',$id)
+                    ->where('voucher_series','PPR')->lockForUpdate()->first()
+                : null;
+            $expected=($bankBalanced||$standardBalanced||$pprBalanced)?2:1;
             if (!$voucher || $legs->count()!==$expected
                 || DB::table('ledgers')->where('customer_ledger_id',$id)->count()!==$expected
                 || (int)$voucher->payment_type!==($method==='online'?2:3)
@@ -261,6 +267,11 @@ final class BankSourceReissueCorrection
                 BalancedBankVoucherIntegrity::assert($projectId,$series,$voucher,$allocation,$legs);
             }elseif($standardBalanced){
                 BalancedStandardVoucherIntegrity::assert($series,$voucher,$legs);
+            }elseif($pprBalanced){
+                if(!$pprBooking){
+                    throw new \DomainException('PPR booking-voucher evidence missing.');
+                }
+                BalancedOriginalPprIntegrity::assert($voucher,$legs,(int)$pprBooking->ledger_id);
             }else{
                 if((string)$legs->first()->type!==(string)$voucher->transaction_type){
                     throw new \DomainException('Legacy bank voucher ledger type invalid.');
