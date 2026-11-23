@@ -375,35 +375,49 @@ $(function(){
   $('<td>').text((x.sender_name||'')+' / '+(x.receiver_name||'')).appendTo($r);
   $('<td>').text(x.purpose||'').appendTo($r);
   $('<td>').addClass('text-right').text(Number(x.amount).toLocaleString('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2})).appendTo($r);
-  $('<td>').append($('<span>').addClass('online-badge online-'+x.status).text(x.status||'pending')).appendTo($r);
+  var $statusCell=$('<td>');
+  if(x.correction_pending){
+   $('<span class="online-badge">').css({background:'#fef3c7',color:'#92400e',border:'1px solid #f59e0b'})
+    .text('Replacement Pending Approval')
+    .attr('title','Bank status: '+String(x.status||'—')+'; request #'+x.correction_request_id)
+    .appendTo($statusCell);
+   $('<small class="d-block text-muted">').text('Bank: '+String(x.status||'—')).appendTo($statusCell);
+  }else{
+   $('<span>').addClass('online-badge online-'+x.status).text(x.status||'pending').appendTo($statusCell);
+  }
+  $statusCell.appendTo($r);
   var $proof=$('<td>');
   if(@json(auth()->user()->can('finance online print')) && x.has_proof && x.proof_url)$('<a>').attr({href:x.proof_url,target:'_blank',rel:'noopener'}).text('Download').addClass('btn btn-outline-primary btn-sm').appendTo($proof);
   else $proof.addClass('text-muted').text('—');
   $proof.appendTo($r);
   var $actions=$('<td>').addClass('blue-actions-cell');
   @can('finance online confirm')
-  if(x.status==='pending' && @json(auth()->user()->can('finance online confirm'))){
+  if(!x.correction_pending && x.status==='pending' && @json(auth()->user()->can('finance online confirm'))){
    $('<button type="button">').addClass('btn btn-outline-success btn-sm mr-1 online-confirm-button')
     .attr({'data-id':x.id,'data-reference':x.reference,'data-amount':x.amount,
      'data-type':x.type,'data-date':x.transaction_date})
     .text('Confirm').appendTo($actions);
   }
   @endcan
-  if(@json(auth()->user()->can('finance online edit')) &&
+  if(!x.correction_pending && @json(auth()->user()->can('finance online edit')) &&
       !@json(auth()->user()->can('finance online correct')) &&
       x.status==='pending' && Number(x.linked_voucher_count||0)===0){
    $('<button type="button">').addClass('btn btn-outline-primary btn-sm mr-1 online-edit-button')
     .attr('data-id',x.id).text(x.status==='confirmed'?'Replace':'Edit').appendTo($actions);
   }
-  if(@json(auth()->user()->can('finance online correct'))) {
+  if(!x.correction_pending && @json(auth()->user()->can('finance online correct'))) {
     $('<button type="button" class="btn btn-outline-info btn-sm mr-1 online-correct-source">')
      .attr('data-id',x.id).text(Number(x.linked_voucher_count||0)>0?'Replace & Reverify':'Edit').appendTo($actions);
   }
-  if(@json(auth()->user()->can('finance online delete')) &&
+  if(!x.correction_pending && @json(auth()->user()->can('finance online delete')) &&
      (x.status==='pending' || (x.status==='confirmed' &&
        @json(auth()->user()->can('delete voucher')) && @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))))){
    $('<button type="button">').addClass('btn btn-outline-danger btn-sm mr-1 online-delete-button')
     .attr('data-id',x.id).text('Delete').appendTo($actions);
+  }
+  if(x.correction_pending){
+   $('<span class="small text-warning d-inline-block mr-2">')
+    .text('Request #'+x.correction_request_id+' awaiting decision').appendTo($actions);
   }
   if(@json(auth()->user()->can('finance online history')) && Number(x.linked_voucher_count||0)>0){
    $('<button type="button">').addClass('btn btn-outline-primary btn-sm mr-1 online-history-button')
