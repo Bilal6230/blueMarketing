@@ -404,7 +404,7 @@ $(function(){
   }
   if(@json(auth()->user()->can('finance online delete')) &&
      (x.status==='pending' || (x.status==='confirmed' &&
-       @json(auth()->user()->can('delete voucher')) && @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
+       @json(auth()->user()->can('delete voucher')) && @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))))){
    $('<button type="button">').addClass('btn btn-outline-danger btn-sm mr-1 online-delete-button')
     .attr('data-id',x.id).text('Delete').appendTo($actions);
   }
