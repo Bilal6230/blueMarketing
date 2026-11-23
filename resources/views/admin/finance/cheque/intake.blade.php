@@ -459,10 +459,9 @@ $(function () {
         var $statusCell=$('<td>');
         if(r.correction_pending){
             $('<span class="cheque-status-badge cheque-status-correction-pending">')
-                .text('Replacement Pending Approval')
+                .text('Repl. Pending')
                 .attr('title','Bank status: '+String(r.status||'—')+'; correction request #'+r.correction_request_id+' is awaiting approval')
                 .appendTo($statusCell);
-            $('<small class="d-block text-muted">').text('Bank: '+String(r.status||'—').replace(/_/g,' ')).appendTo($statusCell);
         }else{
             $('<span>').addClass('cheque-status-badge cheque-status-'+(r.status||'received'))
                 .text((r.status||'received').replace(/_/g,' ')).appendTo($statusCell);
@@ -514,10 +513,6 @@ $(function () {
             @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user()))))){
             $('<button type="button">').addClass('btn btn-sm btn-outline-danger mr-1 cheque-delete-source')
              .attr('data-id',r.id).text('Delete').appendTo($actions);
-        }
-        if(r.correction_pending){
-            $('<span class="small text-warning d-inline-block mr-2">')
-                .text('Request #'+r.correction_request_id+' awaiting decision').appendTo($actions);
         }
         if(@json(auth()->user()->can('finance cheque history')) && Number(r.linked_voucher_count||0)>0){
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary cheque-history mr-1')
