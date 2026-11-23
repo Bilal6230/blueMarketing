@@ -74,6 +74,11 @@ final class BankLinkedCorrectionApproval
                 'proposed_amount'=>$plan['after']['amount'],
                 'proposed_vouchers_json'=>json_encode([
                     'mode'=>'reissue','changes'=>$changes,
+                    'before'=>$plan['before'],'after'=>$plan['after'],
+                    'original_status'=>$plan['status'],
+                    'requires_replacement'=>$plan['requires_replacement'],
+                    'linked_voucher_history_count'=>$plan['linked_voucher_history_count'],
+                    'historical_released_count'=>$plan['historical_released_count'],
                     'released_vouchers'=>$plan['active_vouchers']],JSON_THROW_ON_ERROR),
                 'reason'=>trim($reason),'created_at'=>now(),'updated_at'=>now(),
             ]);
