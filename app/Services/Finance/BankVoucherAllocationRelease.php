@@ -29,9 +29,9 @@ final class BankVoucherAllocationRelease
                 ?: throw new \DomainException('Project not found.');
             $identity=DB::table('project_voucher_display_numbers')
                 ->where('project_id',$projectId)->where('source_kind','customer_ledger')
-                ->where('source_id',$voucherId)->whereIn('series',['CR','DR','BOR','BOP'])
+                ->where('source_id',$voucherId)->whereIn('series',['CR','DR','BOR','BOP','PPR'])
                 ->lockForUpdate()->first();
-            if(!$identity) throw new \DomainException('Not a verified bank-funded CR/DR/BOR/BOP voucher.');
+            if(!$identity) throw new \DomainException('Not a verified bank-funded CR/DR/BOR/BOP/PPR voucher.');
             $series=(string)$identity->series;
             $source=DB::table('customer_ledger')->where('project_id',$projectId)
                 ->where('id',$voucherId)->lockForUpdate()->first();
@@ -39,6 +39,7 @@ final class BankVoucherAllocationRelease
                     match ($series) {
                         'CR' => ['CR'], 'DR' => ['DR','CP'],
                         'BOR' => ['BOR','CR'], 'BOP' => ['BOP','CP'],
+                        'PPR' => ['PPR'],
                         default => [],
                     },true)
                 || !in_array((int)$source->payment_type,[2,3],true)
@@ -153,6 +154,22 @@ final class BankVoucherAllocationRelease
                         'rejection_reason'=>'Cancelled due to bank source correction: '.$reason,
                         'decided_at'=>now(),'updated_at'=>now(),
                     ]);
+            }
+            if($series==='PPR' && ($posted || $pendingCancellation || $rejected)){
+                // The original PPR booking voucher is another financial
+                // identity for this customer_ledger source. Keep history,
+                // retire only the active source (never hard-delete).
+                if(!Schema::hasTable('booking_vouchers')){
+                    throw new \DomainException('PPR booking voucher history missing.');
+                }
+                $bookingVoucher=DB::table('booking_vouchers')
+                    ->where('project_id',$projectId)
+                    ->where('customer_ledger_id',$voucherId)->lockForUpdate()->first();
+                if(!$bookingVoucher || (string)$bookingVoucher->voucher_series!=='PPR'){
+                    throw new \DomainException('PPR booking voucher source identity mismatch.');
+                }
+                DB::table('booking_vouchers')->where('id',$bookingVoucher->id)
+                    ->where('project_id',$projectId)->update(['is_active'=>0,'updated_at'=>now()]);
             }
             $releaseId=DB::table('finance_bank_voucher_allocation_releases')->insertGetId([
                 'project_id'=>$projectId,'allocation_id'=>$allocation->id,
