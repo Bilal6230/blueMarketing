@@ -257,6 +257,113 @@ $(function () {
     var $save = $('#saveTransfer');
     var allRows = [], page = 1, busy = false, chequeLoading = false;
     var pendingRequestKey = null, editingBatch=null;
+    var btPassedRows=[],btPassedTimer=null,btPassedRequest=null,btPassedAmountMax=null;
+    var clearBtPassed=function(){
+        btPassedRows=[];btPassedAmountMax=null;
+        $('#btPassedLabel').val('');$('#btPassedPickerModal input[name="btPassedChoice"]').prop('checked',false);
+        $root.removeData('passed-source-id').removeData('passed-source-method');
+    };
+    var btBankMethod=function(){return $('#btPaymentType').val()==='2'?'online':
+        ($('#btPaymentType').val()==='3'?'cheque':null);};
+    var syncBtPayment=function(){
+        var verified=!!btBankMethod()&&!editingBatch;
+        $('.bt-verified-source').toggleClass('d-none',!verified);
+        $('#btCounterLabel').text(verified?'Verified source counter-account':'Cash account (Cash/Manual)');
+        $('#chequeSource').closest('.form-group').toggle(!verified);
+        $('#chequeSource').prop('disabled',verified || !!editingBatch);
+        $('#cashAccount option[data-manual-cash]').each(function(){
+            $(this).prop('disabled',!verified && $(this).attr('data-manual-cash')!=='1');
+        });
+        if(verified){
+            $('#cashAccount').prop('disabled',true);
+        }else{
+            $('#cashAccount').prop('disabled',false);
+            if($('#cashAccount option:selected').prop('disabled'))$('#cashAccount').val('');
+        }
+        syncSelect('#cashAccount,#btPaymentType,#chequeSource');
+    };
+    var loadBtPassed=function(){
+        var method=btBankMethod();if(!method || editingBatch)return;
+        if(btPassedRequest&&btPassedRequest.readyState!==4)btPassedRequest.abort();
+        $('#btPassedError').addClass('d-none').text('');
+        var $tbody=$('#btPassedRows').empty().append($('<tr>').append($('<td>',{colspan:5,'class':'text-muted text-center',text:'Loading verified sources…'})));
+        $('#btApplyPassed').prop('disabled',true);
+        btPassedRequest=$.ajax({
+            url:@json(url('admin/finance/voucher/passed-sources')),type:'GET',dataType:'json',
+            headers:{Accept:'application/json'},
+            data:{method:method,direction:@json($kind === 'deposit' ? 'receipt':'payment'),
+                voucher_series:@json($kind === 'deposit' ? 'BD':'BW'),search:$('#btPassedSearch').val()}
+        }).done(function(res){
+            btPassedRows=res.data||[];$tbody.empty();
+            if(!btPassedRows.length)$tbody.append($('<tr>').append($('<td>',{colspan:5,'class':'text-center text-muted',text:'No available verified Cheque/Online sources.'})));
+            $.each(btPassedRows,function(_,row){
+                var $tr=$('<tr>');
+                $tr.append($('<td>').append($('<input>',{type:'radio',name:'btPassedChoice',value:row.id})));
+                $tr.append($('<td>').text(row.reference||'—'));
+                $tr.append($('<td>').text(row.passing_date||'—'));
+                $tr.append($('<td>').text(row.remaining_amount||'0.00'));
+                $tr.append($('<td>').text(row.bank||'—'));
+                $tbody.append($tr);
+            });
+        }).fail(function(xhr,status){
+            if(status==='abort')return;
+            $tbody.empty();
+            $('#btPassedError').removeClass('d-none').text((xhr.responseJSON||{}).message||'Unable to load verified bank sources.');
+        });
+    };
+    $('#btPaymentType').on('change',function(){
+        clearBtPassed();syncBtPayment();
+        $('#voucherAmount').val('').prop('readonly',false).removeAttr('max');
+        if(btBankMethod()&&!editingBatch){
+            $('#btPassedSearch').val('');$('#btPassedPickerModal').modal('show');
+        }
+        pendingRequestKey=null;valid();
+    });
+    $('#btOpenPassedPicker').on('click',function(){if(btBankMethod())$('#btPassedPickerModal').modal('show');});
+    $('#btPassedPickerModal').on('show.bs.modal',function(){
+        $(this).css('z-index',1065);
+        loadBtPassed();
+    }).on('shown.bs.modal',function(){
+        $('.modal-backdrop').last().css('z-index',1060);$('body').addClass('modal-open');
+    }).on('hidden.bs.modal',function(){
+        if($('#bankTransferCreateModal').hasClass('show'))$('body').addClass('modal-open');
+    });
+    $('#btPassedSearch').on('input',function(){
+        clearTimeout(btPassedTimer);btPassedTimer=setTimeout(loadBtPassed,250);
+    });
+    $('#btPassedRows').on('change','input[name="btPassedChoice"]',function(){
+        $('#btApplyPassed').prop('disabled',!$(this).val());
+    });
+    $('#btApplyPassed').on('click',function(){
+        var id=$('#btPassedRows input[name="btPassedChoice"]:checked').val();
+        var item=btPassedRows.find(function(row){return String(row.id)===String(id);});
+        if(!item)return;
+        var $mapped=$('#cashAccount option').filter(function(){
+            return String($(this).val())===String(item.account_mapping_id) && !$(this).prop('disabled');
+        });
+        if(!$mapped.length){
+            $('#btPassedError').removeClass('d-none').text('The verified source counter-account is unavailable in this project.');
+            return;
+        }
+        $root.data('passed-source-id',Number(item.id)).data('passed-source-method',item.method);
+        btPassedAmountMax=Number(item.remaining_amount);
+        $('#btPassedLabel').val((item.method==='online'?'Online: ':'Cheque: ')+item.reference+
+            ' · Available '+item.remaining_amount);
+        $('#cashAccount').val(String(item.account_mapping_id));syncSelect('#cashAccount');
+        $('#voucherAmount').val(item.remaining_amount).attr('max',item.remaining_amount);
+        $('#voucherReference').val(item.reference);
+        if(item.purpose)$('#voucherDescription').val(item.purpose);
+        var bankName=String(item.bank||'').trim().toLowerCase(),$bank=$('#bankAccount');
+        if(bankName){
+            var $choice=$bank.find('option').filter(function(){
+                return $(this).text().trim().toLowerCase().startsWith(bankName+' ·');
+            }).first();
+            if($choice.length){$bank.val($choice.val());syncSelect('#bankAccount');}
+        }
+        $('#btPassedPickerModal').modal('hide');
+        pendingRequestKey=null;valid();
+    });
+
     var columnSort='date',columnDirection='desc',columnFilters=null;
     var columnValue=function(r,field){
         var cash=String(r.cash_account||'').split(' / ');
@@ -296,8 +403,12 @@ $(function () {
     };
     var valid = function () {
         var amount = Number($('#voucherAmount').val());
+        var verified=!!btBankMethod()&&!editingBatch;
         var ok = !busy && !chequeLoading && !!$('#voucherDate').val()
-            && Number.isFinite(amount) && amount > 0 && !!$('#cashAccount').val()
+            && Number.isFinite(amount) && amount > 0
+            && (!verified || ($root.data('passed-source-id') && Number.isFinite(btPassedAmountMax)
+                && amount<=btPassedAmountMax))
+            && !!$('#cashAccount').val()
             && !!$('#bankAccount').val() && !!$.trim($('#voucherDescription').val());
         $save.prop('disabled', !ok);
         return ok;
@@ -513,7 +624,9 @@ $(function () {
         valid();
     });
     $('#bankTransferCreateModal').on('show.bs.modal',function(){
-        $form[0].reset();pendingRequestKey=null;
+        $form[0].reset();pendingRequestKey=null;clearBtPassed();
+        $('#btPaymentType').val('1').prop('disabled',!!editingBatch);
+        $('#voucherAmount').removeAttr('max');syncBtPayment();
         $('#bankTransferCreateTitle').text((editingBatch?'Edit ':'Add ')+
             @json($kind === 'deposit' ? 'Bank Deposit Voucher' : 'Bank Withdrawal Voucher'));
         $('#saveTransfer').text(editingBatch?'Update Voucher':'Post Voucher');
@@ -601,7 +714,11 @@ $(function () {
             date:$('#voucherDate').val(),amount:Number($('#voucherAmount').val()).toFixed(2),
             cash_account_id:Number($('#cashAccount').val()),bank_account_id:Number($('#bankAccount').val()),
             reference:$('#voucherReference').val(),description:$('#voucherDescription').val(),
-            request_key:pendingRequestKey,cheque_source_id:$('#chequeSource').val()?Number($('#chequeSource').val()):null
+            request_key:pendingRequestKey,
+            cheque_source_id:btBankMethod()?null:($('#chequeSource').val()?Number($('#chequeSource').val()):null),
+            payment_type:Number($('#btPaymentType').val())||1,
+            passed_source_method:btBankMethod(),
+            passed_source_id:btBankMethod()?Number($root.data('passed-source-id'))||null:null
         };
         $.ajax({
             url:editingBatch?$root.attr('data-update-base')+'/'+encodeURIComponent(editingBatch):$root.attr('data-post-url'),
