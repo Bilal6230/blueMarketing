@@ -13,7 +13,7 @@ final class StandardVoucherBalancedLifecycleContractTest extends TestCase
         $writer=file_get_contents($root.'/app/Http/Controllers/LedgerController.php');
         $cashOnly=file_get_contents($root.'/app/Http/Controllers/Finance/CashOnlyVoucherController.php');
         self::assertIsString($view);
-        self::assertStringContainsString("['CR','DR','CCR','CDR']", $view);
+        self::assertStringContainsString("['CR','DR','CP','CCR','CDR']", $view);
         self::assertStringContainsString('name="counter_account_id"', $view);
         self::assertStringContainsString("whereKey((int)$"."request->input('counter_account_id'))",$writer);
         self::assertStringContainsString('$standardCounter->id',$writer);
