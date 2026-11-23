@@ -234,6 +234,18 @@ final class TypedPlotReceiptBankCustody
                     || $debit!==(int)round((float)$claim->amount*100)){
                     throw new \DomainException('Typed PPR ledger no longer balances with source.');
                 }
+                $receivableTotal=DB::table('finance_plot_receipt_allocations')
+                    ->where('receipt_id',$id)
+                    ->when(Schema::hasColumn('finance_plot_receipt_allocations','is_active'),
+                        fn($q)=>$q->where('is_active',1))->sum('amount');
+                if($this->money($receivableTotal)!==$this->money($claim->amount)){
+                    throw new \DomainException('Typed PPR plot allocations no longer match bank source.');
+                }
+                $extraLegs=DB::table('ledgers')
+                    ->where('type','PPR')->where('type_id',$id)->count();
+                if($extraLegs!==$lines->count()){
+                    throw new \DomainException('Typed PPR has unrelated or archived extra general-ledger legs.');
+                }
                 if(Schema::hasColumn('finance_plot_receipts','is_active')){
                     $update=['is_active'=>0,'updated_at'=>now()];
                     if(Schema::hasColumn('finance_plot_receipts','deleted_at'))$update['deleted_at']=now();
@@ -253,7 +265,9 @@ final class TypedPlotReceiptBankCustody
                 $action='posted_void_release';
             }
             $releaseId=$this->evidence($claim,$actorId,$reason,$action);
-            return ['voucher_number'=>'PPR-'.$id,'action'=>$action,
+            $receiptNumber=$type===self::DRAFT
+                ?(string)$draft->source_number:(string)$source->receipt_number;
+            return ['voucher_number'=>$receiptNumber,'action'=>$action,
                 'release_id'=>$releaseId,'amount'=>(string)$claim->amount,
                 'method'=>(string)$claim->source_method,
                 'source_id'=>(int)$claim->source_id];
