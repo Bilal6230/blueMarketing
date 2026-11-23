@@ -17,7 +17,6 @@ class TypedPlotReceiptBankCustodyTest extends PlotEntryWriterTest
     protected function setUp(): void
     {
         parent::setUp();
-        (require base_path('database/migrations/2026_11_18_160000_add_plot_voucher_lifecycle_columns.php'))->up();
         Schema::create('project_bank_accounts',function(Blueprint $t){
             $t->id();$t->unsignedBigInteger('project_id');
             $t->unsignedBigInteger('account_mapping_id');$t->boolean('is_active')->default(true);
@@ -79,6 +78,9 @@ class TypedPlotReceiptBankCustodyTest extends PlotEntryWriterTest
 
     public function test_verified_multi_plot_ppr_posts_balanced_bank_receivable_and_releases_once(): void
     {
+        // This is the only test that needs release/soft-delete columns.
+        // Inherited Plot fixture tests exercise their own lifecycle migrations.
+        (require base_path('database/migrations/2026_11_18_160000_add_plot_voucher_lifecycle_columns.php'))->up();
         $posted=(new PlotEntryWriter())->receive(1,5,
             'PPR-TYPED-CHQ-POST-00000001',$this->typedPayload(),7);
         $id=(int)$posted['source_id'];
