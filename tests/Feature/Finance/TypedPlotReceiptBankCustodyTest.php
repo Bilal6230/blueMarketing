@@ -76,6 +76,78 @@ class TypedPlotReceiptBankCustodyTest extends PlotEntryWriterTest
         ];
     }
 
+    private function pendingTypedPprDraft(string $requestKey): int
+    {
+        (require base_path('database/migrations/2026_11_21_130000_create_finance_plot_approval_drafts_table.php'))->up();
+        Schema::create('daily_voucher_approvals',function(Blueprint $t){
+            $t->id();$t->unsignedBigInteger('project_id');
+            $t->string('source_table');$t->unsignedBigInteger('source_id');
+            $t->string('voucher_type');$t->string('status');
+            $t->unsignedBigInteger('decided_by')->nullable();
+            $t->string('rejection_reason')->nullable();$t->timestamp('decided_at')->nullable();
+            $t->timestamps();
+        });
+        $payload=$this->typedPayload();
+        $json=json_encode($payload,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
+        $id=DB::table('finance_plot_approval_drafts')->insertGetId([
+            'project_id'=>1,'voucher_type'=>'PPR','source_number'=>'PPR-1',
+            'effective_date'=>'2026-11-23','request_key'=>$requestKey,
+            'payload_sha256'=>hash('sha256','PPR|1|'.$json),
+            'payload_json'=>$json,'status'=>'pending','created_by'=>7,
+            'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        DB::table('daily_voucher_approvals')->insert([
+            'project_id'=>1,'source_table'=>'finance_plot_approval_drafts',
+            'source_id'=>$id,'voucher_type'=>'PPR','status'=>'pending',
+            'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        DB::transaction(function()use($id):void{
+            app(TypedPlotReceiptBankCustody::class)->reserveDraft(
+                1,$id,'cheque',77,'70.00',7);
+        });
+        return (int)$id;
+    }
+
+    public function test_approved_typed_ppr_promotes_single_verified_reservation_to_posted_allocation(): void
+    {
+        $id=$this->pendingTypedPprDraft('PPR-TYPED-PENDING-APPROVED-001');
+        $this->assertDatabaseCount('finance_plot_receipts',0);
+        $result=app(\App\Services\Finance\PlotVoucherApprovalDraftWriter::class)
+            ->finalizeApproved(1,$id,'PPR',7);
+        $this->assertDatabaseHas('finance_plot_approval_drafts',[
+            'id'=>$id,'status'=>'approved',
+            'posted_source_id'=>$result['source_id'],
+            'posting_batch_id'=>$result['posting_batch_id'],
+        ]);
+        $this->assertSame(1,DB::table('finance_bank_voucher_allocations')
+            ->where('voucher_type',TypedPlotReceiptBankCustody::POSTED)->count());
+        $this->assertSame(1,DB::table('finance_bank_voucher_allocations')
+            ->where('voucher_type',TypedPlotReceiptBankCustody::DRAFT)->count());
+        $this->assertSame(1,DB::table('finance_bank_voucher_allocation_releases')
+            ->where('action','approval_transfer')->count());
+        $this->assertSame(0,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$result['posting_batch_id'])
+            ->whereNull('legacy_ledger_id')->count());
+    }
+
+    public function test_rejected_typed_ppr_releases_pending_source_without_ledger_posting(): void
+    {
+        $id=$this->pendingTypedPprDraft('PPR-TYPED-PENDING-REJECTED-001');
+        app(\App\Services\Finance\PlotVoucherApprovalDraftWriter::class)->reject(
+            1,$id,'PPR',7);
+        $this->assertDatabaseHas('finance_plot_approval_drafts',['id'=>$id,'status'=>'rejected']);
+        $this->assertDatabaseHas('daily_voucher_approvals',
+            ['source_table'=>'finance_plot_approval_drafts','source_id'=>$id,
+             'status'=>'rejected']);
+        $this->assertDatabaseCount('finance_plot_receipts',0);
+        $this->assertDatabaseCount('finance_posting_batches',0);
+        $this->assertSame(1,DB::table('finance_bank_voucher_allocation_releases')
+            ->where('action','pending_cancel_release')->count());
+        $this->expectException(\DomainException::class);
+        app(TypedPlotReceiptBankCustody::class)->release(
+            1,TypedPlotReceiptBankCustody::DRAFT,$id,7,'Duplicate rejection');
+    }
+
     public function test_verified_multi_plot_ppr_posts_balanced_bank_receivable_and_releases_once(): void
     {
         // This is the only test that needs release/soft-delete columns.
