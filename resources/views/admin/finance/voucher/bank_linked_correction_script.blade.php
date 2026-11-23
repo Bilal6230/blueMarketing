@@ -90,7 +90,16 @@ jQuery(function($) {
             headers:{Accept:'application/json'}
         }).done(function(resp){
             var plan=resp.data,$details=$('<div class="text-left">');
-            $details.append($('<p>').text('The same verified source #'+plan.source_id+' will be updated.'));
+            if(plan.requires_replacement){
+                $details.append($('<p class="text-danger font-weight-bold">').text(
+                    'Linked voucher history found ('+plan.linked_voucher_history_count+'). Old source #'+plan.source_id+
+                    ' will become WITHDRAWN; a NEW source record will be created with status '+plan.new_status+'.'));
+                $details.append($('<p class="text-warning">').text(
+                    'New cheque/bank or online reference must be UNIQUE. New source must pass bank verification again before any new voucher.'));
+            }else{
+                $details.append($('<p class="text-success font-weight-bold">').text(
+                    'No vouchers were created. Source #'+plan.source_id+' will be updated on its ORIGINAL ID; no replacement record.'));
+            }
             var $table=$('<table class="table table-sm">'),$body=$('<tbody>');
             $.each(plan.after,function(field,value){
                 var old=String(plan.before[field]??''),next=String(value??'');
@@ -110,28 +119,26 @@ jQuery(function($) {
                 });
             }else{
                 $details.append($('<p class="text-success">').text(
-                    'No active linked vouchers. This verified source will remain ready for new vouchers.'));
+                    plan.requires_replacement
+                        ? 'All historical vouchers are already released; the original source will still be withdrawn and replaced.'
+                        : 'No voucher history: this source stays on the same original ID.'));
             }
-            if(plan.ready_after_correction){
-                $details.append($('<p class="text-success font-weight-bold">').text(
-                    'After approval: source status '+plan.result_status+'; full corrected amount will be available for fresh vouchers.'));
+            if(plan.requires_replacement){
+                $details.append($('<p class="small text-warning">').text(
+                    'Approval ON: no changes until approval. Then old vouchers are archived and the new source requires bank re-verification.'));
             }else{
-                $details.append($('<p class="text-warning font-weight-bold">').text(
-                    'Source status remains '+plan.result_status+'. It must pass bank clearance/confirmation before new vouchers.'));
-            }
-            if(plan.status!==plan.result_status){
-                $details.append($('<p class="small text-info">').text(
-                    'Verified historical status will be restored: '+plan.status+' → '+plan.result_status));
+                $details.append($('<p class="small text-muted">').text(
+                    'This update preserves the original source ID. If verified identity changes, its status will require bank verification.'));
             }
             if(plan.historical_released_count){
                 $details.append($('<p class="small text-muted">').text(
                     plan.historical_released_count+' previously released voucher(s) remain archived.'));
             }
             $details.append($('<p class="small text-muted">').text(
-                'Bank reference and original verification evidence are preserved. Approval ON will hold all changes pending review.'));
+                'Audit history and old voucher numbers remain unchanged. Approval ON stages this operation for the authorized approver.'));
             window.Swal.fire({
-                title:'Review & Reissue',html:$details[0],width:780,
-                icon:'warning',showCancelButton:true,confirmButtonText:'Submit Correction',
+                title:plan.requires_replacement?'Review Withdrawal & Replacement':'Review Same-ID Update',html:$details[0],width:780,
+                icon:'warning',showCancelButton:true,confirmButtonText:plan.requires_replacement?'Submit Replacement':'Submit Update',
                 confirmButtonColor:'#168348',allowOutsideClick:false
             }).then(function(answer){
                 if(!answer.isConfirmed)return;
