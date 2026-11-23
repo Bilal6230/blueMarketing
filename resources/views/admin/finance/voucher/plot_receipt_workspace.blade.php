@@ -201,7 +201,15 @@
   var rows=selected(),sum=0,valid=rows.length>=1;
   rows.forEach(function(b){var amount=Number($('.pr-amount[data-amount="'+b.booking_id+'"]').val())||0;sum+=amount;if(amount<=0)valid=false;});
   $('#prTotal').text(money(sum));$('#prSelected').text(rows.length);
-  valid=valid&&$.trim($('#prNumber').val())!==''&&$('#prDate').val()&&$('#prCustomer').val()&&$('#prAccount').val()&&$.trim($('#prNarration').val())!=='';
+  valid=valid&&$.trim($('#prNumber').val())!==''&&$('#prDate').val()
+   &&$('#prCustomer').val()&&$('#prAccount').val()
+   &&$.trim($('#prNarration').val())!=='';
+  var typedBank=['2','3'].includes(String($('#prTypedPayment').val()));
+  if(typedBank){
+   valid=valid && !!$('#prTypedPassedId').val()
+      && !!$('#prTypedPassedMethod').val()
+      && Number.isFinite(prTypedRemaining) && sum<=prTypedRemaining;
+  }
   $('#prPost').prop('disabled',!valid||busy);
   return {rows:rows,sum:sum,valid:!!valid};
  };
@@ -461,13 +469,19 @@
   });
  });
  var prVerifiedRows=[],prVerifiedTimer=null,prVerifiedRequest=null;
+ var prPickerTarget='original',prTypedRemaining=null;
+ var clearTypedPprSource=function(){
+  $('#prTypedPassedId,#prTypedPassedMethod,#prTypedPassedLabel').val('');
+  prTypedRemaining=null;
+ };
  var clearPprBankSource=function(){
   prVerifiedRows=[];
   $('#prPassedId,#prPassedMethod,#prPassedLabel').val('');
  };
  var loadPprBankSources=function(){
-  var method=String($('#prOriginalPayment').val())==='2'?'online':
-   (String($('#prOriginalPayment').val())==='3'?'cheque':'');
+  var selectedPayment=String(prPickerTarget==='typed'
+    ?$('#prTypedPayment').val():$('#prOriginalPayment').val());
+  var method=selectedPayment==='2'?'online':(selectedPayment==='3'?'cheque':'');
   if(!method)return;
   if(prVerifiedRequest&&prVerifiedRequest.readyState!==4)prVerifiedRequest.abort();
   $('#prPassedError').addClass('d-none').text('');
@@ -497,6 +511,7 @@
   });
  };
  $('#prOriginalPayment').on('change.pprBankPicker',function(){
+  prPickerTarget='original';
   $.financeVerifiedSourceNarration.set($('#prOriginalForm [name="detail"]'),null);
   clearPprBankSource();
   $('#prPassedSearch').val('');
@@ -505,7 +520,23 @@
   }
  });
  $('#prOpenPassedPicker').on('click',function(){
+  prPickerTarget='original';
   if(['2','3'].includes(String($('#prOriginalPayment').val())))$('#prPassedPickerModal').modal('show');
+ });
+ $('#prTypedPayment').on('change',function(){
+  prPickerTarget='typed';
+  $.financeVerifiedSourceNarration.set($('#prNarration'),null);
+  clearTypedPprSource();
+  $('.pr-typed-verified').toggleClass('d-none',String($(this).val())==='1');
+  if(['2','3'].includes(String($(this).val())) && !editReceiptId){
+   $('#prPassedSearch').val('');$('#prPassedPickerModal').modal('show');
+  }
+  pendingKey=null;recalc();
+ });
+ $('#prTypedOpenPassedPicker').on('click',function(){
+  prPickerTarget='typed';
+  if(['2','3'].includes(String($('#prTypedPayment').val())))
+   $('#prPassedPickerModal').modal('show');
  });
  $('#prPassedPickerModal').on('show.bs.modal',function(){
   $(this).css('z-index',1065);
@@ -514,7 +545,8 @@
   $('.modal-backdrop').last().css('z-index',1060);
   $('body').addClass('modal-open');
  }).on('hidden.bs.modal',function(){
-  if($('#prOriginalCreateModal').hasClass('show'))$('body').addClass('modal-open');
+  if($('#prOriginalCreateModal').hasClass('show')
+     || $('#plotReceiptCreateModal').hasClass('show'))$('body').addClass('modal-open');
  });
  $('#prPassedSearch').on('input',function(){
   clearTimeout(prVerifiedTimer);
@@ -530,6 +562,20 @@
   var narration=$.financeVerifiedSourceNarration.set($('#prOriginalForm [name="detail"]'),item);
   if(!narration.ok){
    $('#prPassedError').removeClass('d-none').text(narration.message);
+   return;
+  }
+  if(prPickerTarget==='typed'){
+   var typedNarration=$.financeVerifiedSourceNarration.set($('#prNarration'),item);
+   if(!typedNarration.ok){
+    $('#prPassedError').removeClass('d-none').text(typedNarration.message);
+    return;
+   }
+   $('#prTypedPassedId').val(item.id);$('#prTypedPassedMethod').val(item.method);
+   $('#prTypedPassedLabel').val((item.method==='online'?'Online: ':'Cheque: ')+
+      item.reference+' · Available '+item.remaining_amount);
+   prTypedRemaining=Number(item.remaining_amount);
+   $('#prPassedPickerModal').modal('hide');
+   pendingKey=null;recalc();
    return;
   }
   $('#prPassedId').val(item.id);$('#prPassedMethod').val(item.method);
@@ -602,6 +648,9 @@
   var payload={customer_id:Number($('#prCustomer').val()),receipt_number:$.trim($('#prNumber').val()),
    date:$('#prDate').val(),amount:state.sum.toFixed(2),cash_account_id:Number($('#prAccount').val()),
    narration:$.trim($('#prNarration').val()),request_key:pendingKey,
+   payment_type:Number($('#prTypedPayment').val())||1,
+   passed_source_method:$('#prTypedPassedMethod').val()||null,
+   passed_source_id:$('#prTypedPassedId').val()?Number($('#prTypedPassedId').val()):null,
    allocations:state.rows.map(function(row){return {booking_id:row.booking_id,plot_id:row.plot_id,
     receivable_account_id:row.receivable_account_id,
     amount:Number($('.pr-amount[data-amount="'+row.booking_id+'"]').val()).toFixed(2)};})};
