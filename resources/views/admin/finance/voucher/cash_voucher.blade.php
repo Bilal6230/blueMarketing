@@ -2199,7 +2199,7 @@
                 $('#edit_passing_status').val('');
                 $('#edit_t_number_label').text('Number');
 
-                const selectIds = ['edit_acct_type', 'edit_accounts_id', 'edit_subaccounts_id', 'edit_payment_type', 'edit_bank_id', 'edit_passing_status'];
+                const selectIds = ['edit_acct_type', 'edit_accounts_id', 'edit_subaccounts_id', 'edit_payment_type', 'edit_bank_id', 'edit_passing_status', 'edit_counter_account'];
                 selectIds.forEach(function(selectId) {
                     const ts = $('#' + selectId)[0]?.tomselect;
                     if (ts) {
@@ -2208,6 +2208,9 @@
                 });
 
                 $('.edit-bank-field').hide();
+                $('#edit-voucher-form .counter-edit-field, #edit-voucher-form .bank-counter-edit-field').hide();
+                $('#edit_counter_account').prop('disabled',true).prop('required',false);
+                $('#edit_bank_counter_account').val('');
                 $('#edit_passing_status_group').hide();
                 $('#edit-update-button').prop('disabled', false).text('Update');
             }
@@ -2398,16 +2401,47 @@
                         const $counterField = $('#edit_counter_account');
                         const counterTs = $counterField[0]?.tomselect;
                         const counterId = String(d.counter_account_id || '');
+                        const $counterRow = $('#edit-voucher-form .counter-edit-field');
+                        const $bankCounterRow = $('#edit-voucher-form .bank-counter-edit-field');
+                        const bankCounterId = String(d.bank_counter_account_id || '');
+                        const displaySeries = String(d.voucher_number_display || d.type || '').split('-')[0];
+                        $counterRow.hide();
+                        $bankCounterRow.hide();
+                        $counterField.prop('disabled',true).prop('required',false);
+                        counterTs?.disable();
                         if(counterId) {
-                            $('#edit-voucher-form .counter-edit-field').show();
-                            $counterField.prop('disabled',false);
+                            const $option = $counterField.find('option').filter(function(){
+                                return String($(this).val()) === counterId;
+                            });
+                            // Preserve the selected mapping even when the existing
+                            // voucher points at an account no longer offered for NEW postings.
+                            if(!$option.length) {
+                                $counterField.append($('<option/>',{
+                                    value:counterId,
+                                    text:'Existing account #'+counterId+' (not available for new postings)'
+                                }));
+                                counterTs?.addOption({
+                                    value:counterId,
+                                    text:'Existing account #'+counterId+' (not available for new postings)'
+                                });
+                            }
+                            $('#edit_counter_account_label').text(
+                                ['CR','CCR'].includes(displaySeries) ? 'Credit Account' : 'Debit Account'
+                            );
+                            $counterRow.show();
+                            $counterField.prop('disabled',false).prop('required',true);
                             counterTs?.enable();
-                            counterTs?.setValue(counterId,true);
+                            if(counterTs) counterTs.setValue(counterId,true);
+                            else $counterField.val(counterId);
                         } else {
                             counterTs?.clear(true);
-                            counterTs?.disable();
-                            $counterField.prop('disabled',true);
-                            $('#edit-voucher-form .counter-edit-field').hide();
+                            $counterField.val('');
+                        }
+                        if(bankCounterId) {
+                            const bankSide = displaySeries === 'BOR' ? 'Debit Account (Bank)' : 'Credit Account (Bank)';
+                            $('#edit_bank_counter_account_label').text(bankSide);
+                            $('#edit_bank_counter_account').val(d.bank_counter_label || 'Bank account #'+bankCounterId);
+                            $bankCounterRow.show();
                         }
                         let eAccTypeSelect = $('#edit_acct_type')[0]?.tomselect;
                         let eAccSelect = $('#edit_accounts_id')[0]?.tomselect;
@@ -2640,6 +2674,8 @@
                     date: $('#edit_date').val(),
                     accounts_id: $('#edit_accounts_id').val(),
                     subaccounts_id: $('#edit_subaccounts_id').val(),
+                    counter_account_id: $('#edit_counter_account').prop('disabled')
+                        ? null : $('#edit_counter_account').val(),
                     amount: $('#edit_amount').val(),
                     detail: $('#edit_detail').val(),
                     edit_reason: $.trim($('#edit_reason').val()),
@@ -2667,6 +2703,11 @@
                 if (!payload.subaccounts_id) {
                     shakeVoucherField($('#edit_subaccounts_id')); playVoucherErrorTone();
                     Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Child account is required.' });
+                    return;
+                }
+                if($('#edit-voucher-form .counter-edit-field').is(':visible') && !payload.counter_account_id) {
+                    shakeVoucherField($('#edit_counter_account')); playVoucherErrorTone();
+                    Swal.fire({ icon: 'warning', title: 'Validation error', text: 'Opposite posting account is required.' });
                     return;
                 }
                 if (!payload.detail) {
@@ -3944,7 +3985,8 @@
       #edit-voucher-form label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
       #edit-voucher-form .form-control,#edit-voucher-form .ts-wrapper,
       #edit-voucher-form .ts-control{width:100%;max-width:100%;min-height:35px}
-      #edit-voucher-form .counter-edit-field{order:7;min-width:0}
+      #edit-voucher-form .counter-edit-field,
+      #edit-voucher-form .bank-counter-edit-field{order:7;min-width:0}
       #edit-voucher-form .counter-edit-field .ts-wrapper{border:0!important;padding:0!important;background:transparent!important}
       #edit-voucher-form .counter-edit-field .ts-control{border:1px solid #ced4da;border-radius:6px;min-height:35px}
       #edit-voucher-form [class*="col-sm-"]:has(#edit_voucher_number){order:1}
@@ -3985,7 +4027,7 @@
                         @csrf
                         @method('PUT')
                         <div class="counter-edit-field" style="display:none;">
-                            <label class="fbox" for="edit_counter_account">Opposite Posting Account</label>
+                            <label class="fbox" id="edit_counter_account_label" for="edit_counter_account">Opposite Posting Account</label>
                             <select class="js-tomselect" id="edit_counter_account" name="counter_account_id" disabled>
                                 <option value="">Select opposite account</option>
                                 @foreach(($partyaccounts ?? collect()) as $accountOption)
@@ -3995,6 +4037,11 @@
                                     </option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div class="bank-counter-edit-field" style="display:none;">
+                            <label class="fbox" id="edit_bank_counter_account_label" for="edit_bank_counter_account">Bank Account</label>
+                            <input type="text" id="edit_bank_counter_account" class="form-control" readonly>
+                            <small class="text-muted">Linked verified bank source: bank account changes require audited source correction, not ordinary voucher Edit.</small>
                         </div>
                         <div class="row">
 
