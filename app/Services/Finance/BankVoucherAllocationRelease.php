@@ -93,13 +93,21 @@ final class BankVoucherAllocationRelease
                     'ledger.project_head_subheads_id','ledger.amount_in','ledger.amount_out']);
             $balanced=in_array($series,['BOR','BOP'],true)
                 && (int)($allocation->bank_account_id??0)>0;
-            $expected=$balanced?2:1;
+            $standardBalanced=in_array($series,['CR','DR'],true)
+                && $legs->count()===2;
+            $expected=($balanced||$standardBalanced)?2:1;
             if($legs->count()!==$expected
                 || DB::table('ledgers')->where('customer_ledger_id',$voucherId)->count()!==$expected){
                 throw new \DomainException('Project bank voucher ledger cardinality invalid.');
             }
             if($balanced){
                 BalancedBankVoucherIntegrity::assert($projectId,$series,$source,$allocation,$legs);
+            }elseif($standardBalanced){
+                BalancedStandardVoucherIntegrity::assert($series,$source,$legs);
+                if(round((float)$allocation->amount,2)!==
+                    round(max((float)$source->amount_in,(float)$source->amount_out),2)){
+                    throw new \DomainException('Standard two-leg bank allocation mismatch.');
+                }
             }else{
                 if((string)$legs->first()->type!==(string)$source->transaction_type
                     || round(max((float)$legs->first()->amount_in,(float)$legs->first()->amount_out),2)
