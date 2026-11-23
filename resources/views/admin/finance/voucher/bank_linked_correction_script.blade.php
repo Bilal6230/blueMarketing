@@ -112,6 +112,17 @@ jQuery(function($) {
                 $details.append($('<p class="text-success">').text(
                     'No active linked vouchers. This verified source will remain ready for new vouchers.'));
             }
+            if(plan.ready_after_correction){
+                $details.append($('<p class="text-success font-weight-bold">').text(
+                    'After approval: source status '+plan.result_status+'; full corrected amount will be available for fresh vouchers.'));
+            }else{
+                $details.append($('<p class="text-warning font-weight-bold">').text(
+                    'Source status remains '+plan.result_status+'. It must pass bank clearance/confirmation before new vouchers.'));
+            }
+            if(plan.status!==plan.result_status){
+                $details.append($('<p class="small text-info">').text(
+                    'Verified historical status will be restored: '+plan.status+' → '+plan.result_status));
+            }
             if(plan.historical_released_count){
                 $details.append($('<p class="small text-muted">').text(
                     plan.historical_released_count+' previously released voucher(s) remain archived.'));
