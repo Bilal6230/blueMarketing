@@ -423,6 +423,7 @@ final class DailyVoucherApprovalWorkflow
                     ->where('ledger.customer_ledger_id',$source->id)
                     ->where('account.project_id',$approval->project_id)
                     ->lockForUpdate()->get(['ledger.id','ledger.type','ledger.type_id',
+                        'ledger.project_head_subheads_id',
                         'ledger.voucher_number','ledger.amount_in','ledger.amount_out',
                         'ledger.is_active']);
                 if($legs->count()===1
