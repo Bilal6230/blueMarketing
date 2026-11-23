@@ -140,8 +140,79 @@ final class BankSourceReissueCorrection
                 continue;
             }
             $id=(int)$allocation->voucher_id;
-            if (in_array($id,$ids,true)) throw new \DomainException('Duplicate live bank allocation.');
-            $ids[]=$id;
+            $type=(string)$allocation->voucher_type;
+            $allocationKey=$type.':'.$id;
+            if (in_array($allocationKey,$ids,true)) {
+                throw new \DomainException('Duplicate live bank allocation identity.');
+            }
+            $ids[]=$allocationKey;
+            if(in_array($type,['BD','BW','BD_DRAFT','BW_DRAFT',
+                TypedPlotReceiptBankCustody::POSTED,TypedPlotReceiptBankCustody::DRAFT],true)){
+                $draft=str_ends_with($type,'_DRAFT');
+                if(in_array($type,['BD','BW','BD_DRAFT','BW_DRAFT'],true)){
+                    $series=substr($type,0,2);
+                    $record=$draft
+                        ? DB::table('finance_bank_transfer_approval_drafts')
+                            ->where('project_id',$projectId)->where('id',$id)
+                            ->where('transfer_kind',$series==='BD'?'deposit':'withdrawal')
+                            ->lockForUpdate()->first()
+                        : DB::table('finance_bank_transfer_sources')
+                            ->where('project_id',$projectId)->where('posting_batch_id',$id)
+                            ->where('transfer_kind',$series==='BD'?'deposit':'withdrawal')
+                            ->lockForUpdate()->first();
+                    if(!$record || round((float)$record->amount,2)!==
+                        round((float)$allocation->amount,2)
+                        || ($draft && (!in_array((string)$record->status,['pending','rejected'],true)
+                            || (string)$record->passed_source_method!==$method
+                            || (int)$record->passed_source_id!==$sourceId))
+                        || (!$draft && ((int)($record->is_active??1)!==1
+                            || ($record->deleted_at??null)!==null
+                            || ($record->linked_customer_ledger_id??null)!==null
+                            || !DB::table('finance_posting_batches')
+                                ->where('project_id',$projectId)->where('id',$id)
+                                ->where('voucher_series',$series)
+                                ->whereNotNull('posted_at')->whereNull('reversal_of_batch_id')->exists()))) {
+                        throw new \DomainException('Typed bank transfer allocation changed before reissue.');
+                    }
+                    $status=$draft?(string)$record->status:'posted';
+                    $updatedAt=(string)($record->updated_at??'');
+                }else{
+                    $record=$draft
+                        ? DB::table('finance_plot_approval_drafts')
+                            ->where('project_id',$projectId)->where('id',$id)
+                            ->where('voucher_type','PPR')->lockForUpdate()->first()
+                        : DB::table('finance_plot_receipts')
+                            ->where('project_id',$projectId)->where('id',$id)
+                            ->lockForUpdate()->first();
+                    $payload=$draft&&$record
+                        ?json_decode((string)$record->payload_json,true):null;
+                    $value=$draft?($payload['amount']??0):($record->amount??0);
+                    if(!$record || round((float)$value,2)!==
+                        round((float)$allocation->amount,2)
+                        || ($draft && (!in_array((string)$record->status,['pending','rejected'],true)
+                            || (string)($payload['passed_source_method']??'')!==$method
+                            || (int)($payload['passed_source_id']??0)!==$sourceId
+                            || ($record->posted_source_id??null)!==null
+                            || ($record->posting_batch_id??null)!==null))
+                        || (!$draft && ((int)($record->is_active??1)!==1
+                            || ($record->deleted_at??null)!==null))) {
+                        throw new \DomainException('Typed multi-plot receipt allocation changed before reissue.');
+                    }
+                    $status=$draft?(string)$record->status:'posted';
+                    $updatedAt=(string)($record->updated_at??'');
+                }
+                $active[]=[
+                    'allocation_id'=>(int)$allocation->id,
+                    'voucher_id'=>$id,'voucher_type'=>$type,
+                    'amount'=>(string)$allocation->amount,
+                    'typed_source_status'=>$status,'typed_source_updated'=>$updatedAt,
+                    'approval_status'=>$draft?$status:null,
+                ];
+                continue;
+            }
+            if(!in_array($type,['CR','DR','BOR','BOP','PPR'],true)) {
+                throw new \DomainException('Unknown linked bank allocation family.');
+            }
             $voucher=DB::table('customer_ledger')->where('project_id',$projectId)
                 ->where('id',$id)->lockForUpdate()->first();
             $legs=DB::table('ledgers as l')->join('project_head_subheads as m',
