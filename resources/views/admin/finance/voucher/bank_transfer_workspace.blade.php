@@ -148,7 +148,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                             <input id="voucherDate" type="date" class="form-control" value="{{ now()->toDateString() }}" required></div>
                         <div class="form-group col-md-6"><label for="voucherAmount">Amount <span class="text-danger">*</span></label>
                             <input id="voucherAmount" type="number" class="form-control" min="0.01" step="0.01" placeholder="0.00" required></div>
-                        <div class="form-group col-md-6"><label id="btCounterLabel" for="cashAccount">Cash account <span class="text-muted small">(Cash/Manual)</span></label>
+                        <div class="form-group col-md-6"><label id="btCounterLabel" for="cashAccount">Counter Account <span class="text-muted small">(Cash / Manual)</span></label>
                             <select id="cashAccount" class="form-control fvc-tom-select" required><option value="">Choose counter-account</option>
                             @foreach($counterAccounts as $account)
                                 <option value="{{ $account->id }}" data-manual-cash="{{ $cashAccounts->contains('id',$account->id) ? '1' : '0' }}">{{ $account->headAccounting?->name }} / {{ $account->subheadAccounting?->name }} (#{{ $account->id }})</option>
@@ -258,7 +258,7 @@ $(function () {
     var syncBtPayment=function(){
         var verified=!!btBankMethod()&&!editingBatch;
         $('.bt-verified-source').toggleClass('d-none',!verified);
-        $('#btCounterLabel').text(verified?'Verified source counter-account':'Cash account (Cash/Manual)');
+        $('#btCounterLabel').text(verified?'Counter Account (Verified source)':'Counter Account (Cash / Manual)');
         $('#chequeSource').closest('.form-group').toggle(!verified);
         $('#chequeSource').prop('disabled',verified || !!editingBatch);
         $('#cashAccount option[data-manual-cash]').each(function(){
