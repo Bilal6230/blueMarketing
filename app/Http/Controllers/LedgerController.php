@@ -1134,7 +1134,7 @@ class LedgerController extends Controller
     {
         $data = $request->validate([
             'id' => ['required', 'integer', 'min:1'],
-            'voucher_type' => ['nullable', 'in:CR,CP'],
+            'voucher_type' => ['nullable', 'in:CR,DR,CP,CCR,CDR,BOR,BOP'],
             'voucher_number' => ['nullable', 'integer', 'min:1'],
         ]);
         $base = Ledger::with([
@@ -1161,11 +1161,29 @@ class LedgerController extends Controller
             ], 404);
         }
 
+        // The oldest linked row is the canonical party-side voucher leg.
+        // Never edit the counter-leg as if it were the original account.
+        $counterAccountId=null;
+        if($ledger->customer_ledger_id){
+            $siblings=Ledger::query()
+                ->where('customer_ledger_id',$ledger->customer_ledger_id)
+                ->whereIn('type',['CR','DR','CP','CCR','CDR','BOR','BOP'])
+                ->whereHas('projectHeadSubhead',fn($q)=>$q->where('project_id',getSelectedTown()))
+                ->orderBy('id')->get();
+            if($siblings->count()===2){
+                $counterAccountId=(int)$siblings->last()->project_head_subheads_id;
+                if($ledger->id!==$siblings->first()->id){
+                    $ledger=(clone $base)->whereKey($siblings->first()->id)->firstOrFail();
+                }
+            }
+        }
         $customerLedger = $ledger->customerLedger;
         $accountTypeId = (int) ($ledger->projectHeadSubhead->headAccounting->acct_type ?? 0);
         $headAccountingId = $ledger->projectHeadSubhead->head_accounting_id ?? null;
         $subheadAccountingId = $ledger->projectHeadSubhead->subhead_accounting_id ?? null;
-        $amountDisplay = $ledger->type === 'CP' ? (float) ($ledger->amount_out ?? 0) : (float) ($ledger->amount_in ?? 0);
+        $amountDisplay = $customerLedger
+            ? max((float)$customerLedger->amount_in,(float)$customerLedger->amount_out)
+            : max((float)$ledger->amount_in,(float)$ledger->amount_out);
         $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
             ->lookup((int) getSelectedTown(), 'customer_ledger', (int) $customerLedger?->id);
 
@@ -1181,6 +1199,7 @@ class LedgerController extends Controller
                 'amount_in' => (float) ($ledger->amount_in ?? 0),
                 'amount_out' => (float) ($ledger->amount_out ?? 0),
                 'amount_display' => $amountDisplay,
+                'counter_account_id' => $counterAccountId,
                 'account_type_id' => $accountTypeId,
                 'account_type_name' => getAccountTypeName($accountTypeId),
                 'head_accounting_id' => $headAccountingId,
@@ -1406,6 +1425,7 @@ class LedgerController extends Controller
             'id' => ['required', 'integer'], 'amount' => ['required', 'regex:/^\d[\d,]*(?:\.\d{1,2})?$/D'],
             'detail' => ['required', 'string', 'max:255'],
             'edit_reason' => ['required', 'string', 'min:3', 'max:220'],
+            'counter_account_id' => ['nullable', 'integer', 'min:1'],
             'accounts_id' => ['required', 'integer'],
             'subaccounts_id' => ['required', 'integer'], 'date' => ['required', 'date_format:Y-m-d'],
             'payment_type' => ['required', 'integer', 'in:1,2,3'],
@@ -1439,6 +1459,7 @@ class LedgerController extends Controller
                     'date'=>$data['date'],
                     'amount'=>str_replace(',','',(string)$data['amount']),
                     'account_id'=>(int)$account->id,
+                    'counter_account_id'=>$data['counter_account_id']??null,
                     'description'=>$data['detail'],
                     'revision_reason'=>$data['edit_reason'],
                 ]);
