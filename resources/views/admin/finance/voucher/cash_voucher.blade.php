@@ -779,6 +779,7 @@
 @endsection
 
 @section('js')
+    <script src="{{ asset('js/finance/verified-source-narration.js') }}"></script>
     @if(request()->filled('edit_ledger_id') && auth()->user()?->can('update voucher'))
         <script>
             // Reuse the existing correction editor without navigating away from Daily Entries.
@@ -1888,43 +1889,11 @@
             // instrument, not to user-written narration. It is replaced (never
             // duplicated) when the selected source changes.
             function setPassedBankNarration(source){
-                const $detail=$('#detail');
-                if(!$detail.length)return true;
-                const previous=String($detail.val()||'');
-                // Preserve typed narration; replace either old multiline bank
-                // block or the new compact SOURCE line on source selection.
-                const manual=$.trim(previous
-                    .replace(/\n?\[BANK SOURCE\][\s\S]*?\[\/BANK SOURCE\]/g,'')
-                    .replace(/\n?SOURCE (?:Cheque|Online) \| [^\r\n]*/g,''));
-                if(!source){
-                    $detail.val(manual).trigger('input');
-                    return true;
+                const result=$.financeVerifiedSourceNarration.set($('#detail'),source);
+                if(!result.ok){
+                    window.Swal.fire({icon:'warning',title:'Narration too long',text:result.message});
                 }
-                const parts=source.method==='online'
-                    ? [
-                        'SOURCE Online',
-                        'Transaction ID / Reference: '+String(source.reference||''),
-                        'Sending Bank: '+String(source.sending_bank||''),
-                        'Receiving Bank: '+String(source.receiving_bank||''),
-                        'Clearing Date: '+String(source.passing_date||'')
-                    ]
-                    : [
-                        'SOURCE Cheque',
-                        'Title: '+String(source.cheque_title||''),
-                        'Cheque Number: ****'+String(source.cheque_last4||String(source.reference||'').slice(-4)),
-                        'Bank Name: '+String(source.bank||''),
-                        'Clearing Date: '+String(source.passing_date||'')
-                    ];
-                const block=parts.join(' | ');
-                const next=manual?(manual+'\n'+block):block;
-                const max=Number($detail.attr('maxlength')||255);
-                if(next.length>max){
-                    window.Swal.fire({icon:'warning',title:'Narration too long',
-                        text:'Bank details require '+block.length+' characters. Shorten manual narration to stay within '+max+' characters.'});
-                    return false;
-                }
-                $detail.val(next).trigger('input');
-                return true;
+                return result.ok;
             }
             function resetPassedBankSelection(){
                 const hadSource=!!$('#passed_source_id').val();
