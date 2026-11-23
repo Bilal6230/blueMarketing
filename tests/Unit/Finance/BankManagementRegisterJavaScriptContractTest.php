@@ -39,7 +39,8 @@ final class BankManagementRegisterJavaScriptContractTest extends TestCase
             $path=__DIR__.'/../../../resources/views/admin/finance/'.$directory.'/intake.blade.php';
             $source=file_get_contents($path);
             self::assertIsString($source);
-            $start=strpos($source,"if(@json(auth()->user()->can('finance {$method} delete')) &&");
+            $row=$method==='cheque'?'r':'x';
+            $start=strpos($source,"if(!{$row}.correction_pending && @json(auth()->user()->can('finance {$method} delete')) &&");
             self::assertNotFalse($start,"Missing {$method} delete guard.");
             $end=strpos($source,".text('Delete').appendTo(\$actions);",$start);
             self::assertNotFalse($end,"Missing {$method} delete action.");
