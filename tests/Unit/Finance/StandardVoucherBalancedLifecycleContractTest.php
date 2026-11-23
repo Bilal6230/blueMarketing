@@ -37,6 +37,27 @@ final class StandardVoucherBalancedLifecycleContractTest extends TestCase
         self::assertStringContainsString("['CR','DR','CP','CCR','CDR']",$editor);
     }
 
+    public function test_edit_counter_selection_persists_for_every_standard_voucher_family(): void
+    {
+        $root=dirname(__DIR__,3);
+        $view=file_get_contents($root.'/resources/views/admin/finance/voucher/cash_voucher.blade.php');
+        $ledger=file_get_contents($root.'/app/Http/Controllers/LedgerController.php');
+        $editor=file_get_contents($root.'/app/Services/Finance/SameSourceCashVoucherEdit.php');
+        self::assertIsString($view);
+        self::assertIsString($ledger);
+        self::assertIsString($editor);
+        foreach(['CR','DR','CP','CCR','CDR'] as $type){
+            self::assertStringContainsString("'".$type."'",$view);
+        }
+        self::assertStringContainsString('const counterId = String(d.counter_account_id || \'\');',$view);
+        self::assertStringContainsString('counterTs.setValue(counterId,true)',$view);
+        self::assertStringContainsString("counter_account_id: $('#edit_counter_account').prop('disabled')",$view);
+        self::assertStringContainsString("'counter_account_id'=>$"."data['counter_account_id']??null",$ledger);
+        self::assertStringContainsString("'counter_account_id'=>$"."legCount===2",$editor);
+        self::assertStringContainsString("->whereKey((int)$"."next['counter_account_id'])",$editor);
+        self::assertStringContainsString('bank-counter-edit-field',$view);
+    }
+
     public function test_directory_returns_only_primary_voucher_leg_and_edit_modal_shows_counterpart(): void
     {
         $root=dirname(__DIR__,3);
