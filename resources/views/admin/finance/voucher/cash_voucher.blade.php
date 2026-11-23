@@ -1965,7 +1965,7 @@
                 passedBankRequest=$.ajax({
                     url:passedBankUrl,type:'GET',dataType:'json',
                     data:{method:payment==='2'?'online':'cheque',
-                        direction:passedBankDirection,voucher_series:@json($voucherType),search:$('#passed-bank-search').val()}
+                        direction:passedBankDirection,voucher_series:@json($displaySeries ?? $voucherType),search:$('#passed-bank-search').val()}
                 }).done(function(response){
                     passedBankRows=response.data||[];
                     const $body=$('#passed-bank-table tbody').empty();
