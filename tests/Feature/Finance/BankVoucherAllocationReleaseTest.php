@@ -39,6 +39,10 @@ final class BankVoucherAllocationReleaseTest extends TestCase
         Schema::create('project_head_subheads', function(Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('project_id');
         });
+        Schema::create('project_bank_accounts', function(Blueprint $t) {
+            $t->id(); $t->unsignedBigInteger('project_id');
+            $t->unsignedBigInteger('account_mapping_id'); $t->boolean('is_active')->default(true);
+        });
         Schema::create('ledgers', function(Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('customer_ledger_id');
             $t->unsignedBigInteger('project_head_subheads_id');
@@ -67,6 +71,7 @@ final class BankVoucherAllocationReleaseTest extends TestCase
             $t->id(); $t->unsignedBigInteger('project_id');
             $t->string('source_method'); $t->unsignedBigInteger('source_id');
             $t->string('voucher_type'); $t->unsignedBigInteger('voucher_id');
+            $t->unsignedBigInteger('bank_account_id')->nullable();
             $t->decimal('amount',18,2);
         });
         // Isolated SQLite fixture: do not require retired MySQL-only migration files.
@@ -82,6 +87,10 @@ final class BankVoucherAllocationReleaseTest extends TestCase
         });
         DB::table('projects')->insert(['id'=>1]);
         DB::table('project_head_subheads')->insert(['id'=>3,'project_id'=>1]);
+        DB::table('project_head_subheads')->insert(['id'=>4,'project_id'=>1]);
+        DB::table('project_bank_accounts')->insert([
+            'id'=>1,'project_id'=>1,'account_mapping_id'=>4,'is_active'=>1,
+        ]);
         DB::table('finance_online_intakes')->insert(['id'=>7,'project_id'=>1]);
         DB::table('finance_cheque_intakes')->insert(['id'=>8,'project_id'=>1]);
     }
@@ -129,6 +138,47 @@ final class BankVoucherAllocationReleaseTest extends TestCase
                 'source_id'=>$id,'voucher_type'=>$series,'status'=>$status,
             ]);
         }
+    }
+
+    public function test_new_balanced_bor_releases_both_bank_and_party_legs(): void
+    {
+        $this->source(28,'BOR','online','posted',425.00,425.00);
+        DB::table('finance_bank_voucher_allocations')->where('voucher_id',28)
+            ->update(['bank_account_id'=>1]);
+        DB::table('ledgers')->where('customer_ledger_id',28)->delete();
+        DB::table('ledgers')->insert([
+            ['customer_ledger_id'=>28,'project_head_subheads_id'=>3,
+                'type'=>'BOR','is_active'=>1,'amount_in'=>0,'amount_out'=>425],
+            ['customer_ledger_id'=>28,'project_head_subheads_id'=>4,
+                'type'=>'BOR','is_active'=>1,'amount_in'=>425,'amount_out'=>0],
+        ]);
+        $release=app(BankVoucherAllocationRelease::class)
+            ->release(1,28,42,'Verified balanced bank receipt replaced');
+        $this->assertSame('posted_void_release',$release['action']);
+        $this->assertSame(2,DB::table('ledgers')
+            ->where('customer_ledger_id',28)->where('is_active',0)->count());
+        $this->assertSame(0,DB::table('ledgers')
+            ->where('customer_ledger_id',28)->where('is_active',1)->count());
+        $this->assertSame(1,DB::table('finance_bank_voucher_allocation_releases')
+            ->where('voucher_type','BOR')->count());
+    }
+
+    public function test_balanced_bop_rejects_wrong_bank_leg_direction_without_releasing(): void
+    {
+        $this->source(29,'BOP','cheque','posted',190.00,190.00);
+        DB::table('finance_bank_voucher_allocations')->where('voucher_id',29)
+            ->update(['bank_account_id'=>1]);
+        DB::table('ledgers')->where('customer_ledger_id',29)->delete();
+        DB::table('ledgers')->insert([
+            ['customer_ledger_id'=>29,'project_head_subheads_id'=>3,
+                'type'=>'BOP','is_active'=>1,'amount_in'=>190,'amount_out'=>0],
+            ['customer_ledger_id'=>29,'project_head_subheads_id'=>4,
+                'type'=>'BOP','is_active'=>1,'amount_in'=>190,'amount_out'=>0],
+        ]);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('BANK_VOUCHER_DOUBLE_ENTRY_DIRECTION_INVALID');
+        app(BankVoucherAllocationRelease::class)
+            ->release(1,29,42,'Corrupt balanced payment cannot release');
     }
 
     public function test_posted_ppr_cheque_releases_once_and_retires_booking_voucher(): void
