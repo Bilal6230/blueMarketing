@@ -104,6 +104,8 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
         Schema::create('customer_ledger', function (Blueprint $t): void {
             $t->id(); $t->unsignedBigInteger('project_id');
             $t->string('transaction_type',12)->default('CR');
+            $t->unsignedBigInteger('type_id')->default(0);
+            $t->unsignedTinyInteger('payment_type')->default(1);
             $t->decimal('amount_in',18,2)->default(0); $t->decimal('amount_out',18,2)->default(0);
             $t->boolean('is_active')->default(false); $t->integer('is_approve')->default(0);
         });
@@ -215,6 +217,81 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
         $this->assertSame('approved',DB::table('daily_voucher_approvals')->where('source_id',7)->value('status'));
         $this->assertSame(['submitted','approved'],
             DB::table('daily_voucher_approval_events')->orderBy('id')->pluck('event')->all());
+    }
+
+    public function test_both_cash_only_series_activate_two_balanced_legs_on_approval(): void
+    {
+        foreach (['CCR','CDR'] as $series) {
+            $sourceId=$series==='CCR'?71:72;
+            $incoming=$series==='CCR';
+            DB::table('customer_ledger')->insert([
+                'id'=>$sourceId,'project_id'=>1,'transaction_type'=>$series,
+                'type_id'=>$sourceId,'payment_type'=>1,
+                'amount_in'=>$incoming?125:0,'amount_out'=>$incoming?0:125,
+                'is_active'=>0,'is_approve'=>0,
+            ]);
+            DB::table('project_head_subheads')->insert([
+                ['id'=>$sourceId*10+1,'project_id'=>1],
+                ['id'=>$sourceId*10+2,'project_id'=>1],
+            ]);
+            DB::table('ledgers')->insert([
+                ['customer_ledger_id'=>$sourceId,'type'=>$series,
+                    'type_id'=>$sourceId,'voucher_number'=>$sourceId,
+                    'project_head_subheads_id'=>$sourceId*10+1,
+                    'amount_in'=>$incoming?125:0,'amount_out'=>$incoming?0:125,'is_active'=>0],
+                ['customer_ledger_id'=>$sourceId,'type'=>$series,
+                    'type_id'=>$sourceId,'voucher_number'=>$sourceId,
+                    'project_head_subheads_id'=>$sourceId*10+2,
+                    'amount_in'=>$incoming?0:125,'amount_out'=>$incoming?125:0,'is_active'=>0],
+            ]);
+            $this->seedPreviouslySubmittedApproval($series,'customer_ledger',$sourceId);
+            app(DailyVoucherApprovalWorkflow::class)->decide(
+                DailyVoucherApproval::query()->where('source_id',$sourceId)->firstOrFail(),
+                20,'approved'
+            );
+            $this->assertSame(1,(int)DB::table('customer_ledger')
+                ->where('id',$sourceId)->value('is_active'),$series);
+            $this->assertSame(2,DB::table('ledgers')
+                ->where('customer_ledger_id',$sourceId)->where('is_active',1)->count(),$series);
+            $this->assertSame(125.0,(float)DB::table('ledgers')
+                ->where('customer_ledger_id',$sourceId)->sum('amount_in'),$series);
+            $this->assertSame(125.0,(float)DB::table('ledgers')
+                ->where('customer_ledger_id',$sourceId)->sum('amount_out'),$series);
+            $this->assertSame('approved',(string)DB::table('daily_voucher_approvals')
+                ->where('source_id',$sourceId)->value('status'),$series);
+        }
+    }
+
+    public function test_cash_only_unbalanced_counterpart_blocks_approval_without_posting(): void
+    {
+        DB::table('customer_ledger')->insert([
+            'id'=>73,'project_id'=>1,'transaction_type'=>'CCR','type_id'=>73,
+            'payment_type'=>1,'amount_in'=>125,'amount_out'=>0,'is_active'=>0,
+        ]);
+        DB::table('project_head_subheads')->insert([
+            ['id'=>731,'project_id'=>1],['id'=>732,'project_id'=>1],
+        ]);
+        DB::table('ledgers')->insert([
+            ['customer_ledger_id'=>73,'type'=>'CCR','type_id'=>73,'voucher_number'=>73,
+                'project_head_subheads_id'=>731,'amount_in'=>125,'amount_out'=>0,'is_active'=>0],
+            ['customer_ledger_id'=>73,'type'=>'CCR','type_id'=>73,'voucher_number'=>73,
+                'project_head_subheads_id'=>732,'amount_in'=>0,'amount_out'=>100,'is_active'=>0],
+        ]);
+        $this->seedPreviouslySubmittedApproval('CCR','customer_ledger',73);
+        try {
+            app(DailyVoucherApprovalWorkflow::class)->decide(
+                DailyVoucherApproval::query()->where('source_id',73)->firstOrFail(),
+                20,'approved'
+            );
+            $this->fail('Unbalanced cash-only ledger approved.');
+        } catch (\DomainException $e) {
+            $this->assertSame('STANDARD_VOUCHER_UNBALANCED_POSTING',$e->getMessage());
+        }
+        $this->assertSame(0,(int)DB::table('customer_ledger')->where('id',73)->value('is_active'));
+        $this->assertSame(0,DB::table('ledgers')->where('customer_ledger_id',73)
+            ->where('is_active',1)->count());
+        $this->assertSame('pending',DB::table('daily_voucher_approvals')
+            ->where('source_id',73)->value('status'));
     }
 
     public function test_rejection_requires_a_reason_and_keeps_the_voucher_unposted(): void
