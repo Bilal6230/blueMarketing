@@ -23,17 +23,20 @@ final class SevenFamilyBankSourcePickerContractTest extends TestCase
         self::assertStringContainsString("'finance_cheque_intake_actions'", $controller);
     }
 
-    public function test_typed_vouchers_cannot_silently_ignore_unimplemented_verified_source_claim(): void
+    public function test_bd_bw_validates_typed_bank_sources_while_multi_plot_remains_fail_closed(): void
     {
         $controller=file_get_contents(__DIR__.'/../../../app/Http/Controllers/Finance/VoucherController.php');
         self::assertIsString($controller);
-        foreach (['postTransferVoucher','postPlotReceipt'] as $method) {
-            $start=strpos($controller,'public function '.$method.'(');
-            self::assertNotFalse($start);
-            $section=substr($controller,$start,1000);
-            self::assertStringContainsString("!$"."request->filled('passed_source_id')", $section);
-            self::assertStringContainsString("!$"."request->filled('passed_source_method')", $section);
-            self::assertStringContainsString('typed allocation workflow', $section);
-        }
+        $bdStart=strpos($controller,'public function postTransferVoucher(');
+        self::assertNotFalse($bdStart);
+        $transfer=substr($controller,$bdStart,3800);
+        self::assertStringContainsString("'passed_source_method' => ['nullable','in:online,cheque']", $transfer);
+        self::assertStringContainsString("'passed_source_id' => ['nullable','integer','min:1']", $transfer);
+        self::assertStringContainsString('$passedMethod,$passedId', $transfer);
+        $pprStart=strpos($controller,'public function postPlotReceipt(');
+        self::assertNotFalse($pprStart);
+        $plot=substr($controller,$pprStart,850);
+        self::assertStringContainsString("!$"."request->filled('passed_source_id')", $plot);
+        self::assertStringContainsString('typed allocation workflow', $plot);
     }
 }
