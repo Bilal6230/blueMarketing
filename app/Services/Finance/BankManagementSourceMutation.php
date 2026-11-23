@@ -146,10 +146,18 @@ final class BankManagementSourceMutation
                         ->where('project_id', $projectId)->where('allocation_id', $allocation->id)->exists()) {
                         continue;
                     }
-                    $releases[] = app(BankVoucherAllocationRelease::class)->release(
-                        $projectId, (int)$allocation->voucher_id, $actorId, $reason,
-                        $cancelPendingForReplacement
-                    );
+                    $type=(string)$allocation->voucher_type;
+                    if(in_array($type,['BD','BW','BD_DRAFT','BW_DRAFT'],true)){
+                        $releases[]=app(TypedBankVoucherCustody::class)->release(
+                            $projectId,$type,(int)$allocation->voucher_id,
+                            $actorId,$reason,$cancelPendingForReplacement
+                        );
+                    }else{
+                        $releases[]=app(BankVoucherAllocationRelease::class)->release(
+                            $projectId, (int)$allocation->voucher_id, $actorId, $reason,
+                            $cancelPendingForReplacement
+                        );
+                    }
                 }
                 // Refuse any residual live claim after cascade.
                 $open = DB::table('finance_bank_voucher_allocations as a')
