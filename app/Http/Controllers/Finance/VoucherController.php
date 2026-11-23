@@ -1138,7 +1138,11 @@ class VoucherController extends Controller
                     ->orWhereHas('subheadAccounting', fn ($subhead) => $subhead->where('name', 'LIKE', '%cash%'));
             })
             ->orderBy('id')->get();
-        return view('admin.finance.voucher.bank_transfer_workspace', compact('kind', 'bankAccounts', 'cashAccounts'));
+        $counterAccounts=ProjectHeadSubhead::availableForPosting()
+            ->with(['headAccounting:id,name','subheadAccounting:id,name'])
+            ->where('project_id',$projectId)->orderBy('id')->get();
+        return view('admin.finance.voucher.bank_transfer_workspace',
+            compact('kind','bankAccounts','cashAccounts','counterAccounts'));
     }
 
     /** Read-only fresh preview for Plot Receipt and Plot Purchase modals. */
