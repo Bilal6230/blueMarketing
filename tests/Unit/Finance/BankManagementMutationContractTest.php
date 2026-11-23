@@ -22,13 +22,14 @@ final class BankManagementMutationContractTest extends TestCase
         self::assertStringContainsString("->lockForUpdate()->first()", $controller);
     }
 
-    public function test_verified_bank_edit_requires_authorized_replacement_not_in_place_posting(): void
+    public function test_linked_bank_edit_requires_replacement_but_unlinked_edit_keeps_original_id(): void
     {
         $controller=file_get_contents(base_path('app/Http/Controllers/Finance/BankManagementMutationController.php'));
         $mutation=file_get_contents(base_path('app/Services/Finance/BankManagementSourceMutation.php'));
         self::assertStringContainsString("->replace(", $controller);
         self::assertStringContainsString("function replace(", $mutation);
-        self::assertStringContainsString('->withdraw($projectId,$method,$sourceId,$actorId,$reason)', $mutation);
+        self::assertStringContainsString('->withdraw($projectId,$method,$sourceId,$actorId,$reason,true)', $mutation);
+        self::assertStringContainsString('$replacement=$linked;', $controller);
         self::assertStringContainsString('\'status\']=\'pending\'', $mutation);
         self::assertStringContainsString('\'status\']=$changes[\'direction\']===\'out\'?\'issued\':\'received\'', $mutation);
         self::assertStringContainsString('finance_bank_voucher_allocations', $mutation);
