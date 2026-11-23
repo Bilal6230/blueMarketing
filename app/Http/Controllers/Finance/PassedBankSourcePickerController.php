@@ -20,6 +20,10 @@ final class PassedBankSourcePickerController extends Controller
         $project=(int)getSelectedTown();
         abort_unless($project>0 && DB::table('projects')->where('id',$project)->exists(),403);
         $input=$request->validate([
+            // Shared custody picker contract for all seven requested families.
+            // Existing CR/DR/BOR/BOP callers may omit voucher_series until
+            // migrated; supplying it validates the requested debit/credit side.
+            'voucher_series'=>['nullable',Rule::in(['CR','DR','BOR','BOP','BD','BW','PPR'])],
             'method'=>['required',Rule::in(['online','cheque'])],
             'direction'=>['required',Rule::in(['receipt','payment'])],
             'search'=>['nullable','string','max:120'],
@@ -29,6 +33,16 @@ final class PassedBankSourcePickerController extends Controller
             'Partial bank source allocation migration is required.');
         $search=trim((string)($input['search']??''));
         $direction=$input['direction']==='receipt'?'receipt':'payment';
+        $seriesDirection=[
+            'CR'=>'receipt','DR'=>'payment',
+            'BOR'=>'receipt','BOP'=>'payment',
+            'BD'=>'receipt','BW'=>'payment','PPR'=>'receipt',
+        ];
+        if(!empty($input['voucher_series'])
+            && ($seriesDirection[$input['voucher_series']]??null)!==$direction) {
+            abort(422,'Selected voucher series and bank source direction do not match.');
+        }
+
         if($input['method']==='online'){
             abort_unless(Schema::hasTable('finance_online_intakes') &&
                 Schema::hasTable('finance_online_confirmation_events') &&
