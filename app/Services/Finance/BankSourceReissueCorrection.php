@@ -87,6 +87,23 @@ final class BankSourceReissueCorrection
         return $updates;
     }
 
+    /** Bank evidence is required before a Withdrawn source can be reactivated. */
+    private function hasOriginalVerification(int $projectId,string $method,int $sourceId,object $source): bool
+    {
+        if($method==='online') {
+            return Schema::hasTable('finance_online_confirmation_events')
+                && DB::table('finance_online_confirmation_events')
+                    ->where('project_id',$projectId)->where('online_intake_id',$sourceId)
+                    ->where('to_status','confirmed')->where('transaction_type',$source->type)
+                    ->exists();
+        }
+        return Schema::hasTable('finance_cheque_intake_actions')
+            && DB::table('finance_cheque_intake_actions')
+                ->where('project_id',$projectId)->where('cheque_intake_id',$sourceId)
+                ->where('action','cleared')->whereNotNull('verification_confirmed_at')
+                ->exists();
+    }
+
     public function preview(int $projectId,string $method,int $sourceId,array $changes): array
     {
         return DB::transaction(fn()=> $this->inspectLocked($projectId,$method,$sourceId,$changes),3);
@@ -105,9 +122,14 @@ final class BankSourceReissueCorrection
             ?: throw new \DomainException('Project not found.');
         $source=DB::table($table)->where('project_id',$projectId)
             ->where('id',$sourceId)->lockForUpdate()->first();
-        if (!$source || (string)$source->status!==($method==='online'?'confirmed':'cleared')) {
-            throw new \DomainException('Only confirmed/cleared sources can be corrected.');
-        }
+        if (!$source) throw new \DomainException('Bank source not found in the selected project.');
+        $verifiedStatus=$method==='online'?'confirmed':'cleared';
+        $isVerified=(string)$source->status===$verifiedStatus;
+        $recoverable=(string)$source->status==='withdrawn'
+            && $this->hasOriginalVerification($projectId,$method,$sourceId,$source);
+        // Unverified / non-cleared sources can still be corrected without
+        // claiming that the bank has verified them.
+        $readyAfter=$isVerified || $recoverable;
         if ($method==='cheque' && (int)($source->customer_ledger_id??0)>0) {
             throw new \DomainException('Legacy cheque ledger link requires manual reconciliation.');
         }
@@ -146,12 +168,19 @@ final class BankSourceReissueCorrection
                 ->where('source_id',$id)->lockForUpdate()->first();
             if (!$voucher || $legs->count()!==1
                 || DB::table('ledgers')->where('customer_ledger_id',$id)->count()!==1
-                || (int)$voucher->is_active!==1 || (int)$legs->first()->is_active!==1
                 || (int)$voucher->payment_type!==($method==='online'?2:3)
                 || (Schema::hasColumn('customer_ledger','deleted_at') && $voucher->deleted_at!==null)
                 || ($approval && ((string)$approval->voucher_type!==(string)$allocation->voucher_type
-                    || !in_array($approval->status,['approved','posted'],true)))) {
+                    || !in_array($approval->status,['approved','posted','pending','rejected'],true)))
+                || (!$approval && ((int)$voucher->is_active!==1 || (int)$legs->first()->is_active!==1))) {
                 throw new \DomainException('Linked voucher is not a safely posted single-leg entry.');
+            }
+            $pendingOrRejected=$approval && in_array((string)$approval->status,['pending','rejected'],true);
+            if($pendingOrRejected && ((int)$voucher->is_active!==0 || (int)$legs->first()->is_active!==0)) {
+                throw new \DomainException('Unposted voucher has active ledger rows; manual reconciliation required.');
+            }
+            if(!$pendingOrRejected && ((int)$voucher->is_active!==1 || (int)$legs->first()->is_active!==1)) {
+                throw new \DomainException('Posted voucher is not active; manual reconciliation required.');
             }
             BankVoucherLegIntegrity::assert((string)$allocation->voucher_type,
                 $voucher,$legs->first(),(float)$allocation->amount);
@@ -185,6 +214,8 @@ final class BankSourceReissueCorrection
             'verified_bank'=>$method==='online'?(string)$source->receiving_bank:(string)$source->bank_name,
             'direction'=>$method==='online'?(string)$source->type:(string)$source->direction,
             'before'=>$before,'after'=>$updated,
+            'ready_after_correction'=>$readyAfter,
+            'result_status'=>$readyAfter?$verifiedStatus:(string)$source->status,
             'active_vouchers'=>$active,'historical_released_count'=>$historical];
         $state['fingerprint']=hash('sha256',json_encode($state,JSON_THROW_ON_ERROR));
         return $state;
@@ -206,11 +237,22 @@ final class BankSourceReissueCorrection
             }
             foreach($plan['active_vouchers'] as $item) {
                 app(BankVoucherAllocationRelease::class)->release($projectId,
-                    $item['voucher_id'],$actorId,'Source correction: '.$reason);
+                    $item['voucher_id'],$actorId,'Source correction: '.$reason,true);
             }
             $table=$this->table($method);
             DB::table($table)->where('project_id',$projectId)->where('id',$sourceId)
-                ->update($plan['after']+['updated_at'=>now()]);
+                ->update($plan['after']+['status'=>$plan['result_status'],'updated_at'=>now()]);
+            if($plan['result_status']!==$plan['status'] && $method==='cheque') {
+                DB::table('finance_cheque_intake_actions')->insert([
+                    'project_id'=>$projectId,'cheque_intake_id'=>$sourceId,
+                    'action'=>'restored','from_status'=>$plan['status'],
+                    'to_status'=>$plan['result_status'],'action_date'=>now()->toDateString(),
+                    'reason'=>'Audited source reissue: '.$reason,'actor_id'=>$actorId,
+                    'bank_name'=>(string)$plan['verified_bank'],
+                    'original_amount'=>$plan['before']['amount'],
+                    'created_at'=>now(),
+                ]);
+            }
             DB::table('daily_voucher_edit_snapshots')->insert([
                 'project_id'=>$projectId,'source_id'=>$sourceId,'approval_id'=>null,
                 'status'=>'bank_source_fix',
@@ -224,8 +266,8 @@ final class BankSourceReissueCorrection
             ]);
             return ['source_id'=>$sourceId,'source_method'=>$method,
                 'released_vouchers'=>count($plan['active_vouchers']),
-                'amount'=>(string)$plan['after']['amount'],'status'=>$method==='online'?'confirmed':'cleared',
-                'ready_for_new_vouchers'=>true];
+                'amount'=>(string)$plan['after']['amount'],'status'=>$plan['result_status'],
+                'ready_for_new_vouchers'=>$plan['ready_after_correction']];
         },3);
     }
 }
