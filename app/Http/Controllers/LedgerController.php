@@ -255,7 +255,14 @@ class LedgerController extends Controller
             return response()->json(['status'=>'error',
                 'message'=>'Selected passed source does not match payment method.'],422);
         }
+        // Existing DR Online/Cheque clearance updates an already-created
+        // receipt. It must not require a NEW opposite posting account.
+        $reusingPendingBankClearance=!$linkedVerifiedSource
+            && in_array($paymentType,[2,3],true)
+            && $effectiveVoucherType==='CP'
+            && (int)$request->input('selected_pending_payment_id')>0;
         if(in_array($voucherPrefix,['CR','DR'],true)
+            && !$reusingPendingBankClearance
             && !$request->filled('counter_account_id')) {
             return response()->json(['status'=>'error',
                 'message'=>'Select an opposite posting account for this voucher.'],422);
@@ -349,7 +356,7 @@ class LedgerController extends Controller
                     throw new \DomainException('CASH_VOUCHER_PROJECT_NOT_FOUND');
                 }
                 $standardCounter = null;
-                if(in_array($voucherPrefix,['CR','DR'],true)){
+                if(in_array($voucherPrefix,['CR','DR'],true) && !$isCashOutPendingClearance){
                     $standardCounter=ProjectHeadSubhead::availableForPosting()
                         ->where('project_id',$selectedProjectId)
                         ->whereKey((int)$request->input('counter_account_id'))
