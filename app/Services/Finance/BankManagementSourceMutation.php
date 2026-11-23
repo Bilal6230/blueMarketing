@@ -67,22 +67,38 @@ final class BankManagementSourceMutation
                     ->where('project_id',$projectId)
                     ->where('id',(int)$updates['account_mapping_id'])->value('customer_id');
             }
+            // An unlinked source keeps its ID. A verified bank identity
+            // changed in-place must go back through bank confirmation, not
+            // inherit clearance for a different cheque/reference.
+            $identityChanged=$method==='online'
+                ? (isset($updates['reference']) && (string)$updates['reference']!==(string)$source->reference)
+                    || (isset($updates['type']) && (string)$updates['type']!==(string)$source->type)
+                : (isset($updates['cheque_number']) && (string)$updates['cheque_number']!==(string)$source->cheque_number)
+                    || (isset($updates['bank_name']) && (string)$updates['bank_name']!==(string)$source->bank_name)
+                    || (isset($updates['direction']) && (string)$updates['direction']!==(string)$source->direction);
+            if($identityChanged && ($method==='online' && $source->status==='confirmed'
+                || $method==='cheque' && $source->status==='cleared')) {
+                $updates['status']=$method==='online'?'pending':
+                    (($updates['direction']??$source->direction)==='out'?'issued':'received');
+            }
             $updates['updated_at'] = now();
             DB::table($table)->where('project_id', $projectId)->where('id', $sourceId)
                 ->update($updates);
-            return ['id'=>$sourceId,'method'=>$method,'status'=>(string)$source->status,
+            return ['id'=>$sourceId,'method'=>$method,
+                'status'=>(string)($updates['status']??$source->status),
                 'changed_fields'=>array_keys($changes)];
         }, 3);
     }
 
-    public function withdraw(int $projectId, string $method, int $sourceId, int $actorId, string $reason): array
+    public function withdraw(int $projectId, string $method, int $sourceId, int $actorId, string $reason, bool $cancelPendingForReplacement=false): array
     {
         $table = $this->table($method);
         $reason = trim($reason);
         if ($actorId < 1 || mb_strlen($reason) < 3 || mb_strlen($reason) > 500) {
             throw new \DomainException('A reason of 3–500 characters and authorized actor are required.');
         }
-        return DB::transaction(function () use ($projectId, $method, $sourceId, $actorId, $reason, $table): array {
+        return DB::transaction(function () use ($projectId, $method, $sourceId, $actorId, $reason, $table,
+            $cancelPendingForReplacement): array {
             $this->lockProject($projectId);
             $source = DB::table($table)->where('project_id', $projectId)
                 ->where('id', $sourceId)->lockForUpdate()->first();
@@ -125,7 +141,8 @@ final class BankManagementSourceMutation
                         continue;
                     }
                     $releases[] = app(BankVoucherAllocationRelease::class)->release(
-                        $projectId, (int)$allocation->voucher_id, $actorId, $reason
+                        $projectId, (int)$allocation->voucher_id, $actorId, $reason,
+                        $cancelPendingForReplacement
                     );
                 }
                 // Refuse any residual live claim after cascade.
@@ -184,13 +201,8 @@ final class BankManagementSourceMutation
             $links=DB::table('finance_bank_voucher_allocations')
                 ->where('project_id',$projectId)->where('source_method',$method)
                 ->where('source_id',$sourceId)->exists();
-            // Verified sources, with or without allocations, are replaced
-            // rather than overwritten; unverified sources use ordinary Edit.
-            if ($method==='online' && (string)$source->status!=='confirmed') {
-                throw new \DomainException('Only confirmed linked online sources may be replaced.');
-            }
-            if ($method==='cheque' && (string)$source->status!=='cleared') {
-                throw new \DomainException('Only cleared linked cheques may be replaced.');
+            if (!$links || (string)$source->status==='withdrawn') {
+                throw new \DomainException('Replacement requires an existing non-withdrawn source with voucher history.');
             }
             if (!DB::table('project_head_subheads')->where('project_id',$projectId)
                 ->where('id',(int)($changes['account_mapping_id']??0))->exists()) {
@@ -212,7 +224,7 @@ final class BankManagementSourceMutation
                     throw new \DomainException('A replacement requires a NEW unique cheque/bank reference.');
                 }
             }
-            $withdrawn=$this->withdraw($projectId,$method,$sourceId,$actorId,$reason);
+            $withdrawn=$this->withdraw($projectId,$method,$sourceId,$actorId,$reason,true);
             if ($method==='online') {
                 $row=array_intersect_key($changes,array_flip([
                     'reference','transaction_date','amount','type','sending_bank','sending_account',
@@ -265,10 +277,7 @@ final class BankManagementSourceMutation
 
     private function assertUnlinkedAndEditable(int $projectId, string $method, int $id, object $source): void
     {
-        $editable = $method === 'online'
-            ? (string)$source->status === 'pending'
-            : in_array((string)$source->status, ['received','issued'],true);
-        if (!$editable) throw new \DomainException('Verified or terminal source requires linked correction; direct edit/delete is blocked.');
+        // Voucher history, not verification status, determines direct edit.
         if (!Schema::hasTable('finance_bank_voucher_allocations')) {
             throw new \DomainException('Allocation evidence is unavailable.');
         }
@@ -284,12 +293,6 @@ final class BankManagementSourceMutation
         if (!Schema::hasTable($claimTable) || DB::table($claimTable)
             ->where('project_id',$projectId)->where($claimColumn,$id)->exists()) {
             throw new \DomainException('Historical claim exists or claim evidence unavailable.');
-        }
-        $eventTable = $method === 'online'?'finance_online_confirmation_events':'finance_cheque_intake_actions';
-        $eventColumn = $method === 'online'?'online_intake_id':'cheque_intake_id';
-        if (!Schema::hasTable($eventTable) || DB::table($eventTable)->where('project_id',$projectId)
-            ->where($eventColumn,$id)->exists()) {
-            throw new \DomainException('Historical bank action exists or action evidence unavailable.');
         }
     }
 }
