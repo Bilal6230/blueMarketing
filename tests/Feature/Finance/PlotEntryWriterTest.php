@@ -118,6 +118,11 @@ class PlotEntryWriterTest extends TestCase
         $this->assertFalse($created['replayed']); $this->assertTrue($replayed['replayed']);
         $this->assertSame($created['source_id'], $replayed['source_id']);
         $this->assertDatabaseCount('finance_plot_receipts', 1);
+        $this->assertSame(0,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$created['posting_batch_id'])
+            ->whereNull('legacy_ledger_id')->count());
+        $this->assertSame(3,DB::table('ledger_source_attributions')->count());
+
         $this->assertDatabaseCount('finance_plot_receipt_allocations', 2);
         $this->assertSame(100.0, (float) DB::table('finance_posting_lines')->where('posting_batch_id', $created['posting_batch_id'])->where('project_head_subhead_id', 101)->value('debit'));
         $details = $writer->receipt(1, $created['source_id']);
