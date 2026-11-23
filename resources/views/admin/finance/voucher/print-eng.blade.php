@@ -155,6 +155,14 @@
                 $amount = in_array((string)$voucher->type,['CP','DR','CDR','BOP','BO'],true)
                     ? (float)$voucher->amount_out
                     : (float)$voucher->amount_in;
+                if(in_array((string)$voucher->type,['BOR','BOP'],true)
+                    && $voucher->customer_ledger_id){
+                    $source=$voucher->customerLedger;
+                    $face=$voucher->type==='BOR'
+                        ? (float)($source?->amount_in??0)
+                        : (float)($source?->amount_out??0);
+                    if($face>0)$amount=$face;
+                }
             @endphp
             <tbody>
                 <tr>
