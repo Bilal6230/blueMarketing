@@ -90,6 +90,13 @@ final class BankTransferEditor
                 // workflow. Never silently change a passed cheque amount.
                 throw new \DomainException('Linked cheque bank voucher requires custody release before editing.');
             }
+            if(Schema::hasTable('finance_bank_voucher_allocations')
+                && DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$projectId)
+                    ->where('voucher_type',$kind==='deposit'?'BD':'BW')
+                    ->where('voucher_id',$batchId)->exists()){
+                throw new \DomainException('Verified bank-linked voucher requires audited source release before editing.');
+            }
             $oldBank=DB::table('project_bank_accounts')->where('id',$source->bank_account_id)
                 ->where('project_id',$projectId)->first();
             $newBank=DB::table('project_bank_accounts')->where('id',$bankAccountId)
@@ -205,6 +212,13 @@ final class BankTransferEditor
             }
             if ($source->linked_customer_ledger_id!==null) {
                 throw new \DomainException('Linked cheque bank voucher requires custody release before deleting.');
+            }
+            if(Schema::hasTable('finance_bank_voucher_allocations')
+                && DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$projectId)
+                    ->where('voucher_type',$kind==='deposit'?'BD':'BW')
+                    ->where('voucher_id',$batchId)->exists()){
+                throw new \DomainException('Verified bank-linked voucher requires audited source release before deleting.');
             }
             $bank=DB::table('project_bank_accounts')
                 ->where('id',$source->bank_account_id)
