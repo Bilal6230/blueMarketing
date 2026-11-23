@@ -133,7 +133,12 @@ final class TypedBankVoucherCustody
         }
         $this->releaseEvidence($claim,$actorId,'Approved typed bank voucher moved to posting batch #'.$batchId,
             'approval_transfer');
-        $this->claimPosted($projectId,$series,$batchId,$method,$sourceId,$amount,$actorId);
+        $instrument=app(VerifiedBankInstrument::class)->inspectLocked(
+            $projectId,$series,$method,$sourceId,$amount);
+        if((int)$instrument['account_mapping_id']!==(int)$draft->cash_account_id){
+            throw new \DomainException('Approved source account mapping changed after pending approval.');
+        }
+        $this->allocate($projectId,$series,$batchId,$method,$sourceId,$amount,$actorId);
     }
 
     /** One typed posting/draft is released without touching an unrelated legacy voucher. */
