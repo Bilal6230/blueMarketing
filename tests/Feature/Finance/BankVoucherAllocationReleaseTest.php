@@ -28,6 +28,7 @@ final class BankVoucherAllocationReleaseTest extends TestCase
         Schema::create('booking_vouchers', function(Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('project_id');
             $t->unsignedBigInteger('customer_ledger_id');
+            $t->unsignedBigInteger('ledger_id')->nullable();
             $t->string('voucher_series'); $t->boolean('is_active')->default(true);
             $t->timestamps();
         });
@@ -234,6 +235,25 @@ final class BankVoucherAllocationReleaseTest extends TestCase
         $this->expectExceptionMessage('BANK_VOUCHER_DOUBLE_ENTRY_DIRECTION_INVALID');
         app(BankVoucherAllocationRelease::class)
             ->release(1,29,42,'Corrupt balanced payment cannot release');
+    }
+
+    public function test_balanced_original_ppr_releases_both_cash_bank_and_receivable_legs(): void
+    {
+        $this->source(36,'PPR','online','posted',380.00,380.00);
+        $canonicalId=(int)DB::table('ledgers')->where('customer_ledger_id',36)->value('id');
+        DB::table('booking_vouchers')->where('customer_ledger_id',36)
+            ->update(['ledger_id'=>$canonicalId]);
+        DB::table('ledgers')->insert([
+            'customer_ledger_id'=>36,'project_head_subheads_id'=>4,
+            'type'=>'PPR','is_active'=>1,'amount_in'=>0,'amount_out'=>380,
+        ]);
+        $result=app(BankVoucherAllocationRelease::class)
+            ->release(1,36,42,'Corrected original balanced PPR bank source');
+        $this->assertSame('posted_void_release',$result['action']);
+        $this->assertSame(2,DB::table('ledgers')
+            ->where('customer_ledger_id',36)->where('is_active',0)->count());
+        $this->assertSame(0,(int)DB::table('booking_vouchers')
+            ->where('customer_ledger_id',36)->value('is_active'));
     }
 
     public function test_posted_ppr_cheque_releases_once_and_retires_booking_voucher(): void
