@@ -174,7 +174,16 @@ final class OnlineIntakeController extends Controller
                 ->selectRaw('COUNT(*) as allocations_count')
                 ->groupBy('source_id')->pluck('allocations_count','source_id');
         }
-        $rows=collect($page->items())->map(function($row)use($linkedCounts){
+        $pendingCorrections=collect();
+        if (Schema::hasTable('finance_bank_correction_requests') && $page->count()) {
+            $pendingCorrections=DB::table('finance_bank_correction_requests')
+                ->where('project_id',$project)->where('source_method','online')
+                ->where('status','pending')->whereIn('source_id',collect($page->items())->pluck('id'))
+                ->pluck('id','source_id');
+        }
+        $rows=collect($page->items())->map(function($row)use($linkedCounts,$pendingCorrections){
+            $row->correction_pending=$pendingCorrections->has($row->id);
+            $row->correction_request_id=$pendingCorrections->get($row->id);
             $row->linked_voucher_count=(int)($linkedCounts->get($row->id)??0);
             $row->has_proof=(bool)$row->proof_path;
             $row->proof_url=$row->has_proof
