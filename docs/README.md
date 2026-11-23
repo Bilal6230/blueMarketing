@@ -19,6 +19,40 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 03 — Original PPR verified-source writer + release and modal (2026-11-23)
+
+**Implemented new functional PPR scope:** The current **New voucher** entry on Plot Receive Payment opens the original single-booking PPR modal (`prOriginalCreateModal`), which writes a `customer_ledger` PPR plus its canonical `booking_vouchers` and one receivable `ledgers` entry. This writer can use the already-installed M04 bank voucher allocation table. Online/Cheque Payment Type now opens the verified management source picker with project-scoped cleared incoming Cheque / Confirmed incoming Online only; chosen reference, verified passing date and available amount fill the form. Existing manual Cash selection remains unchanged. The separately available legacy *typed multi-plot* `postPlotReceipt()` still does not accept bank source fields and is NOT silently routed through the single-booking writer.
+
+**Backend:** `BookingController::deposit` PPR branch now requires `passed_source_method` + `passed_source_id` for payment types 2/3, rejects bank claims on Cash, validates management evidence and remaining amount using `PassedBankVoucherClaim::verify()` while holding project transaction lock, and writes immutable `PPR` allocation in the SAME transaction after source/ledger creation. A replay with a different instrument identity is rejected. Source reference is kept in `t_number` and immutable claim; the original PPR slip/reference remains a unique voucher identity and cannot be conflated with a bank instrument reused for partial allocation. Bank selection is required when noncash. Existing PPR approval submission remains unchanged; allocation is reserved even while PPR waits for approval.
+
+**Source correction and release:** M04 `BankVoucherLegIntegrity` now validates original PPR's *customer_ledger.amount_out* against the single *ledgers.amount_in* leg, and `BankManagementCascadePlanner` knows PPR. `BankVoucherAllocationRelease` authorizes verified `PPR` identity, deactivates source and ledger through existing posted/pending/rejected release transaction and retires the matching `booking_vouchers` record without hard deletion. Existing CR/DR/BOR/BOP behavior remains. Tests extended: `BankVoucherAllocationReleaseTest` has posted PPR reissue/once-only release and pending PPR rejection cases; `PprVerifiedSourceContractTest` guards frontend + source linking contracts. No migration or new table in this PPR batch.
+
+**LOCAL TESTS REQUIRED before browser sign-off:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Http/Controllers/BookingController.php
+php -l app/Services/Finance/BankVoucherAllocationRelease.php
+php -l app/Services/Finance/BankVoucherLegIntegrity.php
+php artisan test --filter=PprVerifiedSourceContractTest
+php artisan test --filter=BankVoucherAllocationReleaseTest
+php artisan test --filter=BankLinkedCorrectionApprovalIntegrationTest
+php artisan test --filter=VerifiedBankInstrumentContractTest
+php artisan finance:audit-posting-balances
+```
+
+**PPR browser acceptance REQUIRED after green local tests (disposable only):**
+1. Plot Receive Payment > New voucher: choose Cash. No bank-source picker; previous PPR Cash save/approval stays functional.
+2. Choose Online: modal opens with only confirmed receipt sources in selected project. Select one and Apply. Transaction reference/passing date/bank and remaining amount appear; choose a valid Bank if the source's bank name does not match an option. Save a partial amount, confirm PPR voucher and bank-source remaining balance.
+3. Choose Cheque: only cleared incoming cheques, choose one; create PPR, confirm 1 source allocation and linked BookingVoucher/ledger (subject to approval). Reject forged source ID, over-allocation, failed clearance, cross-project ID and duplicate replay without mutation.
+4. Approval ON: pending PPR remains inactive until approval. Approved shows posted; rejection keeps original history.
+5. M04 source correction/replace: posted PPR becomes inactive, its booking voucher becomes inactive, release record exists once, original financial evidence stays; repeat release rejected.
+6. Existing CR/DR/BOR/BOP selection popup remains operational.
+
+**Still NOT COMPLETE in Milestone 03:** BD/BW typed verified-source Payment Type and release/draft approval writer + frontend; typed multi-plot receipt source claim (separate from currently used original single-booking PPR); BOR/BOP genuine bank-only opposite-side posting account. Do not mark M03 complete or run unimplemented flows as browser tests.
+
 ## Milestone 03 — BD/BW browser ACCEPTED; seven-source integration active (2026-11-23)
 
 **Owner acceptance:** BD/BW manual Create/Edit/Delete, bank/cash ledger and voucher history **6/6 browser checks PASS**; local BD/BW source-identity and writer tests **12 PASS / 83 assertions**, PlotEntryWriter **45 PASS / 298 assertions**, all-project financial audit **6/6 CLEAN**. Do NOT repeat the already accepted manual BD/BW regression unless a new change affects it.
