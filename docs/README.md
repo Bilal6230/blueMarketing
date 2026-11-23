@@ -19,6 +19,37 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 03 — Typed multi-plot PPR verified bank custody completed in code (2026-11-23)
+
+**Latest verified isolated CI:** Dedicated Milestone 03 finance source integration job PASS **112 tests / 789 assertions**, including inherited original PlotEntryWriter regressions, new typed multi-plot PPR verified Cheque direct post, immutable claim, double-spend denial, release/soft-void, approval-pending reservation, approved draft transfer, rejected draft capacity release, bank-profile validation, BOR/BOP balanced posting, BD/BW typed custody, original PPR, and M04 correction/reissue. Shared jQuery Online/Cheque narration tests PASS. Note: these are isolated SQLite tests; user Laragon migration and browser tests remain pending. The unrelated historical Database V2 CI jobs continue to fail their existing legacy schema/seeder checks and do not establish an M03 finance failure.
+
+**Typed PPR implementation:** `PlotEntryWriter::receive` accepts `payment_type` (Cash=1, Online=2, Cheque=3) and a selected `passed_source_method`/`passed_source_id`. Verified PPR requires an ACTIVE selected-project bank `cash_account_id` profile for its Debit Bank leg, while chosen booking receivables are credited in one balanced typed batch. The management intake's `account_mapping_id` is not falsely treated as the bank-side account. Cheque/Online clearance and unallocated remaining balance are reverified inside posting transaction before immutable `PPR_TYPED` allocation. `PlotVoucherApprovalDraftWriter` reserves `PPR_TYPED_DRAFT` at submission (no posting), and `DailyVoucherApprovalWorkflow` approves by atomically transferring the reserved amount into a posted source; rejected approvals release capacity with immutable history. `TypedPlotReceiptBankCustody` implements M04 source-correction release, exact original receipt source/posting/legacy-ledger/booking allocation integrity checks, active source soft-void and ledger leg deactivation. `BankManagementSourceMutation` and `BankManagementCascadePlanner` now route both posted and pending typed PPR allocations without mistakenly referring to `customer_ledger`. Ordinary typed Edit/Delete/Reverse is blocked for source-linked PPR until audited source release; Cash PPR retains prior editing. **No new table or migration is needed for typed PPR; existing shared allocation table supports types `PPR_TYPED` and `PPR_TYPED_DRAFT`.**
+
+**UI:** The separate typed multi-plot PPR modal now offers Cash, Online or Cheque, shares the same confirmed/cleared incoming-source radio picker and single SOURCE narration formatter with the original single-booking PPR modal. It enforces selected source and available balance over the aggregate of all selected booking allocations. The main New Voucher original single-booking PPR entry remains unchanged and already supports verified sources.
+
+**Local gate (M03 now has a migration for balanced BOR/BOP only):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan migrate
+php artisan view:cache
+php artisan test --filter=BalancedBankVoucherIntegrityTest
+php artisan test --filter=BalancedBankVoucherAccountContractTest
+php artisan test --filter=BankVoucherAllocationReleaseTest
+php artisan test --filter=TypedBankVoucherCustodyTest
+php artisan test --filter=TypedPlotReceiptBankCustodyTest
+php artisan test --filter=TypedPlotReceiptBankCustodyContractTest
+php artisan test --filter=PprVerifiedSourceContractTest
+php artisan test --filter=BankLinkedCorrectionApprovalIntegrationTest
+php artisan finance:audit-posting-balances
+node tests/JavaScript/verified-source-narration.test.cjs
+```
+
+**Browser sign-off still REQUIRED:** test BOR/BOP active bank selector, exact Dr/Cr balanced ledger, one listing row, print face amount, approval ON/OFF, cancellation/reissue; BD/BW cleared Cheque and confirmed Online with release; original PPR Online/Cheque with approval and booking voucher; typed PPR multi-plot modal with at least two active bookings and partial verified source allocation, approval ON/OFF, source mutation and no duplicate allocation. Also confirm manual Cash paths unchanged and six-project audit clean.
+
+**Further account UX requested historically but not yet accepted:** CR/DR one generic opposite-side debit/credit account selector (not only bank vouchers) needs its own full dual-leg cash/posting edit lifecycle and regression. Do not conflate the completed **BOR/BOP bank-only opposite-side** with CR/DR generic counterpart redesign, and do not close Milestone 03 before owner's browser sign-off and decision on this remaining UX item.
+
 ## Milestone 03 — BOR/BOP bank-only opposite-side and balanced ledger integration (2026-11-23)
 
 **Owner accepted:** Original verified source narration **7/7 manual browser checks PASS** (CR/DR/BOR/BOP, BD/BW, PPR). Prior manual BD/BW checks also PASS.
