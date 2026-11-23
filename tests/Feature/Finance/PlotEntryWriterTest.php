@@ -113,6 +113,34 @@ class PlotEntryWriterTest extends TestCase
         DB::disconnect('sqlite'); parent::tearDown();
     }
 
+    public function test_obsolete_plot_voucher_number_formats_remain_rejected(): void
+    {
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('PLOT_VOUCHER_NUMBER_INVALID');
+        (new PlotEntryWriter())->receive(1,5,'PLOT-BAD-NUMBER-CONTRACT-001',[
+            'date'=>'2026-11-05','receipt_number'=>'PR-TEST-OLD',
+            'amount'=>'70.00','cash_account_id'=>101,'narration'=>'Invalid format',
+            'allocations'=>[['booking_id'=>31,'plot_id'=>11,
+                'receivable_account_id'=>102,'amount'=>'70.00']],
+        ],7);
+    }
+
+    public function test_obsolete_purchase_number_format_remains_rejected(): void
+    {
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('PLOT_VOUCHER_NUMBER_INVALID');
+        (new PlotEntryWriter())->purchase(1,'PLOT-BAD-PURCHASE-NUMBER-001',[
+            'date'=>'2026-11-05','purchase_number'=>'PP-OLD-TEST',
+            'seller_account_id'=>102,'narration'=>'Invalid format',
+            'items'=>[[
+                'plot_code'=>'INVALID-NUMBER-PLOT',
+                'description'=>'Test item','area'=>'1','unit'=>'Kanal','type'=>1,
+                'road_id'=>1,'facing_id'=>1,'unit_rate'=>'100',
+                'inventory_account_id'=>104,
+            ]],
+        ],7);
+    }
+
     public function test_multi_plot_receipt_posts_once_and_exposes_separate_plot_allocations(): void
     {
         $writer = new PlotEntryWriter();
