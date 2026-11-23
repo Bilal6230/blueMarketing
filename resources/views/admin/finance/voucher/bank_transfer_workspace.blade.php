@@ -131,7 +131,23 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                         <input id="btVoucherNumber" class="form-control" value="{{ $kind === 'deposit' ? 'BD' : 'BW' }} — loading" readonly aria-readonly="true">
                         <small class="text-muted">Next project-specific number. Final serial is reserved during save.</small>
                     </div>
-                    <div class="alert alert-info py-2">{{ $kind === 'deposit' ? 'Bank debit / Cash credit' : 'Cash debit / Bank credit' }}.</div>
+                    <div class="alert alert-info py-2">{{ $kind === 'deposit' ? 'Bank debit / counter-account credit' : 'Counter-account debit / bank credit' }}. Cash/Manual keeps the original verified BD/BW transfer behavior.</div>
+                    <div class="form-group">
+                        <label for="btPaymentType">Payment Type <span class="text-danger">*</span></label>
+                        <select id="btPaymentType" class="form-control fvc-tom-select">
+                            <option value="1">Cash / Manual Transfer</option>
+                            <option value="2">Online — Confirmed Management Source</option>
+                            <option value="3">Cheque — Cleared Management Source</option>
+                        </select>
+                    </div>
+                    <div class="form-group bt-verified-source d-none">
+                        <label>Verified Cheque / Online Transaction <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input id="btPassedLabel" class="form-control" readonly placeholder="Choose a verified instrument">
+                            <div class="input-group-append"><button type="button" class="btn btn-outline-primary" id="btOpenPassedPicker">Choose Source</button></div>
+                        </div>
+                        <small class="text-muted">The verified account mapping sets the counter-account. Amount cannot exceed the unallocated balance.</small>
+                    </div>
                     @if($kind === 'withdrawal')
                     <div class="form-group"><label for="chequeSource">Verified cleared cheque (optional)</label>
                         <select id="chequeSource" class="form-control fvc-tom-select"><option value="">Manual bank withdrawal</option></select>
@@ -143,10 +159,13 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                             <input id="voucherDate" type="date" class="form-control" value="{{ now()->toDateString() }}" required></div>
                         <div class="form-group col-md-6"><label for="voucherAmount">Amount <span class="text-danger">*</span></label>
                             <input id="voucherAmount" type="number" class="form-control" min="0.01" step="0.01" placeholder="0.00" required></div>
-                        <div class="form-group col-md-6"><label for="cashAccount">Cash account <span class="text-muted small">({{ $cashAccounts->count() }} available)</span></label>
-                            <select id="cashAccount" class="form-control fvc-tom-select" required><option value="">Choose cash account</option>
-                            @foreach($cashAccounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }} / {{ $account->subheadAccounting?->name }}</option>@endforeach</select>
-                            @if($cashAccounts->isEmpty())<small class="text-danger">Configure an active Cash in Hand project account mapping first.</small>@endif
+                        <div class="form-group col-md-6"><label id="btCounterLabel" for="cashAccount">Cash account <span class="text-muted small">(Cash/Manual)</span></label>
+                            <select id="cashAccount" class="form-control fvc-tom-select" required><option value="">Choose counter-account</option>
+                            @foreach($counterAccounts as $account)
+                                <option value="{{ $account->id }}" data-manual-cash="{{ $cashAccounts->contains('id',$account->id) ? '1' : '0' }}">{{ $account->headAccounting?->name }} / {{ $account->subheadAccounting?->name }} (#{{ $account->id }})</option>
+                            @endforeach
+                            </select>
+                            @if($cashAccounts->isEmpty())<small class="text-danger">Configure an active Cash in Hand project account mapping for manual transfers.</small>@endif
                         </div>
                         <div class="form-group col-md-6"><label for="bankAccount">Bank account <span class="text-muted small">({{ $bankAccounts->count() }} available)</span></label>
                             <select id="bankAccount" class="form-control fvc-tom-select" required><option value="">Choose bank account</option>
@@ -166,6 +185,25 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             </form>
         </div>
     </div>
+</div>
+
+<div class="modal fade" id="btPassedPickerModal" tabindex="-1" role="dialog" aria-label="Verified bank source">
+ <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Select verified Cheque / Online transaction</h5>
+   <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div>
+  <div class="modal-body">
+   <input id="btPassedSearch" class="form-control mb-2" placeholder="Search cheque number or online reference" maxlength="120">
+   <div id="btPassedError" class="alert alert-danger d-none" role="alert"></div>
+   <div class="table-responsive"><table class="table table-hover table-sm">
+    <thead><tr><th>Select</th><th>Reference</th><th>Passing date</th><th>Remaining</th><th>Bank</th></tr></thead>
+    <tbody id="btPassedRows"><tr><td colspan="5" class="text-muted text-center">Choose Payment Type to load verified sources.</td></tr></tbody>
+   </table></div>
+  </div>
+  <div class="modal-footer">
+   <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+   <button type="button" class="btn btn-primary" id="btApplyPassed" disabled>Apply Source</button>
+  </div>
+ </div></div>
 </div>
 
 <div class="modal fade fvc-modern-modal bt-modern-modal" style="--fvc-modal-accent:{{ $kind === 'deposit' ? '#128044' : '#bd3140' }};--fvc-modal-tint:{{ $kind === 'deposit' ? '#e9f8ef' : '#fff0f1' }}" id="bankTransferViewModal" tabindex="-1" role="dialog" aria-labelledby="bankTransferViewTitle" aria-hidden="true">
