@@ -41,7 +41,8 @@ final class BankManagementCascadePlanner
             ->orderBy('a.id')
             ->get(['a.id', 'a.voucher_id', 'a.voucher_type', 'a.amount',
                 'r.id as release_id', 'r.action as release_action',
-                'a.bank_account_id']);
+                Schema::hasColumn('finance_bank_voucher_allocations','bank_account_id')
+                    ? 'a.bank_account_id' : DB::raw('NULL AS bank_account_id')]);
 
         $blocked = false;
         $details = [];
