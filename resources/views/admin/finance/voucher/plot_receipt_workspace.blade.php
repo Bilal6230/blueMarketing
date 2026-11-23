@@ -32,6 +32,7 @@
    @endif
   </div>
  </div>
+    <form id="prFilterForm" class="d-none" aria-hidden="true"></form>
  <x-finance.voucher-table-card class="pr-table-card">
   <div class="bm-voucher-table-toolbar pr-tools bm-records-toolbar">
    <label>Show <select id="prLength" class="form-control form-control-sm"><option>10</option><option selected>25</option><option>50</option><option>100</option></select> entries</label>
@@ -323,7 +324,7 @@
  };
  columns=$.blueVoucherColumnFilters.init({
   initialOptions:{head:[],subhead:[],account_relations:[]},
-  formSelector:'#plotReceiptApp',quickSearchSelector:'#prQuickSearch',
+  formSelector:'#prFilterForm',quickSearchSelector:'#prQuickSearch',
   triggerSelector:'#plotReceiptApp .dv-excel-trigger',tableWrapSelector:'.pr-table-wrap',
   getStart:function(){return (page-1)*(Number($('#prLength').val())||25);},
   getLength:function(){return Number($('#prLength').val())||25;},
