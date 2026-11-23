@@ -33,6 +33,7 @@
    @endcan
   </div>
  </div>
+    <form id="ppFilterForm" class="d-none" aria-hidden="true"></form>
  <x-finance.voucher-table-card class="bm-voucher-table-card pp-table-card">
   <div class="bm-voucher-table-toolbar bm-records-toolbar">
    <label>Show <select id="ppLength" class="form-control form-control-sm"><option>10</option><option selected>25</option><option>50</option><option>100</option></select> entries</label>
@@ -246,7 +247,7 @@
  async function init(){try{const r=await requestJson(root.dataset.optionsUrl,{headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}}),j=await r.json();if(!r.ok)throw Error(j.message||'Could not load plot definitions');options=j;row();await loadHistory()}catch(e){alert('danger',e.message)}}
  purchaseColumns=$.blueVoucherColumnFilters.init({
    initialOptions:{head:[],subhead:[],account_relations:[]},
-   formSelector:'#plotPurchaseApp',quickSearchSelector:'#ppQuickSearch',
+   formSelector:'#ppFilterForm',quickSearchSelector:'#ppQuickSearch',
    triggerSelector:'#plotPurchaseApp .dv-excel-trigger',tableWrapSelector:'.pp-scroll',
    getStart:function(){return (historyPage-1)*(Number($('#ppLength').val())||25);},
    getLength:function(){return Number($('#ppLength').val())||25;},
