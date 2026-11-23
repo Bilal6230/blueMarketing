@@ -104,7 +104,8 @@ final class PassedBankVoucherClaim
     }
 
     public function claim(int $projectId,string $kind,int $intakeId,
-        string $voucherType,int $voucherId,int $userId,float $amount): void
+        string $voucherType,int $voucherId,int $userId,float $amount,
+        ?int $bankAccountId=null): void
     {
         // Called after verify() while the source row remains locked in the
         // same project-locked voucher transaction; both writes roll back together.
@@ -116,6 +117,9 @@ final class PassedBankVoucherClaim
             'source_method'=>$kind,'source_id'=>$intakeId,
             'voucher_type'=>$voucherType,'voucher_id'=>$voucherId,
             'amount'=>number_format($amount,2,'.',''),
+        ] + ($bankAccountId!==null
+            ? ['bank_account_id'=>$bankAccountId]
+            : []) + [
             'allocated_by'=>$userId,'allocated_at'=>now(),
             'created_at'=>now(),'updated_at'=>now(),
         ]);
