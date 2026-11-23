@@ -45,6 +45,40 @@ final class BankManagementCascadePlanner
         $blocked = false;
         $details = [];
         foreach ($allocations as $allocation) {
+            $type=(string)$allocation->voucher_type;
+            if(in_array($type,['BD','BW','BD_DRAFT','BW_DRAFT'],true)){
+                $draft=str_ends_with($type,'_DRAFT');
+                $series=$draft?substr($type,0,2):$type;
+                $record=$draft
+                    ? DB::table('finance_bank_transfer_approval_drafts')
+                        ->where('project_id',$projectId)->where('id',$allocation->voucher_id)
+                        ->where('transfer_kind',$series==='BD'?'deposit':'withdrawal')->first()
+                    : DB::table('finance_bank_transfer_sources')
+                        ->where('project_id',$projectId)->where('posting_batch_id',$allocation->voucher_id)
+                        ->where('transfer_kind',$series==='BD'?'deposit':'withdrawal')->first();
+                $unreleased=$allocation->release_id===null;
+                $matches=(!$unreleased)||($record!==null
+                    && round((float)$record->amount,2)===round((float)$allocation->amount,2)
+                    && ($draft
+                        ? in_array((string)$record->status,['pending','rejected'],true)
+                            && (string)$record->passed_source_method===$method
+                            && (int)$record->passed_source_id===$sourceId
+                        : (int)($record->is_active??1)===1
+                            && ($record->deleted_at??null)===null));
+                $pendingApproval=$draft&&$unreleased&&$record!==null
+                    && (string)$record->status==='pending';
+                $unsafe=!$matches||$unreleased;
+                $blocked=$blocked||$unsafe;
+                $details[]=[
+                    'allocation_id'=>(int)$allocation->id,
+                    'voucher_type'=>$type,'voucher_id'=>(int)$allocation->voucher_id,
+                    'amount'=>(string)$allocation->amount,
+                    'released'=>!$unreleased,'release_action'=>$allocation->release_action,
+                    'verified'=>$matches,'pending_approval'=>$pendingApproval,
+                    'active_ledger'=>!$draft&&$unreleased,
+                ];
+                continue;
+            }
             $voucher = DB::table('customer_ledger')
                 ->where('project_id', $projectId)->where('id', $allocation->voucher_id)
                 ->first(['id', 'transaction_type', 'type_id', 'is_active', 'is_approve',
