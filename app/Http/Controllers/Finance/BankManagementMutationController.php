@@ -51,6 +51,23 @@ final class BankManagementMutationController extends Controller
         abort_unless(in_array($method,['online','cheque'],true),404);
         $this->authorizeAction($request,$method,'edit');
         $project=$this->project();
+        // Approval-enabled correction must not be bypassed through the old
+        // management PUT endpoint. The reviewed correction route has its own
+        // permission and queues changes without modifying bank/ledger rows.
+        $policy=\App\Models\DailyVoucherApprovalPolicy::query()
+            ->where('project_id',$project)
+            ->where('voucher_type',$method==='online'?'ONL_CORR':'CHQ_CORR')->first();
+        if($policy && $policy->approval_required) {
+            throw ValidationException::withMessages(['source'=>
+                'Correction approval is ON. Use the reviewed Edit / Correct action to submit for approval.']);
+        }
+        if(\Illuminate\Support\Facades\Schema::hasTable('finance_bank_correction_requests')
+            && DB::table('finance_bank_correction_requests')
+                ->where('project_id',$project)->where('source_method',$method)
+                ->where('source_id',$id)->where('status','pending')->exists()) {
+            throw ValidationException::withMessages(['source'=>
+                'A correction request is pending approval for this bank source.']);
+        }
         $input=$method==='online'
             ? $request->validate([
                 'reference'=>['required','string','max:120','regex:/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/D'],
