@@ -348,6 +348,35 @@ final class DailyVoucherApprovalWorkflow
                         (float)$allocation->amount);
                 }
             }
+            // New standard vouchers have two project-owned balanced legs;
+            // historical one-leg CR/DR/CCR/CDR remains readable/approvable.
+            if(in_array((string)$approval->voucher_type,['CR','DR','CCR','CDR'],true)
+                && $active){
+                $series=(string)$approval->voucher_type;
+                $expectedSourceTypes=$series==='DR'?['DR','CP']:[$series];
+                if(!in_array((string)$source->transaction_type,$expectedSourceTypes,true)){
+                    throw new \DomainException('STANDARD_APPROVAL_SOURCE_TYPE_INVALID');
+                }
+                $standardLegs=DB::table('ledgers as leg')
+                    ->join('project_head_subheads as account','account.id','=','leg.project_head_subheads_id')
+                    ->where('account.project_id',$approval->project_id)
+                    ->where('leg.customer_ledger_id',$source->id)
+                    ->lockForUpdate()->get(['leg.id','leg.type','leg.project_head_subheads_id',
+                        'leg.type_id','leg.voucher_number','leg.amount_in','leg.amount_out','leg.is_active']);
+                $count=$standardLegs->count();
+                if(!in_array($count,[1,2],true)
+                    || DB::table('ledgers')->where('customer_ledger_id',$source->id)->count()!==$count
+                    || $standardLegs->contains(fn($leg)=>(int)$leg->is_active!==0)
+                    || (int)$source->is_active!==0){
+                    throw new \DomainException('STANDARD_APPROVAL_LEDGER_STATE_INVALID');
+                }
+                if($count===2){
+                    BalancedStandardVoucherIntegrity::assert($series,$source,$standardLegs);
+                }elseif($series==='CR' || $series==='DR'){
+                    BankVoucherLegIntegrity::assert($series,$source,$standardLegs->first(),
+                        max((float)$source->amount_in,(float)$source->amount_out));
+                }
+            }
             // First approval must never activate malformed cash-only source
             // amounts or extra hidden/cross-project legs. An approver may
             // still REJECT a malformed pending voucher without posting it.
@@ -360,12 +389,17 @@ final class DailyVoucherApprovalWorkflow
                     ->lockForUpdate()->get(['ledger.id','ledger.type','ledger.type_id',
                         'ledger.voucher_number','ledger.amount_in','ledger.amount_out',
                         'ledger.is_active']);
-                if ($legs->count()!==1
-                    || DB::table('ledgers')->where('customer_ledger_id',$source->id)->count()!==1) {
-                    throw new \DomainException('CASH_ONLY_APPROVAL_SINGLE_LEDGER_REQUIRED');
+                if($legs->count()===1
+                    && DB::table('ledgers')->where('customer_ledger_id',$source->id)->count()===1){
+                    CashOnlyVoucherApprovalIntegrity::assert(
+                        (string)$approval->voucher_type,$source,$legs->first());
+                }elseif($legs->count()===2
+                    && DB::table('ledgers')->where('customer_ledger_id',$source->id)->count()===2){
+                    BalancedStandardVoucherIntegrity::assert(
+                        (string)$approval->voucher_type,$source,$legs);
+                }else{
+                    throw new \DomainException('CASH_ONLY_APPROVAL_LEDGER_CARDINALITY_INVALID');
                 }
-                CashOnlyVoucherApprovalIntegrity::assert(
-                    (string)$approval->voucher_type,$source,$legs->first());
             }
             $sourceUpdate = [];
             if (Schema::hasColumn('customer_ledger', 'is_active')) $sourceUpdate['is_active'] = $active ? 1 : 0;
