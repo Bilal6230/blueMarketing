@@ -50,6 +50,20 @@ final class DailyVoucherDrActionAndFilterContractTest extends TestCase
         }
     }
 
+    public function test_jv_sv_and_cv_registers_do_not_render_top_filter_cards(): void
+    {
+        $root=dirname(__DIR__,3);
+        foreach([
+            'index.blade.php'=>['jv-directory','jv-add'],
+            'commision_index.blade.php'=>['journalTable','commision.voucher.create'],
+        ] as $name=>$required){
+            $view=file_get_contents($root.'/resources/views/admin/reports/vouchers/'.$name);
+            self::assertIsString($view);
+            self::assertStringNotContainsString('<x-finance.voucher-filter-card',$view,$name);
+            foreach($required as $needle)self::assertStringContainsString($needle,$view,$name);
+        }
+    }
+
     public function test_bd_bw_workspaces_have_no_rendered_top_filter_toolbar(): void
     {
         $root=dirname(__DIR__,3);
