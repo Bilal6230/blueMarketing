@@ -148,6 +148,16 @@ final class BankSourceReissueCorrection
             $ids[]=$allocationKey;
             if(in_array($type,['BD','BW','BD_DRAFT','BW_DRAFT',
                 TypedPlotReceiptBankCustody::POSTED,TypedPlotReceiptBankCustody::DRAFT],true)){
+                $requiredTyped=in_array($type,['BD','BW','BD_DRAFT','BW_DRAFT'],true)
+                    ? [str_ends_with($type,'_DRAFT')
+                        ?'finance_bank_transfer_approval_drafts':'finance_bank_transfer_sources']
+                    : [str_ends_with($type,'_DRAFT')
+                        ?'finance_plot_approval_drafts':'finance_plot_receipts'];
+                foreach($requiredTyped as $tableName){
+                    if(!Schema::hasTable($tableName)){
+                        throw new \DomainException('Typed bank source schema is missing: '.$tableName);
+                    }
+                }
                 $draft=str_ends_with($type,'_DRAFT');
                 if(in_array($type,['BD','BW','BD_DRAFT','BW_DRAFT'],true)){
                     $series=substr($type,0,2);
