@@ -21,6 +21,8 @@ final class BankSourceReissueContractTest extends TestCase
         self::assertStringContainsString('BankVoucherLegIntegrity::assert',$service);
         self::assertStringContainsString('VoucherApprovalMutationGuard::class',$service);
         self::assertStringContainsString('ready_for_new_vouchers',$service);
+        self::assertStringContainsString('ready_after_correction',$service);
+        self::assertStringContainsString('cancelPendingForSourceCorrection',$service);
         self::assertStringNotContainsString('->delete(',$service);
         self::assertStringContainsString('submitReissue(',$approval);
         self::assertStringContainsString("mode'=>'reissue'",$approval);
@@ -46,7 +48,11 @@ final class BankSourceReissueContractTest extends TestCase
         self::assertStringContainsString('Transaction ID / Reference: ',$view);
         self::assertStringContainsString('Cheque Number: ****',$view);
         self::assertStringContainsString('Clearing Date: ',$view);
-        self::assertStringContainsString('[BANK SOURCE]',$view);
+        self::assertStringContainsString('[BANK SOURCE]',$view); // legacy block cleanup
+        self::assertStringContainsString('SOURCE Cheque',$view);
+        self::assertStringContainsString('SOURCE Online',$view);
+        self::assertStringContainsString("parts.join(' | ')",$view);
+        self::assertStringContainsString('Cheque Number: ****',$view);
         self::assertStringContainsString('bank_source_fix',$evidence);
         self::assertStringNotContainsString('forceDelete(', $evidence);
     }
