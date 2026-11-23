@@ -3093,6 +3093,19 @@ class BookingController extends Controller
                                     && trim((string) $duplicateLedger->passing_date) === trim((string) $request->input('passing_date'));
                             }
 
+                            if ($isPendingBankPayment) {
+                                // A replay must reference the SAME allocated
+                                // verified instrument. Never accept a new
+                                // source identity against an old PPR ledger.
+                                $existingAllocation = DB::table('finance_bank_voucher_allocations')
+                                    ->where('project_id',$projectId)
+                                    ->where('voucher_type','PPR')
+                                    ->where('voucher_id',(int)$duplicateLedger->id)
+                                    ->first(['source_method','source_id']);
+                                $samePayload=$samePayload && $existingAllocation
+                                    && (string)$existingAllocation->source_method===$passedMethod
+                                    && (int)$existingAllocation->source_id===$passedId;
+                            }
                             if (!$samePayload) {
                                 throw new \RuntimeException('A received payment with the same source key already exists.');
                             }
