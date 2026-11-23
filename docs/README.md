@@ -19,6 +19,32 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 03 — Focused PHPUnit regression repair (2026-11-23)
+
+**Owner's latest Laragon log (initial 7-voucher batch, commit f22f826f):**
+- `StandardVoucherAccountSelectionContractTest`: **2 PASS / 18 assertions**.
+- `SevenFamilyBankSourcePickerContractTest`: **2 PASS / 24 assertions**.
+- `BankLinkedCorrectionApprovalIntegrationTest`: **19 PASS / 138 assertions**.
+- `finance:audit-posting-balances`: **6 projects CLEAN**.
+- `BankTransferWriterTest`: 10 failed, 1 passed because older test setup creates a minimal `ledgers` table missing real balance and attribution columns. Production `PostedVoucherLedgerGate` correctly refuses the unlinked typed lines.
+- `PlotEntryWriterTest`: 30 failed, 13 passed: older fixture numbers `PR-TEST-1`, `PP-TEST-1` etc violate the canonical `PPR-N` / `PP-N` writer allocator. In addition the legacy test fixtures lacked original booking receipt numbering fields and an authentic typed-ledger attribution structure.
+
+**Corrections committed:** Add realistic `ledgers` amount/type/status columns and `ledger_source_attributions` to isolated in-memory BankTransfer/Plot fixtures, model `booking_vouchers` project-series numbering columns, use canonical PPR-1/PP-1 for initial creates while preserving intentional edit/correction values, and assert every newly posted typed leg is linked to an authentic general ledger row. **No relaxation** of `PostedVoucherLedgerGate`, no writer number looseness, no database migration and no existing production data modification. **UPDATED TESTS MUST STILL BE RUN LOCALLY**; do not declare green until owner sends results.
+
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=BankTransferWriterTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan test --filter=StandardVoucherAccountSelectionContractTest
+php artisan test --filter=SevenFamilyBankSourcePickerContractTest
+php artisan finance:audit-posting-balances
+```
+
+**Browser acceptance for THIS fixture-only repair:** None required if both previously failing test suites pass, because only `tests/Feature/Finance/*` changed in this repair batch. The earlier 7-family rollout DOES require browser tests after actual BD/BW/PPR verified-link writer/UI implementation; its scope is explicitly not yet complete. On the earlier form cleanup, open CR/DR/BOR/BOP and confirm unused top Debit/Credit panel no longer appears, bottom Accounts/Child Account and source popup remain operational; no save is necessary just to check the UI.
+
 ## Milestone 03 — Seven-voucher verified bank source + account UI consolidation (2026-11-23)
 
 **Owner approved expanded scope:** Same approved/Cleared Cheque or Confirmed Online management source picker must support all **seven** voucher families: **CR, DR, BOR, BOP, BD, BW, PPR**. Existing voucher-specific lifecycle/approval/ledger/reporting must not be bypassed. Owner reports previous M03 batches 1, 2 and 3 functional browser tests PASS; this *new* seven-family expansion has **NOT** been accepted yet.
