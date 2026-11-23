@@ -19,6 +19,10 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 03 — BD/BW accounting regression accepted on local tests (2026-11-23)
+
+Owner's latest Laragon result: **BankTransferWriterTest 11 PASS / 74 assertions**, **PlotEntryWriterTest 45 PASS / 298 assertions** (previous run), and **six-project posting audit CLEAN**. Source identity runtime bug in `BankTransferEditor` is resolved. Only newly introduced isolated `BankTransferSourceIdentityContractTest` failed before executing assertions because it extended `PHPUnit\\Framework\\TestCase` but invoked Laravel `base_path()` / `app_path()` without bootstrapping an application. Fixed this test to use `__DIR__` relative paths and literal `$sourceId` assertion; production code unchanged in this latest commit. **Local rerun of that isolated contract pending.** No browser test needed for this PHPUnit-only fix; the prior BD/BW Create/Edit/Delete browser verification remains recommended for the earlier runtime fix.
+
 ## Milestone 03 — Latest owner regression follow-up (2026-11-23)
 
 **Owner run after prior fixture update:** `PlotEntryWriterTest` improved to **42 PASS / 3 FAIL**. Remaining failures were stale assertions summing historical inactive posting lines as if they were active. `BankTransferWriterTest` still **10 FAIL / 1 PASS** because `TypedLedgerBackfill` incorrectly reads `finance_bank_transfer_sources.id`, even though the table primary key is **`posting_batch_id`**, not `id`.
