@@ -18,6 +18,17 @@
      <div class="form-group col-md-6"><label>Plot / Booking</label><select id="prOriginalPlot" name="plot_id" class="form-control" required><option value="">Select plot</option></select></div>
      <div class="form-group col-md-6"><label>Amount</label><input type="number" name="amount" class="form-control" min="0.01" step="0.01" required></div>
      <div class="form-group col-md-6"><label>Payment Type</label><select id="prOriginalPayment" name="payment_type" class="form-control" required><option value="1">Cash</option><option value="2">Online</option><option value="3">Cheque</option></select></div>
+     <div class="form-group col-md-6"><label for="prOriginalCounterAccount">Credit Account (Cash / Bank) <span class="text-danger">*</span></label>
+       <select id="prOriginalCounterAccount" name="counter_account_id" class="form-control js-tomselect" required>
+        <option value="">Select active project Cash / Bank account</option>
+        @foreach(($accounts ?? collect()) as $postingAccount)
+         <option value="{{ $postingAccount->id }}">
+          {{ $postingAccount->headAccounting?->name ?? '' }} / {{ $postingAccount->subheadAccounting?->name ?? '' }}
+         </option>
+        @endforeach
+       </select>
+       <small class="text-muted">Cash receipts use a project Cash account. Verified Online/Cheque receipts require an active project Bank account.</small>
+     </div>
      <div class="form-group col-12 pr-original-bank d-none"><label>Verified Cheque / Online Source <span class="text-danger">*</span></label>
        <div class="input-group"><input id="prPassedLabel" class="form-control" placeholder="Select cleared cheque or confirmed online transaction" readonly>
         <div class="input-group-append"><button type="button" id="prOpenPassedPicker" class="btn btn-outline-primary">Choose Source</button></div></div>
