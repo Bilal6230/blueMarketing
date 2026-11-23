@@ -44,10 +44,37 @@ final class RejectedCashVoucherController extends Controller
         $isBankRevision=in_array((string)($approval?->voucher_type??''),['BOR','BOP'],true);
         $revisionPolicyType=$isBankRevision ? (string)$approval->voucher_type
             : (string)$source->transaction_type;
-        $leg=Ledger::query()->withoutGlobalScopes()
+        // Use the same two-leg identity as the posted ledger writer: the
+        // earliest ledger is the party leg, the second is the counter-leg.
+        // Historical single-leg vouchers remain unchanged.
+        $legs=Ledger::query()->withoutGlobalScopes()
             ->where('customer_ledger_id',$source->id)
             ->where('type',$source->transaction_type)
-            ->whereHas('projectHeadSubhead',fn($q)=>$q->where('project_id',$project))->first();
+            ->whereHas('projectHeadSubhead',fn($q)=>$q->where('project_id',$project))
+            ->orderBy('id')->get();
+        $leg=$legs->first();
+        $counterLeg=$legs->count()===2 ? $legs->last() : null;
+        $counterAccountId=(!$isBankRevision && $counterLeg)
+            ? (int)$counterLeg->project_head_subheads_id : null;
+        $bankCounterLabel=null;
+        if($isBankRevision && $counterLeg
+            && Schema::hasTable('finance_bank_voucher_allocations')
+            && Schema::hasTable('project_bank_accounts')){
+            $allocation=DB::table('finance_bank_voucher_allocations')
+                ->where('project_id',$project)
+                ->where('voucher_type',$revisionPolicyType)
+                ->where('voucher_id',$source->id)->first(['bank_account_id']);
+            if($allocation && (int)$allocation->bank_account_id>0){
+                $bank=DB::table('project_bank_accounts')
+                    ->where('project_id',$project)
+                    ->where('id',$allocation->bank_account_id)
+                    ->where('account_mapping_id',$counterLeg->project_head_subheads_id)
+                    ->first(['bank_name','account_title']);
+                if($bank){
+                    $bankCounterLabel=trim((string)$bank->bank_name.' / '.(string)$bank->account_title,' /');
+                }
+            }
+        }
         $accounts=DB::table('project_head_subheads as p')
             ->leftJoin('head_accountings as h','h.id','=','p.head_accounting_id')
             ->leftJoin('subhead_accountings as s','s.id','=','p.subhead_accounting_id')
@@ -64,7 +91,8 @@ final class RejectedCashVoucherController extends Controller
         }
         return view('admin.finance.voucher.rejected_cash_revision',
             compact('source','approval','leg','accounts','accountTypes',
-                'currentAttachment','voucherDisplay','isBankRevision','revisionPolicyType'));
+                'currentAttachment','voucherDisplay','isBankRevision','revisionPolicyType',
+                'counterLeg','counterAccountId','bankCounterLabel'));
     }
     public function store(int $customerLedger, Request $request)
     {
@@ -72,6 +100,7 @@ final class RejectedCashVoucherController extends Controller
             'date'=>['required','date_format:Y-m-d'],
             'amount'=>['required','numeric','gt:0','max:999999999999'],
             'account_id'=>['required','integer'],
+            'counter_account_id'=>['nullable','integer','min:1'],
             'description'=>['required','string','max:255'],
             'revision_reason'=>['required','string','min:3','max:500'],
             'attachment'=>\App\Services\Finance\VoucherAttachmentRules::optional(),
