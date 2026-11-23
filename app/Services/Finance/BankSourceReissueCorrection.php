@@ -219,7 +219,14 @@ final class BankSourceReissueCorrection
             'direction'=>$method==='online'?(string)$source->type:(string)$source->direction,
             'before'=>$before,'after'=>$updated,
             'requires_replacement'=>$linked,
-            'ready_after_correction'=>false,
+            'linked_voucher_history_count'=>$allocations->count(),
+            'ready_after_correction'=>!$linked && ($method==='online'
+                ? (string)$source->status==='confirmed' &&
+                    $updated['reference']===(string)$source->reference && $updated['type']===(string)$source->type
+                : (string)$source->status==='cleared' &&
+                    $updated['cheque_number']===(string)$source->cheque_number &&
+                    $updated['bank_name']===(string)$source->bank_name &&
+                    $updated['direction']===(string)$source->direction),
             'result_status'=>$linked ? 'withdrawn' : (string)$source->status,
             'new_status'=>$linked ? ($method==='online'?'pending':($updated['direction']==='out'?'issued':'received')) : (string)$source->status,
             'active_vouchers'=>$active,'historical_released_count'=>$historical];
@@ -268,7 +275,9 @@ final class BankSourceReissueCorrection
                 'released_vouchers'=>$result['released_count']??0,
                 'amount'=>(string)$plan['after']['amount'],
                 'status'=>$result['new_status']??$result['status'],
-                'ready_for_new_vouchers'=>false,
+                'ready_for_new_vouchers'=>($method==='online'
+                    ? ($result['status']??$result['new_status'])==='confirmed'
+                    : ($result['status']??$result['new_status'])==='cleared'),
                 'requires_reverification'=>(bool)$plan['requires_replacement']];
         },3);
     }
