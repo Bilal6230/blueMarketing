@@ -127,7 +127,9 @@ class BankTransferWriterTest extends TestCase
         $this->assertSame(0,DB::table('finance_posting_lines')
             ->whereIn('posting_batch_id',[$deposit['posting_batch_id'],$withdrawal['posting_batch_id']])
             ->whereNull('legacy_ledger_id')->count());
-        $this->assertSame(4,DB::table('ledger_source_attributions')->count());
+        // Deposit has 3 posting legs (bank + 2 cash), withdrawal has 2.
+        // Every leg must have exactly one ledger attribution.
+        $this->assertSame(5,DB::table('ledger_source_attributions')->count());
 
         $this->assertSame(100.0, (float) DB::table('finance_posting_lines')->where('posting_batch_id', $deposit['posting_batch_id'])->where('project_head_subhead_id', 101)->value('debit'));
         $this->assertSame(25.5, (float) DB::table('finance_posting_lines')->where('posting_batch_id', $withdrawal['posting_batch_id'])->where('project_head_subhead_id', 101)->value('credit'));
