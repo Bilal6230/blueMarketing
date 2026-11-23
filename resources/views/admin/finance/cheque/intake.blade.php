@@ -762,15 +762,15 @@ $(function () {
             var record=response.data;
             editingChequeReplacement=!correctionMode && (!!response.cascade_impact.requires_cascade || record.status==='cleared');
   $('#cheque-replacement-reason-wrap').toggleClass('d-none',!(editingChequeReplacement||editingChequeCorrection));
-  $('#cheque-replacement-reason-wrap label').text(editingChequeCorrection?'Reason for correcting source and recreating linked vouchers *':'Reason for replacing linked/verified cheque *');
+  $('#cheque-replacement-reason-wrap label').text(editingChequeCorrection?'Reason for updating or replacing this cheque *':'Reason for replacing linked/verified cheque *');
   $('#cheque-replacement-reason').prop('required',editingChequeReplacement||editingChequeCorrection);
     $('#cheque-replacement-reason').attr('placeholder',editingChequeCorrection
-      ? 'Explain what was entered incorrectly. Linked vouchers will be archived and recreated later.'
+      ? 'Explain correction. Linked cheques require a NEW cheque number / bank reference and fresh bank clearance.'
       : 'Explain why this verified instrument must be genuinely replaced.');
             $form.attr('action',bankUpdateUrl.replace('__SOURCE_ID__',id));
-            $('#cheque-create-title').text(editingChequeCorrection?'Correct Cleared Cheque':(editingChequeReplacement?'Replace Cleared Linked Cheque':'Edit Cheque'));
-            $form.find('[name=cheque_number],[name=bank_name]').prop('readonly',editingChequeCorrection);
-            $('#cheque-save').text(editingChequeCorrection?'Review Correction':(editingChequeReplacement?'Replace & Reverify':'Update Cheque'));
+            $('#cheque-create-title').text(editingChequeCorrection?'Edit / Replace Cheque':(editingChequeReplacement?'Replace Cleared Linked Cheque':'Edit Cheque'));
+            $form.find('[name=cheque_number],[name=bank_name]').prop('readonly',false);
+            $('#cheque-save').text(editingChequeCorrection?'Review Update / Reverify':(editingChequeReplacement?'Replace & Reverify':'Update Cheque'));
             // Keep TomSelect enabled for validation; verified direction is enforced by the backend.
             $('#cheque-attachment').prop('disabled',true);
 
