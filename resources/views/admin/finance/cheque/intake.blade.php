@@ -493,7 +493,8 @@ $(function () {
              .attr('data-id',r.id).text(r.status==='cleared'?'Replace':'Edit').appendTo($actions);
         }
         if(@json(auth()->user()->can('finance cheque correct')) &&
-            ['received','issued','pending_clearing','cleared','returned','rejected','withdrawn'].indexOf(r.status)!==-1) {
+            !((r.status==='received'||r.status==='issued') && Number(r.linked_voucher_count||0)===0 &&
+                @json(auth()->user()->can('finance cheque edit')))) {
             $('<button type="button" class="btn btn-sm btn-outline-info mr-1 cheque-correct-source">')
                 .attr('data-id',r.id).text(Number(r.linked_voucher_count||0)>0?'Correct / Reissue':'Edit').appendTo($actions);
         }
