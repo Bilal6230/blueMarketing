@@ -1195,7 +1195,10 @@ class VoucherController extends Controller
         $accounts = ProjectHeadSubhead::availableForPosting()->with(['headAccounting:id,name', 'subheadAccounting:id,name'])
             ->where('project_id', $projectId)
             ->where(fn ($q) => $q->whereHas('headAccounting', fn ($h) => $h->where('name', 'LIKE', '%cash%')->orWhere('name', 'LIKE', '%bank%'))
-                ->orWhereHas('subheadAccounting', fn ($s) => $s->where('name', 'LIKE', '%cash%')->orWhere('name', 'LIKE', '%bank%')))
+                ->orWhereHas('subheadAccounting', fn ($s) => $s->where('name', 'LIKE', '%cash%')->orWhere('name', 'LIKE', '%bank%'))
+                ->orWhereIn('id', DB::table('project_bank_accounts')
+                    ->where('project_id',$projectId)->where('is_active',1)
+                    ->select('account_mapping_id')))
             ->orderBy('id')->get();
         $nextVoucherNumber = 'PPR-'.app(\App\Services\Finance\ProjectVoucherAllocator::class)->preview($projectId,'PPR');
         return view('admin.finance.voucher.plot_receipt_workspace', compact('accounts','nextVoucherNumber'));
