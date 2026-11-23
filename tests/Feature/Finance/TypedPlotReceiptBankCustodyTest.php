@@ -17,6 +17,7 @@ class TypedPlotReceiptBankCustodyTest extends PlotEntryWriterTest
     protected function setUp(): void
     {
         parent::setUp();
+        (require base_path('database/migrations/2026_11_18_160000_add_plot_voucher_lifecycle_columns.php'))->up();
         Schema::create('project_bank_accounts',function(Blueprint $t){
             $t->id();$t->unsignedBigInteger('project_id');
             $t->unsignedBigInteger('account_mapping_id');$t->boolean('is_active')->default(true);
