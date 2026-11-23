@@ -1171,7 +1171,8 @@ class LedgerController extends Controller
                 ->whereHas('projectHeadSubhead',fn($q)=>$q->where('project_id',getSelectedTown()))
                 ->orderBy('id')->get();
             if($siblings->count()===2){
-                $counterAccountId=(int)$siblings->last()->project_head_subheads_id;
+                $counterAccountId=in_array((string)$ledger->type,['CR','DR','CCR','CDR'],true)
+                    ? (int)$siblings->last()->project_head_subheads_id : null;
                 if($ledger->id!==$siblings->first()->id){
                     $ledger=(clone $base)->whereKey($siblings->first()->id)->firstOrFail();
                 }
