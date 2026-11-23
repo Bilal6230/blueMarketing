@@ -22,7 +22,13 @@
        <select id="prOriginalCounterAccount" name="counter_account_id" class="form-control" required>
         <option value="">Select active project Cash / Bank account</option>
         @foreach(($accounts ?? collect()) as $postingAccount)
-         <option value="{{ $postingAccount->id }}">
+         @php
+          $counterName=strtolower((string)($postingAccount->headAccounting?->name ?? '').' '.(string)($postingAccount->subheadAccounting?->name ?? ''));
+          $isCashCounter=str_contains($counterName,'cash');
+          $isActiveBankCounter=in_array((int)$postingAccount->id,$activeBankCounterIds ?? [],true);
+         @endphp
+         <option value="{{ $postingAccount->id }}" data-cash="{{ $isCashCounter ? 1 : 0 }}"
+           data-bank="{{ $isActiveBankCounter ? 1 : 0 }}">
           {{ $postingAccount->headAccounting?->name ?? '' }} / {{ $postingAccount->subheadAccounting?->name ?? '' }}
          </option>
         @endforeach
