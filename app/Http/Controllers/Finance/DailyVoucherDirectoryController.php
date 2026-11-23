@@ -367,7 +367,7 @@ final class DailyVoucherDirectoryController extends Controller
                             ['customerLedger'=>$source->id]) : null,
                     'revise_url' => !$bankRelease && ($sourceApprovals[$source->id]['status'] ?? '') === 'rejected'
                         && in_array((int)$source->payment_type,[1,2,3],true)
-                        && in_array((string)$source->transaction_type,['CR','CP','CCR','CDR'],true)
+                        && in_array((string)$source->transaction_type,['CR','DR','CP','CCR','CDR'],true)
                         && $canEdit
                         && (\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())
                             || (int)auth()->user()->project_id===$projectId)
@@ -379,7 +379,7 @@ final class DailyVoucherDirectoryController extends Controller
                         ? route('finance.daily-vouchers.sources.reverse', ['customerLedger' => $source->id]) : null,
                     'delete_url' => !$bankAllocations->has($source->id)
                         && $ledgerId && $canDelete
-                        && in_array((string) $source->transaction_type, ['CR', 'CP','CCR','CDR'], true)
+                        && in_array((string) $source->transaction_type, ['CR', 'DR', 'CP','CCR','CDR'], true)
                         && (empty($sourceApprovals[$source->id]) ||
                             (($sourceApprovals[$source->id]['status'] ?? '') === 'approved'
                                 && (int) $source->payment_type === 1 && (int) $source->is_active === 1))
@@ -389,7 +389,7 @@ final class DailyVoucherDirectoryController extends Controller
                     // Role Edit is independent of the original submitter; financial lifecycle
                     // validation still runs inside the transactional revision service.
                     'edit_url' => $ledgerId && $canEdit
-                        && in_array((string)$source->transaction_type,['CR','CP','CCR','CDR'],true)
+                        && in_array((string)$source->transaction_type,['CR','DR','CP','CCR','CDR'],true)
                         && (int)$source->is_active===1
                         && (int)$source->payment_type===1
                         && in_array((string)($sourceApprovals[$source->id]['status']??'posted'),['posted','approved'],true)
