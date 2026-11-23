@@ -67,6 +67,21 @@ final class DailyVoucherDrActionAndFilterContractTest extends TestCase
         }
     }
 
+    public function test_balanced_bank_and_plot_forms_name_their_existing_opposite_accounts(): void
+    {
+        $root=dirname(__DIR__,3);
+        $bank=file_get_contents($root.'/resources/views/admin/finance/voucher/bank_transfer_workspace.blade.php');
+        $ppr=file_get_contents($root.'/resources/views/admin/finance/voucher/plot_receipt_workspace.blade.php');
+        $purchase=file_get_contents($root.'/resources/views/admin/finance/voucher/plot_purchase_workspace.blade.php');
+        self::assertStringContainsString('Counter Account', $bank);
+        self::assertStringContainsString('id="cashAccount"', $bank);
+        self::assertStringContainsString("$('#cashAccount').val(String(d.cash_account_id))",$bank);
+        self::assertStringContainsString('Debit Account (Cash / Bank)', $ppr);
+        self::assertStringContainsString("$('#prAccount').val(String(receipt.cash_account_id))",$ppr);
+        self::assertStringContainsString('Credit Account (Seller / Payable)', $purchase);
+        self::assertStringContainsString("$('#ppSeller').val(String(purchase.seller_account_id))",$purchase);
+    }
+
     public function test_bd_bw_workspaces_have_no_rendered_top_filter_toolbar(): void
     {
         $root=dirname(__DIR__,3);
