@@ -128,6 +128,16 @@ final class BankVoucherAllocationRelease
                     ->update(['is_active'=>0,'delete_reason'=>$reason,'update_by'=>$actorId,
                         'updated_at'=>now()]);
             }
+            if($cancelPendingForSourceCorrection && $rejected) {
+                DB::table('customer_ledger')->where('project_id',$projectId)
+                    ->where('id',$voucherId)->update([
+                        'is_active'=>0,'delete_reason'=>$reason,'updated_at'=>now(),
+                    ]);
+                DB::table('ledgers')->where('id',$legs->first()->id)->update([
+                    'is_active'=>0,'delete_reason'=>$reason,'update_by'=>$actorId,
+                    'updated_at'=>now(),
+                ]);
+            }
             if($pendingCancellation) {
                 DB::table('customer_ledger')->where('project_id',$projectId)
                     ->where('id',$voucherId)->update([
