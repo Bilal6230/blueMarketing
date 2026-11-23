@@ -350,7 +350,7 @@ final class DailyVoucherApprovalWorkflow
             }
             // New standard vouchers have two project-owned balanced legs;
             // historical one-leg CR/DR/CCR/CDR remains readable/approvable.
-            if(in_array((string)$approval->voucher_type,['CR','DR','CCR','CDR'],true)
+            if(in_array((string)$approval->voucher_type,['CR','DR','CP','CCR','CDR'],true)
                 && $active){
                 $series=(string)$approval->voucher_type;
                 $expectedSourceTypes=$series==='DR'?['DR','CP']:[$series];
