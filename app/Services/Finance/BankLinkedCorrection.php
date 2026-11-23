@@ -97,8 +97,14 @@ final class BankLinkedCorrection
                 DB::table('customer_ledger')->where('project_id',$projectId)
                     ->where('id',$item['voucher_id'])
                     ->update($amountFields + ['updated_at'=>$now]);
-                DB::table('ledgers')->where('id',$item['ledger_id'])
-                    ->update($amountFields + ['update_by'=>$actorId,'updated_at'=>$now]);
+                foreach($item['ledger_postings'] as $linkedLeg){
+                    $legAmounts=$linkedLeg['side']==='in'
+                        ? ['amount_in'=>$new,'amount_out'=>0]
+                        : ['amount_in'=>0,'amount_out'=>$new];
+                    DB::table('ledgers')->where('id',$linkedLeg['id'])
+                        ->where('customer_ledger_id',$item['voucher_id'])
+                        ->update($legAmounts + ['update_by'=>$actorId,'updated_at'=>$now]);
+                }
                 DB::table('daily_voucher_edit_snapshots')->insert([
                     'project_id'=>$projectId,'source_id'=>$item['voucher_id'],
                     'approval_id'=>$item['approval_id'],
@@ -106,11 +112,13 @@ final class BankLinkedCorrection
                     'before_snapshot'=>json_encode([
                         'bank_method'=>$method,'bank_source_id'=>$sourceId,
                         'allocation_id'=>$item['allocation_id'],'ledger_id'=>$item['ledger_id'],
+                        'ledger_postings'=>$item['ledger_postings'],
                         'voucher_type'=>$item['series'],'amount'=>$item['amount_before']
                     ],JSON_THROW_ON_ERROR),
                     'proposed_snapshot'=>json_encode([
                         'bank_method'=>$method,'bank_source_id'=>$sourceId,
                         'allocation_id'=>$item['allocation_id'],'ledger_id'=>$item['ledger_id'],
+                        'ledger_postings'=>$item['ledger_postings'],
                         'voucher_type'=>$item['series'],'amount'=>$new
                     ],JSON_THROW_ON_ERROR),
                     'reason'=>$reason,'submitted_by'=>$submittedBy??$actorId,'decided_by'=>$actorId,
@@ -231,17 +239,33 @@ final class BankLinkedCorrection
             $allowed = match ($series) {
                 'CR'=>['CR'],'DR'=>['DR','CP'],'BOR'=>['BOR','CR'],'BOP'=>['BOP','CP'],
             };
+            $bankBalanced=in_array($series,['BOR','BOP'],true)
+                && (int)($allocation->bank_account_id??0)>0;
+            $standardBalanced=in_array($series,['CR','DR'],true) && $legs->count()===2;
+            $expected=($bankBalanced||$standardBalanced)?2:1;
             if (!$identity || !$voucher || !in_array((string)$voucher->transaction_type,$allowed,true)
-                || (int)$voucher->is_active!==1 || $legs->count()!==1
-                || DB::table('ledgers')->where('customer_ledger_id',$voucherId)->count()!==1
-                || (int)$legs->first()->is_active!==1
-                || (string)$legs->first()->type!==(string)$voucher->transaction_type
+                || (int)$voucher->is_active!==1 || $legs->count()!==$expected
+                || DB::table('ledgers')->where('customer_ledger_id',$voucherId)->count()!==$expected
+                || $legs->contains(fn($leg)=>(int)$leg->is_active!==1)
                 || (int)$voucher->payment_type!==($method==='online'?2:3)
                 || ($approval && (!in_array((string)$approval->status,['approved','posted'],true)
                     || (string)$approval->voucher_type!==$series))) {
                 throw new \DomainException('Linked voucher identity, status or ledger ownership is invalid.');
             }
-            BankVoucherLegIntegrity::assert($series,$voucher,$legs->first(),(float)$allocation->amount);
+            if($bankBalanced){
+                BalancedBankVoucherIntegrity::assert($projectId,$series,$voucher,$allocation,$legs);
+            }elseif($standardBalanced){
+                BalancedStandardVoucherIntegrity::assert($series,$voucher,$legs);
+            }else{
+                if((string)$legs->first()->type!==(string)$voucher->transaction_type){
+                    throw new \DomainException('Legacy bank voucher ledger series mismatched.');
+                }
+                BankVoucherLegIntegrity::assert($series,$voucher,$legs->first(),(float)$allocation->amount);
+            }
+            if(round((float)$allocation->amount,2)!==
+                round(max((float)$voucher->amount_in,(float)$voucher->amount_out),2)){
+                throw new \DomainException('Linked voucher allocation amount mismatch.');
+            }
             $originalCents += $this->cents($allocation->amount);
             $after = $this->money($voucherAmounts[$voucherId]);
             $sumCents += $this->cents($after);
@@ -250,6 +274,12 @@ final class BankLinkedCorrection
                 'voucher_number'=>(string)$identity->display_number,
                 'series'=>$series,'ledger_id'=>(int)$legs->first()->id,
                 'ledger_account_id'=>(int)$legs->first()->project_head_subheads_id,
+                'ledger_postings'=>$legs->sortBy('id')->map(fn($leg)=>[
+                    'id'=>(int)$leg->id,
+                    'account_id'=>(int)$leg->project_head_subheads_id,
+                    'side'=>(float)$leg->amount_in>0?'in':'out',
+                    'updated_at'=>(string)($leg->updated_at??''),
+                ])->values()->all(),
                 'approval_id'=>$approval?->id,
                 'approval_status'=>$approval?->status,
                 'voucher_updated_at'=>(string)($voucher->updated_at??''),
