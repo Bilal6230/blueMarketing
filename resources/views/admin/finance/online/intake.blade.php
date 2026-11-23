@@ -390,17 +390,14 @@ $(function(){
   }
   @endcan
   if(@json(auth()->user()->can('finance online edit')) &&
-      (x.status==='pending' && Number(x.linked_voucher_count||0)===0 ||
-       x.status==='confirmed' &&
-       @json(auth()->user()->can('finance online delete')) &&
-       @json(auth()->user()->can('delete voucher')) &&
-       @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
+      x.status==='pending' && Number(x.linked_voucher_count||0)===0){
    $('<button type="button">').addClass('btn btn-outline-primary btn-sm mr-1 online-edit-button')
     .attr('data-id',x.id).text(x.status==='confirmed'?'Replace':'Edit').appendTo($actions);
   }
-  if(x.status==='confirmed' && @json(auth()->user()->can('finance online correct'))) {
+  if(@json(auth()->user()->can('finance online correct')) &&
+      ['pending','confirmed','withdrawn','rejected'].indexOf(x.status)!==-1) {
     $('<button type="button" class="btn btn-outline-info btn-sm mr-1 online-correct-source">')
-     .attr('data-id',x.id).text('Correct').appendTo($actions);
+     .attr('data-id',x.id).text(Number(x.linked_voucher_count||0)>0?'Correct / Reissue':'Edit').appendTo($actions);
   }
   if(@json(auth()->user()->can('finance online delete')) &&
      (x.status==='pending' || (x.status==='confirmed' &&
