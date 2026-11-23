@@ -495,7 +495,7 @@ $(function () {
         }
         if(@json(auth()->user()->can('finance cheque correct'))) {
             $('<button type="button" class="btn btn-sm btn-outline-info mr-1 cheque-correct-source">')
-                .attr('data-id',r.id).text(Number(r.linked_voucher_count||0)>0?'Correct / Reissue':'Edit').appendTo($actions);
+                .attr('data-id',r.id).text(Number(r.linked_voucher_count||0)>0?'Replace & Reverify':'Edit').appendTo($actions);
         }
         if(@json(auth()->user()->can('finance cheque delete')) &&
           (r.status==='received'||r.status==='issued'||
