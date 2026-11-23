@@ -47,6 +47,13 @@ final class BankTransferLifecycleService
             if ($source->linked_customer_ledger_id !== null) {
                 throw new \DomainException('BANK_TRANSFER_LINKED_CHEQUE_REQUIRES_CUSTODY_RELEASE');
             }
+            if(\Illuminate\Support\Facades\Schema::hasTable('finance_bank_voucher_allocations')
+                && DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$projectId)
+                    ->where('voucher_type',$kind==='deposit'?'BD':'BW')
+                    ->where('voucher_id',$batchId)->exists()){
+                throw new \DomainException('BANK_TRANSFER_VERIFIED_SOURCE_REQUIRES_CUSTODY_RELEASE');
+            }
             return (new PostingGateway())->reversePostedBatch(
                 $projectId, $batchId, $requestKey, $effectiveDate, $reason, $actorId
             );
