@@ -26,7 +26,7 @@ final class BankManagementRegisterJavaScriptContractTest extends TestCase
             self::assertStringContainsString('Replacement Pending Approval',$view);
             self::assertStringContainsString('correction_request_id',$view);
             self::assertStringContainsString('!'.($method==='cheque'?'r':'x').'.correction_pending',$view);
-            self::assertStringContainsString("'source_method','".$method === 'cheque' ? '' : ''); 
+            self::assertStringContainsString("->where('status','pending')",$controller);
         }
     }
 
