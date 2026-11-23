@@ -46,7 +46,7 @@ final class PprVerifiedSourceContractTest extends TestCase
         self::assertStringContainsString("if($"."series==='PPR')", $leg);
         self::assertStringContainsString("->whereIn('series',['CR','DR','BOR','BOP','PPR'])", $release);
         self::assertStringContainsString("->where('customer_ledger_id',$"."voucherId)", $release);
-        self::assertStringContainsString("'voucher_series!=='PPR'", $release);
+        self::assertStringContainsString("->voucher_series!=='PPR'", $release);
         self::assertStringContainsString("'PPR' => ['PPR']", $planner);
     }
 }
