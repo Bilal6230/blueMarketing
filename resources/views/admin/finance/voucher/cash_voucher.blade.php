@@ -247,6 +247,27 @@
                                         <input type="hidden" name="passed_source_method" id="passed_source_method" value="">
                                         <input type="hidden" name="passed_source_id" id="passed_source_id" value="">
                                         @endif
+                                        @if($isBankVoucherSeries)
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-12 col-md-6">
+                                                <label class="fbox mb-1" for="voucher_bank_counter_account">
+                                                    {{ $displaySeries==='BOR' ? 'Debit Account (Bank)' : 'Credit Account (Bank)' }}
+                                                    <span class="text-danger">*</span>
+                                                </label>
+                                                <select id="voucher_bank_counter_account"
+                                                    name="bank_counter_account_id"
+                                                    class="form-control js-tomselect" required>
+                                                    <option value="">Select active project bank account</option>
+                                                    @foreach(($bankSettlementAccounts ?? collect()) as $bankOption)
+                                                        <option value="{{ $bankOption->id }}">
+                                                            {{ $bankOption->bank_name }} / {{ $bankOption->account_title }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <small class="text-muted">Only active banks configured for this project. Accounts / Child Account below is the opposite posting leg.</small>
+                                            </div>
+                                        </div>
+                                        @endif
  @include('admin.finance.voucher.typed_posting_fields')
                                         <div class="row">
                                             <div class="col-10">
