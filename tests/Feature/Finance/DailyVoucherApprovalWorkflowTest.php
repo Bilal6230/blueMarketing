@@ -101,11 +101,19 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
             'role_id'=>1,'model_type'=>\App\Models\User::class,'model_id'=>20,
         ]);
         app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
-        Schema::create('customer_ledger', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('project_id'); $t->boolean('is_active')->default(false); $t->integer('is_approve')->default(0); });
+        Schema::create('customer_ledger', function (Blueprint $t): void {
+            $t->id(); $t->unsignedBigInteger('project_id');
+            $t->string('transaction_type',12)->default('CR');
+            $t->decimal('amount_in',18,2)->default(0); $t->decimal('amount_out',18,2)->default(0);
+            $t->boolean('is_active')->default(false); $t->integer('is_approve')->default(0);
+        });
         Schema::create('project_head_subheads', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('project_id'); });
         Schema::create('ledgers', function (Blueprint $t): void {
             $t->id(); $t->unsignedBigInteger('customer_ledger_id')->nullable(); $t->string('type', 12); $t->unsignedBigInteger('type_id');
-            $t->unsignedBigInteger('project_head_subheads_id'); $t->boolean('is_active')->default(false);
+            $t->unsignedBigInteger('project_head_subheads_id');
+            $t->unsignedBigInteger('voucher_number')->default(0);
+            $t->decimal('amount_in',18,2)->default(0); $t->decimal('amount_out',18,2)->default(0);
+            $t->boolean('is_active')->default(false);
         });
         Schema::create('journal_vouchers', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('project_id'); $t->string('status'); $t->timestamps(); });
         DB::table('daily_voucher_approval_policies')->insert([
@@ -154,21 +162,59 @@ class DailyVoucherApprovalWorkflowTest extends TestCase
         }
     }
 
-    public function test_assigned_approver_activates_only_project_owned_receipt_lines_and_records_events(): void
+    public function test_cross_project_hidden_leg_blocks_approval_without_partial_activation(): void
     {
-        DB::table('customer_ledger')->insert(['id' => 7, 'project_id' => 1, 'is_active' => 0]);
-        DB::table('project_head_subheads')->insert([['id' => 11, 'project_id' => 1], ['id' => 12, 'project_id' => 2]]);
-        DB::table('ledgers')->insert([
-            ['id' => 31, 'customer_ledger_id' => 7, 'type' => 'CR', 'type_id' => 7, 'project_head_subheads_id' => 11, 'is_active' => 0],
-            ['id' => 32, 'customer_ledger_id' => 7, 'type' => 'CR', 'type_id' => 7, 'project_head_subheads_id' => 12, 'is_active' => 0],
+        DB::table('customer_ledger')->insert([
+            'id'=>7,'project_id'=>1,'transaction_type'=>'CR','is_active'=>0,
+            'amount_in'=>150,'amount_out'=>0,
         ]);
-        $workflow = app(DailyVoucherApprovalWorkflow::class);
-        $this->seedPreviouslySubmittedApproval('CR', 'customer_ledger', 7);
-        $workflow->decide(DailyVoucherApproval::query()->firstOrFail(), 20, 'approved');
-        $this->assertSame(1, (int) DB::table('customer_ledger')->where('id', 7)->value('is_active'));
-        $this->assertSame(1, (int) DB::table('ledgers')->where('id', 31)->value('is_active'));
-        $this->assertSame(0, (int) DB::table('ledgers')->where('id', 32)->value('is_active'));
-        $this->assertSame(['submitted', 'approved'], DB::table('daily_voucher_approval_events')->orderBy('id')->pluck('event')->all());
+        DB::table('project_head_subheads')->insert([
+            ['id'=>11,'project_id'=>1],['id'=>12,'project_id'=>2],
+        ]);
+        DB::table('ledgers')->insert([
+            ['id'=>31,'customer_ledger_id'=>7,'type'=>'CR','type_id'=>7,
+                'project_head_subheads_id'=>11,'amount_in'=>150,'amount_out'=>0,'is_active'=>0],
+            ['id'=>32,'customer_ledger_id'=>7,'type'=>'CR','type_id'=>7,
+                'project_head_subheads_id'=>12,'amount_in'=>0,'amount_out'=>150,'is_active'=>0],
+        ]);
+        $workflow=app(DailyVoucherApprovalWorkflow::class);
+        $this->seedPreviouslySubmittedApproval('CR','customer_ledger',7);
+        try {
+            $workflow->decide(DailyVoucherApproval::query()->firstOrFail(),20,'approved');
+            $this->fail('A hidden cross-project counter-leg was approved.');
+        } catch (\DomainException $e) {
+            $this->assertSame('STANDARD_APPROVAL_LEDGER_STATE_INVALID',$e->getMessage());
+        }
+        $this->assertSame(0,(int)DB::table('customer_ledger')->where('id',7)->value('is_active'));
+        $this->assertSame(0,DB::table('ledgers')->where('customer_ledger_id',7)->where('is_active',1)->count());
+        $this->assertSame('pending',DB::table('daily_voucher_approvals')->where('source_id',7)->value('status'));
+    }
+
+    public function test_assigned_approver_activates_both_balanced_project_owned_receipt_legs(): void
+    {
+        DB::table('customer_ledger')->insert([
+            'id'=>7,'project_id'=>1,'transaction_type'=>'CR','is_active'=>0,
+            'amount_in'=>150,'amount_out'=>0,
+        ]);
+        DB::table('project_head_subheads')->insert([
+            ['id'=>11,'project_id'=>1],['id'=>13,'project_id'=>1],
+        ]);
+        DB::table('ledgers')->insert([
+            ['id'=>31,'customer_ledger_id'=>7,'type'=>'CR','type_id'=>7,
+                'voucher_number'=>7,'project_head_subheads_id'=>11,
+                'amount_in'=>150,'amount_out'=>0,'is_active'=>0],
+            ['id'=>32,'customer_ledger_id'=>7,'type'=>'CR','type_id'=>7,
+                'voucher_number'=>7,'project_head_subheads_id'=>13,
+                'amount_in'=>0,'amount_out'=>150,'is_active'=>0],
+        ]);
+        $this->seedPreviouslySubmittedApproval('CR','customer_ledger',7);
+        app(DailyVoucherApprovalWorkflow::class)
+            ->decide(DailyVoucherApproval::query()->firstOrFail(),20,'approved');
+        $this->assertSame(1,(int)DB::table('customer_ledger')->where('id',7)->value('is_active'));
+        $this->assertSame(2,DB::table('ledgers')->where('customer_ledger_id',7)->where('is_active',1)->count());
+        $this->assertSame('approved',DB::table('daily_voucher_approvals')->where('source_id',7)->value('status'));
+        $this->assertSame(['submitted','approved'],
+            DB::table('daily_voucher_approval_events')->orderBy('id')->pluck('event')->all());
     }
 
     public function test_rejection_requires_a_reason_and_keeps_the_voucher_unposted(): void
