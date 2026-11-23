@@ -148,6 +148,42 @@ final class BankLinkedCorrectionTest extends TestCase
         ]);
     }
 
+    public function test_balanced_cr_correction_changes_both_ledger_sides_atomically(): void
+    {
+        DB::table('project_head_subheads')->insert(['id'=>8,'project_id'=>1]);
+        $this->voucher(34,'CR','online',55,'500.00');
+        DB::table('ledgers')->insert([
+            'customer_ledger_id'=>34,'project_head_subheads_id'=>8,
+            'type'=>'CR','is_active'=>1,'amount_in'=>0,'amount_out'=>500,
+            'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        $service=app(BankLinkedCorrection::class);
+        $preview=$service->preview(1,'online',55,'400.00',[34=>'400.00']);
+        $service->confirm(1,'online',55,4,'Correct verified CR amount',
+            '400.00',[34=>'400.00'],$preview['fingerprint']);
+        $this->assertEquals(400,DB::table('ledgers')->where('customer_ledger_id',34)->sum('amount_in'));
+        $this->assertEquals(400,DB::table('ledgers')->where('customer_ledger_id',34)->sum('amount_out'));
+        $this->assertSame(2,DB::table('ledgers')->where('customer_ledger_id',34)->count());
+    }
+
+    public function test_balanced_dr_correction_changes_both_ledger_sides_atomically(): void
+    {
+        DB::table('project_head_subheads')->insert(['id'=>8,'project_id'=>1]);
+        $this->voucher(35,'DR','cheque',77,'500.00');
+        DB::table('ledgers')->insert([
+            'customer_ledger_id'=>35,'project_head_subheads_id'=>8,
+            'type'=>'DR','is_active'=>1,'amount_in'=>500,'amount_out'=>0,
+            'created_at'=>now(),'updated_at'=>now(),
+        ]);
+        $service=app(BankLinkedCorrection::class);
+        $preview=$service->preview(1,'cheque',77,'400.00',[35=>'400.00']);
+        $service->confirm(1,'cheque',77,4,'Correct verified DR amount',
+            '400.00',[35=>'400.00'],$preview['fingerprint']);
+        $this->assertEquals(400,DB::table('ledgers')->where('customer_ledger_id',35)->sum('amount_in'));
+        $this->assertEquals(400,DB::table('ledgers')->where('customer_ledger_id',35)->sum('amount_out'));
+        $this->assertSame(2,DB::table('ledgers')->where('customer_ledger_id',35)->count());
+    }
+
     public function test_same_id_two_voucher_correction_updates_allocations_and_original_ledgers_atomically(): void
     {
         $this->voucher(31,'BOR','online',55,'300.00');
