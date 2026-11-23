@@ -50,7 +50,7 @@ final class BankSourceReissueContractTest extends TestCase
         self::assertStringContainsString('Transaction ID / Reference: ',$view);
         self::assertStringContainsString('Cheque Number: ****',$view);
         self::assertStringContainsString('Clearing Date: ',$view);
-        self::assertStringContainsString('[BANK SOURCE]',$view); // legacy block cleanup
+        self::assertStringContainsString('\\[BANK SOURCE\\]',$view); // regex removes legacy tagged narration
         self::assertStringContainsString('SOURCE Cheque',$view);
         self::assertStringContainsString('SOURCE Online',$view);
         self::assertStringContainsString("parts.join(' | ')",$view);
