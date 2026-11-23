@@ -369,12 +369,15 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
           cp .env.example .env
           php artisan key:generate --force
+      - name: Compile finance voucher Blade templates
+        run: php artisan view:cache
       - name: Lint new financial custody and controller code
         run: |
           php -l app/Services/Finance/BalancedBankVoucherIntegrity.php
           php -l app/Services/Finance/BalancedStandardVoucherIntegrity.php
           php -l app/Services/Finance/BalancedOriginalPprIntegrity.php
           php -l app/Services/Finance/BookingReceiptCashEditor.php
+          php -l app/Services/Finance/VoucherApprovalDetailReader.php
           php -l app/Services/Finance/BankLinkedCorrection.php
           php -l app/Services/Finance/BankSourceReissueCorrection.php
           php -l app/Services/Finance/SameSourceCashVoucherEdit.php
