@@ -84,16 +84,6 @@ body.jv-directory-active{overflow:hidden!important}
  </div>
  @if(session('success'))<div class="alert alert-success m-0" role="status">{{ session('success') }}</div>@endif
  @if($errors->any())<div class="alert alert-danger m-0">{{ $errors->first() }}</div>@endif
- <x-finance.voucher-filter-card class="jv-filters">
-  <form id="jv-top-filters" class="jv-filter-grid" autocomplete="off">
-   <div><label for="jv-from">Voucher Number</label><input type="search" class="form-control" id="jv-from" placeholder="Voucher #"></div>
-   <div><label for="jv-date">Date</label><input type="date" class="form-control" id="jv-date"></div>
-   <div><label for="jv-min">Amount Min</label><input type="number" step="0.01" min="0" class="form-control" id="jv-min" placeholder="Min amount"></div>
-   <div><label for="jv-max">Amount Max</label><input type="number" step="0.01" min="0" class="form-control" id="jv-max" placeholder="Max amount"></div>
-   <div><label for="jv-reference">Reference / Details</label><input type="search" class="form-control" id="jv-reference" placeholder="Reference"></div>
-   <div class="jv-filter-buttons"><button class="btn btn-sm btn-primary" type="submit"><i class="fas fa-filter mr-1"></i> Apply</button><button class="btn btn-sm btn-outline-secondary" type="button" id="jv-reset">Reset</button></div>
-  </form>
- </x-finance.voucher-filter-card>
  <x-finance.voucher-table-card class="jv-card">
   <div class="jv-table-wrap">
    <table id="jv-directory" class="table table-sm table-bordered table-hover jv-table">
@@ -235,16 +225,6 @@ $(function(){
  // Scroll only the rows/header region; toolbar and pagination remain visible.
  $table.wrap('<div class="jv-record-scroll"></div>');
  fitJournalDirectory();
- $('#jv-top-filters').on('submit',function(e){e.preventDefault();apply();});
- $('#jv-reset').on('click',function(){
-  $('#jv-top-filters')[0].reset();$.each(jvExcelSelections,function(field){delete jvExcelSelections[field];});
-  $.each(jvExcelExclusions,function(field){delete jvExcelExclusions[field];});
-  $.each(jvExcelText,function(field){delete jvExcelText[field];});
-  jvExcelDates.from='';jvExcelDates.to='';closeJvExcel();updateJvExcelButtons();
-  table.columns().search('');table.search('');apply();
- });
-
-
  function closeJvExcel(){
   $jvExcel.addClass('d-none').removeClass('jv-date-mode jv-search-mode jv-checkbox-mode');
   $('.jv-excel-trigger').attr('aria-expanded','false');jvExcelCurrent=null;
