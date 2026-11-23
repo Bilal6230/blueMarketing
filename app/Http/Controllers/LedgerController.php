@@ -164,6 +164,7 @@ class LedgerController extends Controller
             'display_series' => ['nullable', 'string', 'in:CR,DR,CP,CCR,CDR,BOR,BOP'],
             'passed_source_method' => ['nullable','in:online,cheque'],
             'passed_source_id' => ['nullable','integer','min:1'],
+            'bank_counter_account_id' => ['nullable','integer','min:1'],
             'custom_payment_method_id' => ['nullable', 'integer', 'min:1'],
             'date' => ['required', 'date'],
             'voucher' => ['required', 'string', 'regex:/^(CR|DR|CP|BOR|BOP)-\d+$/'],
@@ -253,6 +254,11 @@ class LedgerController extends Controller
             return response()->json(['status'=>'error',
                 'message'=>'Selected passed source does not match payment method.'],422);
         }
+        if(in_array($voucherPrefix,['BOR','BOP'],true)
+            && !$request->filled('bank_counter_account_id')) {
+            return response()->json(['status'=>'error',
+                'message'=>'Select an active project Bank Account for the opposite posting leg.'],422);
+        }
         if(in_array((string)$request->input('display_series'),['BOR','BOP'],true)
             && !$linkedVerifiedSource) {
             return response()->json(['status'=>'error',
@@ -335,6 +341,18 @@ class LedgerController extends Controller
                     ->lockForUpdate()
                     ->exists()) {
                     throw new \DomainException('CASH_VOUCHER_PROJECT_NOT_FOUND');
+                }
+                $bankCounter = null;
+                if(in_array($voucherPrefix,['BOR','BOP'],true)){
+                    if(!\Illuminate\Support\Facades\Schema::hasColumn(
+                        'finance_bank_voucher_allocations','bank_account_id')){
+                        throw new \DomainException('BOR/BOP bank account migration is required.');
+                    }
+                    $bankCounter=\App\Services\Finance\BalancedBankVoucherIntegrity::bankAccount(
+                        (int)$selectedProjectId,
+                        (int)$request->input('bank_counter_account_id'),
+                        (int)$projectHeadSubhead->id
+                    );
                 }
                 if($linkedVerifiedSource) {
                     app(\App\Services\Finance\PassedBankVoucherClaim::class)->verify(
@@ -620,8 +638,11 @@ class LedgerController extends Controller
                     'type_id' => $resolvedVoucherNumber,
                     'project_head_subheads_id' => $projectHeadSubhead->id,
                     'reference' => $request->reference,
-                    'amount_in' => $amount_in,
-                    'amount_out' => $amount_out,
+                    // Bank forms now post the party-side opposite leg.
+                    'amount_in' => $bankCounter && $voucherPrefix==='BOP' ? $cleanAmount
+                        : ($bankCounter ? 0 : $amount_in),
+                    'amount_out' => $bankCounter && $voucherPrefix==='BOR' ? $cleanAmount
+                        : ($bankCounter ? 0 : $amount_out),
                     'is_active' => 1,
                     'date' => $request->date,
                     'detail' => $detail,
@@ -630,10 +651,27 @@ class LedgerController extends Controller
                     'status' => 0,
                 ]);
 
+                if($bankCounter){
+                    // The two linked general-ledger rows are the authoritative
+                    // debit and credit postings. Both remain approval-dependent.
+                    Ledger::create([
+                        'customer_ledger_id'=>$customerLedger->id,
+                        'voucher_number'=>$resolvedVoucherNumber,
+                        'type'=>$displaySeries,'type_id'=>$resolvedVoucherNumber,
+                        'project_head_subheads_id'=>(int)$bankCounter->account_mapping_id,
+                        'reference'=>$request->reference,
+                        'amount_in'=>$displaySeries==='BOR'?$cleanAmount:0,
+                        'amount_out'=>$displaySeries==='BOP'?$cleanAmount:0,
+                        'is_active'=>1,'date'=>$request->date,
+                        'detail'=>$detail,'update_by'=>Auth::id(),
+                        'create_by'=>Auth::id(),'status'=>0,
+                    ]);
+                }
                 if($linkedVerifiedSource) {
                     app(\App\Services\Finance\PassedBankVoucherClaim::class)->claim(
                         (int)$selectedProjectId,$passedKind,$passedSourceId,
-                        $displaySeries,(int)$customerLedger->id,(int)Auth::id(),$cleanAmount);
+                        $displaySeries,(int)$customerLedger->id,(int)Auth::id(),$cleanAmount,
+                        $bankCounter?(int)$bankCounter->id:null);
                 }
 
                 // Approval policy is determined by the actual displayed
