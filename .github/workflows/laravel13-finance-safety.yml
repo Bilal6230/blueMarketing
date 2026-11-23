@@ -334,3 +334,46 @@ jobs:
           if ($ids!==[0,1]) { throw new RuntimeException("Historical source auto-increment primary IDs 0 and 1 changed"); }
           echo "V2 synthetic historical import PASS: 57 tables, 2 source rows, exact ID/timestamps, FK rollback".PHP_EOL;
           '
+
+  milestone-03-bank-custody:
+    name: Milestone 03 — BD/BW/PPR verified bank source (isolated SQLite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+    steps:
+      - name: Checkout verified branch
+        uses: actions/checkout@v4
+      - name: PHP 8.3 with isolated SQLite
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3, bcmath, intl, gd, zip
+          coverage: none
+          tools: composer:v2
+      - name: Install Laravel test dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          cp .env.example .env
+          php artisan key:generate --force
+      - name: Lint new financial custody and controller code
+        run: |
+          php -l app/Services/Finance/TypedBankVoucherCustody.php
+          php -l app/Services/Finance/BankTransferWriter.php
+          php -l app/Services/Finance/BankTransferApprovalDraftWriter.php
+          php -l app/Services/Finance/BankManagementSourceMutation.php
+          php -l app/Services/Finance/BankVoucherAllocationRelease.php
+          php -l app/Services/Finance/DailyVoucherApprovalWorkflow.php
+          php -l app/Http/Controllers/BookingController.php
+          php -l app/Http/Controllers/Finance/VoucherController.php
+          php -l database/migrations/2026_11_23_150000_add_verified_bank_source_to_transfer_approval_drafts.php
+      - name: Run focused Milestone 03 transaction and release regressions
+        run: |
+          php artisan test             tests/Feature/Finance/TypedBankVoucherCustodyTest.php             tests/Feature/Finance/BankVoucherAllocationReleaseTest.php             tests/Feature/Finance/BankLinkedCorrectionApprovalIntegrationTest.php             tests/Unit/Finance/SevenVoucherTypedBankCustodyContractTest.php             tests/Unit/Finance/PprVerifiedSourceContractTest.php             tests/Unit/Finance/SevenFamilyBankSourcePickerContractTest.php             tests/Unit/Finance/VerifiedBankInstrumentContractTest.php
