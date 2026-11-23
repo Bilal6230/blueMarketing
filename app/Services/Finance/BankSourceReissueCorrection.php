@@ -27,10 +27,10 @@ final class BankSourceReissueCorrection
     private function allowed(string $method): array
     {
         return $method === 'online'
-            ? ['transaction_date','amount','sending_bank','sending_account',
+            ? ['reference','type','transaction_date','amount','sending_bank','sending_account',
                 'receiving_bank','receiving_account','sender_name','receiver_name',
                 'purpose','account_mapping_id']
-            : ['cheque_title','cheque_date','received_date','amount','branch',
+            : ['cheque_number','bank_name','direction','cheque_title','cheque_date','received_date','amount','branch',
                 'received_from','purpose','account_mapping_id'];
     }
 
@@ -76,14 +76,6 @@ final class BankSourceReissueCorrection
             $updates['customer_id']=DB::table('project_head_subheads')
                 ->where('project_id',$projectId)->where('id',$mapping)->value('customer_id');
         }
-        // Bank-confirmed instrument identity and direction cannot silently
-        // change as an ordinary correction; use genuine replacement instead.
-        foreach ($method==='online'?['reference','type']:['cheque_number','bank_name','direction'] as $immutable) {
-            if (array_key_exists($immutable,$changes)
-                && (string)$changes[$immutable] !== (string)$source->{$immutable}) {
-                throw new \DomainException($immutable.' is verified bank identity; use Replace & Reverify.');
-            }
-        }
         return $updates;
     }
 
@@ -123,40 +115,6 @@ final class BankSourceReissueCorrection
         $source=DB::table($table)->where('project_id',$projectId)
             ->where('id',$sourceId)->lockForUpdate()->first();
         if (!$source) throw new \DomainException('Bank source not found in the selected project.');
-        $verifiedStatus=$method==='online'?'confirmed':'cleared';
-        $isVerified=(string)$source->status===$verifiedStatus;
-        // Withdrawal alone invalidates availability. A previous real bank
-        // clearing event is not permission to revive genuinely withdrawn funds.
-        // Only an AUDITED administrative replacement that has itself been
-        // withdrawn can safely restore the original instrument.
-        $recoverable=false;
-        if((string)$source->status==='withdrawn'
-            && $this->hasOriginalVerification($projectId,$method,$sourceId,$source)) {
-            if($method==='online' && Schema::hasColumn('finance_online_intakes','remarks')) {
-                $replacements=DB::table('finance_online_intakes')
-                    ->where('project_id',$projectId)->where('id','!=',$sourceId)
-                    ->where('remarks','like','Audited replacement for Online #'.$sourceId.':%')
-                    ->get(['status']);
-                $recoverable=$replacements->isNotEmpty()
-                    && $replacements->every(fn($replacement)=>$replacement->status==='withdrawn');
-            }
-            if($method==='cheque' && Schema::hasTable('finance_cheque_intake_actions')) {
-                $replacementEvents=DB::table('finance_cheque_intake_actions')
-                    ->where('project_id',$projectId)->where('cheque_intake_id',$sourceId)
-                    ->where('action','withdrawn')->where('remarks','like','Replaced by cheque source #%')
-                    ->get(['remarks']);
-                foreach($replacementEvents as $event) {
-                    if(preg_match('/^Replaced by cheque source #(\\d+)$/',(string)$event->remarks,$match)) {
-                        $replacement=DB::table('finance_cheque_intakes')
-                            ->where('project_id',$projectId)->where('id',(int)$match[1])->first(['status']);
-                        if($replacement && $replacement->status==='withdrawn') $recoverable=true;
-                        elseif($replacement) throw new \DomainException(
-                            'A replacement cheque is still active; reconcile it before restoring the original.');
-                    }
-                }
-            }
-        }
-        $readyAfter=$isVerified || $recoverable;
         if ($method==='cheque' && (int)($source->customer_ledger_id??0)>0) {
             throw new \DomainException('Legacy cheque ledger link requires manual reconciliation.');
         }
@@ -231,8 +189,27 @@ final class BankSourceReissueCorrection
             ->where('project_id',$projectId)->where($claimColumn,$sourceId)->exists()) {
             throw new \DomainException('Unreconciled historical bank claim prevents correction.');
         }
-        if (!$changed && count($active)===0 && !$recoverable) {
+        $linked=$allocations->isNotEmpty();
+        if (!$changed && !$linked) {
             throw new \DomainException('No source changes or active linked vouchers to correct.');
+        }
+        // Every historical allocation makes this a replacement, including
+        // already-released and pending/rejected vouchers. Database uniqueness
+        // prohibits reusing the archived source's bank reference.
+        if($linked){
+            if($method==='online'){
+                $reference=mb_strtoupper((string)$updated['reference'],'UTF-8');
+                if(DB::table($table)->where('project_id',$projectId)
+                    ->where('reference_key',$reference)->exists()) {
+                    throw new \DomainException('Linked source requires a NEW unique online reference for re-verification.');
+                }
+            }else{
+                $number=strtoupper((string)$updated['cheque_number']);
+                if(DB::table($table)->where('project_id',$projectId)
+                    ->where('cheque_number',$number)->where('bank_name',$updated['bank_name'])->exists()) {
+                    throw new \DomainException('Linked source requires a NEW unique cheque number/bank for re-verification.');
+                }
+            }
         }
         $state=['project_id'=>$projectId,'method'=>$method,'source_id'=>$sourceId,
             'status'=>(string)$source->status,
@@ -241,8 +218,10 @@ final class BankSourceReissueCorrection
             'verified_bank'=>$method==='online'?(string)$source->receiving_bank:(string)$source->bank_name,
             'direction'=>$method==='online'?(string)$source->type:(string)$source->direction,
             'before'=>$before,'after'=>$updated,
-            'ready_after_correction'=>$readyAfter,
-            'result_status'=>$readyAfter?$verifiedStatus:(string)$source->status,
+            'requires_replacement'=>$linked,
+            'ready_after_correction'=>false,
+            'result_status'=>$linked ? 'withdrawn' : (string)$source->status,
+            'new_status'=>$linked ? ($method==='online'?'pending':($updated['direction']==='out'?'issued':'received')) : (string)$source->status,
             'active_vouchers'=>$active,'historical_released_count'=>$historical];
         $state['fingerprint']=hash('sha256',json_encode($state,JSON_THROW_ON_ERROR));
         return $state;
@@ -262,23 +241,13 @@ final class BankSourceReissueCorrection
             if(!hash_equals($plan['fingerprint'],$fingerprint)) {
                 throw new \DomainException('Source or linked vouchers changed; review again.');
             }
-            foreach($plan['active_vouchers'] as $item) {
-                app(BankVoucherAllocationRelease::class)->release($projectId,
-                    $item['voucher_id'],$actorId,mb_substr('Source correction: '.$reason,0,500),true);
-            }
             $table=$this->table($method);
-            DB::table($table)->where('project_id',$projectId)->where('id',$sourceId)
-                ->update($plan['after']+['status'=>$plan['result_status'],'updated_at'=>now()]);
-            if($plan['result_status']!==$plan['status'] && $method==='cheque') {
-                DB::table('finance_cheque_intake_actions')->insert([
-                    'project_id'=>$projectId,'cheque_intake_id'=>$sourceId,
-                    'action'=>'restored','from_status'=>$plan['status'],
-                    'to_status'=>$plan['result_status'],'action_date'=>now()->toDateString(),
-                    'reason'=>'Audited source reissue: '.$reason,'actor_id'=>$actorId,
-                    'bank_name'=>(string)$plan['verified_bank'],
-                    'original_amount'=>$plan['before']['amount'],
-                    'created_at'=>now(),
-                ]);
+            if($plan['requires_replacement']){
+                $result=app(BankManagementSourceMutation::class)->replace(
+                    $projectId,$method,$sourceId,$actorId,$reason,$plan['after']);
+            }else{
+                $result=app(BankManagementSourceMutation::class)->update(
+                    $projectId,$method,$sourceId,$plan['after']);
             }
             DB::table('daily_voucher_edit_snapshots')->insert([
                 'project_id'=>$projectId,'source_id'=>$sourceId,'approval_id'=>null,
@@ -288,15 +257,19 @@ final class BankSourceReissueCorrection
                     'fields'=>$plan['before']],JSON_THROW_ON_ERROR),
                 'proposed_snapshot'=>json_encode(['source_kind'=>$table,'method'=>$method,
                     'source_id'=>$sourceId,'status'=>$plan['result_status'],
+                    'replacement_source_id'=>$result['replacement_source_id']??null,
                     'fields'=>$plan['after'],'released_vouchers'=>$plan['active_vouchers']],
                     JSON_THROW_ON_ERROR),
                 'reason'=>$reason,'submitted_by'=>$submittedBy??$actorId,'decided_by'=>$actorId,
                 'created_at'=>now(),'updated_at'=>now(),
             ]);
             return ['source_id'=>$sourceId,'source_method'=>$method,
-                'released_vouchers'=>count($plan['active_vouchers']),
-                'amount'=>(string)$plan['after']['amount'],'status'=>$plan['result_status'],
-                'ready_for_new_vouchers'=>$plan['ready_after_correction']];
+                'replacement_source_id'=>$result['replacement_source_id']??null,
+                'released_vouchers'=>$result['released_count']??0,
+                'amount'=>(string)$plan['after']['amount'],
+                'status'=>$result['new_status']??$result['status'],
+                'ready_for_new_vouchers'=>false,
+                'requires_reverification'=>(bool)$plan['requires_replacement']];
         },3);
     }
 }
