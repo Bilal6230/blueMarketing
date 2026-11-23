@@ -14,10 +14,44 @@
 |---|---|---|
 | 01 | Nonblocking loading and voucher-tinted skeletons | **COMPLETE** — owner browser + PHP tests PASS |
 | 02 | Action-specific permissions, Roles page and backend enforcement | **PARTIAL ACCEPTANCE** — implemented, tests PASS, owner confirmed CR Edit visibly works; complete cross-module browser permission matrix not yet accepted |
-| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. Plot/JV/CV differential correction owner-accepted; Approved CV browser PASS, 16 tests PASS / 139 assertions. BD/BW same-batch Edit/Delete local **13 tests PASS / 102 assertions**, posting audit 6 projects clean (BD/BW browser still pending). SV production Create/Post and exact typed/legacy Edit/Delete now committed, **SV tests/browser pending**. PPR/EC/ECP and Stock/Labour remaining source-domain lifecycle acceptance incomplete. |
+| **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. Owner confirms browser batches 1/2/3 PASS; new seven-voucher bank-source and counter-account expansion underway. Plot/JV/CV differential correction owner-accepted; Approved CV browser PASS, 16 tests PASS / 139 assertions. BD/BW same-batch Edit/Delete local **13 tests PASS / 102 assertions**, posting audit 6 projects clean (BD/BW browser still pending). SV production Create/Post and exact typed/legacy Edit/Delete now committed, **SV tests/browser pending**. PPR/EC/ECP and Stock/Labour remaining source-domain lifecycle acceptance incomplete. |
 | **04** | Cheque/Online correction, approval and linked voucher replacement | **COMPLETE — OWNER ACCEPTED / CLOSED (2026-11-23)**. No voucher history: original ID edited. Any voucher history: old source withdrawn, pending voucher approvals cancelled, posted voucher/ledger soft-voided, new source created for bank re-verification. Approval ON/OFF, project guard, review modal, compact status/actions and one-line narration accepted; 19 integration PASS / 138 assertions; final register JS 2 PASS / 28 assertions; all 6 project posting audit clean. |
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
+
+## Milestone 03 — Seven-voucher verified bank source + account UI consolidation (2026-11-23)
+
+**Owner approved expanded scope:** Same approved/Cleared Cheque or Confirmed Online management source picker must support all **seven** voucher families: **CR, DR, BOR, BOP, BD, BW, PPR**. Existing voucher-specific lifecycle/approval/ledger/reporting must not be bypassed. Owner reports previous M03 batches 1, 2 and 3 functional browser tests PASS; this *new* seven-family expansion has **NOT** been accepted yet.
+
+**Source direction:**
+| Series | Required verified source | Accounting intent |
+|---|---|---|
+| CR, BOR, BD, PPR | Cleared incoming Cheque or Confirmed receipt Online | Receipt |
+| DR, BOP, BW | Cleared outgoing Cheque or Confirmed payment Online | Payment |
+
+**Code inspection finding:** The current production (standard) cash voucher endpoints use selected-project `acct_type`, `accounts_id`, `subaccounts_id` to create canonical `customer_ledger` + `ledgers` rows. The extra `posting_lines[0/1]` Debit and Credit selectors in `typed_posting_fields.blade.php` belong to a disabled alternate balanced writer; `FinanceWorkflowAccess::selected()` returns false. Displaying them together was confusing and their submitted values did not select the normal posting account. **Implemented now:** suppress this obsolete top double-dropdown in the normal ERP mode; preserve the actual bottom account fields and current posting. Regression contract added. This is an interim UI correction, **NOT** a claim that the desired new single opposite-side posting control has been implemented.
+
+**Target one-counter-account business rule:** Credit voucher bottom Accounts/Child Account denotes its credit-side account; show only relevant Debit counter-account. Debit voucher bottom side denotes debit; show only Credit counter-account. For BOR/BOP the counter-account dropdown must be restricted to *selected project's active `project_bank_accounts`* joined with valid `account_mapping_id` rather than arbitrary `project_head_subheads`; ownership and accounting polarity must be checked server-side. Never merely hide an input whose value is required by the active writer. Posting writers must create valid balanced financial evidence; avoid silently creating a phantom counter-leg.
+
+**Specific BD/BW finding:** `bank_transfer_workspace.blade.php` and `VoucherController::postTransferVoucher()` currently run a **cash ↔ bank transfer** through `BankTransferWriter`, where `bank_account_id` is mapped through `project_bank_accounts` and `cash_account_id` is a CASH counter-leg. Optional `cheque_source_id` refers to a different **customer_ledger** cheque custody, not a Cleared `finance_cheque_intakes` or Confirmed `finance_online_intakes` management source. Treating that old field as the requested source picker would cause false linkage. New Payment Type (Online/Cheque) and M04-compatible picker must be integrated into typed transfer writer, approval draft, correct posting claim and release process, plus real bank-specific counterpart treatment.
+
+**Specific PPR finding:** `plot_receipt_workspace.blade.php` currently has no Payment Type and uses the multi-plot `PlotEntryWriter::receive()` to post a receipt against booking/receivable allocations plus its chosen `cash_account_id`. It is NOT the same storage/ledger shape as CR/BOR. Online/Cheque requires adding source identity, matching customer/mapping, atomic allocation after approval (not at pending-draft time), soft-void/reversal custody on edit/delete and source replacement, and source narration; existing cash PPR must remain valid.
+
+**Implemented in this initial expansion batch:** shared read-only verified-source picker now accepts optional `voucher_series` for all seven listed types and rejects a series/direction mismatch (backward compatible to existing callers). CR/DR/BOR/BOP picker sends the real display series. BD/BW/PPR controllers explicitly reject injected `passed_source_id`, `passed_source_method`, or `payment_type` until their typed voucher writer is integrated: **never save a voucher claiming to be bank-linked without a real immutable claim**. No change to prior M04 verified source correction/withdraw and no extra database table or migration.
+
+**Still REQUIRED to complete this expanded scope:** (1) typed BD/BW and PPR source claim/approval/posted voucher link and audited release extension compatible with existing M04 replace-withdraw behavior; (2) BD/BW and PPR Payment Type + single-record Cheque/Online selection modal and one-line details; (3) restrict BOR/BOP single counter-account to active project bank accounts and add true balanced posting; (4) lifecycle permission, idempotency, remaining-balance, multi-voucher allocation, bank source replacement, pending approval and cross-project tests; (5) browser sign-off for all seven series. **Do not mark the seven-family extension complete until the above are done.**
+
+**Initial batch local gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=StandardVoucherAccountSelectionContractTest
+php artisan test --filter=BankSourceReissueContractTest
+php artisan test --filter=BankLinkedCorrectionApprovalIntegrationTest
+php artisan finance:audit-posting-balances
+```
 
 ## Milestone 04 — CLOSED / OWNER ACCEPTED (2026-11-23)
 
