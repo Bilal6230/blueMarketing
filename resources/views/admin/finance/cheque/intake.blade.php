@@ -503,7 +503,7 @@ $(function () {
         if(@json(auth()->user()->can('finance cheque delete')) &&
           (r.status==='received'||r.status==='issued'||
            (r.status==='cleared' && @json(auth()->user()->can('delete voucher')) &&
-            @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))))){
+            @json(\App\Services\Finance\VoucherApproverAccess::isSuperAdmin(auth()->user())))){
             $('<button type="button">').addClass('btn btn-sm btn-outline-danger mr-1 cheque-delete-source')
              .attr('data-id',r.id).text('Delete').appendTo($actions);
         }
