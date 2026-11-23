@@ -416,6 +416,48 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
         self::assertSame(0,DB::table('finance_cheque_intake_actions')->count());
     }
 
+    public function test_confirmed_online_pending_voucher_is_cancelled_and_source_stays_available(): void
+    {
+        $this->voucher(51,'BOR','online',55,'200.00','pending');
+        $changes=[
+            'reference'=>'TX55','type'=>'receipt','transaction_date'=>'2026-11-22',
+            'amount'=>'475.00','sending_bank'=>'Bank A','sending_account'=>'A1',
+            'receiving_bank'=>'Bank B','receiving_account'=>'B1','sender_name'=>'Sender',
+            'receiver_name'=>'Office','purpose'=>'Corrected bank narration',
+            'account_mapping_id'=>7,
+        ];
+        $plan=app(BankSourceReissueCorrection::class)->preview(1,'online',55,$changes);
+        self::assertTrue($plan['ready_after_correction']);
+        $result=app(BankLinkedCorrectionApproval::class)->submitReissue(
+            1,'online',55,7,'Fix linked online source before posting',
+            $changes,$plan['fingerprint']);
+        self::assertFalse($result['pending']);
+        self::assertSame('confirmed',DB::table('finance_online_intakes')->where('id',55)->value('status'));
+        self::assertEquals(475,DB::table('finance_online_intakes')->where('id',55)->value('amount'));
+        self::assertSame('rejected',DB::table('daily_voucher_approvals')
+            ->where('source_id',51)->value('status'));
+        self::assertSame('pending_cancel_release',
+            DB::table('finance_bank_voucher_allocation_releases')->where('voucher_id',51)->value('action'));
+        self::assertSame(1,DB::table('finance_online_intakes')->count());
+    }
+
+    public function test_unverified_unlinked_cheque_can_edit_but_is_not_falsely_cleared(): void
+    {
+        DB::table('daily_voucher_approval_policies')
+            ->where('project_id',1)->where('voucher_type','CHQ_CORR')
+            ->update(['approval_required'=>false]);
+        DB::table('finance_cheque_intakes')->where('id',77)->update(['status'=>'received']);
+        $changes=$this->correctedCheque('490.00');
+        $plan=app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$changes);
+        self::assertFalse($plan['ready_after_correction']);
+        app(BankLinkedCorrectionApproval::class)->submitReissue(
+            1,'cheque',77,7,'Edit cheque before bank clearing',
+            $changes,$plan['fingerprint']);
+        self::assertSame('received',DB::table('finance_cheque_intakes')->where('id',77)->value('status'));
+        self::assertEquals(490,DB::table('finance_cheque_intakes')->where('id',77)->value('amount'));
+        self::assertSame(0,DB::table('finance_bank_voucher_allocation_releases')->count());
+    }
+
     protected function tearDown(): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
