@@ -124,7 +124,7 @@ final class SameSourceCashVoucherEdit
                 throw new \DomainException('Voucher source/ledger posting ownership invalid.');
             }
             if($legCount===2){
-                if($isBank || !in_array((string)$source->transaction_type,['CR','DR','CCR','CDR'],true)){
+                if($isBank || !in_array((string)$source->transaction_type,['CR','DR','CP','CCR','CDR'],true)){
                     throw new \DomainException('Verified bank two-leg revisions require audited source correction.');
                 }
                 BalancedStandardVoucherIntegrity::assert((string)$source->transaction_type,$source,$leg);
