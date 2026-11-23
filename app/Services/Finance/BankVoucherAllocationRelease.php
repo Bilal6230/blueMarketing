@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Schema;
  */
 final class BankVoucherAllocationRelease
 {
-    public function release(int $projectId, int $voucherId, int $actorId, string $reason): array
+    public function release(int $projectId, int $voucherId, int $actorId, string $reason,
+        bool $cancelPendingForSourceCorrection=false): array
     {
         $reason=trim($reason);
         if($projectId<1 || $voucherId<1 || $actorId<1 ||
@@ -23,7 +24,7 @@ final class BankVoucherAllocationRelease
             'project_voucher_display_numbers','customer_ledger','ledgers','daily_voucher_approvals'] as $table) {
             if(!Schema::hasTable($table)) throw new \DomainException('Bank allocation release migration/dependency missing.');
         }
-        return DB::transaction(function()use($projectId,$voucherId,$actorId,$reason): array {
+        return DB::transaction(function()use($projectId,$voucherId,$actorId,$reason,$cancelPendingForSourceCorrection): array {
             DB::table('projects')->where('id',$projectId)->lockForUpdate()->first()
                 ?: throw new \DomainException('Project not found.');
             $identity=DB::table('project_voucher_display_numbers')
@@ -80,7 +81,7 @@ final class BankVoucherAllocationRelease
                   ->where('status','pending')->exists()){
                 throw new \DomainException('Resolve pending voucher edits before releasing allocation.');
             }
-            if($approval && $approval->status==='pending'){
+            if($approval && $approval->status==='pending' && !$cancelPendingForSourceCorrection){
                 throw new \DomainException('Pending approval must be decided before release.');
             }
             $legs=DB::table('ledgers as ledger')
@@ -99,16 +100,23 @@ final class BankVoucherAllocationRelease
             // A matching absolute amount alone is not sufficient: receipt and
             // payment legs must match the original allocation direction.
             BankVoucherLegIntegrity::assert($series,$source,$legs->first(),(float)$allocation->amount);
+            $pendingCancellation=$cancelPendingForSourceCorrection && $approval
+                && $approval->status==='pending';
+            if($pendingCancellation && ((int)$source->is_active!==0
+                || (int)$legs->first()->is_active!==0)) {
+                throw new \DomainException('Pending voucher unexpectedly has an active posting; reconciliation required.');
+            }
             $rejected=$approval && $approval->status==='rejected';
             $posted=(int)$source->is_active===1 && (int)$legs->first()->is_active===1
                 && (!$approval || $approval->status==='approved' || $approval->status==='posted');
-            if(!$rejected && !$posted) {
+            if(!$pendingCancellation && !$rejected && !$posted) {
                 throw new \DomainException('Only rejected or active posted bank vouchers can be released.');
             }
             if($rejected && ((int)$source->is_active!==0 || (int)$legs->first()->is_active!==0)){
                 throw new \DomainException('Rejected voucher unexpectedly has an active posting.');
             }
-            $action=$rejected?'rejected_release':'posted_void_release';
+            $action=$pendingCancellation?'pending_cancel_release'
+                :($rejected?'rejected_release':'posted_void_release');
             if($posted){
                 // Administrative void, not a new offsetting double-entry voucher.
                 // Never erase the original ledger or bank management record.
@@ -119,6 +127,22 @@ final class BankVoucherAllocationRelease
                 DB::table('ledgers')->where('id',$legs->first()->id)
                     ->update(['is_active'=>0,'delete_reason'=>$reason,'update_by'=>$actorId,
                         'updated_at'=>now()]);
+            }
+            if($pendingCancellation) {
+                DB::table('customer_ledger')->where('project_id',$projectId)
+                    ->where('id',$voucherId)->update([
+                        'is_active'=>0,'delete_reason'=>$reason,'updated_at'=>now(),
+                    ]);
+                DB::table('ledgers')->where('id',$legs->first()->id)->update([
+                    'is_active'=>0,'delete_reason'=>$reason,'update_by'=>$actorId,
+                    'updated_at'=>now(),
+                ]);
+                DB::table('daily_voucher_approvals')->where('id',$approval->id)
+                    ->where('status','pending')->update([
+                        'status'=>'rejected','decided_by'=>$actorId,
+                        'rejection_reason'=>'Cancelled due to bank source correction: '.$reason,
+                        'decided_at'=>now(),'updated_at'=>now(),
+                    ]);
             }
             $releaseId=DB::table('finance_bank_voucher_allocation_releases')->insertGetId([
                 'project_id'=>$projectId,'allocation_id'=>$allocation->id,
