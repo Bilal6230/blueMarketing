@@ -22,7 +22,7 @@ final class BankSourceReissueContractTest extends TestCase
         self::assertStringContainsString('VoucherApprovalMutationGuard::class',$service);
         self::assertStringContainsString('ready_for_new_vouchers',$service);
         self::assertStringContainsString('ready_after_correction',$service);
-        self::assertStringContainsString('cancelPendingForSourceCorrection',$service);
+        self::assertStringContainsString("'Source correction: '",$service);
         self::assertStringNotContainsString('->delete(',$service);
         self::assertStringContainsString('submitReissue(',$approval);
         self::assertStringContainsString("mode'=>'reissue'",$approval);
