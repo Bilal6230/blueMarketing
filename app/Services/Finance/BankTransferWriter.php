@@ -28,7 +28,8 @@ final class BankTransferWriter
      */
     public function post(int $projectId, int $bankAccountId, string $kind, string $key, string $date,
         string $amount, string $narration, array $allocations, ?int $actor = null, ?int $chequeSourceId = null,
-        ?int $approvedDraftId = null): array
+        ?int $approvedDraftId = null, ?string $passedSourceMethod = null,
+        ?int $passedSourceId = null): array
     {
         FinanceConnectionGuard::assertAllowed();
         if (!in_array($kind, ['deposit', 'withdrawal'], true) || $projectId < 1 || $bankAccountId < 1
@@ -53,9 +54,17 @@ final class BankTransferWriter
             $lines[] = ['account_id' => (int) $id, 'amount' => $this->money($cents)];
         }
         if ($opposite !== $total) { throw new \DomainException('V2_BANK_TRANSFER_ALLOCATION_TOTAL_MISMATCH'); }
-        $hash = hash('sha256', json_encode([$projectId, $bankAccountId, $kind, $date, $this->money($total), trim($narration), $lines, $chequeSourceId], JSON_THROW_ON_ERROR));
+        if (($passedSourceMethod===null)!==($passedSourceId===null)
+            || ($passedSourceMethod!==null &&
+                (!in_array($passedSourceMethod,['cheque','online'],true) || $passedSourceId<1
+                    || $chequeSourceId!==null))) {
+            throw new \DomainException('BANK_TRANSFER_VERIFIED_SOURCE_INVALID');
+        }
+        $fingerprint=[$projectId, $bankAccountId, $kind, $date, $this->money($total), trim($narration), $lines, $chequeSourceId];
+        if($passedSourceMethod!==null)$fingerprint[]=['method'=>$passedSourceMethod,'source_id'=>$passedSourceId];
+        $hash = hash('sha256',json_encode($fingerprint,JSON_THROW_ON_ERROR));
 
-        return DB::transaction(function () use ($projectId, $bankAccountId, $kind, $key, $date, $narration, $lines, $total, $hash, $actor, $chequeSourceId, $approvedDraftId): array {
+        return DB::transaction(function () use ($projectId, $bankAccountId, $kind, $key, $date, $narration, $lines, $total, $hash, $actor, $chequeSourceId, $approvedDraftId, $passedSourceMethod, $passedSourceId): array {
             DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
             $bank = DB::table('project_bank_accounts')->where('id', $bankAccountId)
                 ->where('project_id', $projectId)->where('is_active', 1)->lockForUpdate()->first();
@@ -101,9 +110,27 @@ final class BankTransferWriter
                         $query->whereHas('headAccounting', fn ($head) => $head->where('name', 'LIKE', '%cash%'))
                             ->orWhereHas('subheadAccounting', fn ($subhead) => $subhead->where('name', 'LIKE', '%cash%'));
                     })->exists();
-                if (!$cash) { throw new \DomainException('V2_BANK_TRANSFER_CASH_ACCOUNT_REQUIRED'); }
+                if (!$cash && $passedSourceMethod===null) {
+                    throw new \DomainException('V2_BANK_TRANSFER_CASH_ACCOUNT_REQUIRED');
+                }
+                if($passedSourceMethod!==null){
+                    $mapped=\App\Models\ProjectHeadSubhead::availableForPosting()
+                        ->where('project_id',$projectId)
+                        ->where('id',$line['account_id'])->exists();
+                    if(!$mapped)throw new \DomainException('BANK_TRANSFER_COUNTER_ACCOUNT_PROJECT_INVALID');
+                }
             }
 
+            $series = $kind === 'deposit' ? 'BD' : 'BW';
+            if($passedSourceMethod!==null && $approvedDraftId===null){
+                $instrument=app(VerifiedBankInstrument::class)->inspectLocked(
+                    $projectId,$series,$passedSourceMethod,$passedSourceId,
+                    $this->money($total));
+                if(count($lines)!==1 ||
+                    (int)$lines[0]['account_id']!==(int)$instrument['account_mapping_id']){
+                    throw new \DomainException('Verified bank source must post to its own mapped counter-account.');
+                }
+            }
             $postingLines = [];
             $bankDebit = $kind === 'deposit';
             $postingLines[] = ['account_id' => (int) $bank->account_mapping_id,
@@ -157,7 +184,9 @@ final class BankTransferWriter
                     ||trim((string)$approvedDraft->narration)!==trim($narration)
                     ||(int)$approvedDraft->cash_account_id!==(int)$lines[0]['account_id']
                     ||count($lines)!==1
-                    ||(int)($approvedDraft->linked_customer_ledger_id??0)!==(int)($chequeSourceId??0)){
+                    ||(int)($approvedDraft->linked_customer_ledger_id??0)!==(int)($chequeSourceId??0)
+                    ||(string)($approvedDraft->passed_source_method??'')!==(string)($passedSourceMethod??'')
+                    ||(int)($approvedDraft->passed_source_id??0)!==(int)($passedSourceId??0)){
                     throw new \DomainException('BANK_APPROVAL_DRAFT_PAYLOAD_MISMATCH');
                 }
                 $voucherNumber=(int)$approvedDraft->voucher_number;
@@ -198,6 +227,21 @@ final class BankTransferWriter
                 throw new \DomainException('GENERAL_LEDGER_SCHEMA_REQUIRED');
             }
             PostedVoucherLedgerGate::assertLinked($projectId, (int) $batchId);
+            if($passedSourceMethod!==null){
+                // Approval ON transfers reserved draft capacity; approval OFF
+                // creates an allocation only after all ledger legs are valid.
+                if($approvedDraftId!==null){
+                    app(TypedBankVoucherCustody::class)->promoteDraft(
+                        $projectId,$series,$approvedDraftId,(int)$batchId,
+                        $passedSourceMethod,$passedSourceId,$this->money($total),(int)$actor
+                    );
+                }else{
+                    app(TypedBankVoucherCustody::class)->claimPosted(
+                        $projectId,$series,(int)$batchId,
+                        $passedSourceMethod,$passedSourceId,$this->money($total),(int)$actor
+                    );
+                }
+            }
             return ['posting_batch_id' => (int) $batchId, 'replayed' => false];
         }, 3);
     }
