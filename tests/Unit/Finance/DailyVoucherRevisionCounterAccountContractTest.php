@@ -27,7 +27,7 @@ final class DailyVoucherRevisionCounterAccountContractTest extends TestCase
         self::assertIsString($view);
         self::assertIsString($editor);
 
-        self::assertStringContainsString("whereIn('transaction_type',['CR','CP','CCR','CDR'])",$controller);
+        self::assertStringContainsString("whereIn('transaction_type',['CR','DR','CP','CCR','CDR'])",$controller);
         self::assertStringContainsString("->orderBy('id')->get()",$controller);
         self::assertStringContainsString('$counterLeg=$legs->count()===2 ? $legs->last() : null',$controller);
         self::assertStringContainsString('counterAccountId',$controller);
