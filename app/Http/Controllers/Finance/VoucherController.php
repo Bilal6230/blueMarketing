@@ -391,6 +391,14 @@ class VoucherController extends Controller
             : '#B11226';
 
         $selectedProjectId = getSelectedTown();
+        if($displaySeries==='BOR'){
+            $x['bankSettlementAccounts'] = \Illuminate\Support\Facades\Schema::hasTable('project_bank_accounts')
+                ? DB::table('project_bank_accounts')
+                    ->where('project_id',$selectedProjectId)->where('is_active',1)
+                    ->orderBy('bank_name')->orderBy('account_title')
+                    ->get(['id','account_mapping_id','bank_name','account_title'])
+                : collect();
+        }
         $x['customPaymentMethods'] = collect();
         if (\Illuminate\Support\Facades\Schema::hasTable('project_custom_payment_methods')) {
             $customMethods = DB::table('project_custom_payment_methods')->where('project_id', $selectedProjectId)->where('is_active', 1);
