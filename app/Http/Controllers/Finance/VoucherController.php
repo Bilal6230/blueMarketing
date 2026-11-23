@@ -1719,13 +1719,6 @@ class VoucherController extends Controller
 
     public function postTransferVoucher(Request $request, string $kind)
     {
-        // Existing BD/BW writer represents cash-to-bank transfers, not yet
-        // an allocated Cheque/Online management claim. Refuse bank-linked
-        // fields rather than pretending to reserve or consume the source.
-        abort_unless(!$request->filled('passed_source_id')
-            && !$request->filled('passed_source_method')
-            && !$request->filled('payment_type'), 422,
-            'BD/BW verified bank source posting requires the typed allocation workflow.');
         abort_unless(in_array($kind, ['deposit', 'withdrawal'], true), 404);
         $projectId = (int) getSelectedTown();
         \App\Services\Finance\FinanceWorkflowAccess::authorize($projectId);
@@ -1735,7 +1728,21 @@ class VoucherController extends Controller
             'reference' => ['nullable', 'string', 'max:120'], 'description' => ['required', 'string', 'max:2000'],
             'request_key' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,128}$/D'],
             'cheque_source_id' => ['nullable', 'integer', 'min:1'],
+            'payment_type' => ['nullable','integer','in:1,2,3'],
+            'passed_source_method' => ['nullable','in:online,cheque'],
+            'passed_source_id' => ['nullable','integer','min:1'],
         ]);
+        $paymentType=(int)($data['payment_type']??1);
+        $passedMethod=$data['passed_source_method']??null;
+        $passedId=isset($data['passed_source_id'])?(int)$data['passed_source_id']:null;
+        if($paymentType===1){
+            abort_unless($passedMethod===null && $passedId===null,422,
+                'A manual Cash transfer cannot claim a cleared bank instrument.');
+        }else{
+            abort_unless(($paymentType===2?'online':'cheque')===$passedMethod
+                && $passedId!==null && empty($data['cheque_source_id']),422,
+                'Select the correct verified Cheque or Online management source.');
+        }
         abort_unless($kind === 'withdrawal' || empty($data['cheque_source_id']), 422, 'A cheque source can only be linked to a withdrawal.');
         $narration = trim(($data['reference'] ?? '') !== '' ? 'Ref: '.$data['reference'].' | ' : '').$data['description'];
         $series=$kind==='deposit'?'BD':'BW';
@@ -1747,13 +1754,15 @@ class VoucherController extends Controller
                     $projectId,(int)$data['bank_account_id'],(int)$data['cash_account_id'],
                     $kind,$data['request_key'],$data['date'],(string)$data['amount'],
                     $narration,(int)auth()->id(),
-                    isset($data['cheque_source_id'])?(int)$data['cheque_source_id']:null);
+                    isset($data['cheque_source_id'])?(int)$data['cheque_source_id']:null,
+                    $passedMethod,$passedId);
             }else{
                 $result=(new \App\Services\Finance\BankTransferWriter())->post(
                     $projectId,(int)$data['bank_account_id'],$kind,$data['request_key'],$data['date'],
                     (string)$data['amount'],$narration,
                     [['account_id'=>(int)$data['cash_account_id'],'amount'=>(string)$data['amount']]],
-                    auth()->id(),isset($data['cheque_source_id'])?(int)$data['cheque_source_id']:null);
+                    auth()->id(),isset($data['cheque_source_id'])?(int)$data['cheque_source_id']:null,
+                    null,$passedMethod,$passedId);
             }
         }catch(\DomainException $e){
             return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
