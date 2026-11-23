@@ -140,6 +140,61 @@ final class BankVoucherAllocationReleaseTest extends TestCase
         }
     }
 
+    public function test_new_balanced_cr_releases_both_ledger_sides(): void
+    {
+        $this->source(31,'CR','online','posted',145.00,145.00);
+        DB::table('ledgers')->where('customer_ledger_id',31)->delete();
+        DB::table('ledgers')->insert([
+            ['customer_ledger_id'=>31,'project_head_subheads_id'=>3,
+                'type'=>'CR','is_active'=>1,'amount_in'=>145,'amount_out'=>0],
+            ['customer_ledger_id'=>31,'project_head_subheads_id'=>4,
+                'type'=>'CR','is_active'=>1,'amount_in'=>0,'amount_out'=>145],
+        ]);
+        $result=app(BankVoucherAllocationRelease::class)
+            ->release(1,31,42,'Source correction releases balanced CR');
+        $this->assertSame('posted_void_release',$result['action']);
+        $this->assertSame(2,DB::table('ledgers')
+            ->where('customer_ledger_id',31)->where('is_active',0)->count());
+    }
+
+    public function test_new_balanced_dr_releases_both_ledger_sides(): void
+    {
+        $this->source(32,'DR','cheque','posted',235.00,235.00);
+        DB::table('ledgers')->where('customer_ledger_id',32)->delete();
+        DB::table('ledgers')->insert([
+            ['customer_ledger_id'=>32,'project_head_subheads_id'=>3,
+                'type'=>'DR','is_active'=>1,'amount_in'=>0,'amount_out'=>235],
+            ['customer_ledger_id'=>32,'project_head_subheads_id'=>4,
+                'type'=>'DR','is_active'=>1,'amount_in'=>235,'amount_out'=>0],
+        ]);
+        $result=app(BankVoucherAllocationRelease::class)
+            ->release(1,32,42,'Source correction releases balanced DR');
+        $this->assertSame('posted_void_release',$result['action']);
+        $this->assertSame(2,DB::table('ledgers')
+            ->where('customer_ledger_id',32)->where('is_active',0)->count());
+    }
+
+    public function test_balanced_cr_rejects_misposted_counter_without_releasing(): void
+    {
+        $this->source(33,'CR','online','posted',75.00,75.00);
+        DB::table('ledgers')->where('customer_ledger_id',33)->delete();
+        DB::table('ledgers')->insert([
+            ['customer_ledger_id'=>33,'project_head_subheads_id'=>3,
+                'type'=>'CR','is_active'=>1,'amount_in'=>75,'amount_out'=>0],
+            ['customer_ledger_id'=>33,'project_head_subheads_id'=>4,
+                'type'=>'CR','is_active'=>1,'amount_in'=>75,'amount_out'=>0],
+        ]);
+        try{
+            app(BankVoucherAllocationRelease::class)
+                ->release(1,33,42,'Invalid double entry cannot be released');
+            $this->fail('Unbalanced release accepted');
+        }catch(\DomainException $e){
+            $this->assertStringContainsString('STANDARD_VOUCHER_UNBALANCED_POSTING',$e->getMessage());
+        }
+        $this->assertSame(0,DB::table('finance_bank_voucher_allocation_releases')->count());
+        $this->assertSame(1,(int)DB::table('customer_ledger')->where('id',33)->value('is_active'));
+    }
+
     public function test_new_balanced_bor_releases_both_bank_and_party_legs(): void
     {
         $this->source(28,'BOR','online','posted',425.00,425.00);
