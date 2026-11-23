@@ -22,6 +22,28 @@ class PlotEntryWriterTest extends TestCase
             'projects', 'users', 'journal_vouchers', 'journal_voucher_details', 'commision_vouchers',
             'stock_entries', 'stock_bills', 'customer_ledger', 'booking_vouchers', 'labour_ledgers',
         ] as $name) Schema::create($name, fn (Blueprint $t) => $t->id());
+        // Full typed posting needs 1:1 authentic general-ledger evidence.
+        // These SQLite fixtures intentionally mirror the writer contract.
+        Schema::create('ledgers', function (Blueprint $t): void {
+            $t->id(); $t->unsignedBigInteger('customer_ledger_id')->nullable();
+            $t->unsignedBigInteger('project_head_subheads_id');
+            $t->string('type',12); $t->unsignedBigInteger('type_id');
+            $t->unsignedBigInteger('voucher_number')->nullable();
+            $t->string('reference')->nullable();
+            $t->decimal('amount_in',18,2)->default(0);
+            $t->decimal('amount_out',18,2)->default(0);
+            $t->text('detail')->nullable();
+            $t->unsignedBigInteger('create_by')->nullable();
+            $t->date('date')->nullable(); $t->boolean('is_active')->default(true);
+            $t->string('status')->default('0'); $t->timestamps();
+        });
+        Schema::create('ledger_source_attributions', function (Blueprint $t): void {
+            $t->id(); $t->unsignedBigInteger('ledger_id')->unique();
+            $t->unsignedBigInteger('project_id'); $t->string('source_kind');
+            $t->unsignedBigInteger('source_id'); $t->string('evidence_kind');
+            $t->string('evidence_reference')->nullable();
+            $t->unsignedBigInteger('attributed_by')->nullable(); $t->timestamps();
+        });
         Schema::create('leads', function (Blueprint $t): void {
             $t->id(); $t->unsignedBigInteger('project_id');
             $t->string('first_name')->nullable(); $t->string('last_name')->nullable(); $t->string('business')->nullable();
@@ -86,7 +108,7 @@ class PlotEntryWriterTest extends TestCase
     public function test_multi_plot_receipt_posts_once_and_exposes_separate_plot_allocations(): void
     {
         $writer = new PlotEntryWriter();
-        $data = ['date' => '2026-11-05', 'receipt_number' => 'PR-TEST-1', 'amount' => '100.00',
+        $data = ['date' => '2026-11-05', 'receipt_number' => 'PPR-1', 'amount' => '100.00',
             'cash_account_id' => 101, 'narration' => 'Two plot payment', 'allocations' => [
                 ['booking_id' => 31, 'plot_id' => 11, 'receivable_account_id' => 102, 'amount' => '60.00'],
                 ['booking_id' => 32, 'plot_id' => 12, 'receivable_account_id' => 103, 'amount' => '40.00'],
@@ -101,7 +123,7 @@ class PlotEntryWriterTest extends TestCase
         $details = $writer->receipt(1, $created['source_id']);
         $this->assertSame(['A-11', 'A-12'], $details['allocations']->pluck('plot_name')->all());
         $register = (new \App\Services\Finance\PostingGateway())->voucherRegister(1);
-        $this->assertSame('PR-TEST-1', collect($register)->firstWhere('source_kind', 'plot_receipt')['source_reference']);
+        $this->assertSame('PPR-1', collect($register)->firstWhere('source_kind', 'plot_receipt')['source_reference']);
     }
 
     public function test_single_plot_receipt_posts_balanced_and_details_are_project_scoped(): void
@@ -109,7 +131,7 @@ class PlotEntryWriterTest extends TestCase
         $writer = new PlotEntryWriter();
         $payload = [
             'date' => '2026-11-14',
-            'receipt_number' => 'PR-SINGLE-PLOT',
+            'receipt_number' => 'PPR-1',
             'amount' => '75.50',
             'cash_account_id' => 101,
             'narration' => 'Single plot payment',
@@ -147,7 +169,7 @@ class PlotEntryWriterTest extends TestCase
         $writer = new PlotEntryWriter();
         try {
             $writer->receive(1, 5, 'PLOT-ZERO-REQUEST-00001', [
-                'date' => '2026-11-14', 'receipt_number' => 'PR-EMPTY',
+                'date' => '2026-11-14', 'receipt_number' => 'PPR-1',
                 'amount' => '100.00', 'cash_account_id' => 101,
                 'narration' => 'Empty allocation', 'allocations' => [],
             ], 7);
@@ -162,7 +184,7 @@ class PlotEntryWriterTest extends TestCase
     public function test_plot_purchase_posts_inventory_cost_to_seller_and_is_idempotent(): void
     {
         $writer = new PlotEntryWriter();
-        $data = ['date' => '2026-11-05', 'purchase_number' => 'PP-TEST-1', 'seller_account_id' => 102,
+        $data = ['date' => '2026-11-05', 'purchase_number' => 'PP-1', 'seller_account_id' => 102,
             'narration' => 'Land purchase', 'items' => [
                 ['plot_code' => 'LAND-1', 'description' => 'Parcel one', 'area' => '1.2500', 'unit' => 'Kanal', 'type' => 1, 'road_id' => 1, 'facing_id' => 1, 'is_corner' => false, 'unit_rate' => '100.00', 'inventory_account_id' => 104],
             ]];
@@ -172,7 +194,7 @@ class PlotEntryWriterTest extends TestCase
         $lines = DB::table('finance_posting_lines')->where('posting_batch_id', $created['posting_batch_id'])->get()->keyBy('project_head_subhead_id');
         $this->assertSame(125.0, (float) $lines[104]->debit);
         $this->assertSame(125.0, (float) $lines[102]->credit);
-        $this->assertSame('PP-TEST-1', collect((new \App\Services\Finance\PostingGateway())->voucherRegister(1))
+        $this->assertSame('PP-1', collect((new \App\Services\Finance\PostingGateway())->voucherRegister(1))
             ->firstWhere('source_kind', 'plot_purchase')['source_reference']);
         $this->assertEquals(1.25, (float) $writer->purchaseDetails(1, $created['source_id'])['items'][0]->area);
         $legacyPlotId = (int) $writer->purchaseDetails(1, $created['source_id'])['items'][0]->legacy_plot_id;
@@ -184,7 +206,7 @@ class PlotEntryWriterTest extends TestCase
     public function test_foreign_project_plot_booking_and_unallocated_amounts_fail_without_writes(): void
     {
         $writer = new PlotEntryWriter();
-        $data = ['date' => '2026-11-05', 'receipt_number' => 'PR-TEST-2', 'amount' => '100.00', 'cash_account_id' => 101,
+        $data = ['date' => '2026-11-05', 'receipt_number' => 'PPR-1', 'amount' => '100.00', 'cash_account_id' => 101,
             'narration' => 'Invalid receipt', 'allocations' => [
                 ['booking_id' => 31, 'plot_id' => 11, 'receivable_account_id' => 102, 'amount' => '60'],
                 ['booking_id' => 41, 'plot_id' => 21, 'receivable_account_id' => 103, 'amount' => '40'],
@@ -201,7 +223,7 @@ class PlotEntryWriterTest extends TestCase
 
     public function test_multi_plot_receipt_rejects_duplicate_plot_allocations_without_writes(): void
     {
-        $data = ['date' => '2026-11-05', 'receipt_number' => 'PR-DUP-PLOT', 'amount' => '100.00', 'cash_account_id' => 101,
+        $data = ['date' => '2026-11-05', 'receipt_number' => 'PPR-1', 'amount' => '100.00', 'cash_account_id' => 101,
             'narration' => 'Duplicate plot must not post', 'allocations' => [
                 ['booking_id' => 31, 'plot_id' => 11, 'receivable_account_id' => 102, 'amount' => '60.00'],
                 ['booking_id' => 31, 'plot_id' => 11, 'receivable_account_id' => 102, 'amount' => '40.00'],
@@ -220,7 +242,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $writer = new PlotEntryWriter();
         $created = $writer->purchase(1, 'PLOT-PURCHASE-REQUEST-REV1', [
-            'date' => '2026-11-05', 'purchase_number' => 'PP-REV-1', 'seller_account_id' => 102,
+            'date' => '2026-11-05', 'purchase_number' => 'PP-1', 'seller_account_id' => 102,
             'narration' => 'Reversible purchase', 'items' => [[
                 'plot_code' => 'LAND-R1', 'description' => 'Parcel reversal test', 'area' => '1',
                 'unit' => 'Kanal', 'type' => 1, 'road_id' => 1, 'facing_id' => 1,
@@ -246,7 +268,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $writer = new PlotEntryWriter();
         $created = $writer->purchase(1, 'PLOT-PURCHASE-REQUEST-BOOKED', [
-            'date' => '2026-11-05', 'purchase_number' => 'PP-BOOKED-1', 'seller_account_id' => 102,
+            'date' => '2026-11-05', 'purchase_number' => 'PP-1', 'seller_account_id' => 102,
             'narration' => 'Booked purchase', 'items' => [[
                 'plot_code' => 'LAND-BOOKED', 'description' => 'Booked parcel', 'area' => '1',
                 'unit' => 'Kanal', 'type' => 1, 'road_id' => 1, 'facing_id' => 1,
@@ -288,7 +310,7 @@ class PlotEntryWriterTest extends TestCase
         $this->assertTrue(Schema::hasTable('finance_plot_receipt_allocations'));
         $this->assertTrue(Schema::hasTable('finance_plot_receipt_postings'));
         $writer = new PlotEntryWriter();
-        $payload = ['date' => '2026-11-05', 'receipt_number' => 'PR-LOCAL-GATE-1',
+        $payload = ['date' => '2026-11-05', 'receipt_number' => 'PPR-1',
             'amount' => '75.00', 'cash_account_id' => 101,
             'narration' => 'Isolated two plot receipt', 'allocations' => [
                 ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'40.00'],
@@ -346,7 +368,7 @@ class PlotEntryWriterTest extends TestCase
     public function test_phase08_read_only_purchase_reconciliation_matches_inventory_seller_and_project(): void
     {
         $created = (new PlotEntryWriter())->purchase(1, 'PLOT-RECONCILE-REQUEST-0001', [
-            'date'=>'2026-11-14', 'purchase_number'=>'PP-AUDIT-01',
+            'date'=>'2026-11-14', 'purchase_number'=>'PP-1',
             'seller_account_id'=>102, 'narration'=>'Audit pilot',
             'items'=>[[
                 'plot_code'=>'PP-AUDIT-PLOT-01', 'description'=>'New plot',
@@ -373,7 +395,7 @@ class PlotEntryWriterTest extends TestCase
     public function test_phase08_purchase_reconciliation_detects_corrupted_seller_credit_without_repairing(): void
     {
         $created = (new PlotEntryWriter())->purchase(1, 'PLOT-RECONCILE-REQUEST-0002', [
-            'date'=>'2026-11-14', 'purchase_number'=>'PP-AUDIT-02',
+            'date'=>'2026-11-14', 'purchase_number'=>'PP-1',
             'seller_account_id'=>102, 'narration'=>'Audit pilot',
             'items'=>[[
                 'plot_code'=>'PP-AUDIT-PLOT-02', 'description'=>'New plot',
@@ -410,7 +432,7 @@ class PlotEntryWriterTest extends TestCase
         $this->assertTrue(Schema::hasTable('finance_plot_purchase_postings'));
 
         $created = (new PlotEntryWriter())->purchase(1, 'PLOT-PURCHASE-PHASE08-TEST-0001', [
-            'date' => '2026-11-14', 'purchase_number' => 'PP-PHASE08-001',
+            'date' => '2026-11-14', 'purchase_number' => 'PP-1',
             'seller_account_id' => 102, 'narration' => 'Phase 08 isolated pilot purchase',
             'items' => [[
                 'plot_code' => 'PHASE08-LOT-001', 'description' => 'New plot',
@@ -505,7 +527,7 @@ class PlotEntryWriterTest extends TestCase
         $writer = new PlotEntryWriter();
         $payload = [
             'date' => '2026-11-14',
-            'receipt_number' => 'PR-ARCHIVE-TEST',
+            'receipt_number' => 'PPR-1',
             'amount' => '75.50',
             'cash_account_id' => 101,
             'narration' => 'Archived source must stay hidden',
@@ -549,7 +571,7 @@ class PlotEntryWriterTest extends TestCase
         $writer = new PlotEntryWriter();
         $payload = [
             'date' => '2026-11-05',
-            'purchase_number' => 'PP-ARCHIVE-TEST',
+            'purchase_number' => 'PP-1',
             'seller_account_id' => 102,
             'narration' => 'Archive guard test',
             'items' => [[
@@ -587,7 +609,7 @@ class PlotEntryWriterTest extends TestCase
             $table->softDeletes();
         });
         $created=(new PlotEntryWriter())->receive(1, 5, 'PLOT-RECEIPT-ARCHIVED-REV-001', [
-            'date'=>'2026-11-05','receipt_number'=>'PR-ARCHIVED-REV-1',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1',
             'amount'=>'75.00','cash_account_id'=>101,'narration'=>'Archive reversal guard',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'75.00']],
         ],7);
@@ -613,7 +635,7 @@ class PlotEntryWriterTest extends TestCase
             $table->softDeletes();
         });
         $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-ARCHIVED-REV-001',[
-            'date'=>'2026-11-05','purchase_number'=>'PP-ARCHIVED-REV-1',
+            'date'=>'2026-11-05','purchase_number'=>'PP-1',
             'seller_account_id'=>102,'narration'=>'Archive purchase reversal guard',
             'items'=>[[
                 'plot_code'=>'LAND-ARCHIVED-REV-1','description'=>'Temporary plot','area'=>'1',
@@ -648,7 +670,7 @@ class PlotEntryWriterTest extends TestCase
             $t->unsignedBigInteger('decided_by')->nullable();$t->timestamps();
         });
         $payload=[
-            'date'=>'2026-11-05','receipt_number'=>'PR-NARRATION-1','amount'=>'75.00',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'75.00',
             'cash_account_id'=>101,'narration'=>'Before receipt edit',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'75.00']],
         ];
@@ -691,7 +713,7 @@ class PlotEntryWriterTest extends TestCase
             $t->unsignedBigInteger('decided_by')->nullable();$t->timestamps();
         });
         $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-NARRATION-0001',[
-            'date'=>'2026-11-05','purchase_number'=>'PP-NARRATION-1','seller_account_id'=>102,
+            'date'=>'2026-11-05','purchase_number'=>'PP-1','seller_account_id'=>102,
             'narration'=>'Original purchase note','items'=>[[
                 'plot_code'=>'LAND-NARRATION-1','description'=>'Plot','area'=>'1',
                 'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
@@ -758,7 +780,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $this->installFullPlotEditHistory();
         $original=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-FULL-EDIT-001',[
-            'date'=>'2026-11-05','receipt_number'=>'PR-FULL-1','amount'=>'70.00',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'70.00',
             'cash_account_id'=>101,'narration'=>'Before full edit',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
         ],7);
@@ -788,11 +810,11 @@ class PlotEntryWriterTest extends TestCase
         $this->assertDatabaseHas('daily_voucher_edit_snapshots',['project_id'=>1,'source_id'=>$original['source_id'],
             'status'=>'plot_edit','submitted_by'=>7]);
         $snapshot=DB::table('daily_voucher_edit_snapshots')->first();
-        $this->assertSame('PR-FULL-1',json_decode($snapshot->before_snapshot,true)['voucher']['receipt_number']);
+        $this->assertSame('PPR-1',json_decode($snapshot->before_snapshot,true)['voucher']['receipt_number']);
         $this->assertSame('PR-FULL-UPDATED',json_decode($snapshot->proposed_snapshot,true)['voucher']['receipt_number']);
         try {
             (new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-FULL-EDIT-001',[
-                'date'=>'2026-11-05','receipt_number'=>'PR-FULL-1','amount'=>'70.00',
+                'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'70.00',
                 'cash_account_id'=>101,'narration'=>'Before full edit',
                 'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
             ],7);
@@ -806,7 +828,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $this->installFullPlotEditHistory();
         $original=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-FULL-EDIT-001',[
-            'date'=>'2026-11-05','purchase_number'=>'PP-FULL-1','seller_account_id'=>102,
+            'date'=>'2026-11-05','purchase_number'=>'PP-1','seller_account_id'=>102,
             'narration'=>'Before edit','items'=>[[
                 'plot_code'=>'LAND-EDIT-OLD','description'=>'Before','area'=>'1',
                 'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
@@ -841,7 +863,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $this->installFullPlotEditHistory();
         $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-REL-GUARD-001',[
-            'date'=>'2026-11-05','receipt_number'=>'PR-REL-GUARD','amount'=>'70.00',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'70.00',
             'cash_account_id'=>101,'narration'=>'Original',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
         ],7);
@@ -858,7 +880,7 @@ class PlotEntryWriterTest extends TestCase
         } catch (\DomainException $e) {
             $this->assertStringContainsString('relationship mismatch',$e->getMessage());
         }
-        $this->assertSame('PR-REL-GUARD',DB::table('finance_plot_receipts')
+        $this->assertSame('PPR-1',DB::table('finance_plot_receipts')
             ->where('id',$created['source_id'])->value('receipt_number'));
         $this->assertSame(0,DB::table('daily_voucher_edit_snapshots')
             ->where('status','plot_edit')->count());
@@ -869,7 +891,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $this->installFullPlotEditHistory();
         $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-REL-GUARD-001',[
-            'date'=>'2026-11-05','purchase_number'=>'PP-REL-GUARD','seller_account_id'=>102,
+            'date'=>'2026-11-05','purchase_number'=>'PP-1','seller_account_id'=>102,
             'narration'=>'Original','items'=>[[
                 'plot_code'=>'LAND-REL-GUARD','description'=>'Original','area'=>'1',
                 'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
@@ -893,7 +915,7 @@ class PlotEntryWriterTest extends TestCase
         } catch (\DomainException $e) {
             $this->assertStringContainsString('relationship mismatch',$e->getMessage());
         }
-        $this->assertSame('PP-REL-GUARD',DB::table('finance_plot_purchases')
+        $this->assertSame('PP-1',DB::table('finance_plot_purchases')
             ->where('id',$created['source_id'])->value('purchase_number'));
         $this->assertSame(0,DB::table('daily_voucher_edit_snapshots')
             ->where('status','plot_edit')->count());
@@ -904,7 +926,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $this->installFullPlotEditHistory();
         $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-REORDER-EDIT-001',[
-            'date'=>'2026-11-05','receipt_number'=>'PR-REORDER-1','amount'=>'100.00',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'100.00',
             'cash_account_id'=>101,'narration'=>'Before',
             'allocations'=>[
                 ['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'60.00'],
@@ -916,7 +938,7 @@ class PlotEntryWriterTest extends TestCase
             ->orderBy('id')->pluck('id')->all();
         $editor=new \App\Services\Finance\PlotVoucherEditor();
         $data=[
-            'customer_id'=>5,'receipt_number'=>'PR-REORDER-1','date'=>'2026-11-05',
+            'customer_id'=>5,'receipt_number'=>'PPR-1','date'=>'2026-11-05',
             'amount'=>'100.00','cash_account_id'=>101,'narration'=>'After',
             'allocations'=>[
                 ['booking_id'=>32,'plot_id'=>12,'receivable_account_id'=>103,'amount'=>'35.00'],
@@ -940,7 +962,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $this->installFullPlotEditHistory();
         $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-REORDER-EDIT-001',[
-            'date'=>'2026-11-05','purchase_number'=>'PP-ORDER-1','seller_account_id'=>102,
+            'date'=>'2026-11-05','purchase_number'=>'PP-1','seller_account_id'=>102,
             'narration'=>'Initial','items'=>[
                 ['plot_code'=>'LAND-ORDER-A','description'=>'A','area'=>'1',
                     'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
@@ -957,7 +979,7 @@ class PlotEntryWriterTest extends TestCase
         $beforeLines=DB::table('finance_posting_lines')->where('posting_batch_id',$batch)
             ->orderBy('id')->get();
         $form=[
-            'date'=>'2026-11-06','purchase_number'=>'PP-ORDER-1','seller_account_id'=>102,
+            'date'=>'2026-11-06','purchase_number'=>'PP-1','seller_account_id'=>102,
             'narration'=>'Reordered','items'=>[
                 ['legacy_plot_id'=>$beforeItems[1]->legacy_plot_id,
                     'plot_code'=>'LAND-ORDER-B','description'=>'B revised','area'=>'1',
@@ -990,7 +1012,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $this->installFullPlotEditHistory();
         $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-DUP-EDIT-001',[
-            'date'=>'2026-11-05','receipt_number'=>'PR-DUP-1','amount'=>'70.00',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'70.00',
             'cash_account_id'=>101,'narration'=>'Original',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
         ],7);
@@ -1011,7 +1033,7 @@ class PlotEntryWriterTest extends TestCase
         } catch (\DomainException $e) {
             $this->assertStringContainsString('Duplicate booking', $e->getMessage());
         }
-        $this->assertSame('PR-DUP-1',DB::table('finance_plot_receipts')->where('id',$sourceId)->value('receipt_number'));
+        $this->assertSame('PPR-1',DB::table('finance_plot_receipts')->where('id',$sourceId)->value('receipt_number'));
         $this->assertSame(1,DB::table('finance_plot_receipt_allocations')->where('receipt_id',$sourceId)->count());
         $this->assertSame($beforeLines,DB::table('finance_posting_lines')
             ->where('posting_batch_id',$batchId)->orderBy('id')->get()->map(fn($row)=>(array)$row)->all());
@@ -1023,7 +1045,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $this->installFullPlotEditHistory();
         $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-COUNT-EDIT-001',[
-            'date'=>'2026-11-05','receipt_number'=>'PR-COUNT-1','amount'=>'70.00',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'70.00',
             'cash_account_id'=>101,'narration'=>'Before',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
         ],7);
@@ -1105,7 +1127,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $this->installFullPlotEditHistory();
         $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-BOOKING-EDIT-001',[
-            'date'=>'2026-11-05','purchase_number'=>'PP-NO-BOOKING-EDIT','seller_account_id'=>102,
+            'date'=>'2026-11-05','purchase_number'=>'PP-1','seller_account_id'=>102,
             'narration'=>'Original','items'=>[[
                 'plot_code'=>'LAND-BOOKING-EDIT','description'=>'Original plot','area'=>'1',
                 'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
@@ -1131,7 +1153,7 @@ class PlotEntryWriterTest extends TestCase
         }
         $this->assertDatabaseHas('plots',['id'=>$plotId,'name'=>'LAND-BOOKING-EDIT']);
         $this->assertDatabaseHas('finance_plot_purchases',['id'=>$created['source_id'],
-            'purchase_number'=>'PP-NO-BOOKING-EDIT','amount'=>100]);
+            'purchase_number'=>'PP-1','amount'=>100]);
         $this->assertSame(100.0,(float)DB::table('finance_posting_lines')
             ->where('posting_batch_id',$created['posting_batch_id'])->sum('debit'));
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',0);
@@ -1141,7 +1163,7 @@ class PlotEntryWriterTest extends TestCase
     {
         $this->installFullPlotEditHistory();
         $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-CROSS-EDIT-001',[
-            'date'=>'2026-11-05','receipt_number'=>'PR-SCOPED-1','amount'=>'70.00',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'70.00',
             'cash_account_id'=>101,'narration'=>'Before',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'70.00']],
         ],7);
@@ -1156,7 +1178,7 @@ class PlotEntryWriterTest extends TestCase
             $this->assertStringContainsString('not found',$error->getMessage());
         }
         $this->assertDatabaseHas('finance_plot_receipts',['id'=>$created['source_id'],
-            'receipt_number'=>'PR-SCOPED-1','amount'=>70]);
+            'receipt_number'=>'PPR-1','amount'=>70]);
         $this->assertDatabaseCount('daily_voucher_edit_snapshots',0);
         $this->assertDatabaseCount('finance_posting_batches',1);
     }
@@ -1167,7 +1189,7 @@ class PlotEntryWriterTest extends TestCase
             $t->boolean('is_active')->default(true);$t->softDeletes();
         });
         $created=(new PlotEntryWriter())->receive(1,5,'PLOT-RECEIPT-DELETE-001',[
-            'date'=>'2026-11-05','receipt_number'=>'PR-DELETE-1','amount'=>'75.00',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'75.00',
             'cash_account_id'=>101,'narration'=>'Disposable test',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,'amount'=>'75.00']],
         ],7);
@@ -1206,7 +1228,7 @@ class PlotEntryWriterTest extends TestCase
             $t->boolean('is_active')->default(true);$t->softDeletes();
         });
         $created=(new PlotEntryWriter())->purchase(1,'PLOT-PURCHASE-DELETE-001',[
-            'date'=>'2026-11-05','purchase_number'=>'PP-DELETE-1','seller_account_id'=>102,
+            'date'=>'2026-11-05','purchase_number'=>'PP-1','seller_account_id'=>102,
             'narration'=>'Disposable plot','items'=>[[
                 'plot_code'=>'LAND-DELETE-1','description'=>'Test plot','area'=>'1',
                 'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
@@ -1238,7 +1260,7 @@ class PlotEntryWriterTest extends TestCase
         $this->installFullPlotEditHistory();
         $writer=new PlotEntryWriter();
         $created=$writer->purchase(1,'PLOT-PURCHASE-DYNAMIC-EDIT-001',[
-            'date'=>'2026-11-05','purchase_number'=>'PP-DYNAMIC-1','seller_account_id'=>102,
+            'date'=>'2026-11-05','purchase_number'=>'PP-1','seller_account_id'=>102,
             'narration'=>'Before','items'=>[[
                 'plot_code'=>'LAND-DYN-OLD','description'=>'Old plot','area'=>'1',
                 'unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
@@ -1309,7 +1331,7 @@ class PlotEntryWriterTest extends TestCase
     public function test_posting_balance_command_defaults_to_all_projects_and_retains_optional_filter(): void
     {
         $created=(new PlotEntryWriter())->receive(1,5,'POSTING-AUDIT-ALL-PROJECTS-001',[
-            'date'=>'2026-11-05','receipt_number'=>'PR-AUDIT-ALL','amount'=>'70.00',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'70.00',
             'cash_account_id'=>101,'narration'=>'All-project audit',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,
                 'amount'=>'70.00']],
@@ -1342,13 +1364,13 @@ class PlotEntryWriterTest extends TestCase
     public function test_shared_posting_balance_audit_checks_all_series_and_ignores_archived_legs(): void
     {
         $receipt=(new PlotEntryWriter())->receive(1,5,'POSTING-AUDIT-RECEIPT-001',[
-            'date'=>'2026-11-05','receipt_number'=>'PR-AUDIT-1','amount'=>'70.00',
+            'date'=>'2026-11-05','receipt_number'=>'PPR-1','amount'=>'70.00',
             'cash_account_id'=>101,'narration'=>'Audit receipt',
             'allocations'=>[['booking_id'=>31,'plot_id'=>11,'receivable_account_id'=>102,
                 'amount'=>'70.00']],
         ],7);
         $purchase=(new PlotEntryWriter())->purchase(1,'POSTING-AUDIT-PURCHASE-001',[
-            'date'=>'2026-11-05','purchase_number'=>'PP-AUDIT-1','seller_account_id'=>102,
+            'date'=>'2026-11-05','purchase_number'=>'PP-1','seller_account_id'=>102,
             'narration'=>'Audit purchase','items'=>[[
                 'plot_code'=>'AUDIT-PLOT-ONE','description'=>'Audit',
                 'area'=>'1','unit'=>'Kanal','type'=>1,'road_id'=>1,'facing_id'=>1,
