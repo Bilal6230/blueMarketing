@@ -114,11 +114,20 @@ final class SameSourceCashVoucherEdit
                 ->where('p.project_id',$projectId)->lockForUpdate()
                 ->get(['l.id','l.project_head_subheads_id','l.type','l.voucher_number','l.reference',
                     'l.amount_in','l.amount_out','l.date','l.detail','l.is_active']);
-            if ($leg->count()!==1 || (int)$leg->first()->is_active!==(int)$source->is_active ||
-                DB::table('ledgers')->where('customer_ledger_id',$sourceId)->count()!==1 ||
-                round((float)$leg->first()->amount_in,2)!==round((float)$source->amount_in,2) ||
-                round((float)$leg->first()->amount_out,2)!==round((float)$source->amount_out,2)) {
-                throw new \DomainException('Single-leg voucher ownership/posting integrity required.');
+            $leg=$leg->sortBy('id')->values();
+            $legCount=$leg->count();
+            if (!in_array($legCount,[1,2],true)
+                || DB::table('ledgers')->where('customer_ledger_id',$sourceId)->count()!==$legCount
+                || $leg->contains(fn($row)=>(int)$row->is_active!==(int)$source->is_active)
+                || round((float)$leg->first()->amount_in,2)!==round((float)$source->amount_in,2)
+                || round((float)$leg->first()->amount_out,2)!==round((float)$source->amount_out,2)) {
+                throw new \DomainException('Voucher source/ledger posting ownership invalid.');
+            }
+            if($legCount===2){
+                if($isBank || !in_array((string)$source->transaction_type,['CR','DR','CCR','CDR'],true)){
+                    throw new \DomainException('Verified bank two-leg revisions require audited source correction.');
+                }
+                BalancedStandardVoucherIntegrity::assert((string)$source->transaction_type,$source,$leg);
             }
             $account=ProjectHeadSubhead::availableForPosting()
                 ->where('project_id',$projectId)->whereKey((int)$data['account_id'])->firstOrFail();
@@ -136,6 +145,13 @@ final class SameSourceCashVoucherEdit
                 'ledger_reference'=>(string)$leg->first()->reference,
                 'ledger_voucher_number'=>(int)$leg->first()->voucher_number,
             ];
+            if($legCount===2){
+                $counter=$leg->last();
+                $before['counter_leg_id']=(int)$counter->id;
+                $before['counter_account_id']=(int)$counter->project_head_subheads_id;
+                $before['counter_amount_in']=(string)$counter->amount_in;
+                $before['counter_amount_out']=(string)$counter->amount_out;
+            }
             if ($bankSeries) {
                 $before=array_merge($before,BankVoucherRevisionEvidence::capture(
                     $source,$bankSeries,$allocation));
@@ -145,12 +161,22 @@ final class SameSourceCashVoucherEdit
             $proposed=[
                 'date'=>$data['date'],
                 'amount_in'=>in_array($source->transaction_type,['CR','CCR'],true)?$amount:'0.00',
-                'amount_out'=>in_array($source->transaction_type,['CP','CDR'],true)?$amount:'0.00',
+                'amount_out'=>in_array($source->transaction_type,['CP','DR','CDR'],true)?$amount:'0.00',
                 'description'=>(string)$data['description'],
                 'account_id'=>(int)$account->id,
+                'counter_account_id'=>$legCount===2
+                    ? (int)($data['counter_account_id']??$before['counter_account_id']) : null,
                 'customer_id'=>$account->customer_id ?? $source->customer_id,
                 'plot_id'=>$account->plot_id ?? $source->plot_id,
             ];
+            if($legCount===2){
+                $nextCounter=ProjectHeadSubhead::availableForPosting()
+                    ->where('project_id',$projectId)
+                    ->whereKey($proposed['counter_account_id'])->first();
+                if(!$nextCounter || (int)$nextCounter->id===(int)$account->id){
+                    throw new \DomainException('Select a different project account for the opposite ledger leg.');
+                }
+            }
             $attachment=$data['attachment_metadata']??null;
             if ($attachment) {
                 if(!VoucherAttachmentRules::supportsSourceType((string)$source->transaction_type) ||
@@ -272,7 +298,8 @@ final class SameSourceCashVoucherEdit
             (string)$source->reference!==(string)$before['source_reference'] ||
             (string)$leg->reference!==(string)$before['ledger_reference'] ||
             (int)$leg->voucher_number!==(int)$before['ledger_voucher_number'] ||
-            DB::table('ledgers')->where('customer_ledger_id',$approval->source_id)->count()!==1 ||
+            DB::table('ledgers')->where('customer_ledger_id',$approval->source_id)
+                ->count()!==(isset($before['counter_leg_id'])?2:1) ||
             round((float)$leg->amount_in,2)!==round((float)$before['amount_in'],2) ||
             round((float)$leg->amount_out,2)!==round((float)$before['amount_out'],2) ||
             substr((string)$source->date,0,10)!==substr((string)$before['date'],0,10) ||
@@ -280,6 +307,25 @@ final class SameSourceCashVoucherEdit
             round((float)$source->amount_in,2)!==round((float)$before['amount_in'],2) ||
             round((float)$source->amount_out,2)!==round((float)$before['amount_out'],2)) {
             throw new \DomainException('Voucher changed while approval pending; decision blocked.');
+        }
+        if(isset($before['counter_leg_id'])){
+            $counter=DB::table('ledgers as l')
+                ->join('project_head_subheads as a','a.id','=','l.project_head_subheads_id')
+                ->where('l.id',(int)$before['counter_leg_id'])
+                ->where('l.customer_ledger_id',$approval->source_id)
+                ->where('a.project_id',$approval->project_id)
+                ->lockForUpdate()->first(['l.id','l.type','l.project_head_subheads_id',
+                    'l.amount_in','l.amount_out','l.is_active']);
+            if(!$counter
+                || (string)$counter->type!==(string)$before['type']
+                || (int)$counter->project_head_subheads_id!==(int)$before['counter_account_id']
+                || (int)$counter->is_active!==(int)$before['active']
+                || round((float)$counter->amount_in,2)!==round((float)$before['counter_amount_in'],2)
+                || round((float)$counter->amount_out,2)!==round((float)$before['counter_amount_out'],2)){
+                throw new \DomainException('Opposite ledger leg changed during approval.');
+            }
+            BalancedStandardVoucherIntegrity::assert((string)$before['type'],$source,
+                collect([$leg,$counter]));
         }
         if ($decision==='approved') {
             if (in_array((string)$approval->voucher_type,['BOR','BOP'],true)) {
@@ -391,5 +437,23 @@ final class SameSourceCashVoucherEdit
                 'amount_in'=>$next['amount_in'],'amount_out'=>$next['amount_out'],
                 'detail'=>$next['description'],'is_active'=>1,'updated_at'=>now(),
             ]);
+        if(isset($before['counter_leg_id'])){
+            $counterAccount=ProjectHeadSubhead::availableForPosting()
+                ->where('project_id',$projectId)
+                ->whereKey((int)$next['counter_account_id'])->firstOrFail();
+            if((int)$counterAccount->id===(int)$account->id){
+                throw new \DomainException('Opposite account cannot equal party account.');
+            }
+            $incoming=in_array((string)$source->transaction_type,['CR','CCR'],true);
+            DB::table('ledgers')->where('id',(int)$before['counter_leg_id'])
+                ->where('customer_ledger_id',$source->id)
+                ->update([
+                    'project_head_subheads_id'=>$counterAccount->id,
+                    'date'=>$next['date'],
+                    'amount_in'=>$incoming?0:$next['amount_out'],
+                    'amount_out'=>$incoming?$next['amount_in']:0,
+                    'detail'=>$next['description'],'is_active'=>1,'updated_at'=>now(),
+                ]);
+        }
     }
 }
