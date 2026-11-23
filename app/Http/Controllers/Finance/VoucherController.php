@@ -799,7 +799,7 @@ class VoucherController extends Controller
         // One register row per voucher; the second balanced account leg
         // remains visible in the General Ledger, never in this directory.
         $q->where(function($outer){
-            $outer->whereNotIn('ledgers.type',['CR','DR','CCR','CDR','PPR'])
+            $outer->whereNotIn('ledgers.type',['CR','DR','CP','CCR','CDR','PPR'])
                 ->orWhereNotExists(function($sub){
                     $sub->selectRaw('1')->from('ledgers as earlier')
                         ->whereColumn('earlier.customer_ledger_id','ledgers.customer_ledger_id')
@@ -2417,7 +2417,7 @@ class VoucherController extends Controller
         // One register row per voucher; the second balanced account leg
         // remains visible in the General Ledger, never in this directory.
         $q->where(function($outer){
-            $outer->whereNotIn('ledgers.type',['CR','DR','CCR','CDR','PPR'])
+            $outer->whereNotIn('ledgers.type',['CR','DR','CP','CCR','CDR','PPR'])
                 ->orWhereNotExists(function($sub){
                     $sub->selectRaw('1')->from('ledgers as earlier')
                         ->whereColumn('earlier.customer_ledger_id','ledgers.customer_ledger_id')
