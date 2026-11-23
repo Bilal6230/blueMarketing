@@ -25,46 +25,14 @@
                 <div class="card shadow-sm border-0 cv-shell">
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <div><h4 class="mb-0">{{ $title }}</h4><small>Selected project records · Commission voucher register</small></div>
-                        <x-finance.voucher-directory-actions :approvals="true" />
+                        <x-finance.voucher-directory-actions :approvals="true">
+                            @can('finance cv create')
+                            <a href="{{ route('commision.voucher.create') }}" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i> New voucher</a>
+                            @endcan
+                        </x-finance.voucher-directory-actions>
                     </div>
                     <div class="card-body">
 
-
-                        <!-- Filter Section -->
-                        <x-finance.voucher-filter-card id="filtersSection" class="mb-3">
-                        <div class="row">
-                            <!-- Voucher Number -->
-                            <div class="col-md-3">
-                                <label for="filter_voucher_number">Voucher Number</label>
-                                <input type="text" id="filter_voucher_number" class="form-control"
-                                    placeholder="Voucher Number">
-                            </div>
-
-                            <!-- Date -->
-                            <div class="col-md-3">
-                                <label for="filter_date">Date</label>
-                                <input type="text" id="filter_date" class="form-control date" placeholder="YYYY-MM-DD">
-                            </div>
-
-                            <!-- Amount -->
-                            <div class="col-md-3">
-                                <label for="filter_amount">Amount</label>
-                                <input type="number" id="filter_amount" class="form-control" placeholder="Amount">
-                            </div>
-
-                            <!-- Reference -->
-                            <div class="col-md-3">
-                                <label for="filter_reference">Reference</label>
-                                <input type="text" id="filter_reference" class="form-control" placeholder="Reference">
-                            </div>
-
-                            <div class="col-md-3 mt-4">
-                                <button id="applyFilters" class="btn btn-primary btn-sm">Apply Filters</button>
-                                <button id="resetFilters" class="btn btn-secondary btn-sm">Reset</button>
-                                <a href="{{ route('commision.voucher.create') }}" class="btn btn-primary btn-sm ml-1"><i class="fas fa-plus mr-1"></i> New voucher</a>
-                            </div>
-                        </div>
-                        </x-finance.voucher-filter-card>
 
                         <!-- Table -->
                         <x-finance.voucher-table-card class="mb-3">
@@ -152,35 +120,6 @@
             }
             renderDataTable();
 
-            // Toggle filter section visibility
-            $('#toggleFilters').on('click', function() {
-                $('#filtersSection').toggle();
-            });
-
-            // Date filter: Track if the date is changed by the user
-            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-            $('#filter_date').val(today); // Default to today's date
-
-            // When the user changes the date, mark it as changed
-            $('#filter_date').on('change', function() {
-                isDateChanged = true; // Date was changed by the user
-                renderDataTable(); // Re-render table with updated filters
-            });
-
-            // Apply Filters (Voucher number, Amount, and Reference)
-            $('#filter_voucher_number, #filter_amount, #filter_reference').on('change', function() {
-                renderDataTable();
-            });
-
-            // Reset Filters
-            $('#resetFilters').on('click', function() {
-                $('#filter_voucher_number').val('');
-                $('#filter_amount').val('');
-                $('#filter_reference').val('');
-                $('#filter_date').val(today); // Reset to today's date
-                isDateChanged = false;
-                renderDataTable();
-            });
         });
         // Delete Button Click
         $(document).on('click', '.delete-btn', function() {
