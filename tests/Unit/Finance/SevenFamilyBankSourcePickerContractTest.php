@@ -23,7 +23,7 @@ final class SevenFamilyBankSourcePickerContractTest extends TestCase
         self::assertStringContainsString("'finance_cheque_intake_actions'", $controller);
     }
 
-    public function test_bd_bw_validates_typed_bank_sources_while_multi_plot_remains_fail_closed(): void
+    public function test_bd_bw_and_typed_multi_plot_ppr_validate_verified_bank_sources(): void
     {
         $controller=file_get_contents(__DIR__.'/../../../app/Http/Controllers/Finance/VoucherController.php');
         self::assertIsString($controller);
@@ -35,8 +35,10 @@ final class SevenFamilyBankSourcePickerContractTest extends TestCase
         self::assertStringContainsString('$passedMethod,$passedId', $transfer);
         $pprStart=strpos($controller,'public function postPlotReceipt(');
         self::assertNotFalse($pprStart);
-        $plot=substr($controller,$pprStart,850);
-        self::assertStringContainsString("!$"."request->filled('passed_source_id')", $plot);
-        self::assertStringContainsString('typed allocation workflow', $plot);
+        $plot=substr($controller,$pprStart,2100);
+        self::assertStringContainsString("'passed_source_method' => ['nullable','in:online,cheque']", $plot);
+        self::assertStringContainsString("'passed_source_id' => ['nullable','integer','min:1']", $plot);
+        self::assertStringContainsString("'payment_type' => ['nullable','integer','in:1,2,3']", $plot);
+        self::assertStringContainsString('Select a verified Cheque or Online source matching Payment Type', $plot);
     }
 }
