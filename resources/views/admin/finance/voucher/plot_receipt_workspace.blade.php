@@ -602,6 +602,19 @@
   var bank=String($(this).val())!=='1',cheque=String($(this).val())==='3';
   $('.pr-original-bank').toggleClass('d-none',!bank);
   $('.pr-original-cheque').toggleClass('d-none',!cheque);
+  // Keep the opposite posting account limited to Cash for cash receipts
+  // and active selected-project Banks for cleared Cheque/Online receipts.
+  var $counter=$('#prOriginalCounterAccount');
+  $counter.find('option').each(function(){
+   var $option=$(this);
+   if(!$option.val())return;
+   var allowed=bank?Number($option.attr('data-bank'))===1
+                   :Number($option.attr('data-cash'))===1;
+   $option.prop('disabled',!allowed).toggleClass('d-none',!allowed);
+  });
+  if($counter.find('option:selected').prop('disabled')){
+   $counter.val('').trigger('change');
+  }
   $('#prOriginalForm [name="t_number"],#prOriginalForm [name="bank_id"],#prOriginalForm [name="passing_date"]').prop('required',bank);
   $('#prOriginalForm [name="cheque_purpose"]').prop('required',cheque);
  });
