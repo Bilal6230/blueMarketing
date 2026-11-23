@@ -142,6 +142,7 @@
 @endsection
 
 @section('js')
+<script src="{{ asset('js/finance/verified-source-narration.js') }}"></script>
 <script>
 (function($){
  'use strict';
@@ -478,6 +479,7 @@
   });
  };
  $('#prOriginalPayment').on('change.pprBankPicker',function(){
+  $.financeVerifiedSourceNarration.set($('#prOriginalForm [name="detail"]'),null);
   clearPprBankSource();
   $('#prPassedSearch').val('');
   if(['2','3'].includes(String($(this).val()))){
@@ -507,6 +509,11 @@
   var id=$('#prPassedRows input[name="prPassedChoice"]:checked').val();
   var item=prVerifiedRows.find(function(row){return String(row.id)===String(id);});
   if(!item)return;
+  var narration=$.financeVerifiedSourceNarration.set($('#prOriginalForm [name="detail"]'),item);
+  if(!narration.ok){
+   $('#prPassedError').removeClass('d-none').text(narration.message);
+   return;
+  }
   $('#prPassedId').val(item.id);$('#prPassedMethod').val(item.method);
   $('#prPassedLabel').val((item.method==='online'?'Online: ':'Cheque: ')+item.reference+' · Available '+item.remaining_amount);
   $('#prOriginalForm [name="t_number"]').val(item.reference);
@@ -517,10 +524,9 @@
   // Do NOT copy a project-specific voucher preview here: it can collide
   // with another project's PPR slip in the global legacy ledger lookup.
   $('#prOriginalForm [name="amount"]').val(item.remaining_amount).attr('max',item.remaining_amount);
-  if(item.purpose){
-   $('#prOriginalForm [name="detail"]').val(item.purpose);
-   if(item.method==='cheque')$('#prOriginalForm [name="cheque_purpose"]').val(item.purpose);
-  }
+  // Preserve typed PPR narration. The verified source evidence has been
+  // appended once, not replaced with the management purpose.
+  if(item.method==='cheque')$('#prOriginalForm [name="cheque_purpose"]').val(item.purpose||'');
   var $bank=$('#prOriginalForm [name="bank_id"]'),bankText=String(item.bank||'').trim().toLowerCase();
   if(bankText){
    var option=$bank.find('option').filter(function(){return $(this).text().trim().toLowerCase()===bankText;}).first();
