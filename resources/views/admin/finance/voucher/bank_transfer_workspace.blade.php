@@ -248,6 +248,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 @endsection
 
 @section('js')
+<script src="{{ asset('js/finance/verified-source-narration.js') }}"></script>
 <script>
 $(function () {
     'use strict';
@@ -312,6 +313,7 @@ $(function () {
         });
     };
     $('#btPaymentType').on('change',function(){
+        $.financeVerifiedSourceNarration.set($('#voucherDescription'),null);
         clearBtPassed();syncBtPayment();
         $('#voucherAmount').val('').prop('readonly',false).removeAttr('max');
         if(btBankMethod()&&!editingBatch){
@@ -345,6 +347,11 @@ $(function () {
             $('#btPassedError').removeClass('d-none').text('The verified source counter-account is unavailable in this project.');
             return;
         }
+        var narration=$.financeVerifiedSourceNarration.set($('#voucherDescription'),item);
+        if(!narration.ok){
+            $('#btPassedError').removeClass('d-none').text(narration.message);
+            return;
+        }
         $root.data('passed-source-id',Number(item.id)).data('passed-source-method',item.method);
         btPassedAmountMax=Number(item.remaining_amount);
         $('#btPassedLabel').val((item.method==='online'?'Online: ':'Cheque: ')+item.reference+
@@ -352,7 +359,8 @@ $(function () {
         $('#cashAccount').val(String(item.account_mapping_id));syncSelect('#cashAccount');
         $('#voucherAmount').val(item.remaining_amount).attr('max',item.remaining_amount);
         $('#voucherReference').val(item.reference);
-        if(item.purpose)$('#voucherDescription').val(item.purpose);
+        // Existing manually typed narration is preserved; evidence is appended
+        // once by the shared formatter rather than replacing it with purpose.
         var bankName=String(item.bank||'').trim().toLowerCase(),$bank=$('#bankAccount');
         if(bankName){
             var $choice=$bank.find('option').filter(function(){
