@@ -2395,6 +2395,20 @@
                         $("#edit_detail").val(d.detail ?? '');
                         $('#eWordingAmount').text(numberToWords.toWords(amount));
 
+                        const $counterField = $('#edit_counter_account');
+                        const counterTs = $counterField[0]?.tomselect;
+                        const counterId = String(d.counter_account_id || '');
+                        if(counterId) {
+                            $('#edit-voucher-form .counter-edit-field').show();
+                            $counterField.prop('disabled',false);
+                            counterTs?.enable();
+                            counterTs?.setValue(counterId,true);
+                        } else {
+                            counterTs?.clear(true);
+                            counterTs?.disable();
+                            $counterField.prop('disabled',true);
+                            $('#edit-voucher-form .counter-edit-field').hide();
+                        }
                         let eAccTypeSelect = $('#edit_acct_type')[0]?.tomselect;
                         let eAccSelect = $('#edit_accounts_id')[0]?.tomselect;
                         let eSubAccSelect = $('#edit_subaccounts_id')[0]?.tomselect;
@@ -3930,6 +3944,9 @@
       #edit-voucher-form label{display:block;font-size:13px;font-weight:600;margin-bottom:5px}
       #edit-voucher-form .form-control,#edit-voucher-form .ts-wrapper,
       #edit-voucher-form .ts-control{width:100%;max-width:100%;min-height:35px}
+      #edit-voucher-form .counter-edit-field{order:7;min-width:0}
+      #edit-voucher-form .counter-edit-field .ts-wrapper{border:0!important;padding:0!important;background:transparent!important}
+      #edit-voucher-form .counter-edit-field .ts-control{border:1px solid #ced4da;border-radius:6px;min-height:35px}
       #edit-voucher-form [class*="col-sm-"]:has(#edit_voucher_number){order:1}
       #edit-voucher-form [class*="col-sm-"]:has(#edit_date){order:2}
       #edit-voucher-form [class*="col-sm-"]:has(#edit_amount){order:3}
@@ -3967,6 +3984,18 @@
                         enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
+                        <div class="counter-edit-field" style="display:none;">
+                            <label class="fbox" for="edit_counter_account">Opposite Posting Account</label>
+                            <select class="js-tomselect" id="edit_counter_account" name="counter_account_id" disabled>
+                                <option value="">Select opposite account</option>
+                                @foreach(($partyaccounts ?? collect()) as $accountOption)
+                                    <option value="{{ $accountOption->id }}">
+                                        {{ $accountOption->headAccounting?->name ?? '' }} /
+                                        {{ $accountOption->subheadAccounting?->name ?? '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div class="row">
 
                             <div class="col-sm-12">
