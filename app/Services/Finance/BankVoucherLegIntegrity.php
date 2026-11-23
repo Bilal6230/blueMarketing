@@ -14,7 +14,7 @@ final class BankVoucherLegIntegrity
         object $leg,
         float $allocationAmount
     ): void {
-        if (!in_array($series, ['CR','DR','BOR','BOP'], true)) {
+        if (!in_array($series, ['CR','DR','BOR','BOP','PPR'], true)) {
             throw new \DomainException('Unsupported bank voucher direction.');
         }
         $incoming=in_array($series,['CR','BOR'],true);
@@ -23,6 +23,15 @@ final class BankVoucherLegIntegrity
         $legIn=round((float)($leg->amount_in ?? 0),2);
         $legOut=round((float)($leg->amount_out ?? 0),2);
         $amount=round($allocationAmount,2);
+        if($series==='PPR'){
+            // PPR records the customer's received payment in amount_out,
+            // while its one linked receivable ledger leg is amount_in.
+            if($amount<=0 || $sourceOut!==$amount || $sourceIn!==0.0
+                || $legIn!==$amount || $legOut!==0.0){
+                throw new \DomainException('PPR verified bank allocation does not match its receipt ledger.');
+            }
+            return;
+        }
         if ($amount<=0
             || ($incoming && ($sourceIn!==$amount || $sourceOut!==0.0
                 || $legIn!==$amount || $legOut!==0.0))
