@@ -11,6 +11,25 @@ use PHPUnit\Framework\TestCase;
  */
 final class BankManagementRegisterJavaScriptContractTest extends TestCase
 {
+    public function test_pending_bank_replacement_is_visible_without_falsifying_bank_status(): void
+    {
+        foreach ([
+            'cheque' => 'ChequeIntakeController.php',
+            'online' => 'OnlineIntakeController.php',
+        ] as $method => $controllerName) {
+            $directory=$method==='cheque'?'cheque':'online';
+            $view=file_get_contents(__DIR__.'/../../../resources/views/admin/finance/'.$directory.'/intake.blade.php');
+            $controller=file_get_contents(__DIR__.'/../../../app/Http/Controllers/Finance/'.$controllerName);
+            self::assertIsString($view);
+            self::assertIsString($controller);
+            self::assertStringContainsString('correction_pending',$view);
+            self::assertStringContainsString('Replacement Pending Approval',$view);
+            self::assertStringContainsString('correction_request_id',$view);
+            self::assertStringContainsString('!'.($method==='cheque'?'r':'x').'.correction_pending',$view);
+            self::assertStringContainsString("'source_method','".$method === 'cheque' ? '' : ''); 
+        }
+    }
+
     public function test_cheque_and_online_register_delete_guards_are_balanced(): void
     {
         foreach ([
