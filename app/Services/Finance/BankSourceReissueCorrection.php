@@ -204,7 +204,7 @@ final class BankSourceReissueCorrection
             ->where('project_id',$projectId)->where($claimColumn,$sourceId)->exists()) {
             throw new \DomainException('Unreconciled historical bank claim prevents correction.');
         }
-        if (!$changed && count($active)===0) {
+        if (!$changed && count($active)===0 && !$recoverable) {
             throw new \DomainException('No source changes or active linked vouchers to correct.');
         }
         $state=['project_id'=>$projectId,'method'=>$method,'source_id'=>$sourceId,
@@ -257,9 +257,11 @@ final class BankSourceReissueCorrection
                 'project_id'=>$projectId,'source_id'=>$sourceId,'approval_id'=>null,
                 'status'=>'bank_source_fix',
                 'before_snapshot'=>json_encode(['source_kind'=>$table,'method'=>$method,
-                    'source_id'=>$sourceId,'fields'=>$plan['before']],JSON_THROW_ON_ERROR),
+                    'source_id'=>$sourceId,'status'=>$plan['status'],
+                    'fields'=>$plan['before']],JSON_THROW_ON_ERROR),
                 'proposed_snapshot'=>json_encode(['source_kind'=>$table,'method'=>$method,
-                    'source_id'=>$sourceId,'fields'=>$plan['after'],'released_vouchers'=>$plan['active_vouchers']],
+                    'source_id'=>$sourceId,'status'=>$plan['result_status'],
+                    'fields'=>$plan['after'],'released_vouchers'=>$plan['active_vouchers']],
                     JSON_THROW_ON_ERROR),
                 'reason'=>$reason,'submitted_by'=>$submittedBy??$actorId,'decided_by'=>$actorId,
                 'created_at'=>now(),'updated_at'=>now(),
