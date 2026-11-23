@@ -39,6 +39,17 @@ final class BankLinkedCorrectionHttpContractTest extends TestCase
         self::assertStringContainsString('bank-source-reissue-submit',$online);
         self::assertStringContainsString('Review Withdrawal & Replacement',$script);
         self::assertStringContainsString('active_vouchers',$script);
+        self::assertStringContainsString('function bankApprovalComparison',$script);
+        self::assertStringContainsString('Changed Field',$script);
+        self::assertStringContainsString('bank-review-updated',$script);
+        self::assertStringContainsString('Linked Voucher Impact',$script);
+        self::assertStringContainsString('Outcome After Approval',$script);
+        self::assertStringContainsString('Cancel Pending Approval',$script);
+        self::assertStringContainsString('Approve & Apply',$script);
+        self::assertStringNotContainsString('JSON.stringify(proposed.changes',$script);
+        self::assertStringNotContainsString('<pre class="small bank-decision-preview',$script);
+        self::assertStringContainsString('$row->review=',file_get_contents(__DIR__.'/../../../app/Http/Controllers/Finance/BankLinkedCorrectionController.php'));
+
         self::assertStringContainsString('fingerprint:plan.fingerprint',$script);
         self::assertStringContainsString("modal('hide')",$script);
         self::assertStringContainsString("bank_linked_correction_script",$online);
