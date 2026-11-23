@@ -19,7 +19,7 @@ final class CashCreditDebitEditContractTest extends TestCase
             strpos($controller,'public function',$start+20)-$start);
         self::assertStringContainsString("whereIn('type', ['CR','CP','CCR','CDR'])",$update);
         self::assertStringContainsString('SameSourceCashVoucherEdit::class',$update);
-        self::assertStringContainsString("whereIn('transaction_type',['CR','CP','CCR','CDR'])",$service);
+        self::assertStringContainsString("whereIn('transaction_type',['CR','DR','CP','CCR','CDR'])",$service);
         self::assertStringContainsString("['CR','CCR']",$service);
         self::assertStringContainsString("['CP','DR','CDR']",$service);
     }
