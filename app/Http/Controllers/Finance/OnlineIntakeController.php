@@ -296,6 +296,14 @@ final class OnlineIntakeController extends Controller
             $record=DB::table('finance_online_intakes')
                 ->where('project_id',$project)->where('id',$id)->lockForUpdate()->first();
             abort_unless($record,404);
+            if (Schema::hasTable('finance_bank_correction_requests') &&
+                DB::table('finance_bank_correction_requests')
+                    ->where('project_id',$project)->where('source_method','online')
+                    ->where('source_id',$id)->where('status','pending')->exists()) {
+                throw ValidationException::withMessages(['status'=>
+                    'Replacement correction is awaiting approval. Decide it before confirming this transaction.']);
+            }
+
             if($record->status!=='pending'){
                 throw ValidationException::withMessages(['status'=>'Only Pending online transactions can be confirmed.']);
             }
