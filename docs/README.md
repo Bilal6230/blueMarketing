@@ -1,8 +1,8 @@
-> **LATEST HANDOFF — 2026-11-19 (Milestone 03):** See [Milestone 03 Browser Acceptance / Test Gate](MILESTONE_03_BROWSER_ACCEPTANCE_2026_11_19.md) for the current authoritative voucher-by-voucher code, local migration/testing commands, browser acceptance matrix, outstanding owner sign-offs and actual PASS numbers. The newest code changes guard legacy-vs-typed ownership for EC, PPR and Labour; protect Stock negative inventory, correct Bootstrap 5 stock modals, and scope DastiCash Delete by project. **All new suites/browser checks are still pending owner execution**; Milestone 03 is not yet signed off. **Milestone 06 Activity Audit remains LAST/deferred.** Older chronological notes below are historical and may be superseded by this acceptance file.
+> **LATEST ACCEPTED STATUS — 2026-11-23:** **Milestone 04 CLOSED / OWNER ACCEPTED** (Cheque/Online correction, pending approval, Withdraw & Replace, zero-voucher same-ID edits, compact source narration, approval review, pending-state badge/actions). Owner reported all core browser scenarios PASS and confirmed the final compact design; final BankManagementRegisterJavaScriptContractTest **2 PASS / 28 assertions**, BankLinkedCorrectionApprovalIntegrationTest **19 PASS / 138 assertions**, and read-only posting audit **6 projects clean**. **Milestone 03 now next active work; NOT yet accepted.** Use the final M04 behavior specified below; older M04 sections are retained as historical superseded notes. Milestone 06 Activity Audit remains LAST/deferred.
 
 # BlueMarketing — Current Development Handoff
 
-**Updated:** 2026-11-22  
+**Updated:** 2026-11-23  
 **Branch:** `upgrade/laravel-framework`  
 **Local application:** `C:\laragon\www\blueMarketing`  
 **Database:** whichever database is configured in `.env`. Owner currently uses `bluenew_clean_final`. Never hard-code database names, introduce separate V2 finance, or reinstate V2 isolation.
@@ -15,9 +15,31 @@
 | 01 | Nonblocking loading and voucher-tinted skeletons | **COMPLETE** — owner browser + PHP tests PASS |
 | 02 | Action-specific permissions, Roles page and backend enforcement | **PARTIAL ACCEPTANCE** — implemented, tests PASS, owner confirmed CR Edit visibly works; complete cross-module browser permission matrix not yet accepted |
 | **03** | FK/relationship integrity, safe Create/Edit/Delete, lifecycle columns | **ACTIVE — PARTIAL**. Plot/JV/CV differential correction owner-accepted; Approved CV browser PASS, 16 tests PASS / 139 assertions. BD/BW same-batch Edit/Delete local **13 tests PASS / 102 assertions**, posting audit 6 projects clean (BD/BW browser still pending). SV production Create/Post and exact typed/legacy Edit/Delete now committed, **SV tests/browser pending**. PPR/EC/ECP and Stock/Labour remaining source-domain lifecycle acceptance incomplete. |
-| 04 | Cheque/Online edit/delete with cleared linked-voucher cascade | **CODE IMPLEMENTED — LOCAL TEST/BROWSER ACCEPTANCE PENDING**. Online/Cheque Edit/Delete, atomic linked voucher void/release, supervised verified-source replacement, project and permission guards. |
+| **04** | Cheque/Online correction, approval and linked voucher replacement | **COMPLETE — OWNER ACCEPTED / CLOSED (2026-11-23)**. No voucher history: original ID edited. Any voucher history: old source withdrawn, pending voucher approvals cancelled, posted voucher/ledger soft-voided, new source created for bank re-verification. Approval ON/OFF, project guard, review modal, compact status/actions and one-line narration accepted; 19 integration PASS / 138 assertions; final register JS 2 PASS / 28 assertions; all 6 project posting audit clean. |
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
+
+## Milestone 04 — CLOSED / OWNER ACCEPTED (2026-11-23)
+
+**Closure basis:** Owner confirmed all functional Cheque/Online browser scenarios PASS, reviewed the redesigned Pending Bank Corrections modal, verified the final `Repl. Pending` badge and button-only Actions menu (no long request/status text), and ran the last terminal gate: `BankManagementRegisterJavaScriptContractTest` **2 passed / 28 assertions**, alongside the previously recorded `BankLinkedCorrectionApprovalIntegrationTest` **19 passed / 138 assertions**, and **six-project posting balances CLEAN**. Other focused bank release contracts were also tested in prior turns. No new schema/table required for final UI fixes.
+
+**Final approved policy:** A Cheque or Online source with **no voucher history** updates its original ID; any historical voucher allocation, even pending/rejected/already released, uses a new unique bank reference, archives/withdraws the old source and related vouchers, creates an unverified replacement and requires fresh bank clearance/confirmation before creating new vouchers. Independent approval settings remain enforced: pending request displayed as `Repl. Pending` with lifecycle/edit/delete actions hidden, original bank status retained internally until decision. Pending approvals cancelled and active financial legs soft-voided only upon approval. Approval review shows human-readable field changes and voucher impacts; bank details auto-append as a single compact narration line.
+
+**Final UI change verified by owner:** Cheque Management snapshot showed `Repl. Pending` in the status cell, no extra `Bank: cleared` or `Request # ... awaiting decision` row text, and existing action-menu buttons instead of inline explanatory strings. Equivalent Online implementation shares the accepted contract.
+
+**Milestone status: CLOSED. Do not reopen or redesign Milestone 04 without a newly reported actual regression.** Previous Milestone 04 notes lower in this README are chronological and superseded wherever they describe old same-ID linked-voucher behavior or pending acceptance.
+
+## Milestone 03 — NEXT ACTIVE BATCH (2026-11-23)
+
+Milestone 03 stays **PARTIAL** because repository documentation does not yet record full browser acceptance for the remaining voucher/source families. The immediate next batch is **verification-first, then targeted fixes**; do not rewrite already accepted Plot/JV/CV flows.
+
+1. **SV and JV latest lifecycle:** run `SalesVoucherFullLifecycleContractTest`, `JournalApprovedCorrectionContractTest`, `JournalPostingWriterTest` and test draft/approved Create, same-ID Edit, add/remove legs, logical Delete; verify current ledgers, no duplicate postings, and matching AJAX response.
+2. **Cash voucher family CR/DR/CCR/CDR and BOR/BOP:** run `CashPostingWriterTest`, `LinkedVoucherLedgerRetirementTest`, `BankTransferWriterTest`; browser test each original voucher Create, Edit, Delete, approval and relevant cheque/online picker selection. Reuse the **closed M04 custody writer** for linked source effects; never mutate bank source tables directly from voucher controllers.
+3. **PPR, EC/ECP and Labour:** run `BookingReceiptCashEditorTest`, `ExtraChargeCashEditorTest`, `LabourPaymentEditorTest`; verify source/booking/extra-charge/worker ownership, same-source edits and soft deletes, approval and matching Party Ledger. Do not override typed-source ownership.
+4. **Stock Entry / Bill:** run `StockDocumentEditorTest` and `StockDocumentLifecycleContractTest`; browser verify quantity and line corrections, inventory non-negative guards, billed source dependencies, AJAX Bootstrap 5 modals and archival of stock/ledger rows.
+5. **Permissions / shared reporting:** verify staff vs approver vs admin project-scoped permissions (also outstanding M02), Daily Voucher Directory, Party Ledger, Trial Balance, stock/labour reports, full all-project posting-balance integrity. Only mark M03 complete when user confirms browser matrix and tests. No new tables except where demonstrably required.
+
+**Reference for scenario-by-scenario gates:** `docs/MILESTONE_03_BROWSER_ACCEPTANCE_2026_11_19.md`, which remains an unclosed checklist. Historical test-status lines within that older document are superseded by fresh owner runs, not automatically PASS merely because M04 closed. **M05 Reversal ON/OFF** follows M03; **M06 centralized Activity Audit** stays last.
 
 ## Milestone 04 — FINAL CORRECTION RULE (2026-11-23): linked records replaced, no-voucher records edited on original ID
 
