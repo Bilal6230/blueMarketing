@@ -19,7 +19,7 @@ final class TypedPlotReceiptBankCustodyContractTest extends TestCase
         self::assertStringContainsString("'passed_source_id' => ['nullable','integer','min:1']", $controller);
         self::assertStringContainsString("public const POSTED='PPR_TYPED'", $custody);
         self::assertStringContainsString("public const DRAFT='PPR_TYPED_DRAFT'", $custody);
-        self::assertStringContainsString("'voucher_type'=>$"."type,'voucher_id'=>$"."voucherId", $custody);
+        self::assertStringContainsString("'voucher_type'=>\$type,'voucher_id'=>\$voucherId", $custody);
     }
 
     public function test_approval_and_m04_source_reissue_release_typed_ppr_without_legacy_mutation(): void
@@ -33,7 +33,7 @@ final class TypedPlotReceiptBankCustodyContractTest extends TestCase
         foreach([$draft,$approval,$replace,$planner,$editor,$life] as $file)self::assertIsString($file);
         self::assertStringContainsString('TypedPlotReceiptBankCustody::class)->reserveDraft(', $draft);
         self::assertStringContainsString('TypedPlotReceiptBankCustody::class)->release(', $draft);
-        self::assertStringContainsString('$"."actorId);", $approval);
+        self::assertStringContainsString('$actorId);', $approval);
         self::assertStringContainsString('TypedPlotReceiptBankCustody::class)->release(', $replace);
         self::assertStringContainsString('TypedPlotReceiptBankCustody::POSTED', $planner);
         self::assertStringContainsString('TypedPlotReceiptBankCustody::POSTED', $editor);
