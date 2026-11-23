@@ -29,6 +29,13 @@ final class PlotEntryLifecycleService
             if (Schema::hasColumn($sourceTable, 'deleted_at')) $query->whereNull('deleted_at');
             $source = $query->first();
             if (!$source) throw new \DomainException('PLOT_SOURCE_NOT_ACTIVE');
+            if($kind==='plot_receipt' && Schema::hasTable('finance_bank_voucher_allocations')
+                && DB::table('finance_bank_voucher_allocations')
+                    ->where('project_id',$projectId)
+                    ->where('voucher_type',TypedPlotReceiptBankCustody::POSTED)
+                    ->where('voucher_id',$sourceId)->exists()){
+                throw new \DomainException('Verified typed PPR requires audited bank source release before reversal or deletion.');
+            }
 
             $link = DB::table($links[$kind])->where('source_id', $sourceId)->first();
             if (!$link || $link->source_kind !== $kind) throw new \DomainException('V2_PLOT_VOID_POSTING_MISSING');
