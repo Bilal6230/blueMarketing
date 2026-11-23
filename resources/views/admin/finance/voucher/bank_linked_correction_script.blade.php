@@ -70,6 +70,21 @@ jQuery(function($) {
             });
         }).fail(function(xhr){window.Swal.fire({icon:'error',title:'Cannot Load Approvals',text:error(xhr)});});
     });
+    function resetReplacementRegisterFilters(method){
+        var $status=method==='cheque'?$('#cheque-status'):$('#online-status-filter');
+        if($status.length){
+            var select=$status[0].tomselect;
+            if(select)select.clear(true);
+            else $status.val('');
+        }
+        if(method==='cheque'){
+            $('#cheque-link-filter').val('');
+            $('#cheque-search').val('');
+        }else{
+            $('#online-link-filter').val('');
+            $('#online-search').val('');
+        }
+    }
     function endpoint(template, cfg) {
         return template.replace('__METHOD__',cfg.method).replace('__SOURCE_ID__',String(cfg.id));
     }
@@ -150,10 +165,18 @@ jQuery(function($) {
                     headers:{Accept:'application/json'}
                 }).done(function(result){
                     if(cfg.modalSelector)$(cfg.modalSelector).modal('hide');
+                    var applied=result.data&&result.data.result||{};
+                    if(applied.replacement_source_id){
+                        resetReplacementRegisterFilters(cfg.method);
+                    }
                     $(cfg.reloadSelector).trigger('submit');
                     window.Swal.fire({icon:'success',
-                        title:result.data&&result.data.pending?'Sent For Approval':'Correction Applied',
-                        text:result.message});
+                        title:result.data&&result.data.pending?'Sent For Approval':
+                            (applied.replacement_source_id?'Replacement Created':'Original Updated'),
+                        text:result.message+(applied.replacement_source_id
+                            ? ' New source ID #'+applied.replacement_source_id+
+                              '. Complete bank clearing/confirmation before creating vouchers.'
+                            : '')});
                 }).fail(function(xhr){
                     window.Swal.fire({icon:'error',title:'Correction Refused',text:error(xhr)});
                 }).always(function(){busy=false;});
