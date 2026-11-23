@@ -31,6 +31,23 @@
             40%,80% { transform:translateX(5px) }
         }
         /* A TomSelect wrapper is structural, not a second input border. */
+        #voucherForm .standard-counter-account .ts-wrapper {
+            border:0 !important;
+            padding:0 !important;
+            background:transparent !important;
+            box-shadow:none !important;
+        }
+        #voucherForm .standard-counter-account .ts-control {
+            width:100%;
+            min-height:38px;
+            border:1px solid #ced4da;
+            border-radius:6px;
+            padding:7px 10px;
+        }
+        #voucherForm .standard-counter-account select.tomselected,
+        #voucherForm .standard-counter-account select.ts-hidden-accessible {
+            display:none !important;
+        }
         #voucherForm .bank-posting-account .ts-wrapper {
             padding:0 !important;
             border:0 !important;
@@ -350,6 +367,25 @@
                                                             @foreach(($bankSettlementAccounts ?? collect()) as $bankOption)
                                                                 <option value="{{ $bankOption->id }}">
                                                                     {{ $bankOption->bank_name }} / {{ $bankOption->account_title }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                    @endif
+
+                                                    @if(in_array($displaySeries ?? '', ['CR','DR','CCR','CDR'], true))
+                                                    <div class="col-12 col-md-6 col-lg-4 standard-counter-account">
+                                                        <label class="fbox mb-1" for="voucher_counter_account">
+                                                            {{ in_array($displaySeries, ['CR','CCR'], true) ? 'Credit Account' : 'Debit Account' }}
+                                                            <span class="text-danger">*</span>
+                                                        </label>
+                                                        <select id="voucher_counter_account" name="counter_account_id"
+                                                            class="js-tomselect" required>
+                                                            <option value="">Select opposite posting account</option>
+                                                            @foreach(($partyaccounts ?? collect()) as $accountOption)
+                                                                <option value="{{ $accountOption->id }}">
+                                                                    {{ $accountOption->headAccounting?->name ?? '' }} /
+                                                                    {{ $accountOption->subheadAccounting?->name ?? '' }}
                                                                 </option>
                                                             @endforeach
                                                         </select>
