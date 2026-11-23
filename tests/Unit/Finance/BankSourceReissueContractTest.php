@@ -16,13 +16,15 @@ final class BankSourceReissueContractTest extends TestCase
         self::assertIsString($controller);
         self::assertStringContainsString('lockForUpdate()',$service);
         self::assertStringContainsString('DB::transaction(',$service);
-        self::assertStringContainsString('BankVoucherAllocationRelease::class',$service);
+        self::assertStringContainsString('BankManagementSourceMutation::class',$service);
+        self::assertStringContainsString('->replace(',$service);
+        self::assertStringContainsString('->update(',$service);
         self::assertStringContainsString('bank_source_fix',$service);
         self::assertStringContainsString('BankVoucherLegIntegrity::assert',$service);
         self::assertStringContainsString('VoucherApprovalMutationGuard::class',$service);
         self::assertStringContainsString('ready_for_new_vouchers',$service);
         self::assertStringContainsString('ready_after_correction',$service);
-        self::assertStringContainsString("'Source correction: '",$service);
+        self::assertStringContainsString('requires_replacement',$service);
         self::assertStringNotContainsString('->delete(',$service);
         self::assertStringContainsString('submitReissue(',$approval);
         self::assertStringContainsString("mode'=>'reissue'",$approval);
