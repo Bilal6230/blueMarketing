@@ -32,19 +32,6 @@
    @endif
   </div>
  </div>
- <x-finance.voucher-filter-card class="pr-filter-card">
-  <form id="prFilterForm" class="bm-voucher-filter-grid pr-filter-row">
-   <div><label for="prFrom">From</label><input id="prFrom" class="form-control" type="date"></div>
-   <div><label for="prTo">To</label><input id="prTo" class="form-control" type="date"></div>
-   <div><label for="prFilterCustomer">Customer</label><select id="prFilterCustomer" class="form-control"><option value="">All customers</option></select></div>
-   <div><label for="prFilterSearch">Search</label><input id="prFilterSearch" class="form-control" maxlength="120" placeholder="Number, customer or details"></div>
-   <div class="bm-voucher-filter-actions pr-filter-actions">
-    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply</button>
-    <button type="button" id="prResetFilters" class="btn btn-outline-secondary btn-sm">Reset</button>
-
-   </div>
-  </form>
- </x-finance.voucher-filter-card>
  <x-finance.voucher-table-card class="pr-table-card">
   <div class="bm-voucher-table-toolbar pr-tools bm-records-toolbar">
    <label>Show <select id="prLength" class="form-control form-control-sm"><option>10</option><option selected>25</option><option>50</option><option>100</option></select> entries</label>
@@ -336,7 +323,7 @@
  };
  columns=$.blueVoucherColumnFilters.init({
   initialOptions:{head:[],subhead:[],account_relations:[]},
-  formSelector:'#prFilterForm',quickSearchSelector:'#prQuickSearch',
+  formSelector:'#plotReceiptApp',quickSearchSelector:'#prQuickSearch',
   triggerSelector:'#plotReceiptApp .dv-excel-trigger',tableWrapSelector:'.pr-table-wrap',
   getStart:function(){return (page-1)*(Number($('#prLength').val())||25);},
   getLength:function(){return Number($('#prLength').val())||25;},
@@ -344,13 +331,6 @@
   onSort:function(field,dir){sort=field;direction=dir;},
   onChange:function(){page=1;drawHistory();},
   choicesFor:function(field){return Array.from(new Set(history.map(function(r){return getValue(r,field);}))).sort();}
- });
- $('#prFilterForm').on('submit',function(e){e.preventDefault();filters={
-  from:$('#prFrom').val(),to:$('#prTo').val(),customer:$('#prFilterCustomer').val(),
-  search:$.trim($('#prFilterSearch').val()).toLowerCase()};page=1;drawHistory();});
- $('#prResetFilters').on('click',function(){
-  $('#prFilterForm')[0].reset();$('#prQuickSearch').val('');filters={from:'',to:'',customer:'',search:''};
-  sort='date';direction='desc';columns.reset();page=1;drawHistory();
  });
  $('#prLength').on('change',function(){page=1;drawHistory();});
  $('#prQuickSearch').on('input',function(){page=1;drawHistory();});
