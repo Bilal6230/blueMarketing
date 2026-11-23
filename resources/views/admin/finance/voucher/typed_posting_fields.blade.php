@@ -1,4 +1,8 @@
-@if(\App\Services\Finance\FinanceWorkflowAccess::enabled())
+{{-- The standard CR/DR/CCR/CDR/BOR/BOP writer posts against the selected
+     Accounts / Child Account mapping below. It does NOT consume posting_lines.
+     Do not display two unauthoritative extra account selectors. This partial
+     is reserved for an explicit balanced posting workflow, if enabled. --}}
+@if(\App\Services\Finance\FinanceWorkflowAccess::selected())
     @php($postingAccounts = $postingAccounts ?? app('finance.original.accounts'))
     <fieldset class="border rounded p-2 my-2 w-100" data-original-posting-fields>
         <legend class="h6">Posting accounts</legend>
