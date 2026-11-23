@@ -125,30 +125,34 @@ final class BankSourceReissueCorrection
         if (!$source) throw new \DomainException('Bank source not found in the selected project.');
         $verifiedStatus=$method==='online'?'confirmed':'cleared';
         $isVerified=(string)$source->status===$verifiedStatus;
-        $recoverable=(string)$source->status==='withdrawn'
-            && $this->hasOriginalVerification($projectId,$method,$sourceId,$source);
-        // Unverified / non-cleared sources can still be corrected without
-        // claiming that the bank has verified them.
-        // A genuine replacement can have its own bank lifecycle. Do not
-        // re-enable an archived original while its replacement is still live.
-        if($recoverable && $method==='online' && Schema::hasColumn('finance_online_intakes','remarks') &&
-            DB::table('finance_online_intakes')->where('project_id',$projectId)
-                ->where('id','!=',$sourceId)->where('status','!=','withdrawn')
-                ->where('remarks','like','Audited replacement for Online #'.$sourceId.':%')
-                ->exists()) {
-            throw new \DomainException('A replacement Online transaction still exists; reconcile it before restoring the original.');
-        }
-        if($recoverable && $method==='cheque' && Schema::hasTable('finance_cheque_intake_actions') &&
-            Schema::hasColumn('finance_cheque_intake_actions','remarks')) {
-            $replacementEvents=DB::table('finance_cheque_intake_actions')
-                ->where('project_id',$projectId)->where('cheque_intake_id',$sourceId)
-                ->where('action','withdrawn')->where('remarks','like','Replaced by cheque source #%')
-                ->get(['remarks']);
-            foreach($replacementEvents as $event) {
-                if(preg_match('/^Replaced by cheque source #(\\d+)$/',(string)$event->remarks,$match)
-                    && DB::table('finance_cheque_intakes')->where('project_id',$projectId)
-                        ->where('id',(int)$match[1])->where('status','!=','withdrawn')->exists()) {
-                    throw new \DomainException('A replacement cheque still exists; reconcile it before restoring the original.');
+        // Withdrawal alone invalidates availability. A previous real bank
+        // clearing event is not permission to revive genuinely withdrawn funds.
+        // Only an AUDITED administrative replacement that has itself been
+        // withdrawn can safely restore the original instrument.
+        $recoverable=false;
+        if((string)$source->status==='withdrawn'
+            && $this->hasOriginalVerification($projectId,$method,$sourceId,$source)) {
+            if($method==='online' && Schema::hasColumn('finance_online_intakes','remarks')) {
+                $replacements=DB::table('finance_online_intakes')
+                    ->where('project_id',$projectId)->where('id','!=',$sourceId)
+                    ->where('remarks','like','Audited replacement for Online #'.$sourceId.':%')
+                    ->get(['status']);
+                $recoverable=$replacements->isNotEmpty()
+                    && $replacements->every(fn($replacement)=>$replacement->status==='withdrawn');
+            }
+            if($method==='cheque' && Schema::hasTable('finance_cheque_intake_actions')) {
+                $replacementEvents=DB::table('finance_cheque_intake_actions')
+                    ->where('project_id',$projectId)->where('cheque_intake_id',$sourceId)
+                    ->where('action','withdrawn')->where('remarks','like','Replaced by cheque source #%')
+                    ->get(['remarks']);
+                foreach($replacementEvents as $event) {
+                    if(preg_match('/^Replaced by cheque source #(\\d+)$/',(string)$event->remarks,$match)) {
+                        $replacement=DB::table('finance_cheque_intakes')
+                            ->where('project_id',$projectId)->where('id',(int)$match[1])->first(['status']);
+                        if($replacement && $replacement->status==='withdrawn') $recoverable=true;
+                        elseif($replacement) throw new \DomainException(
+                            'A replacement cheque is still active; reconcile it before restoring the original.');
+                    }
                 }
             }
         }
