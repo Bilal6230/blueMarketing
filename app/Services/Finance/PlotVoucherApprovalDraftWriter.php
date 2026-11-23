@@ -61,6 +61,25 @@ final class PlotVoucherApprovalDraftWriter
                 throw new \DomainException('PLOT_APPROVAL_DRAFT_NUMBER_EXISTS');
             }
             if($type==='PPR'){
+                $paymentType=(int)($data['payment_type']??1);
+                $method=(string)($data['passed_source_method']??'');
+                $intakeId=(int)($data['passed_source_id']??0);
+                if(!in_array($paymentType,[1,2,3],true)
+                    || ($paymentType===1 && ($method!=='' || $intakeId>0))
+                    || ($paymentType!==1 &&
+                        ($method!==($paymentType===2?'online':'cheque') || $intakeId<1))){
+                    throw new \DomainException('PPR_TYPED_BANK_SOURCE_REQUIRED');
+                }
+                if($paymentType!==1){
+                    if(!DB::table('project_bank_accounts')->where('project_id',$projectId)
+                        ->where('is_active',1)
+                        ->where('account_mapping_id',(int)($data['cash_account_id']??0))
+                        ->exists()){
+                        throw new \DomainException('PPR_TYPED_BANK_DEBIT_ACCOUNT_REQUIRED');
+                    }
+                    app(VerifiedBankInstrument::class)->inspectLocked(
+                        $projectId,'PPR',$method,$intakeId,(string)$data['amount']);
+                }
                 $customerId=(int)($data['customer_id']??0);
                 if(!DB::table('leads')->where('id',$customerId)
                     ->where('project_id',$projectId)->exists()
@@ -101,6 +120,11 @@ final class PlotVoucherApprovalDraftWriter
                 $projectId,$type,'finance_plot_approval_drafts',(int)$id,$actorId)){
                 throw new \DomainException('PLOT_APPROVAL_POLICY_CHANGED');
             }
+            if($type==='PPR' && (int)($data['payment_type']??1)!==1){
+                app(TypedPlotReceiptBankCustody::class)->reserveDraft(
+                    $projectId,(int)$id,(string)$data['passed_source_method'],
+                    (int)$data['passed_source_id'],(string)$data['amount'],$actorId);
+            }
             return ['approval_draft_id'=>(int)$id,'number'=>$number,
                 'status'=>'pending','pending'=>true,'replayed'=>false];
         },3);
@@ -134,7 +158,7 @@ final class PlotVoucherApprovalDraftWriter
         return $result;
     }
 
-    public function reject(int $projectId,int $draftId,string $type): void
+    public function reject(int $projectId,int $draftId,string $type,?int $actorId=null): void
     {
         $updated=DB::table('finance_plot_approval_drafts')
             ->where('id',$draftId)->where('project_id',$projectId)
@@ -142,5 +166,15 @@ final class PlotVoucherApprovalDraftWriter
             ->whereNull('posted_source_id')->whereNull('posting_batch_id')
             ->update(['status'=>'rejected','updated_at'=>now()]);
         if($updated!==1)throw new \DomainException('PLOT_APPROVAL_DRAFT_NOT_PENDING');
+        if($type==='PPR' && Schema::hasTable('finance_bank_voucher_allocations')
+            && DB::table('finance_bank_voucher_allocations')
+                ->where('project_id',$projectId)
+                ->where('voucher_type',TypedPlotReceiptBankCustody::DRAFT)
+                ->where('voucher_id',$draftId)->exists()){
+            if(!$actorId)throw new \DomainException('Typed PPR bank rejection actor is required.');
+            app(TypedPlotReceiptBankCustody::class)->release(
+                $projectId,TypedPlotReceiptBankCustody::DRAFT,$draftId,
+                $actorId,'Rejected typed multi-plot receipt',true);
+        }
     }
 }
