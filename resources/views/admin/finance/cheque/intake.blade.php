@@ -488,13 +488,12 @@ $(function () {
             });
         }
         if(@json(auth()->user()->can('finance cheque edit')) &&
+            !@json(auth()->user()->can('finance cheque correct')) &&
             (r.status==='received'||r.status==='issued') && Number(r.linked_voucher_count||0)===0){
             $('<button type="button">').addClass('btn btn-sm btn-outline-primary mr-1 cheque-edit-source')
              .attr('data-id',r.id).text(r.status==='cleared'?'Replace':'Edit').appendTo($actions);
         }
-        if(@json(auth()->user()->can('finance cheque correct')) &&
-            !((r.status==='received'||r.status==='issued') && Number(r.linked_voucher_count||0)===0 &&
-                @json(auth()->user()->can('finance cheque edit')))) {
+        if(@json(auth()->user()->can('finance cheque correct'))) {
             $('<button type="button" class="btn btn-sm btn-outline-info mr-1 cheque-correct-source">')
                 .attr('data-id',r.id).text(Number(r.linked_voucher_count||0)>0?'Correct / Reissue':'Edit').appendTo($actions);
         }
