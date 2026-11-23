@@ -78,6 +78,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 
         </div>
     </div>
+    <form id="btFilterForm" class="d-none" aria-hidden="true"></form>
     <x-finance.voucher-table-card class="bt-table-card">
         <div class="bt-tools bm-records-toolbar">
             <label>Show <select class="form-control form-control-sm" id="btLength"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select> entries</label>
@@ -510,7 +511,7 @@ $(function () {
     };
     columnFilters=$.blueVoucherColumnFilters.init({
         initialOptions:{head:[],subhead:[],status:['Posted','Pending','Rejected'],account_relations:[]},
-        formSelector:'#bankTransferApp',quickSearchSelector:'#btQuickSearch',
+        formSelector:'#btFilterForm',quickSearchSelector:'#btQuickSearch',
         triggerSelector:'#bankTransferApp .dv-excel-trigger',
         tableWrapSelector:'.bt-table-wrap',
         getStart:()=>Math.max(0,(page-1)*(Number($('#btLength').val())||25)),
