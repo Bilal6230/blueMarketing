@@ -19,6 +19,40 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 04 — FINAL CORRECTION RULE (2026-11-23): linked records replaced, no-voucher records edited on original ID
+
+**This business decision supersedes the earlier same-ID soft-void/reissue approach; owner local tests/browser acceptance PENDING.**
+
+- **Any actual voucher allocation history** (including pending, approved, posted, rejected, or already released) forces **Withdraw old source + create a NEW source ID requiring bank verification**. Old Cheque becomes Withdrawn; new Cheque starts Received/Issued. Old Online becomes Withdrawn; new Online starts Pending. No source is automatically re-cleared or re-confirmed. New unique Cheque Number+Bank or Online Transaction Reference is mandatory due existing unique indexes; no fake reference suffixes or silent original-reference changes. Only after the normal Cheque clearance / Online confirmation may users create fresh vouchers against the replacement record.
+- **No voucher allocation history at all**: edit the existing Cheque/Online source in place **regardless of its current status**, preserve source ID and do NOT create a replacement. Verified identity change (cheque number/bank/direction or online reference/type) resets that same ID to appropriate unverified status to prevent retaining old verification for a different instrument; non-identity changes preserve existing status, with audit snapshot under the reviewed Correct workflow. Legacy missing-claim evidence remains fail-closed.
+- For linked sources, the **existing BankManagementSourceMutation::replace() and withdraw()** are called from the approved source-correction engine. Inside a project-locked transaction, pending voucher approvals are cancelled with archived reason and event, approved/posted voucher/ledger rows soft-voided, already rejected or released history preserved; every still-active allocation receives one audited release. Any failed leg or stale fingerprint rolls back ALL changes and prevents creating the replacement.
+- Correction permissions and CHQ_CORR/ONL_CORR approval ON/OFF settings are retained. Approval ON stages an immutable proposed change until independent approver decision; both original vouchers and original bank source remain unchanged before approval. Legacy management PUT will not bypass ON settings or pending correction requests. Approved request performs the entire withdraw/replacement in one transaction.
+- Cheque/Online register primary Edit/Correct action is now approval-aware for users granted `finance cheque correct` or `finance online correct`. Linked and unlinked sources both use reviewed preview/confirm. Transaction ID / Cheque Number are editable and checked for database uniqueness; a linked replacement cannot reuse the old bank identity. Confirmation clearly distinguishes **same-ID update** from **old Withdrawn + new Pending/Received record**.
+- No new database migration or table in this change. Prior auto-appended single-line Cheque/Online Details remain unchanged.
+- Tests adapted: `BankLinkedCorrectionApprovalIntegrationTest` (linked replacement, zero-voucher same-ID, pending cancellation, approval ON/OFF, stale guard, historical released links, Online/Cheque), `BankManagementMutationContractTest`, `BankSourceReissueContractTest`, `BankLinkedCorrectionHttpContractTest`. **Terminal test results for these latest changes are not yet available.**
+
+**Local commands, in configured disposable Laragon test database:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php -l app/Services/Finance/BankManagementSourceMutation.php
+php -l app/Services/Finance/BankSourceReissueCorrection.php
+php -l app/Http/Controllers/Finance/BankManagementMutationController.php
+php -l app/Http/Controllers/Finance/BankLinkedCorrectionController.php
+php artisan test --filter=BankLinkedCorrectionApprovalIntegrationTest
+php artisan test --filter=BankManagementSourceMutationTest
+php artisan test --filter=BankManagementLinkedCascadeTest
+php artisan test --filter=BankVoucherAllocationReleaseTest
+php artisan test --filter=BankSourceReissueContractTest
+php artisan test --filter=BankManagementMutationContractTest
+php artisan test --filter=BankLinkedCorrectionHttpContractTest
+php artisan finance:audit-posting-balances
+```
+
+**Browser testing REQUIRED after green local tests:** 1. **No-voucher** Cheque (including Cleared) Edit amount/detail -> same source ID, no Withdrawn/new record; repeat Online confirmed without vouchers. 2. **Linked Pending** Cheque / Online -> Correct/Edit with NEW unique cheque number or reference -> Preview lists pending voucher, approval OFF Confirm -> old source Withdrawn, pending approval cancelled, voucher inactive/released, NEW source Received/Issued/Pending; verify original voucher numbers remain historical. 3. **Linked Approved/Posted** -> posting legs inactive, releases audited, new unverified source awaits clearance; after actual clearance/confirmation new source selectable with FULL corrected amount and fresh voucher IDs/numbers. 4. **Approval ON** -> pending bank-correction request causes no changes until authorized approver Approve; Reject leaves all unchanged. 5. **Already released history** still creates new source (not same-ID). 6. Trying to use original linked cheque/reference unchanged must show clear uniqueness error and leave DB untouched; check cross-project and denied permissions. 7. Recheck compact source Details and 6-project posting balance audit. Do NOT run these tests on real cleared bank funds.
+
 ## Milestone 04 — Owner browser fixes: pending approvals, withdrawn status and compact details (2026-11-23)
 
 - Source correction now supports active **posted, pending-approval, and rejected** bank vouchers. Only the explicitly privileged source correction path passes `cancelPendingForSourceCorrection=true` to `BankVoucherAllocationRelease`; ordinary release retains the existing pending-approval block. Pending vouchers must have inactive ledger legs, otherwise the whole source correction fails. Pending voucher approvals are marked rejected/cancelled with deciding actor, reason, event and one immutable allocation release; already posted vouchers are soft-voided; historical allocations remain in the database.
