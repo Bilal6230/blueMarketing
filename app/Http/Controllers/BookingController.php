@@ -3139,7 +3139,11 @@ class BookingController extends Controller
                             'is_active' => 1,
                             'is_approve' => 0,
                             'passing_date' => $request->input('passing_date'),
-                            'passing_status' => $isPendingBankPayment ? 0 : null,
+                            // Online/Cheque PPR now requires a cleared/confirmed
+                            // management instrument verified under this lock.
+                            // Bank clearing has already happened; voucher
+                            // approval is a separate inactive/active decision.
+                            'passing_status' => $isPendingBankPayment ? 1 : null,
                         'cheque_purpose' => (int) $payment_type === 3 ? trim((string) $request->input('cheque_purpose')) : null,
                         ]);
                         if (!$duplicateLedger) {
