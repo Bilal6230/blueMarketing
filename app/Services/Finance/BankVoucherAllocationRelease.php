@@ -95,7 +95,18 @@ final class BankVoucherAllocationRelease
                 && (int)($allocation->bank_account_id??0)>0;
             $standardBalanced=in_array($series,['CR','DR'],true)
                 && $legs->count()===2;
-            $expected=($balanced||$standardBalanced)?2:1;
+            $pprBalanced=$series==='PPR' && $legs->count()===2;
+            $pprBooking=null;
+            if($pprBalanced){
+                $pprBooking=DB::table('booking_vouchers')
+                    ->where('project_id',$projectId)
+                    ->where('customer_ledger_id',$voucherId)
+                    ->where('voucher_series','PPR')->lockForUpdate()->first();
+                if(!$pprBooking){
+                    throw new \DomainException('PPR canonical booking receipt is missing.');
+                }
+            }
+            $expected=($balanced||$standardBalanced||$pprBalanced)?2:1;
             if($legs->count()!==$expected
                 || DB::table('ledgers')->where('customer_ledger_id',$voucherId)->count()!==$expected){
                 throw new \DomainException('Project bank voucher ledger cardinality invalid.');
@@ -107,6 +118,11 @@ final class BankVoucherAllocationRelease
                 if(round((float)$allocation->amount,2)!==
                     round(max((float)$source->amount_in,(float)$source->amount_out),2)){
                     throw new \DomainException('Standard two-leg bank allocation mismatch.');
+                }
+            }elseif($pprBalanced){
+                BalancedOriginalPprIntegrity::assert($source,$legs,(int)$pprBooking->ledger_id);
+                if(round((float)$allocation->amount,2)!==round((float)$source->amount_out,2)){
+                    throw new \DomainException('PPR balanced verified allocation mismatch.');
                 }
             }else{
                 if((string)$legs->first()->type!==(string)$source->transaction_type
