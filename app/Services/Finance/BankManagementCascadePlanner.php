@@ -138,9 +138,16 @@ final class BankManagementCascadePlanner
             $balanced=in_array((string)$allocation->voucher_type,['BOR','BOP'],true)
                 && (int)($allocation->bank_account_id??0)>0;
             $standardBalanced=in_array($type,['CR','DR'],true) && $legs->count()===2;
+            $pprBalanced=$type==='PPR' && $legs->count()===2;
+            $pprBooking=$pprBalanced && Schema::hasTable('booking_vouchers')
+                ? DB::table('booking_vouchers')
+                    ->where('project_id',$projectId)
+                    ->where('customer_ledger_id',$allocation->voucher_id)
+                    ->where('voucher_series','PPR')->first()
+                : null;
             $matches = $voucher !== null
                 && in_array((string)$voucher->transaction_type, $allowedSourceTypes, true)
-                && $legs->count() === (($balanced||$standardBalanced)?2:1)
+                && $legs->count() === (($balanced||$standardBalanced||$pprBalanced)?2:1)
                 && (int)$voucher->payment_type === ($method === 'online' ? 2 : 3);
             if ($matches) {
                 try {
@@ -152,6 +159,12 @@ final class BankManagementCascadePlanner
                         if(round((float)$allocation->amount,2)!==
                             round(max((float)$voucher->amount_in,(float)$voucher->amount_out),2)){
                             throw new \DomainException('Standard verified source allocation mismatch.');
+                        }
+                    }elseif($pprBalanced){
+                        if(!$pprBooking)throw new \DomainException('PPR booking source missing.');
+                        BalancedOriginalPprIntegrity::assert($voucher,$legs,(int)$pprBooking->ledger_id);
+                        if(round((float)$allocation->amount,2)!==round((float)$voucher->amount_out,2)){
+                            throw new \DomainException('PPR verified allocation amount mismatch.');
                         }
                     }else{
                         if((string)$legs->first()->type!==(string)$voucher->transaction_type){
