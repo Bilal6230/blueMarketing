@@ -124,6 +124,11 @@ class BankTransferWriterTest extends TestCase
             'Cash withdrawn from bank', [['account_id' => 102, 'amount' => '25.50']]);
         $this->assertFalse($deposit['replayed']); $this->assertTrue($again['replayed']);
         $this->assertNotSame($deposit['posting_batch_id'], $withdrawal['posting_batch_id']);
+        $this->assertSame(0,DB::table('finance_posting_lines')
+            ->whereIn('posting_batch_id',[$deposit['posting_batch_id'],$withdrawal['posting_batch_id']])
+            ->whereNull('legacy_ledger_id')->count());
+        $this->assertSame(4,DB::table('ledger_source_attributions')->count());
+
         $this->assertSame(100.0, (float) DB::table('finance_posting_lines')->where('posting_batch_id', $deposit['posting_batch_id'])->where('project_head_subhead_id', 101)->value('debit'));
         $this->assertSame(25.5, (float) DB::table('finance_posting_lines')->where('posting_batch_id', $withdrawal['posting_batch_id'])->where('project_head_subhead_id', 101)->value('credit'));
         $this->assertSame('bank_transfer', DB::table('finance_posting_source_claims')->where('posting_batch_id', $deposit['posting_batch_id'])->value('source_kind'));
