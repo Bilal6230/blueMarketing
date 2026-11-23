@@ -34,10 +34,10 @@ final class BankLinkedCorrectionHttpContractTest extends TestCase
         $online=file_get_contents(__DIR__.'/../../../resources/views/admin/finance/online/intake.blade.php');
         foreach ([$script,$cheque,$online] as $source) self::assertIsString($source);
         self::assertStringContainsString('bank-source-reissue-submit',$script);
-        self::assertStringContainsString('Submit Correction',$script);
+        self::assertStringContainsString('Submit Replacement',$script);
         self::assertStringContainsString('bank-source-reissue-submit',$cheque);
         self::assertStringContainsString('bank-source-reissue-submit',$online);
-        self::assertStringContainsString('Review & Reissue',$script);
+        self::assertStringContainsString('Review Withdrawal & Replacement',$script);
         self::assertStringContainsString('active_vouchers',$script);
         self::assertStringContainsString('fingerprint:plan.fingerprint',$script);
         self::assertStringContainsString("modal('hide')",$script);
