@@ -90,25 +90,32 @@ final class BankVoucherAllocationRelease
                 ->where('account.project_id',$projectId)
                 ->where('ledger.customer_ledger_id',$voucherId)
                 ->lockForUpdate()->get(['ledger.id','ledger.type','ledger.is_active',
-                    'ledger.amount_in','ledger.amount_out']);
-            if($legs->count()!==1
-                || DB::table('ledgers')->where('customer_ledger_id',$voucherId)->count()!==1
-                || (string)$legs->first()->type!==(string)$source->transaction_type
-                || round(max((float)$legs->first()->amount_in,(float)$legs->first()->amount_out),2)
-                    !==round((float)$allocation->amount,2)) {
-                throw new \DomainException('Single-leg project financial integrity check failed.');
+                    'ledger.project_head_subheads_id','ledger.amount_in','ledger.amount_out']);
+            $balanced=in_array($series,['BOR','BOP'],true)
+                && (int)($allocation->bank_account_id??0)>0;
+            $expected=$balanced?2:1;
+            if($legs->count()!==$expected
+                || DB::table('ledgers')->where('customer_ledger_id',$voucherId)->count()!==$expected){
+                throw new \DomainException('Project bank voucher ledger cardinality invalid.');
             }
-            // A matching absolute amount alone is not sufficient: receipt and
-            // payment legs must match the original allocation direction.
-            BankVoucherLegIntegrity::assert($series,$source,$legs->first(),(float)$allocation->amount);
+            if($balanced){
+                BalancedBankVoucherIntegrity::assert($projectId,$series,$source,$allocation,$legs);
+            }else{
+                if((string)$legs->first()->type!==(string)$source->transaction_type
+                    || round(max((float)$legs->first()->amount_in,(float)$legs->first()->amount_out),2)
+                        !==round((float)$allocation->amount,2)){
+                    throw new \DomainException('Single-leg project financial integrity check failed.');
+                }
+                BankVoucherLegIntegrity::assert($series,$source,$legs->first(),(float)$allocation->amount);
+            }
             $pendingCancellation=$cancelPendingForSourceCorrection && $approval
                 && $approval->status==='pending';
             if($pendingCancellation && ((int)$source->is_active!==0
-                || (int)$legs->first()->is_active!==0)) {
+                || (int)$legs->contains(fn($leg)=>(int)$leg->is_active!==0))) {
                 throw new \DomainException('Pending voucher unexpectedly has an active posting; reconciliation required.');
             }
             $rejected=$approval && $approval->status==='rejected';
-            $posted=(int)$source->is_active===1 && (int)$legs->first()->is_active===1
+            $posted=(int)$source->is_active===1 && (int)$legs->every(fn($leg)=>(int)$leg->is_active===1)
                 && (!$approval || $approval->status==='approved' || $approval->status==='posted');
             if(!$pendingCancellation && !$rejected && !$posted) {
                 throw new \DomainException('Only rejected or active posted bank vouchers can be released.');
@@ -125,7 +132,7 @@ final class BankVoucherAllocationRelease
                     ->where('id',$voucherId)->update([
                         'is_active'=>0,'delete_reason'=>$reason,'updated_at'=>now(),
                     ]);
-                DB::table('ledgers')->where('id',$legs->first()->id)
+                DB::table('ledgers')->whereIn('id',$legs->pluck('id')->all())
                     ->update(['is_active'=>0,'delete_reason'=>$reason,'update_by'=>$actorId,
                         'updated_at'=>now()]);
             }
@@ -134,7 +141,7 @@ final class BankVoucherAllocationRelease
                     ->where('id',$voucherId)->update([
                         'is_active'=>0,'delete_reason'=>$reason,'updated_at'=>now(),
                     ]);
-                DB::table('ledgers')->where('id',$legs->first()->id)->update([
+                DB::table('ledgers')->whereIn('id',$legs->pluck('id')->all())->update([
                     'is_active'=>0,'delete_reason'=>$reason,'update_by'=>$actorId,
                     'updated_at'=>now(),
                 ]);
@@ -144,7 +151,7 @@ final class BankVoucherAllocationRelease
                     ->where('id',$voucherId)->update([
                         'is_active'=>0,'delete_reason'=>$reason,'updated_at'=>now(),
                     ]);
-                DB::table('ledgers')->where('id',$legs->first()->id)->update([
+                DB::table('ledgers')->whereIn('id',$legs->pluck('id')->all())->update([
                     'is_active'=>0,'delete_reason'=>$reason,'update_by'=>$actorId,
                     'updated_at'=>now(),
                 ]);
