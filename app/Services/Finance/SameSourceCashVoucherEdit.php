@@ -22,7 +22,7 @@ final class SameSourceCashVoucherEdit
         return DB::transaction(function () use ($projectId,$sourceId,$userId,$data): array {
             DB::table('projects')->where('id',$projectId)->lockForUpdate()->first() ?: throw new \DomainException('Project not found.');
             $source=DB::table('customer_ledger')->where('project_id',$projectId)
-                ->where('id',$sourceId)->whereIn('transaction_type',['CR','CP','CCR','CDR'])
+                ->where('id',$sourceId)->whereIn('transaction_type',['CR','DR','CP','CCR','CDR'])
                 ->lockForUpdate()->first();
             if (!$source) throw new \DomainException('Voucher not found.');
             $isBank=(int)$source->payment_type!==1;
@@ -376,7 +376,7 @@ final class SameSourceCashVoucherEdit
 
     private function applyLocked(int $projectId,object $source,object $leg,array $before,array $next): void
     {
-        if (!in_array($source->transaction_type,['CR','CP','CCR','CDR'],true)) {
+        if (!in_array($source->transaction_type,['CR','DR','CP','CCR','CDR'],true)) {
             throw new \DomainException('Unsupported original voucher accounting type.');
         }
         if ((int)$source->payment_type!==1) {
