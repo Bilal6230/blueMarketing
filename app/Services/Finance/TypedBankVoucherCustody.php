@@ -197,6 +197,15 @@ final class TypedBankVoucherCustody
                 DB::table('finance_bank_transfer_approval_drafts')
                     ->where('id',$voucherId)->where('project_id',$projectId)
                     ->update(['status'=>'rejected','updated_at'=>now()]);
+                if(Schema::hasTable('daily_voucher_approval_events')){
+                    DB::table('daily_voucher_approval_events')->insert([
+                        'approval_id'=>$approval->id,
+                        'event'=>'pending_cancel_release','actor_id'=>$actorId,
+                        'remarks'=>json_encode(['source_method'=>$allocation->source_method,
+                            'source_id'=>$allocation->source_id,'reason'=>$reason],
+                            JSON_THROW_ON_ERROR),'created_at'=>now(),
+                    ]);
+                }
                 $action='pending_cancel_release';
             }else{
                 foreach(['finance_posting_batches','finance_posting_lines',
@@ -246,6 +255,13 @@ final class TypedBankVoucherCustody
                 }
                 if($debit!==$credit || $debit!==$this->cents($allocation->amount)){
                     throw new \DomainException('Typed bank posting does not balance with allocated source.');
+                }
+                $allLegs=DB::table('ledgers as l')
+                    ->join('project_head_subheads as account','account.id','=','l.project_head_subheads_id')
+                    ->where('account.project_id',$projectId)
+                    ->where('l.type',$series)->where('l.type_id',$voucherId)->count();
+                if($allLegs!==$lines->count()){
+                    throw new \DomainException('Typed bank has unrelated or archived extra general-ledger legs.');
                 }
                 DB::table('finance_posting_lines')->where('posting_batch_id',$voucherId)
                     ->where('is_active',1)->update(['is_active'=>0,'updated_at'=>now()]);
