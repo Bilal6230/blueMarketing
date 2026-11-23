@@ -19,6 +19,14 @@
 | 05 | Reversal settings ON/OFF and full regression | **NOT STARTED under new rules** |
 | **06** | **Centralized application-wide activity audit (LAST)**: user/role/project/action/request identifiers, exact changed tables and primary keys, field-level before/after values, create/update/delete/approve/restore/cancel, blocked attempts; include Super Admin/Admin/staff; secure/immutable storage, controlled permissions, no sensitive secrets | **DEFERRED BY OWNER** — design planned, DO NOT implement until Milestones 01–05 and current voucher workflows are complete |
 
+## Milestone 03 — Bank selector double-border screenshot repair (2026-11-23)
+
+**Owner local gate confirmed PASS:** BalancedBankVoucherAccountContractTest 3 tests / 27 assertions, BalancedBankVoucherIntegrityTest 6 tests / 20 assertions, `view:cache` PASS, active posting balance audit six projects clean (before this UI-only adjustment).
+
+**Issue from screenshot:** BOR/BOP bank picker showed a nested/double field. Unlike every other TomSelect field, its original `<select>` had a `form-control` class, and the newly added extra boxed row amplified the doubled visual control. **Fix:** removed the bootstrap input class from bank source select, removed the separate boxed row, placed the bank control inside the normal three-column voucher form grid, and styled TomSelect wrapper as borderless while giving the actual `.ts-control` a single border. Added contract regression for one input and grid integration. No new database tables or migrations.
+
+**Unverified:** Browser screenshot after this change, account availability, CR/DR generic counterpart posting/edit lifecycle, and all remaining 9 acceptance scenarios. Never count frontend source assertions as browser acceptance.
+
 ## Milestone 03 — Pending approval all-leg fix and bank selector layout (2026-11-23)
 
 **Implemented (not yet verified locally/browser):** The standard cash voucher writer previously deactivated only the first ledger row for a newly submitted BOR/BOP approval while leaving its linked bank-side second row active. `LedgerController::store` now deactivates **all project-scoped ledgers for the exact customer_ledger source** atomically within the existing approval transaction; the existing `DailyVoucherApprovalWorkflow::setPostingState` already activates/deactivates both project-scoped rows on decision. `BalancedBankVoucherAccountContractTest` now guards against regression to an `id = first leg` update. The BOR/BOP bank account selector also has a compact contained layout and consistent TomSelect width/spacing in the embedded cash voucher form. No database migration or new table was added in this batch.
