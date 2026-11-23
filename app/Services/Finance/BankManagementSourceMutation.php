@@ -152,6 +152,13 @@ final class BankManagementSourceMutation
                             $projectId,$type,(int)$allocation->voucher_id,
                             $actorId,$reason,$cancelPendingForReplacement
                         );
+                    }elseif(in_array($type,[
+                        TypedPlotReceiptBankCustody::POSTED,
+                        TypedPlotReceiptBankCustody::DRAFT],true)){
+                        $releases[]=app(TypedPlotReceiptBankCustody::class)->release(
+                            $projectId,$type,(int)$allocation->voucher_id,
+                            $actorId,$reason,$cancelPendingForReplacement
+                        );
                     }else{
                         $releases[]=app(BankVoucherAllocationRelease::class)->release(
                             $projectId, (int)$allocation->voucher_id, $actorId, $reason,
