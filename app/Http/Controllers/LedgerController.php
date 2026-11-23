@@ -165,6 +165,7 @@ class LedgerController extends Controller
             'passed_source_method' => ['nullable','in:online,cheque'],
             'passed_source_id' => ['nullable','integer','min:1'],
             'bank_counter_account_id' => ['nullable','integer','min:1'],
+            'counter_account_id' => ['nullable','integer','min:1'],
             'custom_payment_method_id' => ['nullable', 'integer', 'min:1'],
             'date' => ['required', 'date'],
             'voucher' => ['required', 'string', 'regex:/^(CR|DR|CP|BOR|BOP)-\d+$/'],
@@ -254,6 +255,11 @@ class LedgerController extends Controller
             return response()->json(['status'=>'error',
                 'message'=>'Selected passed source does not match payment method.'],422);
         }
+        if(in_array($voucherPrefix,['CR','DR'],true)
+            && !$request->filled('counter_account_id')) {
+            return response()->json(['status'=>'error',
+                'message'=>'Select an opposite posting account for this voucher.'],422);
+        }
         if(in_array($voucherPrefix,['BOR','BOP'],true)
             && !$request->filled('bank_counter_account_id')) {
             return response()->json(['status'=>'error',
@@ -341,6 +347,16 @@ class LedgerController extends Controller
                     ->lockForUpdate()
                     ->exists()) {
                     throw new \DomainException('CASH_VOUCHER_PROJECT_NOT_FOUND');
+                }
+                $standardCounter = null;
+                if(in_array($voucherPrefix,['CR','DR'],true)){
+                    $standardCounter=ProjectHeadSubhead::availableForPosting()
+                        ->where('project_id',$selectedProjectId)
+                        ->whereKey((int)$request->input('counter_account_id'))
+                        ->lockForUpdate()->first();
+                    if(!$standardCounter || (int)$standardCounter->id===(int)$projectHeadSubhead->id) {
+                        throw new \DomainException('Select a different active project counter-account.');
+                    }
                 }
                 $bankCounter = null;
                 if(in_array($voucherPrefix,['BOR','BOP'],true)){
@@ -662,6 +678,22 @@ class LedgerController extends Controller
                         'reference'=>$request->reference,
                         'amount_in'=>$displaySeries==='BOR'?$cleanAmount:0,
                         'amount_out'=>$displaySeries==='BOP'?$cleanAmount:0,
+                        'is_active'=>1,'date'=>$request->date,
+                        'detail'=>$detail,'update_by'=>Auth::id(),
+                        'create_by'=>Auth::id(),'status'=>0,
+                    ]);
+                }
+                if($standardCounter){
+                    // New CR/DR entries are balanced; old single-leg vouchers
+                    // retain their original historic shape without backfill.
+                    Ledger::create([
+                        'customer_ledger_id'=>$customerLedger->id,
+                        'voucher_number'=>$resolvedVoucherNumber,
+                        'type'=>$displaySeries,'type_id'=>$resolvedVoucherNumber,
+                        'project_head_subheads_id'=>$standardCounter->id,
+                        'reference'=>$request->reference,
+                        'amount_in'=>$voucherPrefix==='DR'?$cleanAmount:0,
+                        'amount_out'=>$voucherPrefix==='CR'?$cleanAmount:0,
                         'is_active'=>1,'date'=>$request->date,
                         'detail'=>$detail,'update_by'=>Auth::id(),
                         'create_by'=>Auth::id(),'status'=>0,
