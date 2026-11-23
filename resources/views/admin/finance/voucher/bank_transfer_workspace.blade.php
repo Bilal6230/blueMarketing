@@ -69,26 +69,15 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
             <div class="bt-subtitle">Selected project records · Correctable manual vouchers</div></div>
         <div class="d-flex align-items-center" style="gap:8px">
             <a class="btn btn-outline-secondary btn-sm" href="{{ route('dashboard') }}">Dashboard</a>
+            @can('finance bank-'.$kind.' create')
+            <button type="button" class="btn btn-success btn-sm" id="openTransferCreate"
+                data-toggle="modal" data-target="#bankTransferCreateModal">
+                <i class="fas fa-plus mr-1"></i> New voucher
+            </button>
+            @endcan
+
         </div>
     </div>
-    <x-finance.voucher-filter-card class="bt-filter-card">
-            <form id="btFilterForm" class="bt-filter-row">
-                <div><label for="transferFrom">From</label><input type="date" class="form-control" id="transferFrom"></div>
-                <div><label for="transferTo">To</label><input type="date" class="form-control" id="transferTo"></div>
-                <div><label for="transferBankFilter">Account</label><select id="transferBankFilter" class="form-control fvc-tom-select">
-                    <option value="">All accounts</option>
-                    @foreach($bankAccounts as $bank)<option value="{{ $bank->bank_name }} / {{ $bank->account_title }}">{{ $bank->bank_name }} / {{ $bank->account_title }}</option>@endforeach
-                </select></div>
-                <div><label for="transferSearch">Search</label><input class="form-control" id="transferSearch" maxlength="120" placeholder="Number, reference, account or detail"></div>
-                <div class="bt-filter-actions">
-                    <button class="btn btn-primary btn-sm" type="submit" id="applyTransferFilters"><i class="fas fa-filter mr-1"></i> Apply</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="clearTransferFilters">Reset</button>
-                    @can('finance bank-'.$kind.' create')
-                    <button type="button" class="btn btn-success btn-sm" id="openTransferCreate" data-toggle="modal" data-target="#bankTransferCreateModal"><i class="fas fa-plus mr-1"></i> New voucher</button>
-                    @endcan
-                </div>
-            </form>
-    </x-finance.voucher-filter-card>
     <x-finance.voucher-table-card class="bt-table-card">
         <div class="bt-tools bm-records-toolbar">
             <label>Show <select class="form-control form-control-sm" id="btLength"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select> entries</label>
@@ -521,7 +510,7 @@ $(function () {
     };
     columnFilters=$.blueVoucherColumnFilters.init({
         initialOptions:{head:[],subhead:[],status:['Posted','Pending','Rejected'],account_relations:[]},
-        formSelector:'#btFilterForm',quickSearchSelector:'#btQuickSearch',
+        formSelector:'#bankTransferApp',quickSearchSelector:'#btQuickSearch',
         triggerSelector:'#bankTransferApp .dv-excel-trigger',
         tableWrapSelector:'.bt-table-wrap',
         getStart:()=>Math.max(0,(page-1)*(Number($('#btLength').val())||25)),
@@ -532,23 +521,6 @@ $(function () {
         choicesFor:function(field){
             return [...new Set(allRows.map(row=>columnValue(row,field)))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
         }
-    });
-    $('#btFilterForm').on('submit',function(event) {
-        event.preventDefault();
-        var from=$('#transferFrom').val(),to=$('#transferTo').val();
-        if (from && to && from>to) { notify('error','Invalid date range','From date must be on or before To date.');return; }
-        activeFilters = {
-            from:from,to:to,
-            bank:String($('#transferBankFilter').val() || '').toLowerCase(),
-            search:$.trim($('#transferSearch').val()).toLowerCase()
-        };
-        page=1;drawRows();
-    });
-    $('#clearTransferFilters').on('click',function(){
-        $('#transferFrom,#transferTo,#transferBankFilter,#transferSearch,#btQuickSearch').val('');
-        syncSelect('#transferBankFilter');
-        activeFilters={from:'',to:'',bank:'',search:''};
-        columnSort='date';columnDirection='desc';columnFilters.reset();page=1;drawRows();
     });
     $('#btQuickSearch').on('input',function(){page=1;drawRows();});
     $('#btLength').on('change',function(){page=1;drawRows();});
