@@ -176,13 +176,14 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
         $type=match($series) {'BOR'=>'CR','BOP'=>'CP', default=>$series};
         DB::table('customer_ledger')->insert([
             'id'=>$id,'project_id'=>1,'transaction_type'=>$type,
-            'payment_type'=>$method==='online'?2:3,'is_active'=>1,
+            'payment_type'=>$method==='online'?2:3,
+            'is_active'=>in_array($approvalStatus,['pending','rejected'],true)?0:1,
             'amount_in'=>$incoming?$amount:0,'amount_out'=>$incoming?0:$amount,
             'created_at'=>now(),'updated_at'=>now(),
         ]);
         DB::table('ledgers')->insert([
             'customer_ledger_id'=>$id,'project_head_subheads_id'=>7,
-            'type'=>$type,'is_active'=>1,'amount_in'=>$incoming?$amount:0,
+            'type'=>$type,'is_active'=>in_array($approvalStatus,['pending','rejected'],true)?0:1,'amount_in'=>$incoming?$amount:0,
             'amount_out'=>$incoming?0:$amount,'created_at'=>now(),'updated_at'=>now(),
         ]);
         DB::table('finance_bank_voucher_allocations')->insert([
@@ -332,15 +333,34 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
         self::assertSame(1,DB::table('finance_cheque_intakes')->count());
     }
 
-    public function test_pending_approved_voucher_refuses_entire_source_reissue(): void
+    public function test_pending_unposted_voucher_is_cancelled_and_released_before_reissue(): void
     {
         DB::table('daily_voucher_approval_policies')
             ->where('project_id',1)->where('voucher_type','CHQ_CORR')
             ->update(['approval_required'=>false]);
         $this->voucher(41,'BOR','cheque',77,'200.00','pending');
         $changes=$this->correctedCheque();
+        $plan=app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$changes);
+        self::assertSame('pending',$plan['active_vouchers'][0]['approval_status']);
+        $result=app(BankLinkedCorrectionApproval::class)->submitReissue(
+            1,'cheque',77,7,'Correct source with pending voucher',
+            $changes,$plan['fingerprint']);
+        self::assertFalse($result['pending']);
+        self::assertEquals(420,DB::table('finance_cheque_intakes')->where('id',77)->value('amount'));
+        self::assertSame('rejected',DB::table('daily_voucher_approvals')
+            ->where('source_id',41)->value('status'));
+        self::assertSame(0,DB::table('ledgers')->where('customer_ledger_id',41)->value('is_active'));
+        self::assertSame('pending_cancel_release',
+            DB::table('finance_bank_voucher_allocation_releases')->where('voucher_id',41)->value('action'));
+        self::assertSame(1,DB::table('finance_cheque_intakes')->count());
+    }
+
+    public function test_pending_voucher_with_active_posting_refuses_atomic_cancellation(): void
+    {
+        $this->voucher(41,'BOR','cheque',77,'200.00','pending');
+        DB::table('ledgers')->where('customer_ledger_id',41)->update(['is_active'=>1]);
         $this->expectException(\DomainException::class);
-        app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$changes);
+        app(BankSourceReissueCorrection::class)->preview(1,'cheque',77,$this->correctedCheque());
     }
 
     protected function tearDown(): void
