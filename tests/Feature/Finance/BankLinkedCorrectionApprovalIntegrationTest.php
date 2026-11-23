@@ -100,6 +100,9 @@ final class BankLinkedCorrectionApprovalIntegrationTest extends TestCase
             $t->id(); $t->unsignedBigInteger('project_id');
             $t->string('source_table'); $t->unsignedBigInteger('source_id');
             $t->string('voucher_type'); $t->string('status');
+            $t->unsignedBigInteger('decided_by')->nullable();
+            $t->string('rejection_reason')->nullable();
+            $t->timestamp('decided_at')->nullable();$t->timestamps();
         });
         Schema::create('daily_voucher_approval_events', function (Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('approval_id');
