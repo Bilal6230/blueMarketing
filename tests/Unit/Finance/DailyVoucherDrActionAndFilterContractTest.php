@@ -46,6 +46,9 @@ final class DailyVoucherDrActionAndFilterContractTest extends TestCase
             $view=file_get_contents($root.'/resources/views/admin/finance/voucher/'.$name);
             self::assertIsString($view);
             self::assertStringNotContainsString('<x-finance.voucher-filter-card',$view,$name);
+            if(str_starts_with($name,'plot_')){
+                self::assertStringContainsString('class="d-none" aria-hidden="true"></form>',$view);
+            }
             foreach($required as $id)self::assertStringContainsString('id="'.$id.'"',$view,$name);
         }
     }
@@ -70,7 +73,7 @@ final class DailyVoucherDrActionAndFilterContractTest extends TestCase
         $view=file_get_contents($root.'/resources/views/admin/finance/voucher/bank_transfer_workspace.blade.php');
         self::assertIsString($view);
         self::assertStringNotContainsString('<x-finance.voucher-filter-card', $view);
-        self::assertStringNotContainsString('id="btFilterForm"', $view);
+        self::assertStringContainsString('id="btFilterForm" class="d-none"', $view);
         self::assertStringNotContainsString('id="transferFrom"', $view);
         self::assertStringNotContainsString('id="transferTo"', $view);
         self::assertStringContainsString('id="btQuickSearch"', $view);
