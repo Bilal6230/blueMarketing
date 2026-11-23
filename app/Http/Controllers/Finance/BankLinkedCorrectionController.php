@@ -30,10 +30,10 @@ final class BankLinkedCorrectionController extends Controller
     private function validated(Request $request,string $method,bool $confirm): array
     {
         $fields=$method==='online'
-            ? ['transaction_date','amount','sending_bank','sending_account',
+            ? ['reference','type','transaction_date','amount','sending_bank','sending_account',
                 'receiving_bank','receiving_account','sender_name','receiver_name',
                 'purpose','account_mapping_id']
-            : ['cheque_title','cheque_date','received_date','amount','branch',
+            : ['cheque_number','bank_name','direction','cheque_title','cheque_date','received_date','amount','branch',
                 'received_from','purpose','account_mapping_id'];
         $rules=['changes'=>['required','array']];
         foreach($fields as $field) {
@@ -80,8 +80,10 @@ final class BankLinkedCorrectionController extends Controller
         return response()->json([
             'status'=>'success',
             'message'=>$result['pending']
-                ? 'Correction sent for approval. Original vouchers remain posted until approval.'
-                : 'Source corrected; linked vouchers soft-voided and allocations released. Create fresh vouchers from the same verified source.',
+                ? 'Correction sent for approval. Original source and vouchers remain unchanged until decision.'
+                : (($result['result']['requires_reverification']??false)
+                    ? 'Old source withdrawn and linked vouchers archived. New record created: complete bank verification before fresh vouchers.'
+                    : 'Original source updated with the same ID because no vouchers exist.'),
             'data'=>$result,
         ])->header('Cache-Control','private, no-store');
     }
