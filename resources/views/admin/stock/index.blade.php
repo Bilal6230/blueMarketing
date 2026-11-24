@@ -1245,8 +1245,8 @@
         <div class="col-md-4"><label class="form-label">Shop / Party</label><input type="text" class="form-control" id="stockDocumentParty" readonly></div>
        </div>
        <div class="row g-2 mb-2 stock-doc-transport">
-        <div class="col-md-6"><label class="form-label">Vehicle No</label><input type="text" class="form-control" id="stockDocumentVehicle" readonly></div>
-        <div class="col-md-6"><label class="form-label">Driver</label><input type="text" class="form-control" id="stockDocumentDriver" readonly></div>
+        <div class="col-md-6"><label class="form-label">Vehicle No</label><input type="text" class="form-control" id="stockDocumentVehicle" maxlength="80"></div>
+        <div class="col-md-6"><label class="form-label">Driver</label><input type="text" class="form-control" id="stockDocumentDriver" maxlength="120"></div>
        </div>
        <div class="row g-2">
         <div class="col-md-4"><label for="stockDocumentDate" class="form-label">Date</label>
@@ -3152,7 +3152,10 @@
               headers:{Accept:'application/json',
                   'X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
               data:{date:$('#stockDocumentDate').val(),
-                  narration:$('#stockDocumentNarration').val(),lines:lines}
+                  narration:$('#stockDocumentNarration').val(),
+                  vehicle:kind==='entry'?$('#stockDocumentVehicle').val():null,
+                  driver:kind==='entry'?$('#stockDocumentDriver').val():null,
+                  lines:lines}
           }).done(function(result){
               stockDocHide('#stockDocumentEditModal');
               stockDocNotify('success',result.message||'Stock voucher updated.');
