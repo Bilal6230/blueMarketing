@@ -33,6 +33,48 @@ final class RolePermissionCatalog
     }
 
     /**
+     * Group existing non-finance grants by their real resource, without
+     * inventing or inserting any new permission names.
+     */
+    public static function generalModule(string $name): string
+    {
+        $name = strtolower(trim($name));
+        if ($name === 'filemanager') return 'filemanager';
+        if ($name === 'send sms') return 'sms';
+        if (preg_match('/^(?:read|create|update|delete|approve|reject|edit) ([a-z][a-z0-9_-]*)$/', $name, $match)) {
+            return $match[1];
+        }
+        if (preg_match('/^([a-z][a-z0-9_-]*) (?:details|search|report|pendings|history|print)$/', $name, $match)) {
+            return $match[1];
+        }
+        return 'other';
+    }
+
+    public static function generalModuleLabel(string $module): string
+    {
+        return match ($module) {
+            'filemanager' => 'File Manager',
+            'sms' => 'SMS',
+            'expence' => 'Expenses',
+            'calllog' => 'Call Logs',
+            'setting' => 'Settings',
+            'user' => 'Users',
+            'role' => 'Roles',
+            'permission' => 'Permissions',
+            'project' => 'Projects',
+            'plot' => 'Plots',
+            'area' => 'Areas',
+            'sector' => 'Sectors',
+            'lead' => 'Leads',
+            'payroll' => 'Payroll',
+            'report' => 'Reports',
+            'module' => 'Modules',
+            'other' => 'Other Access',
+            default => ucwords(str_replace(['-', '_'], ' ', $module)),
+        };
+    }
+
+    /**
      * Only real module actions are shown. A single selectable source
      * prevents 'create voucher' and 'finance cr create' appearing twice.
      */
@@ -47,10 +89,13 @@ final class RolePermissionCatalog
             'bank-deposit', 'bank-withdrawal' => ['view','create','edit','delete','history','reverse','print'],
             'plot-receipt','plot-purchase' => ['view','create','edit','delete','details','history','reverse','print'],
             'extra-charge' => ['view','create','edit','delete','approve','reject','print'],
-            'jv','sv','cv' => ['view','create','edit','delete','approve','reject','reverse','resubmit','print'],
+            // No general browser Reverse action exists for JV/SV/CV. Those
+            // posting lifecycles are separately guarded by the finance API.
+            'jv','sv','cv' => ['view','create','edit','delete','approve','reject','resubmit','print'],
             'ppr','ecp' => ['view','create','edit','delete','approve','reject','print'],
-            'bor','bop' => [...$defaults,'history','release','resubmit'],
-            'cr','dr','cp','ccr','cdr' => [...$defaults,'history','resubmit'],
+            'bor','bop' => ['view','create','edit','delete','approve','reject','print','history','release','resubmit'],
+            'ccr','cdr' => ['view','create','edit','delete','approve','reject','print','history','resubmit'],
+            'cr','dr','cp' => [...$defaults,'history','resubmit'],
             default => $defaults,
         };
     }
