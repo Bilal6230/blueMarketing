@@ -20,13 +20,13 @@
 <div class="content-wrapper voucher-settings-page">
  <div class="container-fluid">
   <div class="vs-head vs-toolbar">
-   <div><h4>Voucher Settings</h4><small class="text-muted">Selected project · Centralized approval configuration</small></div>
+   <div><h4>Voucher Settings</h4><small class="text-muted">Selected project · Approval settings and applicable reversal controls</small></div>
    <a class="btn btn-outline-success btn-sm" href="{{ route('finance.daily-vouchers.approvals.index') }}">Approval Dashboard</a>
   </div>
   <div class="alert alert-info small">
    Approval policy applies to <strong>new vouchers only</strong>. CR, CP, CCR, CDR, BOR, BOP, JV and SV use the guarded approval engine. Approvers must have the <code>voucher approver</code> permission through their role or direct assignment. Super Admin has universal decision authority.
    BOR and BOP have <strong>independent</strong> switches and do not inherit CR/CP approval settings. With approval OFF, new bank vouchers post directly; with approval ON, they remain inactive until approved. Existing Posted vouchers are unchanged.<br>
-   <strong>Reversal ON/OFF:</strong> Controls the verified posted-batch reversal workflow independently of Approval and ordinary Edit/Delete. The browser provides eligible Reverse actions for typed cash, Bank Deposit/Withdrawal and Plot Receipt/Purchase; unified authenticated finance APIs also support verified Journal/Commission, Stock and Labour batch reversals. A switch does not create a new browser Reverse action where none exists; bank/cheque custody restrictions still apply.<br>
+   <strong>Reversal ON/OFF:</strong> Available only where a functional Reverse action exists: Cash Receipt/Payment, Bank Deposit/Withdrawal, Plot Receipt/Purchase. No reversal switch is shown for voucher types without that action. This does not change Approval, ordinary Edit/Delete or bank/cheque custody rules.<br>
    <strong>Cheque Correction (CHQ_CORR)</strong> and <strong>Online Correction (ONL_CORR)</strong> are separate policies for existing confirmed/cleared management records: ON stages a proposed amount/voucher adjustment until the assigned finance approver decides; OFF allows users with the corresponding <code>finance cheque correct</code> or <code>finance online correct</code> permission to apply a reviewed same-ID correction immediately. Both paths preserve original voucher identities and change history.
   </div>
   <div class="row">
@@ -69,7 +69,7 @@
        <div class="small mb-2">Approval configuration is not supported for this voucher type.</div>
        <div class="small text-muted">This does not enable voucher posting or approval. Verified source reversal can still be independently controlled where available.</div>
       @endif
-      @if(!in_array($type,['CHQ_CORR','ONL_CORR'],true))
+      @if(in_array($type,$reversalTypes,true))
        <form method="post" class="vs-reversal-form border-top pt-3 mt-3" action="{{ route('finance.voucher-settings.reversal.save') }}">@csrf
         <input type="hidden" name="voucher_type" value="{{ $type }}">
         <input type="hidden" name="reversal_enabled" value="0">
