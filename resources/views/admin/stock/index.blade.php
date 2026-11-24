@@ -635,21 +635,31 @@
         </div>
 
         <div class="pv-tabs">
-          <button class="pv-tabbtn active" data-view="entry">
+          @if(!empty($stockAbilities['entries']['view']))
+          <button class="pv-tabbtn" data-view="entry">
             <i class="bi bi-arrow-left-right"></i> Entry
           </button>
+          @endif
+          @if(!empty($stockAbilities['billing']['view']))
           <button class="pv-tabbtn" data-view="billing">
             <i class="bi bi-receipt"></i> Billing
           </button>
+          @endif
+          @if(!empty($stockAbilities['entries']['view']))
           <button class="pv-tabbtn" data-view="stock">
             <i class="bi bi-clipboard-data"></i> Stock
           </button>
+          @endif
+          @if(!empty($stockAbilities['items']['view']))
           <button class="pv-tabbtn" data-view="items">
             <i class="bi bi-box2"></i> Items
           </button>
+          @endif
+          @if(!empty($stockAbilities['parties']['view']))
           <button class="pv-tabbtn" data-view="parties">
             <i class="bi bi-person-lines-fill"></i> Parties
           </button>
+          @endif
         </div>
       </div>
 
@@ -738,7 +748,7 @@
                     </div>
                   </div>
                   <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <span class="pv-chip" id="entryCountChip">0 total</span><button class="btn btn-sm btn-primary" type="button" id="stockNewEntry" data-stock-modal="#stockEntryCreateModal"><i class="bi bi-plus-lg"></i> New Entry</button>
+                    <span class="pv-chip" id="entryCountChip">0 total</span>@if(!empty($stockAbilities['entries']['create']))<button class="btn btn-sm btn-primary" type="button" id="stockNewEntry" data-stock-modal="#stockEntryCreateModal"><i class="bi bi-plus-lg"></i> New Entry</button>@endif
                   </div>
                 </div>
 
@@ -814,7 +824,7 @@
                       Print/Edit/Delete.
                     </div>
                   </div>
-                  <span class="pv-chip" id="billCountChip">0 total</span><button class="btn btn-sm btn-primary" type="button" id="stockNewBill" data-stock-modal="#stockBillCreateModal"><i class="bi bi-plus-lg"></i> New Bill</button>
+                  <span class="pv-chip" id="billCountChip">0 total</span>@if(!empty($stockAbilities['billing']['create']))<button class="btn btn-sm btn-primary" type="button" id="stockNewBill" data-stock-modal="#stockBillCreateModal"><i class="bi bi-plus-lg"></i> New Bill</button>@endif
                 </div>
 
                 <div class="p-3">
@@ -933,7 +943,7 @@
                       Used across Entry + Billing + Stock.
                     </div>
                   </div>
-                  <span class="pv-chip" id="itemCountChip">0 total</span><button type="button" class="btn btn-primary btn-sm" id="stockNewItem" data-stock-modal="#stockItemCreateModal"><i class="bi bi-plus-lg"></i> New Item</button>
+                  <span class="pv-chip" id="itemCountChip">0 total</span>@if(!empty($stockAbilities['items']['create']))<button type="button" class="btn btn-primary btn-sm" id="stockNewItem" data-stock-modal="#stockItemCreateModal"><i class="bi bi-plus-lg"></i> New Item</button>@endif
                 </div>
                 <div class="p-3">
                   <div class="border rounded-3 bg-light p-3 mb-3">
@@ -995,7 +1005,7 @@
                       Used for Purchase/Sale/Stock Out.
                     </div>
                   </div>
-                  <span class="pv-chip" id="partyCountChip">0 total</span><button type="button" class="btn btn-primary btn-sm" id="stockNewParty" data-stock-modal="#stockPartyCreateModal"><i class="bi bi-plus-lg"></i> New Party</button>
+                  <span class="pv-chip" id="partyCountChip">0 total</span>@if(!empty($stockAbilities['parties']['create']))<button type="button" class="btn btn-primary btn-sm" id="stockNewParty" data-stock-modal="#stockPartyCreateModal"><i class="bi bi-plus-lg"></i> New Party</button>@endif
                 </div>
                 <div class="p-3">
                   <div class="table-responsive pv-scroll">
@@ -1632,6 +1642,8 @@
     /* ===========================
   VIEW SWITCH
   =========================== */
+    const stockAbilities = @json($stockAbilities);
+    const stockCan = (module, action) => !!(stockAbilities[module] && stockAbilities[module][action]);
     const tabBtns = $(".pv-tabbtn").toArray();
     const views = {
       entry: $('#view-entry')[0],
@@ -2147,11 +2159,13 @@
     }
 
     async function loadNextSlip() {
+      if (!stockCan('entries','create')) return;
       const res = await apiGet(endpoints.nextSlip);
       entrySlipNo.value = res?.data?.slip_no || "";
     }
 
     async function loadNextBill() {
+      if (!stockCan('billing','create')) return;
       const res = await apiGet(endpoints.nextBill, { type: billType.value });
       billNo.value = res?.data?.bill_no || "";
       billNoChip.textContent = billNo.value || "Bill no… auto";
@@ -2201,6 +2215,7 @@
       });
     }
     async function loadEntries() {
+      if (!stockCan('entries','view')) return;
       stockSkeletonStart('entry');
       try {
       const res = await apiGet(endpoints.entries, {
@@ -2215,6 +2230,7 @@
     }
 
     async function loadBills() {
+      if (!stockCan('billing','view')) return;
       stockSkeletonStart('bill');
       try {
       const res = await apiGet(endpoints.bills, {
@@ -2229,6 +2245,7 @@
     }
 
     async function loadReport() {
+      if (!stockCan('entries','view')) return;
       stockSkeletonStart('stock');
       try {
       const res = await apiGet(endpoints.report, {
@@ -2241,6 +2258,7 @@
     }
 
     async function loadItemsTable() {
+      if (!stockCan('items','view')) return;
       stockSkeletonStart('item');
       try {
       const res = await apiGet(endpoints.items, {
@@ -2251,6 +2269,7 @@
     }
 
     async function loadItemImportHistory() {
+      if (!stockCan('items','view')) return;
       stockSkeletonStart('history');
       try {
       const tbody = $('#itemImportHistoryBody')[0];
@@ -2273,6 +2292,7 @@
     }
 
     async function loadPartiesTable() {
+      if (!stockCan('parties','view')) return;
       stockSkeletonStart('party');
       try {
       const res = await apiGet(endpoints.parties, {
@@ -2561,7 +2581,7 @@
               <td>${it.name}</td>
               <td>${it.unit}</td>
               <td>${fmtPKR(it.default_rate || 0)}</td>
-              ${stockActionsCell(`<button type="button" data-act="edit">Edit</button><button type="button" data-act="del">Delete</button>`)}
+              ${stockActionsCell((stockCan('items','edit')?'<button type="button" data-act="edit">Edit</button>':'')+(stockCan('items','delete')?'<button type="button" data-act="del">Delete</button>':''))}
             </tr>
           `
         );
@@ -3041,6 +3061,7 @@
       $(window).on('resize.stockViewport',syncStockViewport);
       stockSkeletonPrime();
       initUI();
+      if(tabBtns.length) setView($(tabBtns[0]).data('view'));
       $(tabBtns).on('click',function(){setView($(this).data('view'));});
     });
   </script>
