@@ -172,7 +172,7 @@ $(function(){
   'use strict';
   var rows=@json($roleRows),catalog=@json($permissionRows),modules=@json($financeDefinitions);
   var allowEdit=@json(auth()->user()->can('update role')),allowDelete=@json(auth()->user()->can('delete role'));
-  var editorMode='create',editId=null,deleteId=null,activeSection='finance:cr',selected=new Set(),sortColumn='updated',sortDir='desc',page=1,columnFilters={},filterField='';
+  var editorMode='create',editId=null,deleteId=null,activeSection='finance:cr',selected=new Set(),sortColumn='id',sortDir='asc',page=1,columnFilters={},filterField='';
   var permissionMap={};$.each(catalog,function(_,p){permissionMap[p.name+'|'+p.guard]=p;});
   var safe=function(value){return $('<span>').text(value===undefined||value===null?'':String(value)).html();};
   var notice=function(message,error){
@@ -187,7 +187,9 @@ $(function(){
       return Object.keys(columnFilters).every(function(k){return String(r[k]??'').toLowerCase().includes(columnFilters[k].toLowerCase());});
     }).sort(function(a,b){
       var x=String(a[sortColumn]??''),y=String(b[sortColumn]??'');
-      return (sortDir==='asc'?1:-1)*x.localeCompare(y,undefined,{numeric:true,sensitivity:'base'});
+      var result=x.localeCompare(y,undefined,{numeric:true,sensitivity:'base'});
+      if(result===0) result=Number(a.id)-Number(b.id);
+      return (sortDir==='asc'?1:-1)*result;
     });
   }
   function render(){
@@ -216,7 +218,7 @@ $(function(){
   }
   $('#roleSearch').on('input',function(){page=1;render();});
   $('#roleGuardFilter,#rolePageSize').on('change',function(){page=1;render();});
-  $('#roleReset').on('click',function(){columnFilters={};$('#roleSearch,#roleGuardFilter').val('');$('#rolePageSize').val('25');page=1;sortColumn='updated';sortDir='desc';render();});
+  $('#roleReset').on('click',function(){columnFilters={};$('#roleSearch,#roleGuardFilter').val('');$('#rolePageSize').val('25');page=1;sortColumn='id';sortDir='asc';render();});
   function closeFilter(){$('#roleColumnFilter').hide();filterField='';}
   $('.role-filter-trigger').on('click',function(e){
     e.stopPropagation();filterField=$(this).data('field');var $menu=$('#roleColumnFilter'),offset=$(this).offset();
