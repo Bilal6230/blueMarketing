@@ -1234,6 +1234,31 @@
                 $('#fvcPaymentHistoryEmpty').toggleClass('d-none',$rows.filter(':visible').length>0);
                 $('#fvcPaymentHistoryModal').modal('show');
             });
+            var ecEditablePlotOptions=$('#fvcExtraCashPlot option[data-customer]').map(function(){
+                return {value:String($(this).val()),customer:String($(this).attr('data-customer')),
+                    text:$(this).text().trim()};
+            }).get();
+            var ecRebuildPlotChoices=function(customer,selected){
+                var $field=$('#fvcExtraCashPlot'),element=$field[0];
+                var matches=$.grep(ecEditablePlotOptions,function(option){
+                    return option.customer===String(customer||'');
+                });
+                if(element&&element.tomselect){
+                    element.tomselect.clear(true);
+                    element.tomselect.clearOptions();
+                    $.each(matches,function(_,option){
+                        element.tomselect.addOption({value:option.value,text:option.text});
+                    });
+                    element.tomselect.refreshOptions(false);
+                    if(selected)element.tomselect.setValue(String(selected),true);
+                }else{
+                    $field.empty().append($('<option>').val('').text('Choose booked plot'));
+                    $.each(matches,function(_,option){
+                        $field.append($('<option>').val(option.value).text(option.text));
+                    });
+                    if(selected)$field.val(String(selected));
+                }
+            };
             $(document).on('click.fvcExtraCash','#example1 .btn-edit,#fvcPaymentHistoryModal .btn-edit',function(event){
                 event.preventDefault();event.stopImmediatePropagation();
                 var source=Number($(this).data('id')),$button=$(this);
@@ -1253,14 +1278,7 @@
                     if($('#fvcExtraCashCustomer')[0]?.tomselect){
                         $('#fvcExtraCashCustomer')[0].tomselect.setValue(String(d.customer_id||''),true);
                     }else $('#fvcExtraCashCustomer').val(d.customer_id||'');
-                    var $plots=$('#fvcExtraCashPlot option');
-                    $plots.each(function(){
-                        var customer=$(this).attr('data-customer');
-                        $(this).prop('hidden',!!customer&&Number(customer)!==Number(d.customer_id));
-                    });
-                    if($('#fvcExtraCashPlot')[0]?.tomselect){
-                        $('#fvcExtraCashPlot')[0].tomselect.setValue(String(d.plot_id||''),true);
-                    }else $('#fvcExtraCashPlot').val(d.plot_id||'');
+                    ecRebuildPlotChoices(d.customer_id,d.plot_id);
                     $('#fvcExtraCashChargeType').val(d.charge_type_id||'');
                     $('#fvcExtraCashReference').val(d.reference||'');
                     $('#fvcExtraCashDate').val(d.date);
@@ -1275,17 +1293,19 @@
                 .always(function(){$button.prop('disabled',false);});
             });
             $('#fvcExtraCashCustomer').on('change',function(){
-                var id=Number($(this).val()),$plot=$('#fvcExtraCashPlot');
-                $plot.val('');
-                if($plot[0]?.tomselect)$plot[0].tomselect.clear(true);
-                $plot.find('option[data-customer]').each(function(){
-                    $(this).prop('hidden',Number($(this).attr('data-customer'))!==id);
-                });
+                ecRebuildPlotChoices($(this).val(),'');
             });
             $('#fvcExtraCashEditForm').on('submit.fvcExtraCash',function(event){
                 event.preventDefault();
                 var source=Number($(this).data('source')),$button=$('#fvcExtraCashEditSubmit');
                 if(!source||$button.prop('disabled'))return;
+                if($('#fvcExtraCashIdentityFields').is(':visible')
+                    &&(!$('#fvcExtraCashCustomer').val()
+                        ||!$('#fvcExtraCashPlot').val()
+                        ||!$.trim($('#fvcExtraCashReference').val()))){
+                    extraCashNotify('error','Select a valid booked Customer / Plot and enter the slip reference.');
+                    return;
+                }
                 $button.prop('disabled',true);
                 $.ajax({url:extraCashBase+'/'+source,type:'PUT',dataType:'json',
                     headers:{Accept:'application/json','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
