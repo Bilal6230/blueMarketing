@@ -126,6 +126,36 @@ final class Milestone05ReversalPolicyIntegrationTest extends TestCase
         self::assertSame($before,DB::table('finance_posting_batches')->count());
     }
 
+    public function test_generic_api_router_refuses_stock_without_a_source_specific_reversal(): void
+    {
+        DB::table('finance_posting_source_claims')->insert([
+            'posting_batch_id'=>51,'source_kind'=>'stock_entry',
+        ]);
+        $before=DB::table('finance_posting_batches')->count();
+        try {
+            (new \App\Services\Finance\FinanceSourceReversalRouter())->reverse(
+                1,51,'m05genericstocktest2026','2026-11-24','Test stock reversal',1
+            );
+            self::fail('Generic batch reversal must not bypass inventory lifecycle.');
+        } catch (\DomainException $exception) {
+            self::assertSame('FINANCE_REVERSAL_SOURCE_WORKFLOW_REQUIRED',$exception->getMessage());
+        }
+        self::assertSame($before,DB::table('finance_posting_batches')->count());
+        self::assertDatabaseMissing('finance_posting_batches',['reversal_of_batch_id'=>51]);
+    }
+
+    public function test_generic_router_rejects_cross_project_batch_before_source_lookup(): void
+    {
+        DB::table('finance_posting_source_claims')->insert([
+            'posting_batch_id'=>51,'source_kind'=>'stock_entry',
+        ]);
+        $this->expectException(\DomainException::class);
+        $this->expectExceptionMessage('FINANCE_REVERSAL_SOURCE_NOT_FOUND');
+        (new \App\Services\Finance\FinanceSourceReversalRouter())->reverse(
+            2,51,'m05genericforeign2026','2026-11-24','Test foreign reversal',1
+        );
+    }
+
     public function test_existing_reversal_defaults_to_on_without_a_policy_row(): void
     {
         $policy=new VoucherReversalPolicy();
