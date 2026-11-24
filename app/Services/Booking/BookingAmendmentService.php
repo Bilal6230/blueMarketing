@@ -26,10 +26,6 @@ final class BookingAmendmentService
     private function syncOriginalSale(int $projectId, int $bookingId,
         string $oldTotal, string $newTotal, string $date): void
     {
-        $source=DB::table('customer_ledger')->where('project_id',$projectId)
-            ->where('transaction_type','Bo')->where('plot_id',
-                DB::table('bookings')->where('id',$bookingId)->value('plot_id'))
-            ->where('is_active',1)->lockForUpdate()->get();
         $voucher=DB::table('journal_vouchers')->where('project_id',$projectId)
             ->where('type','SV')->where('reference','BOOKING-'.$bookingId)
             ->whereNull('deleted_at')->lockForUpdate()->first();
