@@ -146,6 +146,26 @@ final class StockDocumentEditorTest extends TestCase
         self::assertSame(1,DB::table('stock_movements')->count());
     }
 
+    public function test_legacy_hundredfold_stock_amount_is_normalized_on_same_source_edit(): void
+    {
+        // Old writers accidentally stored 5000 cents as 5000 rupees
+        // instead of 50.00. No-op Edit still repairs the original IDs.
+        DB::table('customer_ledger')->where('id',51)->update(['amount_out'=>'5000.00']);
+        DB::table('ledgers')->where('id',61)->update(['amount_in'=>'5000.00']);
+        DB::table('ledgers')->where('id',62)->update(['amount_out'=>'5000.00']);
+
+        (new StockDocumentEditor())->update(1,'entry',11,'2026-11-18',[
+            ['detail_id'=>21,'item_id'=>31,'qty'=>'5.000','rate'=>1000],
+        ],'Received');
+
+        self::assertSame(50.0,(float)DB::table('customer_ledger')->where('id',51)->value('amount_out'));
+        self::assertSame(50.0,(float)DB::table('ledgers')->where('id',61)->value('amount_in'));
+        self::assertSame(50.0,(float)DB::table('ledgers')->where('id',62)->value('amount_out'));
+        self::assertSame(1,DB::table('stock_movements')->where('is_active',1)->count());
+        self::assertSame(5.0,(float)DB::table('stock_project_item_balances')
+            ->where('item_id',31)->value('on_hand_qty'));
+    }
+
     public function test_stock_entry_delete_archives_source_movement_and_financial_rows(): void
     {
         $editor=new StockDocumentEditor();
