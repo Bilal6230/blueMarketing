@@ -1410,7 +1410,9 @@ class VoucherController extends Controller
         } catch (\DomainException $exception) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Reversal not permitted for this source or its linked inventory.',
+                'message' => $exception->getMessage() === 'VOUCHER_REVERSAL_DISABLED'
+                    ? 'Reversal is disabled for this voucher type in the selected project.'
+                    : 'Reversal not permitted for this source or its linked inventory.',
             ], 409);
         }
         return response()->json(['status' => 'success', 'data' => ['posting_batch_id' => $batchId],
@@ -1950,9 +1952,11 @@ class VoucherController extends Controller
         } catch (\DomainException $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => $e->getMessage() === 'BANK_TRANSFER_LINKED_CHEQUE_REQUIRES_CUSTODY_RELEASE'
-                    ? 'Linked cheque withdrawals cannot be reversed without releasing cheque custody.'
-                    : 'This voucher cannot be reversed. Check original posting, date and reversal history.',
+                'message' => $e->getMessage() === 'VOUCHER_REVERSAL_DISABLED'
+                    ? 'Reversal is disabled for this voucher type in the selected project.'
+                    : ($e->getMessage() === 'BANK_TRANSFER_LINKED_CHEQUE_REQUIRES_CUSTODY_RELEASE'
+                        ? 'Linked cheque withdrawals cannot be reversed without releasing cheque custody.'
+                        : 'This voucher cannot be reversed. Check original posting, date and reversal history.'),
             ], 409);
         }
         return response()->json(['status' => 'success',
