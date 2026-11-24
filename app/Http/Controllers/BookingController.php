@@ -2704,7 +2704,7 @@ class BookingController extends Controller
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
         $projectId = getSelectedTown();
-        $data = CustomerLedger::with('customer_list', 'plot_list')->whereIn('transaction_type', ['null', 'EC', 'ECP'])->where('is_active', '1')->where('project_id', getSelectedTown())->get();
+        $data = CustomerLedger::with('customer_list', 'plot_list')->whereIn('transaction_type', ['null', 'EC'])->where('is_active', '1')->where('project_id', getSelectedTown())->get();
         $displayRows = Schema::hasTable('project_voucher_display_numbers')
             ? DB::table('project_voucher_display_numbers')
             ->where('project_id', $projectId)->where('source_kind', 'customer_ledger')
@@ -2737,7 +2737,7 @@ class BookingController extends Controller
             ->where('project_id', $projectId)
             ->where('transaction_type', 'ECP')
             ->where('is_active', 1)
-            ->get(['id', 'reference', 'amount_in', 'payment_type', 'passing_status']);
+            ->get(['id', 'reference', 'date', 'description', 'amount_in', 'payment_type', 'passing_status', 'is_approve']);
         $paymentDisplayRows = Schema::hasTable('project_voucher_display_numbers')
             ? DB::table('project_voucher_display_numbers')
             ->where('project_id', $projectId)->where('source_kind', 'customer_ledger')
@@ -2745,6 +2745,12 @@ class BookingController extends Controller
             ->get(['source_id', 'display_number'])->keyBy('source_id') : collect();
         $payments->each(function ($payment) use ($paymentDisplayRows) {
             $payment->display_voucher_number = $paymentDisplayRows->get($payment->id)?->display_number;
+        });
+        $x['ecPaymentsByCharge']=$payments->groupBy(function($payment){
+            if(preg_match('/^EC_PAYMENT#([1-9][0-9]*)#[^#]+$/D',(string)$payment->reference,$match)){
+                return (int)$match[1];
+            }
+            return 0; // Unattributable histories are not silently assigned to an EC.
         });
         $settlement = app(\App\Services\Finance\ExtraChargeBankSettlement::class);
         $data = $data->map(function ($item) use ($settlement) {
