@@ -21,7 +21,14 @@ final class StockAbility
 
     public static function allows($user, string $module, string $action): bool
     {
-        if (!$user || !in_array($module,self::MODULES,true) || !in_array($action,self::ACTIONS,true)) return false;
+        if (!$user || !in_array($action,self::ACTIONS,true)) return false;
+        if ($module==='workspace' && $action==='view') {
+            foreach(self::MODULES as $candidate) {
+                if(self::allows($user,$candidate,'view')) return true;
+            }
+            return false;
+        }
+        if (!in_array($module,self::MODULES,true)) return false;
         if ($user->hasAnyRole(['superadmin','super-admin','Super Admin','admin'])) return true;
         if ($user->can(self::name($module,$action))) return true;
         // The old live roles were granted slip rights, not CRUD stock rights.
