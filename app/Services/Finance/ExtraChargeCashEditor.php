@@ -112,11 +112,16 @@ final class ExtraChargeCashEditor
             }elseif($cents>$this->cents($source->amount_in)+$balance['available_cents']){
                 throw new \DomainException('Payment correction exceeds the remaining charge balance.');
             }
+            $oldChargeType=null;
+            if($source->transaction_type==='EC'
+                &&preg_match('/ChargeType:([1-9][0-9]*)/',(string)$legs->first()->detail,$m)){
+                $oldChargeType=(int)$m[1];
+            }
             $identityChange=$source->transaction_type==='EC' && (
                 ($customerId!==null&&(int)$source->customer_id!==$customerId)
                 ||($plotId!==null&&(int)$source->plot_id!==$plotId)
                 ||($reference!==null&&(string)$source->reference!==$reference)
-                ||$chargeTypeId!==null
+                ||($chargeTypeId!==null&&$chargeTypeId!==$oldChargeType)
             );
             $mapping=null;$bookingId=null;
             if($identityChange){
@@ -171,7 +176,12 @@ final class ExtraChargeCashEditor
                     $legUpdate['project_head_subheads_id']=$debit
                         ?(int)$mapping['credit_account_id']:(int)$mapping['debit_account_id'];
                 }else{
-                    $legUpdate['detail']=$description;
+                    if($source->transaction_type==='EC'
+                        &&preg_match('/^EC \| ChargeType:[^|]+\| Booking:[^|]+\| /',(string)$leg->detail,$matches)){
+                        $legUpdate['detail']=$matches[0].$description;
+                    }else{
+                        $legUpdate['detail']=$description;
+                    }
                 }
                 DB::table('ledgers')->where('id',$leg->id)
                     ->where('customer_ledger_id',$sourceId)->where('is_active',1)
