@@ -251,7 +251,7 @@ class BookingController extends Controller
 
         $message = !$result['changed'] ? 'No booking changes were needed.'
             : ($result['price_changed']
-                ? 'Booking updated successfully. Existing vouchers were unchanged.' . ($result['schedule_reset'] ? ' Payment schedule was reset.' : '')
+                ? 'Booking updated; the original BO and SV accounts were reconciled without changing voucher IDs.' . ($result['schedule_reset'] ? ' Payment schedule was reset.' : '')
                 : 'Booking updated successfully.');
         $redirect = redirect()->route('booking.plot.index')->with('success', $message);
         if (bccomp($result['refund_due'], '0.00', 2) === 1) {
