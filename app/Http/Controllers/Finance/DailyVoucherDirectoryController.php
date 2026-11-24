@@ -285,7 +285,10 @@ final class DailyVoucherDirectoryController extends Controller
                 $canEdit = $module !== null && auth()->user()?->can('finance '.$module.' edit');
                 $canDelete = $module !== null && auth()->user()?->can('finance '.$module.' delete');
                 $canReverse = $module !== null && auth()->user()?->can('finance '.$module.' reverse')
-                    && app(\App\Services\Finance\VoucherReversalPolicy::class)->enabled($projectId, $displayType);
+                    && app(\App\Services\Finance\VoucherReversalPolicy::class)->enabled(
+                        $projectId, in_array($series,['CHR','CHP'],true)
+                            ? $displayType : ($series ?: $displayType)
+                    );
                 $canRelease = $module !== null && auth()->user()?->can('finance '.$module.' release');
                 $linkedLines = DB::table('ledgers as linked')
                     ->join('project_head_subheads as a', 'a.id', '=', 'linked.project_head_subheads_id')
