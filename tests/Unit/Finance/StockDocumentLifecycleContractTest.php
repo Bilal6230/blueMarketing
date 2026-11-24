@@ -35,9 +35,14 @@ final class StockDocumentLifecycleContractTest extends TestCase
         self::assertStringContainsString('stock-doc-edit',$view);
         self::assertStringContainsString('stock-doc-delete',$view);
         self::assertStringContainsString('stockDocModal',$view);
-        self::assertStringContainsString('bootstrap.Modal.getOrCreateInstance',$view);
+        // Bootstrap versions differ and the offline fallback is deliberate.
+        // Assert functional modal resolution instead of one exact API spelling.
+        self::assertStringContainsString('window.bootstrap&&window.bootstrap.Modal',$view);
+        self::assertStringContainsString('klass.getOrCreateInstance',$view);
+        self::assertStringContainsString('stock-modal-fallback-backdrop',$view);
         self::assertStringContainsString("type:'PUT'",$view);
         self::assertStringContainsString("type:'DELETE'",$view);
+        self::assertStringContainsString("}).fail(function(xhr){",$view);
         self::assertStringContainsString('finance:stock-document-saved',$view);
         self::assertStringNotContainsString("$('#stockDocumentEditModal').modal('show')",$view);
     }
