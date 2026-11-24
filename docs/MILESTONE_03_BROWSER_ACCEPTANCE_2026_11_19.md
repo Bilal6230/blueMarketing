@@ -1,3 +1,7 @@
+## Milestone 05 handoff note — 2026-11-24
+
+Milestone 05 active independently of the M03 Labour browser hold. M05 initial settings migration and contract tests were owner-verified PASS (2 tests / 25 assertions; all six projects clean). A second code batch adds reversal UI availability to bank BD/BW, plot PPR/PP and typed cash. Current M05 browser acceptance is separate from already signed-off M03 CRUD tests, and will test only reversal ON/OFF visibility and direct-route enforcement. Do **not** reopen passed M03 cases. The M05 authoritative details remain in `docs/README.md`.
+
 ## 2026-11-24 — Owner accepted Stock Entry/Billing browser fixes; Labour CP remains only M03 browser gate
 
 Owner explicitly reports "**every thing is fine**" following final Entry/Bill Edit skeleton, narration, compact design and modal close fixes. Mark the latest Stock UI/browser remediation **PASS (owner-confirmed)**. Previously passed voucher-family browser gates remain closed and must not be re-requested. **Milestone 03 now has only Labour Payment (CP) browser acceptance outstanding**, and the owner previously placed it **ON HOLD**. Formal M03 completion awaits that test. Milestone 04 is already owner-accepted, Milestone 02 still has the cross-module permissions acceptance gap, Milestone 05 reversal settings remain unstarted, and Milestone 06 full activity audit remains the final/deferred milestone. Existing older historical "pending" sections are superseded by this status.
