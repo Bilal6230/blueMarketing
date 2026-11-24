@@ -16,6 +16,16 @@
 .voucher-settings-page .vs-disabled .vs-card-body{color:#5f6b76}
 .voucher-settings-page .vs-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .voucher-settings-page .vs-toast{position:fixed;right:18px;top:78px;z-index:2150;display:none;max-width:400px}
+.voucher-settings-page .vs-group{margin-bottom:22px}
+.voucher-settings-page .vs-group-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:9px 13px;margin-bottom:12px;border:1px solid #d9e6dc;border-left:4px solid #168348;border-radius:8px;background:#fff}
+.voucher-settings-page .vs-group-heading h5{font-size:15px;font-weight:700;color:#12663d;margin:0 0 2px}
+.voucher-settings-page .vs-group-heading p{font-size:12px;color:#596b62;margin:0}
+.voucher-settings-page .vs-group-count{font-size:12px;font-weight:700;color:#187345;background:#eaf7ef;padding:5px 10px;border-radius:999px}
+.voucher-settings-page .vs-group-approval .vs-group-heading{border-left-color:#4779ac}
+.voucher-settings-page .vs-group-approval .vs-group-heading h5{color:#305d8c}
+.voucher-settings-page .vs-group-approval .vs-group-count{color:#305d8c;background:#ecf3fb}
+.voucher-settings-page .vs-group .row>[class*="col-"]{display:flex}
+.voucher-settings-page .vs-group .vs-card{width:100%;height:100%}
 </style>
 <div class="content-wrapper voucher-settings-page">
  <div class="container-fluid">
@@ -29,8 +39,23 @@
    <strong>Reversal ON/OFF:</strong> Available only where a functional Reverse action exists: Cash Receipt/Payment, Bank Deposit/Withdrawal, Plot Receipt/Purchase. No reversal switch is shown for voucher types without that action. This does not change Approval, ordinary Edit/Delete or bank/cheque custody rules.<br>
    <strong>Cheque Correction (CHQ_CORR)</strong> and <strong>Online Correction (ONL_CORR)</strong> are separate policies for existing confirmed/cleared management records: ON stages a proposed amount/voucher adjustment until the assigned finance approver decides; OFF allows users with the corresponding <code>finance cheque correct</code> or <code>finance online correct</code> permission to apply a reviewed same-ID correction immediately. Both paths preserve original voucher identities and change history.
   </div>
-  <div class="row">
-   @foreach($types as $type=>$definition)
+  {{-- Group only by real, functional browser Reverse actions. Keep all
+       approval-only cards and their saved project policy data unchanged. --}}
+  @foreach([
+   ['id'=>'reversal','title'=>'Approval + Reversal Settings','description'=>'Vouchers with a functional Reverse action. Approval and Reversal can be configured independently.','codes'=>$reversalTypes],
+   ['id'=>'approval','title'=>'Approval Settings Only','description'=>'Other voucher types: approval configuration only; no unused Reversal switches.','codes'=>array_values(array_diff(array_keys($types),$reversalTypes))]
+  ] as $group)
+  <section class="vs-group vs-group-{{ $group['id'] }}" aria-labelledby="vs-group-title-{{ $group['id'] }}">
+   <div class="vs-group-heading">
+    <div>
+     <h5 id="vs-group-title-{{ $group['id'] }}">{{ $group['title'] }}</h5>
+     <p>{{ $group['description'] }}</p>
+    </div>
+    <span class="vs-group-count">{{ count($group['codes']) }} voucher types</span>
+   </div>
+   <div class="row">
+   @foreach($group['codes'] as $type)
+   @php($definition=$types[$type])
    @php($policy=$policies->get($type))
    <div class="col-xl-4 col-lg-6">
     <div class="vs-card {{ $definition['supported'] ? '' : 'vs-disabled' }}">
@@ -94,7 +119,9 @@
     </div>
    </div>
    @endforeach
-  </div>
+   </div>
+  </section>
+  @endforeach
  </div>
 </div>
 <div class="alert vs-toast" role="status" id="vs-toast"></div>
