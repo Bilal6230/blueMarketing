@@ -1854,7 +1854,9 @@
                             error: function(err) {
                                 Swal.fire({
                                     title: "Error",
-                                    text: "Error saving labour.",
+                                    text: err.responseJSON?.errors
+                                        ?Object.values(err.responseJSON.errors).flat().join(' ')
+                                        :(err.responseJSON?.message||'Unable to save labour.'),
                                     icon: "error"
                                 });
                                 console.log(err.responseText);
@@ -2103,7 +2105,9 @@
                             error: function(err) {
                                 Swal.fire({
                                     title: "Error",
-                                    text: "Error saving labour.",
+                                    text: err.responseJSON?.errors
+                                        ?Object.values(err.responseJSON.errors).flat().join(' ')
+                                        :(err.responseJSON?.message||'Unable to save labour.'),
                                     icon: "error"
                                 });
                                 console.log(err.responseText);
