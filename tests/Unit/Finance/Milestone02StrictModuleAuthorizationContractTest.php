@@ -47,6 +47,12 @@ final class Milestone02StrictModuleAuthorizationContractTest extends TestCase
         );
         self::assertStringContainsString("if (!\$canItems) \$items = collect()", $controller);
         self::assertStringContainsString("if (!\$canParties) \$parties = collect()", $controller);
+        self::assertStringContainsString(
+            "StockAbility::allows(auth()->user(),'entries','edit')",$controller
+        );
+        self::assertStringContainsString(
+            "\$x['partyAccountOptions'] = \$mayEditPosting ?",$controller
+        );
     }
 
     public function test_employee_tasks_are_a_real_module_with_view_and_independent_crud(): void
