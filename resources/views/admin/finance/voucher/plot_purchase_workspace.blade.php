@@ -218,7 +218,7 @@
      if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-delete ml-1','data-id':x.id,text:'Delete'}));
      @endcan
      @can('finance plot-purchase reverse')
-     if(!x.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-void ml-1','data-id':x.id,text:'Reverse'}));
+     if(x.can_reverse)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pp-void ml-1','data-id':x.id,text:'Reverse'}));
      @endcan
      $tr.append($actions);
      $body.append($tr);
