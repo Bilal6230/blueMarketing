@@ -4406,14 +4406,8 @@ class BookingController extends Controller
                 ->lockForUpdate()
                 ->findOrFail((int) $data['booking_id']);
 
-            // Booking cancellation has a separate audited workflow. Never
-            // soft-delete a booking whose receipt/source history exists:
-            // this would hide ownership without reversing any finance rows.
-            $linkedCustomerLedgerExists = CustomerLedger::query()
-                ->where('project_id', $projectId)
-                ->where('customer_id', $booking->customer_id)
-                ->where('plot_id', $booking->plot_id)
-                ->exists();
+            // Only the untouched initial BO/SV is eligible for same-source
+            // archive; all other financial history requires cancellation.
             $linkedBookingVoucherExists = BookingVoucher::query()
                 ->where(function ($query) use ($booking, $projectId) {
                     $query->where('booking_id', $booking->id)
@@ -4424,14 +4418,6 @@ class BookingController extends Controller
                         });
                 })
                 ->exists();
-            $linkedLedgerExists = Ledger::query()
-                ->whereHas('projectHeadSubhead', function ($query) use ($booking, $projectId) {
-                    $query->where('project_id', $projectId)
-                        ->where('customer_id', $booking->customer_id)
-                        ->where('plot_id', $booking->plot_id);
-                })
-                ->exists();
-
             if ($linkedBookingVoucherExists) {
                 return response()->json([
                     'error'=>'booking_has_financial_history',
