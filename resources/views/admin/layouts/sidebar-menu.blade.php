@@ -89,7 +89,7 @@
 
 @if(\App\Support\Stock\StockAbility::allows(auth()->user(),'workspace','view'))<li class="nav-item"><a href="{{ route('stocks.index') }}" class="nav-link {{ request()->routeIs('stocks.*')?'active':'' }}"><i class="nav-icon fas fa-boxes"></i><p>Store & Inventory</p></a></li>@endif
 @can('read labour')<li class="nav-item"><a href="{{ route('labours.index') }}" class="nav-link {{ request()->routeIs('labours.*','labour.*')?'active':'' }}"><i class="nav-icon fas fa-hard-hat"></i><p>Labour Management</p></a></li>@endcan
-<li class="nav-item"><a href="{{ route('employee-tasks.index') }}" class="nav-link {{ request()->routeIs('employee-tasks.*')?'active':'' }}"><i class="nav-icon fas fa-tasks"></i><p>Employee Task Management</p></a></li>
+@can('read employee task')<li class="nav-item"><a href="{{ route('employee-tasks.index') }}" class="nav-link {{ request()->routeIs('employee-tasks.*')?'active':'' }}"><i class="nav-icon fas fa-tasks"></i><p>Employee Task Management</p></a></li>@endcan
 @can('read attendance')<li class="nav-item"><a href="{{ route('attendance.index') }}" class="nav-link {{ request()->routeIs('attendance.*','employee-attendance.*','employee-payroll.*')?'active':'' }}"><i class="nav-icon fas fa-user-clock"></i><p>Employee Attendance</p></a></li><li class="nav-item"><a href="{{ route('employee-attendance.index') }}" class="nav-link {{ request()->routeIs('employee-attendance.*')?'active':'' }}"><i class="nav-icon fas fa-clipboard-check"></i><p>Attendance Review</p></a></li>@endcan
 
 <li class="nav-header"></li><li class="nav-item"><a href="#" class="nav-link bg-danger" data-toggle="modal" data-target="#modal-logout" data-backdrop="static" data-keyboard="false"><i class="fas fa-sign-out-alt nav-icon"></i><p>Sign Out</p></a></li>
