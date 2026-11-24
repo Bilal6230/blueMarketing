@@ -49,6 +49,46 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertStringContainsString('pp-edit ml-1', $purchase);
     }
 
+    public function test_every_http_reversal_route_flows_into_policy_guarded_writer(): void
+    {
+        $root=dirname(__DIR__,3);
+        $routes=file_get_contents($root.'/routes/web.php');
+        $voucher=file_get_contents($root.'/app/Http/Controllers/Finance/VoucherController.php');
+        $daily=file_get_contents($root.'/app/Http/Controllers/Finance/DailyVoucherDirectoryController.php');
+        $bank=file_get_contents($root.'/app/Services/Finance/BankTransferLifecycleService.php');
+        $cash=file_get_contents($root.'/app/Services/Finance/CashVoucherLifecycleService.php');
+        $plot=file_get_contents($root.'/app/Services/Finance/PlotEntryLifecycleService.php');
+        $gateway=file_get_contents($root.'/app/Services/Finance/PostingGateway.php');
+        foreach ([$routes,$voucher,$daily,$bank,$cash,$plot,$gateway] as $source)self::assertIsString($source);
+
+        self::assertStringContainsString("name('finance.voucher.transfer.reverse')", $routes);
+        self::assertStringContainsString("name('finance.voucher.plot-receipt.reverse')", $routes);
+        self::assertStringContainsString("name('finance.voucher.plot-purchase.reverse')", $routes);
+        self::assertStringContainsString("name('finance.daily-vouchers.sources.reverse')", $routes);
+
+        self::assertStringContainsString('function reverseTransferVoucher(', $voucher);
+        self::assertStringContainsString('function reversePlotSource(', $voucher);
+        self::assertStringContainsString('function reverseTypedCashSource(', $daily);
+        self::assertStringContainsString('reversePostedBatch(', $bank);
+        self::assertStringContainsString('reversePostedBatch(', $cash);
+        self::assertStringContainsString('PostingReversalWriter())->reverse(', $plot);
+        self::assertStringContainsString('PostingReversalWriter())->reverse(', $gateway);
+        self::assertStringContainsString('VOUCHER_REVERSAL_DISABLED', $voucher);
+        self::assertStringContainsString('VOUCHER_REVERSAL_DISABLED', $daily);
+    }
+
+    public function test_ec_ecp_get_reversal_switch_without_enabling_unsupported_approval(): void
+    {
+        $root=dirname(__DIR__,3);
+        $controller=file_get_contents($root.'/app/Http/Controllers/Finance/VoucherSettingsController.php');
+        $view=file_get_contents($root.'/resources/views/admin/finance/voucher/settings.blade.php');
+        self::assertStringContainsString("'EC' => ['label'=>'Extra Charge', 'supported'=>false]", $controller);
+        self::assertStringContainsString("'ECP' => ['label'=>'Extra Charge Payment', 'supported'=>false]", $controller);
+        self::assertStringContainsString('@if($definition[\'supported\'])', $view);
+        self::assertStringContainsString("vs-reversal-form", $view);
+        self::assertStringContainsString('Approval configuration is not supported', $view);
+    }
+
     public function test_only_typed_reversal_writer_applies_the_policy_at_the_write_boundary(): void
     {
         $root=dirname(__DIR__,3);
