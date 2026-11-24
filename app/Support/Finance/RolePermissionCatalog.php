@@ -42,6 +42,9 @@ final class RolePermissionCatalog
         if (preg_match('/^stock (items|parties|entries|billing) (view|create|edit|delete)$/',$name,$matches)) {
             return 'stock-'.$matches[1];
         }
+        if (in_array($name,['read employee task','create employee task','update employee task','delete employee task'],true)) {
+            return 'employee-tasks';
+        }
         if ($name === 'filemanager') return 'filemanager';
         if ($name === 'send sms') return 'sms';
         // Exact historical names from the owner's actual permission audit:
@@ -86,6 +89,7 @@ final class RolePermissionCatalog
             'stock-parties' => 'Stock · Parties',
             'stock-entries' => 'Stock · Entries',
             'stock-billing' => 'Stock · Billing',
+            'employee-tasks' => 'Employee Tasks',
             'filemanager' => 'File Manager',
             'sms' => 'SMS',
             'expence' => 'Expenses',
