@@ -1,3 +1,7 @@
+## M05 owner verification — 2026-11-24
+
+**Second M05 reversal settings batch PASSED:** owner confirmed `Milestone05ReversalSettingsContractTest` 3 PASS/40 assertions; `view:cache` PASS; all six project financial postings clean; and all focused browser checks PASS for the implemented reversal ON/OFF behavior and button visibility. No need to re-test this gate. M05 continues only for remaining reversal-path coverage and final regression. M03 Labour CP remains ON HOLD.
+
 ## Milestone 05 handoff note — 2026-11-24
 
 Milestone 05 active independently of the M03 Labour browser hold. M05 initial settings migration and contract tests were owner-verified PASS (2 tests / 25 assertions; all six projects clean). A second code batch adds reversal UI availability to bank BD/BW, plot PPR/PP and typed cash. Current M05 browser acceptance is separate from already signed-off M03 CRUD tests, and will test only reversal ON/OFF visibility and direct-route enforcement. Do **not** reopen passed M03 cases. The M05 authoritative details remain in `docs/README.md`.
