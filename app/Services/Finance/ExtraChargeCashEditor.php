@@ -56,7 +56,7 @@ final class ExtraChargeCashEditor
             ->join('project_head_subheads as account','account.id','=','leg.project_head_subheads_id')
             ->where('leg.customer_ledger_id',$sourceId)->where('account.project_id',$projectId)
             ->lockForUpdate()->get(['leg.id','leg.type','leg.type_id','leg.voucher_number',
-                'leg.reference','leg.date','leg.amount_in','leg.amount_out','leg.is_active']);
+                'leg.reference','leg.date','leg.amount_in','leg.amount_out','leg.is_active','leg.project_head_subheads_id','leg.detail']);
         if($legs->count()!==2 || DB::table('ledgers')->where('customer_ledger_id',$sourceId)->count()!==2
             ||$legs->contains(fn($leg)=>(string)$leg->type!==$series
                 ||(int)$leg->type_id!==(int)$source->type_id
@@ -91,7 +91,8 @@ final class ExtraChargeCashEditor
     }
 
     public function update(int $projectId,int $sourceId,string $date,string $amount,
-        string $description): void
+        string $description,?int $customerId=null,?int $plotId=null,
+        ?int $chargeTypeId=null,?string $reference=null): void
     {
         FinanceConnectionGuard::assertAllowed();
         $day=\DateTimeImmutable::createFromFormat('!Y-m-d',$date);
@@ -100,7 +101,8 @@ final class ExtraChargeCashEditor
             throw new \DomainException('Extra Charge correction fields are invalid.');
         $cents=$this->cents($amount);
         if($cents<1)throw new \DomainException('Extra Charge must be positive.');
-        DB::transaction(function()use($projectId,$sourceId,$date,$cents,$description):void {
+        DB::transaction(function()use($projectId,$sourceId,$date,$cents,$description,
+            $customerId,$plotId,$chargeTypeId,$reference):void {
             DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
             [$source,$legs,$charge]=$this->source($projectId,$sourceId);
             $balance=app(ExtraChargeBankSettlement::class)->balances($charge);
@@ -110,22 +112,70 @@ final class ExtraChargeCashEditor
             }elseif($cents>$this->cents($source->amount_in)+$balance['available_cents']){
                 throw new \DomainException('Payment correction exceeds the remaining charge balance.');
             }
+            $identityChange=$source->transaction_type==='EC' && (
+                ($customerId!==null&&(int)$source->customer_id!==$customerId)
+                ||($plotId!==null&&(int)$source->plot_id!==$plotId)
+                ||($reference!==null&&(string)$source->reference!==$reference)
+                ||$chargeTypeId!==null
+            );
+            $mapping=null;$bookingId=null;
+            if($identityChange){
+                if($balance['paid_cents']>0||$balance['pending_cents']>0)
+                    throw new \DomainException('Charge has linked payment history; identity fields cannot be changed.');
+                $customerId=$customerId??(int)$source->customer_id;
+                $plotId=$plotId??(int)$source->plot_id;
+                $reference=$reference??(string)$source->reference;
+                if(!preg_match('/^.{1,100}$/D',$reference)
+                    ||str_contains($reference,'#')
+                    ||DB::table('customer_ledger')->where('project_id',$projectId)
+                        ->where('transaction_type','EC')->where('reference',$reference)
+                        ->where('id','!=',$sourceId)->exists())
+                    throw new \DomainException('Extra Charge reference is empty or already in use.');
+                $bookings=DB::table('bookings')->where('project_id',$projectId)
+                    ->where('customer_id',$customerId)->where('plot_id',$plotId)
+                    ->where('status','active')->where('cancel_status','0')
+                    ->whereNull('deleted_at')->lockForUpdate()->get(['id']);
+                if($bookings->count()!==1)
+                    throw new \DomainException('Customer and Plot need one active booking in the selected project.');
+                $bookingId=(int)$bookings->first()->id;
+                if($chargeTypeId!==null&&!DB::table('charge_types')->where('id',$chargeTypeId)->exists())
+                    throw new \DomainException('Extra Charge type was not found.');
+                $mapping=app(ExtraChargeAccounts::class)->forProject($projectId,$customerId,$plotId);
+            }
             $newAmount=$this->money($cents);
-            if((string)$source->date===$date
+            if(!$identityChange&&(string)$source->date===$date
                 &&number_format((float)$source->amount_in,2,'.','')===$newAmount
                 &&(string)($source->description??'')===$description)return;
+            $customerUpdate=['date'=>$date,'amount_in'=>$newAmount,
+                'description'=>$description,'updated_at'=>now()];
+            if($identityChange){
+                $customerUpdate['customer_id']=$customerId;
+                $customerUpdate['plot_id']=$plotId;
+                $customerUpdate['reference']=$reference;
+            }
             DB::table('customer_ledger')->where('id',$sourceId)
                 ->where('project_id',$projectId)->where('is_active',1)
-                ->update(['date'=>$date,'amount_in'=>$newAmount,
-                    'description'=>$description,'updated_at'=>now()]);
+                ->update($customerUpdate);
             foreach($legs as $leg){
                 $debit=$this->cents($leg->amount_in)>0;
+                $legUpdate=['date'=>$date,
+                    'amount_in'=>$debit?$newAmount:'0.00',
+                    'amount_out'=>$debit?'0.00':$newAmount,'updated_at'=>now()];
+                if($identityChange){
+                    $type=$chargeTypeId;
+                    if($type===null&&preg_match('/ChargeType:([1-9][0-9]*)/',(string)$leg->detail,$m))
+                        $type=(int)$m[1];
+                    $legUpdate['detail']='EC | ChargeType:'.($type??0).' | Booking:'.$bookingId.' | '.$description;
+                    $legUpdate['reference']=$reference;
+                    // The legacy EC receivable mapping is the credit leg.
+                    $legUpdate['project_head_subheads_id']=$debit
+                        ?(int)$mapping['credit_account_id']:(int)$mapping['debit_account_id'];
+                }else{
+                    $legUpdate['detail']=$description;
+                }
                 DB::table('ledgers')->where('id',$leg->id)
                     ->where('customer_ledger_id',$sourceId)->where('is_active',1)
-                    ->update(['date'=>$date,'detail'=>$description,
-                        'amount_in'=>$debit?$newAmount:'0.00',
-                        'amount_out'=>$debit?'0.00':$newAmount,
-                        'updated_at'=>now()]);
+                    ->update($legUpdate);
             }
         },3);
     }
