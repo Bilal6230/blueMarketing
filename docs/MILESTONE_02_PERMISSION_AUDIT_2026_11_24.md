@@ -1,3 +1,29 @@
+# 2026-11-24 — M02 Sidebar View permission parity (code committed, owner acceptance pending)
+
+Owner's browser screenshot: logged-in limited role sees **Credit Voucher (CR)** in Daily Entries sidebar, but clicking `/admin/finance/daily-vouchers?type=CR` yields **403: You do not have permission for this finance action**. The backend already correctly checks granular `finance cr view`; the left menu incorrectly used old broad `read voucher` to show *all* daily voucher links. This was a **sidebar authorization presentation bug**, not a reason to weaken the backend permission guard.
+
+**Fixed implementation:**
+- Active sidebar source is `resources/views/admin/layouts/sidebar-menu.blade.php` (included by `sidebar.blade.php`; legacy `@if(false)` block is inactive). Every live Daily Entries finance link is now gated by the same exact `FinanceActionPermission::name(module,'view')` ability as its route. Voucher type map: CR→cr, DR→dr, CCR→ccr, CDR→cdr, BOR→bor, BOP→bop. Cheque/Online, Directory, Bank Deposit/Withdrawal, Plot Receipt/Purchase, Draft, JV/SV/CV and Extra Charge use their own module View ability. A role with `read voucher` but no `finance cr view` no longer sees CR; direct URL **continues to 403**, as intended. Another series remains visible only when its own View right is granted.
+- Daily Entries parent hides if none of its permitted child links is visible. Existing `read slip` continues to control its distinct Receive Payment route; Finance Change/Approval navigation still respects existing policy checks and Directory View where required.
+- Stock sidebar now calls its real `StockAbility::allows(user,'workspace','view')`, matching protected Stock index, including compatibility `read slip`; Labour menu uses `read labour` matching the Labour index. No longer dependent on unassigned old `stock module`/`labour module` legacy flags. Definitions uses `read accounting` for account links instead of `read user`; empty Definitions headings for role-only accounts prevented, and Reports parent recognizes `read plot` for Project Recovery.
+- New source regression: `Milestone02SidebarViewPermissionContractTest` verifies exact CR→Finance View correspondence, independent voucher/menu mappings, Stock/Labour matching, and removal of the old broad Daily Entries condition.
+- **No permissions or grants edited, no migrations, no finance ledger changes;** do not automatically grant View to fix a legitimately forbidden direct URL. Existing user can be granted the appropriate module View via Roles if required.
+
+**Local confirmation requested for NEW FIX only:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone02SidebarViewPermissionContractTest
+```
+
+**Browser:** use limited test role and refresh the Dashboard sidebar: without `finance cr view`, **CR hidden** and direct CR URL **403**; give only `finance cr view`, reload and **only CR** appears among voucher series; revoke it again and CR disappears. Check DR remains independent, Stock menu appears with Stock View or compatible `read slip`, Labour menu only with `read labour`. This is a role-permission acceptance gate, not a test of held Labour CP payment functionality.
+
+**Remaining scope note:** Employee Task Management currently has no separate dedicated `read employee task` permission nor route middleware; its always-available navigation reflects that original unprotected design. A future task permission policy must be agreed and rolled out compatibly rather than pretending a View permission already exists. M02 remains open until owner browser confirms the permission/navigation matrix.
+
+---
+
 # 2026-11-24 — Owner terminal gates PASS; urgent Dashboard and Roles sort browser hotfix
 
 Owner pulled M02 Stock/Labour batch `8b2d2b16`, ran additive Stock permission migration **DONE**, `php artisan view:cache` **PASS**, `Milestone02PermissionEnforcementContractTest` **5 PASS / 95 assertions**, and `RoleManagementModernizationTest` **7 PASS / 478 assertions**. The code-level Stock and Labour/Attendance permission contract gate passes. **Browser role matrix acceptance is still pending**; owner reported two blockers first:
