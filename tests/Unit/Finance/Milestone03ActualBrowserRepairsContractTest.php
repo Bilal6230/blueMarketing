@@ -48,7 +48,7 @@ final class Milestone03ActualBrowserRepairsContractTest extends TestCase
     public function test_stock_edit_delete_modal_has_no_dependency_on_bootstrap_cdn(): void
     {
         $view=$this->source('resources/views/admin/stock/index.blade.php');
-        self::assertStringContainsString('stock-doc-fallback-backdrop',$view);
+        self::assertStringContainsString('stock-modal-fallback-backdrop',$view);
         self::assertStringContainsString("stockDocModal('#stockDocumentEditModal','show')",$view);
         self::assertStringContainsString('Loading original voucher and item mappings...',$view);
         self::assertStringContainsString('stock-doc-delete',$view);
