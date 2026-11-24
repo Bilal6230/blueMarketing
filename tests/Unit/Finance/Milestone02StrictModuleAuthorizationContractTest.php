@@ -81,6 +81,24 @@ final class Milestone02StrictModuleAuthorizationContractTest extends TestCase
         self::assertStringNotContainsString('Schema::create(',$migration);
     }
 
+    public function test_existing_user_plot_crm_and_report_actions_are_not_unguarded(): void
+    {
+        $routes=file_get_contents(dirname(__DIR__,3).'/routes/web.php');
+        self::assertIsString($routes);
+        foreach ([
+            'user.status.toggle'=>'permission:update user',
+            'update_plot_number.store'=>'permission:update plot number',
+            'project.plot.history'=>'permission:read plot',
+            'lead.work'=>'permission:read lead',
+            'lead.search'=>'permission:lead search',
+            'admin.reports.check_history'=>'permission:cheque report',
+        ] as $name=>$permission) {
+            self::assertStringContainsString(
+                "middleware('".$permission."')->name('".$name."')",$routes,$name
+            );
+        }
+    }
+
     public function test_sidebar_view_rights_match_stock_finance_and_labour_routes(): void
     {
         $root=dirname(__DIR__,3);
