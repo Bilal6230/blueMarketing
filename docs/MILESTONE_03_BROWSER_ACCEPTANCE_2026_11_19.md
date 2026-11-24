@@ -1,3 +1,7 @@
+## M05 final code batch — 2026-11-24 (owner acceptance pending)
+
+All **four existing HTTP reversal routes** (typed cash, bank BD/BW, Plot Receipt and Plot Purchase) were audited and confirmed to share the central `PostingReversalWriter` policy enforcement. This is not the same as ordinary Edit/Delete, booking cancellation or cheque/online custody release, and no nonexistent legacy Reverse route should be claimed. Added EC/ECP policy-only settings without generic approvals, per-series policy caching for daily/bank listings, SQLite policy integration tests and verified-JV posting ON/OFF integration regression. **Code committed, latest tests and final EC/ECP browser acceptance still pending.** Already owner-verified M05 batch 2: 3 PASS/40 assertions, browser PASS, 6 clean projects. M03 Labour CP ON HOLD; do not repeat its already passed modules. Authoritative final M05 test commands and sign-off criteria in `docs/README.md`.
+
 ## M05 owner verification — 2026-11-24
 
 **Second M05 reversal settings batch PASSED:** owner confirmed `Milestone05ReversalSettingsContractTest` 3 PASS/40 assertions; `view:cache` PASS; all six project financial postings clean; and all focused browser checks PASS for the implemented reversal ON/OFF behavior and button visibility. No need to re-test this gate. M05 continues only for remaining reversal-path coverage and final regression. M03 Labour CP remains ON HOLD.
