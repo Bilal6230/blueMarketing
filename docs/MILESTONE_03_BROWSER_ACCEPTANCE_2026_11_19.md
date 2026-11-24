@@ -1,6 +1,6 @@
 # Milestone 03 — Browser Acceptance and Local Verification (2026-11-19)
 
-**Current status: CODE CHANGES COMMITTED; full milestone NOT SIGNED OFF.** This document is the active browser checklist and exact handoff for `upgrade/laravel-framework`. Record actual PASS/FAIL and screenshots in a later owner response; do not mark untested areas green. Local data must be a disposable/test database. The configured project ID must come from current application selection, never a hardcoded number.
+**Current status (owner update 2026-11-24): All Milestone 03 terminal and browser acceptance tests are reported PASS except Stock Entry/Bill and Labour Payment (CP), which remain the only two browser gates. Full milestone sign-off awaits these two.** This document is the active browser checklist and exact handoff for `upgrade/laravel-framework`. Record actual PASS/FAIL and screenshots in a later owner response; do not mark untested areas green. Local data must be a disposable/test database. The configured project ID must come from current application selection, never a hardcoded number.
 
 ## Code fixes completed in the latest review batch
 
@@ -76,19 +76,30 @@ php artisan finance:audit-posting-balances
 9. **Labour Payment (CP)** — Labour module: Create cash labour payment with two workers; Edit amounts, Add/Remove worker, Save unchanged twice; check single customer ledger ID, exact worker rows and total. Delete: source, ledger and worker rows inactive with original evidence retained. Typed payroll-source member must reject a legacy override.
 10. **Shared reports** — Daily Voucher Directory, Party Ledger, trial balance, Stock report and Labour totals: after corrections/deletes verify active current amounts only; internal archived evidence remains. Finally `php artisan finance:audit-posting-balances` must show zero findings for all selected projects.
 
-## Acceptance record
+## Acceptance record — updated 2026-11-24 (owner-confirmed)
 
-| Family | Code/Routes | Local test | Browser | Owner sign-off |
-|---|---|---|---|---|
-| Plot/JV/CV | Implemented | Earlier verified for Plot and CV; JV new code pending | Earlier owner PASS; new JV update pending | Partial |
-| BD/BW | Implemented | Owner: **13 PASS / 102 assertions** | Not yet recorded | Pending |
-| SV | Implemented | New tests not yet run | Not yet recorded | Pending |
-| CR/DR/CCR/CDR | Existing flows | Full matrix pending | Not yet recorded | Pending |
-| BOR/BOP | Existing + custody-dependent | Linked approval path pending | Not yet recorded | Milestone 04 dependency |
-| PPR cash | New same-source editor | New tests not yet run | Not yet recorded | Pending |
-| EC/ECP cash | New editor + modal + report ownership fix | New tests not yet run | Not yet recorded | Pending |
-| Stock Entry/Bill | New source editor + Bootstrap 5 modal | New tests not yet run | Not yet recorded | Pending |
-| Labour CP | New editor + typed FK guard | New tests not yet run | Not yet recorded | Pending |
-| All-project posting audit | Implemented | Earlier owner PASS for 6 projects | Not applicable | New batch recheck pending |
+The owner explicitly confirms that all other Milestone 03 terminal **and browser** scenarios passed. Earlier pending labels below are superseded; do not request those browser tests again without a relevant regression.
+
+| Family | Terminal | Browser | Milestone 03 sign-off |
+|---|---|---|---|
+| Plot Receipt/Purchase, JV, SV, CV | Owner-reported PASS | Owner-reported PASS | PASS |
+| BD/BW | Owner-reported PASS | Owner-reported PASS | PASS |
+| CR/DR/CCR/CDR | Owner-reported PASS | Owner-reported PASS | PASS |
+| BOR/BOP | Owner-reported PASS | Owner-reported PASS | PASS for Milestone 03 scenarios; deeper linked custody/cascade belongs to Milestone 04 |
+| PPR cash | Owner-reported PASS | Owner-reported PASS | PASS |
+| EC/ECP | Owner-reported PASS | Owner-reported PASS | PASS, including duplicate pagination fix |
+| Verified-source narration 7/7 | Owner-reported PASS | Owner-reported PASS | PASS |
+| Booking amendment #242 legacy BO/SV | Owner-reported PASS | Owner-reported working | PASS |
+| Stock Entry/Bill | Previously implemented; owner reports other terminal tests complete | **PENDING** | **ONLY REMAINING GATE 1** |
+| Labour Payment (CP) | Previously implemented; owner reports other terminal tests complete | **PENDING** | **ONLY REMAINING GATE 2** |
+| All-project posting integrity | Owner-reported PASS, 6 projects, zero invalid active batches | N/A | PASS |
+
+### Only two remaining browser gates
+
+**A — Stock Entry / Stock Bill** `/admin/stocks`: On disposable local test project, create stock IN Entry item A quantity 5; edit quantity to 7 and verify exactly +2 on-hand change and updated ledger; add item B/remove item A without negative inventory; save unchanged twice (no duplicate movements); delete and verify active stock and accounting impacts revert while source history is retained. Create standalone *unlinked* purchase/sale Bill; edit and delete it. Attempt to edit a linked/billed Entry and confirm safe rejection. Verify Bootstrap 5 modals, AJAX toast error and no full-page reload.
+
+**B — Labour Payment CP** Labour module: Create cash payment with two worker rows; edit individual amounts, add/remove a worker and verify amount equals worker-row sum; save unchanged twice (no duplicates); delete and verify source/ledger/worker rows inactive while history remains. Confirm typed payroll-claimed worker cannot be changed through legacy payment editor. Check AJAX modal errors, account totals, permissions and project isolation.
+
+**Do not re-request tests 1–7 and 10 above**: their older detailed instructions are historical reference only, not pending gates. Owner still needs to confirm browser PASS for A and B before declaring Milestone 03 complete.
 
 **Do not mark Milestone 03 100% or claim all voucher relationships verified until the new code's tests and this browser matrix are actually accepted.** Milestone 06 application-wide activity audit remains deliberately deferred to the LAST milestone (no audit tables now).
