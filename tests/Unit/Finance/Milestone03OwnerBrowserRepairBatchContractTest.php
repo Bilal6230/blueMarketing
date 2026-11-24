@@ -28,6 +28,7 @@ final class Milestone03OwnerBrowserRepairBatchContractTest extends TestCase
         self::assertStringContainsString('archiveUnpaidBookingSale(',$controller);
         self::assertStringContainsString('Booking has linked receipts/vouchers',$controller);
         self::assertStringContainsString("old('discount_value','0')",$create);
+        self::assertStringContainsString("$('#discount_value').val('0')",$create);
         self::assertStringContainsString('$errors->all()', $create);
     }
 
@@ -59,7 +60,11 @@ final class Milestone03OwnerBrowserRepairBatchContractTest extends TestCase
         self::assertStringContainsString('if($same&&!$legacyHundredfold)return;',$editor);
         self::assertStringContainsString('stockDocumentNumber',$view);
         self::assertStringContainsString('stockDocumentParty',$view);
+        self::assertStringContainsString('stockDocumentVehicle',$view);
+        self::assertStringContainsString('stockDocumentDriver',$view);
         self::assertStringContainsString('stock-compact-line stock-doc-line',$view);
+        self::assertStringContainsString("'vehicle'=>['nullable','string','max:80']",$controller);
+        self::assertStringContainsString("'driver'=>['nullable','string','max:120']",$controller);
     }
 
     public function test_labour_master_is_global_and_site_account_mapping_stays_project_specific(): void
