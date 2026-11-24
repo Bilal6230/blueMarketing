@@ -19,7 +19,9 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertStringContainsString('function saveReversal(Request $request)', $controller);
         self::assertStringContainsString("['required','boolean']", $controller);
         self::assertStringContainsString("firstOrCreate(", $controller);
-        self::assertStringContainsString("in_array(\$type,['CHQ_CORR','ONL_CORR'],true)", $controller);
+        self::assertStringContainsString("private const REVERSAL_TYPES = ['CR', 'CP', 'BD', 'BW', 'PPR', 'PP']", $controller);
+        self::assertStringContainsString("Rule::in(self::REVERSAL_TYPES)", $controller);
+        self::assertStringContainsString("in_array(\$type,\$reversalTypes,true)", $view);
         self::assertStringContainsString("name('finance.voucher-settings.reversal.save')", $routes);
         self::assertStringContainsString("permission:update setting", $routes);
         self::assertStringContainsString('vs-reversal-form', $view);
@@ -106,19 +108,21 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertStringContainsString('FINANCE_REVERSAL_SOURCE_WORKFLOW_REQUIRED', $router);
     }
 
-    public function test_ec_ecp_get_reversal_switch_without_enabling_unsupported_approval(): void
+    public function test_reversal_settings_only_exist_for_functional_browser_reverse_actions(): void
     {
         $root=dirname(__DIR__,3);
         $controller=file_get_contents($root.'/app/Http/Controllers/Finance/VoucherSettingsController.php');
         $view=file_get_contents($root.'/resources/views/admin/finance/voucher/settings.blade.php');
-        self::assertStringContainsString("'EC' => ['label'=>'Extra Charge', 'supported'=>false]", $controller);
-        self::assertStringContainsString("'ECP' => ['label'=>'Extra Charge Payment', 'supported'=>false]", $controller);
-        foreach (['BO','LAB','ST-IN','ST-OUT','SB-PUR','SB-SALE'] as $series) {
-            self::assertStringContainsString("'".$series."' => [", $controller);
+        self::assertIsString($controller);
+        self::assertIsString($view);
+        self::assertStringContainsString("private const REVERSAL_TYPES = ['CR', 'CP', 'BD', 'BW', 'PPR', 'PP']", $controller);
+        self::assertStringContainsString("Rule::in(self::REVERSAL_TYPES)", $controller);
+        self::assertStringContainsString('@if(in_array($type,$reversalTypes,true))', $view);
+        self::assertStringContainsString("['required',Rule::in(array_keys(self::TYPES))]", $controller);
+        self::assertStringContainsString('vs-policy-form', $view);
+        foreach (['EC','ECP','BO','LAB','ST-IN','ST-OUT','SB-PUR','SB-SALE'] as $series) {
+            self::assertStringNotContainsString("'".$series."' => [", $controller);
         }
-        self::assertStringContainsString('@if($definition[\'supported\'])', $view);
-        self::assertStringContainsString("vs-reversal-form", $view);
-        self::assertStringContainsString('Approval configuration is not supported', $view);
     }
 
     public function test_ordinary_plot_delete_preserves_independent_offset_when_reverse_switch_is_off(): void
