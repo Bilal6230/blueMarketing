@@ -1051,12 +1051,6 @@
                         </button>
                     </div>
                     <div id="personHeader" class="row" style="margin-bottom:10px"></div>
-                    @if(\App\Services\Finance\FinanceWorkflowAccess::selected())
-                        <form id="typedPayrollFields">
-                            <input type="hidden" name="amount" value="0.00">
-                            @include('admin.finance.voucher.typed_posting_fields', ['includePostingDate' => true])
-                        </form>
-                    @endif
                     {{-- <div style="margin-top:14px" class="help">On first load, all labours are listed below. Use search to
                         pick someone.</div> --}}
                     <div style="margin-top:8px" class="table-scroll max-height">
