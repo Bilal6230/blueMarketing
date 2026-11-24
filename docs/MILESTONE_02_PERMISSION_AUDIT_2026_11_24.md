@@ -1,3 +1,45 @@
+# Milestone 02 — Final permissions enforcement code batch, 2026-11-24
+
+**Code implementation delivered, owner terminal/browser acceptance PENDING.** The previously owner-verified Roles UI grouping test remains **7 PASS / 478 assertions**, Finance Matrix **6 PASS / 365 assertions**, and Blade view cache PASS. The 441-permission live audit is closed and its data is retained below. No role-grant removal, no new business tables, no 21×16 permission explosion and no Labour CP voucher lifecycle edits.
+
+## Implemented: compact Stock roles and guards
+
+- Added **16 precise permissions only**: `stock items|parties|entries|billing view|create|edit|delete`. One additive `2026_11_24_180000_register_compact_stock_permissions.php` migration inserts missing Spatie `permissions` names only. No new table; no direct-user grant changes; down migration does not revoke role assignments.
+- One central `StockAbility` and `AuthorizeStockAbility` enforce new module/action permissions on Stock index, dropdown meta, list/report endpoints, counters, item import/export, all item/party CRUD, entry/bill create and legacy reconciliation. Kind-dependent Entry/Bill document detail/update/delete guard now uses same ability checks. Pre-existing `stock.finance.approve` approval guard was not replaced.
+- To avoid locking out existing live roles (the full JSON has **no old Stock CRUD permission names**), compatibility fallback continues to respect **`read slip` -> view**, **`add slip` -> create/edit**, **`delete slip` -> delete** and existing admin/superadmin grants; this is a deliberate **transition compatibility layer**. New roles can use independent actions for each workspace. Existing broad slip grants may authorize more than one Stock workspace until a separately reviewed migration of live role assignments; this is explicitly documented, not claimed as perfect isolation for legacy roles.
+- Role editor shows four distinct **Stock · Items**, **Stock · Parties**, **Stock · Entries**, **Stock · Billing** tabs alongside Finance/Daily Entries and application modules; uses same existing jQuery checkbox/search and role persistence behavior.
+- Stock Blade now passes per-user allowed rights; disallowed workspace tabs, New buttons and row Edit/Delete/Status actions are hidden. Auto-loaders for unauthorized list/counter requests are skipped, avoiding routine AJAX 403 toasts. Backend guard remains authoritative for direct requests.
+- **Caveat:** The main stock page remains a shared multi-tab view, so data embedded in page metadata should not be considered a full per-tab data-isolation boundary; server list and write endpoints are independently guarded. This rollout aims at safe CRUD permissions, not multi-tenant/data-field confidentiality beyond existing selected-project scoping.
+
+## Implemented: Labour/Attendance route parity
+
+- Replaced unguarded `Route::resource('labours')` with explicit existing Labour read/create/update/delete middleware per real action; contractor routes already had these guards.
+- Attendance week/report routes use existing `read attendance|read labour`; attendance write uses `create attendance|create labour` for legacy staff compatibility. Labour site, rates, history and print routes use existing `read/create/update labour` appropriately. **No new Labour or Attendance permission names**.
+- `labours.payment`, `labours.payment.details`, `labours.payment.update`, `labours.payment.delete` left unchanged: this is the M03 Labour CP browser gate **ON HOLD**. Existing controller-level finance CP payment protections remain. Do not claim M03 Labour CP accepted from this M02 route rollout.
+
+## Owner gate (new code ONLY)
+
+After pulling:
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan migrate --path=database/migrations/2026_11_24_180000_register_compact_stock_permissions.php
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone02PermissionEnforcementContractTest
+php artisan test --filter=RoleManagementModernizationTest
+php artisan route:list --path=admin/stocks
+```
+
+**Focused browser acceptance on disposable roles:**
+1. Roles → Create test role **Stock Items Viewer** with only `stock items view`. Sign in as testing user with that role: Stock page opens, Items tab visible, Billing/Entry/Parties and write buttons hidden; Items API GET works, Stock Items Create/Update direct action returns 403. Super Admin has full access.
+2. Role with `stock billing view` and `stock billing create`: Billing tab appears, New Bill available, Entries/Items/Parties tabs hidden; other write endpoints deny 403. Use only disposable local data if actually saving.
+3. An existing `read slip` / `add slip` / `delete slip` legacy role retains compatible Stock access; new Stock permission names do not silently revoke old grants.
+4. Labour test role with `read labour` and separately `create attendance`: corresponding list and attendance routes work; unauthorized Labour create/update/deletes return 403. No Labour CP payments/edits/deletes are part of the test.
+5. Roles editor: Finance CR/DR and general Stock/Attendance/Labour tabs remain independent; save/reopen role retains selected permissions.
+
+Do **not** rerun owner-accepted M04/M05 voucher tests or Labour CP. If new local suite and browser gate PASS, mark M02 **CLOSED / OWNER ACCEPTED**; otherwise fix any reported exceptions before broadening permissions.
+
 # 2026-11-24 — Latest owner verification and Stock route compatibility discovery
 
 **Owner latest terminal PASS:** pulled `7126bc40`; `RoleManagementModernizationTest` **7 PASS / 478 assertions**, `php artisan view:cache` PASS. Earlier `FinanceActionPermissionMatrixTest` **6 PASS / 365 assertions**. The categorization of real old permissions is verified; no need to rerun that gate.
