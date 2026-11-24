@@ -63,6 +63,27 @@
          @can('update setting')<button type="submit" class="btn btn-sm btn-success vs-save">Save Settings</button>@endcan
         </div>
        </form>
+       @if(!in_array($type,['CHQ_CORR','ONL_CORR'],true))
+       <form method="post" class="vs-reversal-form border-top pt-3 mt-3" action="{{ route('finance.voucher-settings.reversal.save') }}">@csrf
+        <input type="hidden" name="voucher_type" value="{{ $type }}">
+        <input type="hidden" name="reversal_enabled" value="0">
+        <div class="vs-toolbar">
+         <div>
+          <label class="d-block mb-1" for="vs-reversal-{{ $type }}">Reversal Enabled</label>
+          <small class="text-muted">Only verified typed voucher reversals; ordinary Edit/Delete remains separate.</small>
+         </div>
+         <div class="custom-control custom-switch">
+          <input type="checkbox" class="custom-control-input vs-reversal-enabled" id="vs-reversal-{{ $type }}" name="reversal_enabled" value="1"
+           {{ ($policy?->reversal_enabled ?? true) ? 'checked':'' }}
+           {{ auth()->user()->can('update setting') ? '' : 'disabled' }}>
+          <label class="custom-control-label" for="vs-reversal-{{ $type }}">{{ ($policy?->reversal_enabled ?? true) ? 'ON' : 'OFF' }}</label>
+         </div>
+        </div>
+        @can('update setting')
+         <button type="submit" class="btn btn-sm btn-outline-success mt-2 vs-reversal-save">Save Reversal Setting</button>
+        @endcan
+       </form>
+       @endif
       @else
        <div class="small mb-2">Approval configuration locked for this voucher type.</div>
        <div class="small text-muted">No policy write or financial posting changes allowed at this stage.</div>
@@ -92,6 +113,30 @@ $(function(){
    .addClass(error?'alert-danger':'alert-success').text(msg)
    .stop(true,true).fadeIn(130).delay(3500).fadeOut(180);
  }
+ $('.vs-reversal-form').on('submit',function(event){
+  event.preventDefault();
+  var $form=$(this),$checkbox=$form.find('.vs-reversal-enabled');
+  var enabled=$checkbox.prop('checked'),type=$form.find('[name=voucher_type]').val();
+  if(!window.Swal||!$.isFunction(window.Swal.fire)){toast('Confirmation popup unavailable.',true);return;}
+  window.Swal.fire({icon:'question',title:'Change Reversal Setting?',
+   text:'Set '+type+' reversal '+(enabled?'ON':'OFF')+' for the selected project? Existing posted vouchers will not change.',
+   showCancelButton:true,confirmButtonText:'Save Reversal Setting',cancelButtonText:'Cancel'
+  }).then(function(answer){
+   if(!answer.isConfirmed)return;
+   var $button=$form.find('.vs-reversal-save').prop('disabled',true);
+   $.ajax({url:$form.attr('action'),method:'POST',
+    data:$form.serializeArray().filter(function(x){return x.name!=='reversal_enabled';}).concat([{name:'reversal_enabled',value:enabled?'1':'0'}]),
+    headers:{Accept:'application/json'},dataType:'json'})
+    .done(function(response){
+     $form.find('.custom-control-label').text(enabled?'ON':'OFF');
+     toast(response.message||'Reversal setting saved.',false);
+    }).fail(function(xhr){
+     var message=xhr.responseJSON&&xhr.responseJSON.message||'Unable to save reversal setting.';
+     toast(message,true);
+     window.Swal.fire({icon:'error',title:'Reversal Setting Not Saved',text:message});
+    }).always(function(){$button.prop('disabled',false);});
+  });
+ });
  $('.vs-policy-form').on('submit',function(event){
   event.preventDefault();
   var $form=$(this),type=$form.find('[name=voucher_type]').val(),enabled=$form.find('.vs-required').prop('checked');
