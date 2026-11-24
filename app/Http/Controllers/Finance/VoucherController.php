@@ -1320,11 +1320,13 @@ class VoucherController extends Controller
             ->orderByDesc('receipt.receipt_date')->orderByDesc('receipt.id')
             ->get(['receipt.id', 'receipt.receipt_number', 'receipt.receipt_date', 'receipt.amount', 'receipt.narration',
                 'customer.first_name', 'customer.last_name', 'customer.business', 'void_batch.id as reversal_batch_id']);
+        $reversalEnabled=app(\App\Services\Finance\VoucherReversalPolicy::class)->enabled($projectId,'PPR');
         $active=$rows->map(fn ($row) => [
             'id' => (int) $row->id, 'number' => (string) $row->receipt_number, 'date' => substr((string) $row->receipt_date, 0, 10),
             'customer' => trim((string) $row->first_name.' '.(string) $row->last_name) ?: (string) ($row->business ?? 'Customer'),
             'amount' => (string) $row->amount, 'narration' => (string) $row->narration,
             'reversed' => $row->reversal_batch_id !== null,
+            'can_reverse' => $reversalEnabled && $row->reversal_batch_id === null,
         ]);
         $pending=collect();
         if(Schema::hasTable('finance_plot_approval_drafts')){
@@ -1671,12 +1673,14 @@ class VoucherController extends Controller
             ->when(Schema::hasColumn('finance_plot_purchases','deleted_at'), fn ($query) => $query->whereNull('purchase.deleted_at'))
             ->orderByDesc('purchase.purchase_date')->orderByDesc('purchase.id')->limit(250)
             ->get(['purchase.id', 'purchase.purchase_number', 'purchase.purchase_date', 'purchase.amount', 'purchase.narration', 'sub.name as seller', 'void_batch.id as reversal_batch_id']);
+        $reversalEnabled=app(\App\Services\Finance\VoucherReversalPolicy::class)->enabled($projectId,'PP');
         $active=$rows->map(fn ($row) => [
             'id' => (int) $row->id, 'number' => (string) $row->purchase_number, 'date' => substr((string) $row->purchase_date, 0, 10),
             'seller' => (string) ($row->seller ?? 'Seller account'), 'amount' => (string) $row->amount, 'narration' => (string) $row->narration,
             'items' => (int) DB::table('finance_plot_purchase_items')->where('purchase_id', $row->id)
                 ->when(Schema::hasColumn('finance_plot_purchase_items','is_active'),fn($q)=>$q->where('is_active',1))->count(),
             'reversed' => $row->reversal_batch_id !== null,
+            'can_reverse' => $reversalEnabled && $row->reversal_batch_id === null,
         ]);
         $pending=collect();
         if(Schema::hasTable('finance_plot_approval_drafts')){
@@ -1997,7 +2001,8 @@ class VoucherController extends Controller
                 'cash_account' => trim((string) $r->cash_name.' / '.(string) $r->cash_child_name, ' /'), 'bank' => trim((string) $r->bank_name.' / '.(string) $r->account_title, ' /'),
                 'cheque' => $r->cheque_number ? 'CP-'.$r->cheque_number.' / '.(string) $r->cheque_reference : '', 'amount' => (string) $r->amount, 'narration' => (string) $r->narration,
                 'reversed' => $r->reversal_batch_id !== null,
-                'can_reverse' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null
+                'can_reverse' => app(\App\Services\Finance\VoucherReversalPolicy::class)->enabled($projectId,(string)$r->voucher_series)
+                    && $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null
                     && !in_array((int)$r->posting_batch_id,$verifiedBatches,true),
                 'can_edit' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null
                     && !in_array((int)$r->posting_batch_id,$verifiedBatches,true)]);
