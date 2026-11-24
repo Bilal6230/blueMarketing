@@ -34,6 +34,10 @@ final class VoucherSettingsController extends Controller
         'PPR' => ['label'=>'Plot Receive Payment Voucher', 'supported'=>true],
         'PP' => ['label'=>'Plot Purchase Voucher', 'supported'=>true],
         'SV' => ['label'=>'Sales Voucher', 'supported'=>true],
+        // Cash EC/ECP can have typed reversals, but their approval lifecycle
+        // is not managed by the generic voucher approval form.
+        'EC' => ['label'=>'Extra Charge', 'supported'=>false],
+        'ECP' => ['label'=>'Extra Charge Payment', 'supported'=>false],
         'ONL_CORR' => ['label'=>'Online Transaction Correction', 'supported'=>true],
         'CHQ_CORR' => ['label'=>'Cheque Correction', 'supported'=>true],
     ];
