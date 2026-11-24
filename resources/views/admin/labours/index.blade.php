@@ -788,8 +788,7 @@
                             </div>
                             <div class="row" style="margin-top:10px">
                                 <button class="btn pri" id="btnAddLabour">Add Labour</button>
-                                <span class="help">Adds into in-memory list for demo. Replace with AJAX to save to
-                                    server.</span>
+                                <span class="help">Labour is registered once and available to all projects. Attendance and payments are project-specific.</span>
                             </div>
                         </form>
                     </div>
@@ -2338,8 +2337,10 @@
                                 }
                             },
                             error: function(err) {
-                                Swal.fire("Error", "Something went wrong.", "error");
-                                console.log(err.responseText);
+                                const message=err.responseJSON?.errors
+                                    ?Object.values(err.responseJSON.errors).flat().join(' ')
+                                    :(err.responseJSON?.message||'Unable to save site. Check Head/Sub Head for the selected project.');
+                                Swal.fire('Site Not Saved',message,'error');
                             }
                         });
                     }
@@ -2712,7 +2713,7 @@
                                 $.each(response, function(index, item) {
                                     if (item.subhead_accounting) {
                                         subAccountSelect.append('<option value="' + item
-                                            .id + '">' + item.subhead_accounting
+                                            .subhead_accounting_id + '">' + item.subhead_accounting
                                             .name + '</option>');
                                     }
                                 });
@@ -2754,7 +2755,7 @@
                                 $.each(response, function(index, item) {
                                     if (item.subhead_accounting) {
                                         subAccountSelect.append('<option value="' + item
-                                            .id + '">' + item.subhead_accounting
+                                            .subhead_accounting_id + '">' + item.subhead_accounting
                                             .name + '</option>');
                                     }
                                 });
