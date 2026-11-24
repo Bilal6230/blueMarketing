@@ -16,7 +16,7 @@ class RoleController extends Controller
 {
     private function rows(): array
     {
-        $roles = Role::with('permissions:id,name,guard_name')->orderByDesc('updated_at')->get();
+        $roles = Role::with('permissions:id,name,guard_name')->orderBy('id')->get();
         $actors = [];
         if (Schema::hasColumn('roles', 'updated_by')) {
             $ids = $roles->pluck('updated_by')->filter()->unique()->all();
