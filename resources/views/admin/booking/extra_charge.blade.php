@@ -665,6 +665,38 @@
   <form id="fvcExtraCashEditForm"><div class="modal-body">
    <div class="alert alert-info small">The original EC/ECP voucher number and ledger links remain unchanged.</div>
    <div class="alert alert-secondary small">Account mappings are tied to this Extra Charge: EC uses dedicated Receivable and Income accounts; Cash ECP uses dedicated Cash and Receivable accounts. The exact stored Debit / Credit direction is shown below. Customer, plot and charge-type changes require a separately reviewed correction, not an ordinary amount edit.</div>
+   <div id="fvcExtraCashIdentityFields">
+    <div class="form-row">
+     <div class="form-group col-md-6"><label for="fvcExtraCashCustomer">Customer</label>
+      <select id="fvcExtraCashCustomer" class="form-control fvc-tom-select">
+       <option value="">Choose customer</option>
+       @foreach(($customers ?? collect()) as $customer)
+        <option value="{{ $customer->id }}">{{ $customer->first_name }} {{ $customer->last_name }}</option>
+       @endforeach
+      </select></div>
+     <div class="form-group col-md-6"><label for="fvcExtraCashPlot">Plot</label>
+      <select id="fvcExtraCashPlot" class="form-control fvc-tom-select">
+       <option value="">Choose booked plot</option>
+       @foreach(($ecEditableBookings ?? collect()) as $booking)
+        <option value="{{ $booking->plot_id }}" data-customer="{{ $booking->customer_id }}">
+         {{ $booking->plot->name ?? ('Plot #'.$booking->plot_id) }}
+        </option>
+       @endforeach
+      </select></div>
+    </div>
+    <div class="form-row">
+     <div class="form-group col-md-6"><label for="fvcExtraCashChargeType">Charge Type</label>
+      <select id="fvcExtraCashChargeType" class="form-control">
+       <option value="">Existing charge type</option>
+       @foreach(($chargeTypes ?? collect()) as $chargeType)
+        <option value="{{ $chargeType->id }}">{{ $chargeType->name }}</option>
+       @endforeach
+      </select></div>
+     <div class="form-group col-md-6"><label for="fvcExtraCashReference">Slip Reference</label>
+      <input id="fvcExtraCashReference" type="text" class="form-control" maxlength="100"></div>
+    </div>
+    <div class="alert alert-warning small">Customer, Plot, Charge Type and Slip Reference changes are permitted only before any linked EC payments/reservations exist. The original voucher and both GL legs will be amended atomically.</div>
+   </div>
    <div class="form-group"><label for="fvcExtraCashPostingAccounts">Linked Debit / Credit Accounts</label>
     <textarea id="fvcExtraCashPostingAccounts" class="form-control" rows="2" readonly></textarea>
     <small class="text-muted">Original voucher ledger account identities cannot be changed through a same-source amount correction.</small>
@@ -1203,6 +1235,16 @@
                     }
                     $('#fvcExtraCashEditForm').data('source',source);
                     $('#fvcExtraCashEditTitle').text('Edit '+d.type+' Voucher');
+                    $('#fvcExtraCashIdentityFields').toggle(d.type==='EC');
+                    $('#fvcExtraCashCustomer').val(d.customer_id||'');
+                    var $plots=$('#fvcExtraCashPlot option');
+                    $plots.each(function(){
+                        var customer=$(this).attr('data-customer');
+                        $(this).prop('hidden',!!customer&&Number(customer)!==Number(d.customer_id));
+                    });
+                    $('#fvcExtraCashPlot').val(d.plot_id||'');
+                    $('#fvcExtraCashChargeType').val(d.charge_type_id||'');
+                    $('#fvcExtraCashReference').val(d.reference||'');
                     $('#fvcExtraCashDate').val(d.date);
                     $('#fvcExtraCashAmount').val(d.amount);
                     $('#fvcExtraCashDescription').val(d.description);
@@ -1214,6 +1256,13 @@
                 }).fail(function(xhr){extraCashError($('#fvcExtraCashEditError'),xhr);})
                 .always(function(){$button.prop('disabled',false);});
             });
+            $('#fvcExtraCashCustomer').on('change',function(){
+                var id=Number($(this).val()),$plot=$('#fvcExtraCashPlot');
+                $plot.val('');
+                $plot.find('option[data-customer]').each(function(){
+                    $(this).prop('hidden',Number($(this).attr('data-customer'))!==id);
+                });
+            });
             $('#fvcExtraCashEditForm').on('submit.fvcExtraCash',function(event){
                 event.preventDefault();
                 var source=Number($(this).data('source')),$button=$('#fvcExtraCashEditSubmit');
@@ -1222,7 +1271,11 @@
                 $.ajax({url:extraCashBase+'/'+source,type:'PUT',dataType:'json',
                     headers:{Accept:'application/json','X-CSRF-TOKEN':$('meta[name="csrf-token"]').attr('content')},
                     data:{date:$('#fvcExtraCashDate').val(),amount:$('#fvcExtraCashAmount').val(),
-                        description:$('#fvcExtraCashDescription').val()}})
+                        description:$('#fvcExtraCashDescription').val(),
+                        customer_id:$('#fvcExtraCashIdentityFields').is(':visible')?$('#fvcExtraCashCustomer').val():null,
+                        plot_id:$('#fvcExtraCashIdentityFields').is(':visible')?$('#fvcExtraCashPlot').val():null,
+                        charge_type_id:$('#fvcExtraCashIdentityFields').is(':visible')?$('#fvcExtraCashChargeType').val():null,
+                        reference:$('#fvcExtraCashIdentityFields').is(':visible')?$('#fvcExtraCashReference').val():null}})
                 .done(function(result){
                     $('#fvcExtraCashEditModal').modal('hide');
                     extraCashNotify('success',result.message||'Extra Charge updated.');
