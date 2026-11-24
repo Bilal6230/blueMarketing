@@ -118,6 +118,7 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertStringContainsString("private const REVERSAL_TYPES = ['CR', 'CP', 'BD', 'BW', 'PPR', 'PP']", $controller);
         self::assertStringContainsString("Rule::in(self::REVERSAL_TYPES)", $controller);
         self::assertStringContainsString('@if(in_array($type,$reversalTypes,true))', $view);
+        self::assertStringContainsString("compact('policies','approvers','types','reversalTypes')", $controller);
         self::assertStringContainsString("['required',Rule::in(array_keys(self::TYPES))]", $controller);
         self::assertStringContainsString('vs-policy-form', $view);
         foreach (['EC','ECP','BO','LAB','ST-IN','ST-OUT','SB-PUR','SB-SALE'] as $series) {
