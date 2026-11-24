@@ -30,6 +30,22 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertStringContainsString("method:'POST'", $view);
     }
 
+    public function test_settings_are_grouped_with_functional_reversal_vouchers_first_and_approval_only_second(): void
+    {
+        $view=file_get_contents(dirname(__DIR__,3).'/resources/views/admin/finance/voucher/settings.blade.php');
+        self::assertIsString($view);
+        self::assertStringContainsString("'title'=>'Approval + Reversal Settings'", $view);
+        self::assertStringContainsString("'title'=>'Approval Settings Only'", $view);
+        self::assertStringContainsString("'codes'=>\$reversalTypes", $view);
+        self::assertStringContainsString("array_values(array_diff(array_keys(\$types),\$reversalTypes))", $view);
+        self::assertStringContainsString("@foreach(\$group['codes'] as \$type)", $view);
+        self::assertStringContainsString('@php($definition=$types[$type])', $view);
+        self::assertStringContainsString('@php($policy=$policies->get($type))', $view);
+        self::assertStringContainsString('@if(in_array($type,$reversalTypes,true))', $view);
+        self::assertStringContainsString('vs-group-heading', $view);
+        self::assertSame(1,substr_count($view,'class="vs-policy-form"'));
+    }
+
     public function test_reversal_action_visibility_respects_project_policy_without_hiding_edit_delete(): void
     {
         $root=dirname(__DIR__,3);
