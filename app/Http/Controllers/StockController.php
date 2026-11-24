@@ -74,7 +74,13 @@ class StockController extends Controller
             ->where(['project_id' => $selectedProjectId])
             ->get();
         $x['headaccounts'] = $data_list;
-        $x['partyAccountOptions'] = ProjectHeadSubhead::availableForPosting()
+        // The shared page embeds posting account options. Do not leak
+        // these through Items-only / Parties-only read access.
+        $mayEditPosting = $x['stockAbilities']['entries']['create']
+            || $x['stockAbilities']['entries']['edit']
+            || $x['stockAbilities']['billing']['create']
+            || $x['stockAbilities']['billing']['edit'];
+        $x['partyAccountOptions'] = $mayEditPosting ? ProjectHeadSubhead::availableForPosting()
             ->where('project_id', (int) $selectedProjectId)->whereNull('plot_id')->whereNull('customer_id')
             ->with(['headAccounting:id,name', 'subheadAccounting:id,name'])->get()
             ->map(fn ($account) => [
@@ -84,7 +90,7 @@ class StockController extends Controller
                 'subhead_id' => (int) $account->subhead_accounting_id,
                 'subhead_name' => (string) ($account->subheadAccounting->name ?? 'Sub-account'),
                 'label' => ($account->headAccounting->name ?? 'Head').' / '.($account->subheadAccounting->name ?? 'Sub-account'),
-            ])->values();
+            ])->values() : collect();
         return view('admin.stock.index', $x);
     }
 
