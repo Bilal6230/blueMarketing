@@ -323,6 +323,11 @@ class BookingController extends Controller
     public function store(Request $request)
     {
         $projectId = (int) getSelectedTown();
+        // No discount is a valid zero-discount booking. Normalize once before
+        // both request validation and precise BCMath pricing.
+        if(trim((string)$request->input('discount_value',''))===''){
+            $request->merge(['discount_value'=>'0']);
+        }
         foreach (['plot_rate', 'total_price', 'park_facing', 'carner_price', 'discount_value'] as $moneyField) {
             if ($request->exists($moneyField)) {
                 $request->merge([$moneyField => str_replace(',', '', (string) $request->input($moneyField))]);
@@ -519,10 +524,9 @@ class BookingController extends Controller
                 'plot_id' => $request->input('plot_id'),
             ]);
 
-            Alert::error(
-                'Notification',
-                'Unable to save the booking. Please try again or contact support.'
-            )->toToast()->toHtml();
+            return back()->withErrors([
+                'booking' => 'Booking could not be saved. Check the selected plot, active project accounts and sale price; review the server error log if it persists.'
+            ])->withInput();
         }
 
         return back();
