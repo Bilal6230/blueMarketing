@@ -28,6 +28,27 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertStringContainsString("method:'POST'", $view);
     }
 
+    public function test_reversal_action_visibility_respects_project_policy_without_hiding_edit_delete(): void
+    {
+        $root=dirname(__DIR__,3);
+        $controller=file_get_contents($root.'/app/Http/Controllers/Finance/VoucherController.php');
+        $directory=file_get_contents($root.'/app/Http/Controllers/Finance/DailyVoucherDirectoryController.php');
+        $receipt=file_get_contents($root.'/resources/views/admin/finance/voucher/plot_receipt_workspace.blade.php');
+        $purchase=file_get_contents($root.'/resources/views/admin/finance/voucher/plot_purchase_workspace.blade.php');
+        foreach([$controller,$directory,$receipt,$purchase] as $file)self::assertIsString($file);
+        self::assertStringContainsString("enabled(\$projectId,'PPR')", $controller);
+        self::assertStringContainsString("enabled(\$projectId,'PP')", $controller);
+        self::assertStringContainsString("'can_reverse' => \$reversalEnabled &&", $controller);
+        self::assertStringContainsString("'can_reverse' => app(", $controller);
+        self::assertStringContainsString("'can_edit' =>", $controller);
+        self::assertStringContainsString('VoucherReversalPolicy::class', $directory);
+        self::assertStringContainsString('VOUCHER_REVERSAL_DISABLED', $directory);
+        self::assertStringContainsString('if(r.can_reverse)', $receipt);
+        self::assertStringContainsString('if(x.can_reverse)', $purchase);
+        self::assertStringContainsString('pr-edit ml-1', $receipt);
+        self::assertStringContainsString('pp-edit ml-1', $purchase);
+    }
+
     public function test_only_typed_reversal_writer_applies_the_policy_at_the_write_boundary(): void
     {
         $root=dirname(__DIR__,3);
