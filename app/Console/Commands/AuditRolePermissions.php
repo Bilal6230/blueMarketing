@@ -44,6 +44,11 @@ class AuditRolePermissions extends Command
                     'name'=>$name,
                     'guard'=>(string)$item->guard_name,
                     'category'=>RolePermissionCatalog::category($name),
+                    'module'=>RolePermissionCatalog::isFinanceAction($name)
+                        ? 'finance' : RolePermissionCatalog::generalModule($name),
+                    'selectable_in_role_editor'=>RolePermissionCatalog::isFinanceAction($name)
+                        ? RolePermissionCatalog::isSelectableFinance($name)
+                        : !RolePermissionCatalog::isLegacyVoucher($name),
                     'role_grants'=>(int)($roleCount[$item->id] ?? 0),
                     'role_names'=>$roleNames[$item->id] ?? [],
                     'direct_user_grants'=>(int)($userCount[$item->id] ?? 0),
@@ -61,6 +66,10 @@ class AuditRolePermissions extends Command
                 'legacy_voucher'=>$items->where('category','legacy')->count(),
                 'other'=>$items->where('category','general')->count(),
                 'unassigned'=>$items->filter(fn($p)=>$p['role_grants']===0 && $p['direct_user_grants']===0)->count(),
+                'finance_unexposed'=>$items->filter(fn($p)=>$p['category']==='finance'
+                    && !$p['selectable_in_role_editor'])->count(),
+                'hidden_with_active_grants'=>$items->filter(fn($p)=>!$p['selectable_in_role_editor']
+                    && ($p['role_grants']>0 || $p['direct_user_grants']>0))->count(),
             ],
             'permissions'=>$items->all(),
         ];
@@ -70,7 +79,9 @@ class AuditRolePermissions extends Command
             $this->info('Read-only permission audit: '.$report['database']);
             $this->table(['Name','Guard','Category','Role grants','Direct grants'],
                 $items->map(fn($p)=>[$p['name'],$p['guard'],$p['category'],$p['role_grants'],$p['direct_user_grants']])->all());
-            $this->line('Total: '.$report['total'].' | Legacy voucher: '.$report['counts']['legacy_voucher'].' | Unassigned: '.$report['counts']['unassigned']);
+            $this->line('Total: '.$report['total'].' | Legacy voucher: '.$report['counts']['legacy_voucher'].' | Unassigned: '.$report['counts']['unassigned']
+                .' | Hidden finance choices: '.$report['counts']['finance_unexposed']
+                .' | Hidden grants preserved: '.$report['counts']['hidden_with_active_grants']);
         }
         return self::SUCCESS;
     }
