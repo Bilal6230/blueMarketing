@@ -957,6 +957,7 @@
                         <a class="btn btn-outline-primary btn-sm disabled" id="exportSelectedItems" href="{{ route('stocks.items.export', ['format' => 'xlsx']) }}" aria-disabled="true"><i class="bi bi-check2-square me-1"></i>Export selected Excel</a>
                       </div>
                     </div>
+                    @if(!empty($stockAbilities['items']['create']))
                     <form id="itemImportForm" class="row g-2 align-items-end mt-2">
                       <div class="col-md-8">
                         <label class="form-label pv-small" for="itemImportFile">Import Excel or CSV</label>
@@ -966,6 +967,7 @@
                         <button class="btn btn-primary btn-sm" type="submit"><i class="bi bi-upload me-1"></i>Preview Import</button>
                       </div>
                     </form>
+                    @endif
                     <div id="itemImportPreview" class="mt-3" hidden></div>
                   </div>
                   <div class="stock-items-side-by-side"><div class="stock-import-history"><div class="mb-3">
