@@ -458,6 +458,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         ->middleware('permission:read setting')->name('finance.voucher-settings.index');
     Route::post('finance/voucher-settings', [\App\Http\Controllers\Finance\VoucherSettingsController::class,'save'])
         ->middleware(['permission:update setting','throttle:20,1'])->name('finance.voucher-settings.save');
+    Route::post('finance/voucher-settings/reversal', [\App\Http\Controllers\Finance\VoucherSettingsController::class,'saveReversal'])
+        ->middleware(['permission:update setting','throttle:20,1'])->name('finance.voucher-settings.reversal.save');
 
     Route::prefix('finance/daily-vouchers/approvals')->name('finance.daily-vouchers.approvals.')
         ->controller(App\Http\Controllers\Finance\DailyVoucherApprovalController::class)->group(function () {
