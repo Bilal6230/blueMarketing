@@ -19,6 +19,7 @@ class StockBill extends Model
         'party_id',
         'entry_id',
         'total_minor',
+        'narration',
         'created_by',
         'updated_by',
     ];
