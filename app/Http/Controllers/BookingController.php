@@ -2674,7 +2674,7 @@ class BookingController extends Controller
         $x['class'] = 'cash-in';
         $x['bg_voucher'] = 'info-cash-in';
         $projectId = getSelectedTown();
-        $data = CustomerLedger::with('customer_list', 'plot_list')->whereIn('transaction_type', ['null', 'EC'])->where('is_active', '1')->where('project_id', getSelectedTown())->get();
+        $data = CustomerLedger::with('customer_list', 'plot_list')->whereIn('transaction_type', ['null', 'EC', 'ECP'])->where('is_active', '1')->where('project_id', getSelectedTown())->get();
         $displayRows = Schema::hasTable('project_voucher_display_numbers')
             ? DB::table('project_voucher_display_numbers')
             ->where('project_id', $projectId)->where('source_kind', 'customer_ledger')
