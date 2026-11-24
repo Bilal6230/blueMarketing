@@ -1051,7 +1051,7 @@
                         </button>
                     </div>
                     <div id="personHeader" class="row" style="margin-bottom:10px"></div>
-                    @if(\App\Services\Finance\V2OriginalWorkflowAccess::enabled())
+                    @if(\App\Services\Finance\FinanceWorkflowAccess::selected())
                         <form id="typedPayrollFields">
                             <input type="hidden" name="amount" value="0.00">
                             @include('admin.finance.voucher.typed_posting_fields', ['includePostingDate' => true])
