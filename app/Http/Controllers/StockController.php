@@ -35,6 +35,13 @@ class StockController extends Controller
     {
         $selectedProjectId = getSelectedTown();
         $x['title'] = 'Stock';
+        $x['stockAbilities'] = [];
+        foreach (\App\Support\Stock\StockAbility::MODULES as $module) {
+            foreach (\App\Support\Stock\StockAbility::ACTIONS as $action) {
+                $x['stockAbilities'][$module][$action] =
+                    \App\Support\Stock\StockAbility::allows(auth()->user(), $module, $action);
+            }
+        }
         $x['stocks'] = Stock::where('project_id', $selectedProjectId)->get();
         $projectStockSchemaReady = Schema::hasColumn('stock_entries', 'project_id')
             && Schema::hasColumn('stock_bills', 'project_id')
