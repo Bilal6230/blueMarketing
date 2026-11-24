@@ -3010,14 +3010,37 @@
       // Keep all authored event/AJAX handlers in jQuery and use the native
       // Bootstrap modal API, as the existing stock Edit modal already does.
       var stockDocModal=function(selector,action){
-          var element=$(selector)[0];
-          if(!element||!window.bootstrap||!window.bootstrap.Modal){
-              stockDocNotify('error','Stock modal component is unavailable.');
-              return;
+          var $modal=$(selector),element=$modal[0];
+          if(!element)return;
+          if(window.bootstrap&&window.bootstrap.Modal){
+              try{
+                  var klass=window.bootstrap.Modal;
+                  var instance=$.isFunction(klass.getOrCreateInstance)
+                      ?klass.getOrCreateInstance(element)
+                      :($.isFunction(klass.getInstance)&&klass.getInstance(element))||new klass(element);
+                  if(action==='show')instance.show();else instance.hide();
+                  return;
+              }catch(error){
+                  // An unavailable/broken Bootstrap bundle must not disable stock CRUD.
+              }
           }
-          var instance=bootstrap.Modal.getOrCreateInstance(element);
-          if(action==='show')instance.show();
-          else instance.hide();
+          if($.fn.modal){
+              try{$modal.modal(action==='show'?'show':'hide');return;}catch(error){}
+          }
+          // Match the existing stock-create modal fallback when neither
+          // Bootstrap plugin is available (Laragon/offline environments).
+          if(action==='show'){
+              $('.stock-doc-fallback-backdrop').remove();
+              $modal.css({display:'block',position:'fixed',inset:0,zIndex:1060,overflowY:'auto'})
+                  .addClass('show').attr('aria-hidden','false');
+              $('<div class="modal-backdrop fade show stock-doc-fallback-backdrop">')
+                  .css('z-index',1050).appendTo('body');
+              $('body').addClass('modal-open').css('overflow','hidden');
+          }else{
+              $modal.hide().removeClass('show').attr('aria-hidden','true');
+              $('.stock-doc-fallback-backdrop').remove();
+              $('body').removeClass('modal-open').css('overflow','');
+          }
       };
       var stockDocHide=function(selector){stockDocModal(selector,'hide');};
       var stockDocAddLine=function(line){
