@@ -200,7 +200,7 @@ final class StockDocumentEditor
     }
 
     public function update(int $projectId,string $kind,int $sourceId,string $date,
-        array $submitted,?string $narration=null): void
+        array $submitted,?string $narration=null,?string $vehicle=null,?string $driver=null): void
     {
         FinanceConnectionGuard::assertAllowed();
         $day=\DateTimeImmutable::createFromFormat('!Y-m-d',$date);
@@ -210,7 +210,7 @@ final class StockDocumentEditor
             throw new \DomainException('Stock correction source, date or row count is invalid.');
         }
         $this->schema();
-        DB::transaction(function()use($projectId,$kind,$sourceId,$date,$submitted,$narration):void {
+        DB::transaction(function()use($projectId,$kind,$sourceId,$date,$submitted,$narration,$vehicle,$driver):void {
             DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
             [$header,$old,$moves,$customer,$legs,$direction,$oldDate,$reference]
                 =$this->source($projectId,$kind,$sourceId);
@@ -252,7 +252,9 @@ final class StockDocumentEditor
             }
             if($total<1)throw new \DomainException('Stock corrected financial total must be positive.');
             $same=count($all)===$old->count()&&$oldDate===$date
-                &&($narration===null||trim($narration)===(string)($entry?$header->reason:''));
+                &&($narration===null||trim($narration)===(string)($entry?$header->reason:''))
+                &&(!$entry||(($vehicle===null||$vehicle===(string)($header->vehicle_no??''))
+                    &&($driver===null||$driver===(string)($header->driver_name??''))));
             if($same){
                 foreach($all as $row){
                     $past=$old->get($row['id']);
@@ -325,6 +327,8 @@ final class StockDocumentEditor
             $headerUpdate=[$dateField=>$date,'updated_at'=>$now];
             if($entry){
                 if($narration!==null)$headerUpdate['reason']=$narration;
+                if($vehicle!==null)$headerUpdate['vehicle_no']=$vehicle;
+                if($driver!==null)$headerUpdate['driver_name']=$driver;
             }else $headerUpdate['total_minor']=$total;
             DB::table($headerTable)->where('id',$sourceId)
                 ->where('project_id',$projectId)->whereNull('deleted_at')
