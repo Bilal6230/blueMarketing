@@ -78,7 +78,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
 
     Route::controller(UserController::class)->group(function () {
         Route::get('user', 'index')->middleware(['permission:read user'])->name('user.index');
-        Route::post('/user/status-toggle', 'toggleStatus')->name('user.status.toggle');
+        Route::post('/user/status-toggle', 'toggleStatus')->middleware('permission:update user')->name('user.status.toggle');
         Route::post('user', 'store')->middleware(['permission:create user'])->name('user.store');
         Route::post('user/show', 'show')->middleware(['permission:read user'])->name('user.show');
         Route::put('user', 'update')->middleware(['permission:update user'])->name('user.update');
@@ -182,10 +182,10 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::post('hold', 'hold')->middleware(['permission:create plot'])->name('project.plot.hold');
         Route::delete('unhold', 'unHold')->middleware(['permission:delete plot'])->name('project.plot.unhold');
 
-        Route::post('plot/number/update', 'update_plot_number')->name('update_plot_number.store');
+        Route::post('plot/number/update', 'update_plot_number')->middleware('permission:update plot number')->name('update_plot_number.store');
         Route::get('plot/project/inventory', 'inventory')->middleware(['permission:view inventory'])->name('booking.plot.inventory');
 
-        Route::get('plot/{id}/history', 'showPlotHistory')->name('project.plot.history');
+        Route::get('plot/{id}/history', 'showPlotHistory')->middleware('permission:read plot')->name('project.plot.history');
 
 
 
@@ -213,9 +213,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::post('crm/request-edit', 'requestEditBtn')->middleware(['permission:lead search'])->name('request.edit.btn');
 
         Route::get('crm/lead/assign/', 'assign')->middleware(['permission:read lead'])->name('crm.lead.assign');
-        Route::get('crm/lead/work/', 'details')->name('lead.work');
+        Route::get('crm/lead/work/', 'details')->middleware('permission:read lead')->name('lead.work');
         Route::post('work/lead', 'logUpdate')->middleware(['permission:create lead'])->name('lead.work.store');
-        Route::post('crm/lead/search/', 'search')->name('lead.search');
+        Route::post('crm/lead/search/', 'search')->middleware('permission:lead search')->name('lead.search');
     });
 
     Route::controller(App\Http\Controllers\LeadController::class)->group(function () {
@@ -230,7 +230,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::get('report/check', 'check_report')->middleware(['permission:cheque report'])->name('report.check');
         Route::post('report/check', 'check_report')->middleware(['permission:cheque report'])->name('report.check.post');
         Route::put('report/check', 'bank_posting_check')->middleware(['permission:pass cheque'])->name('report.check.bank.posting');
-        Route::get('reports/check-history/{id}', 'checkHistory')->name('admin.reports.check_history');
+        Route::get('reports/check-history/{id}', 'checkHistory')->middleware('permission:cheque report')->name('admin.reports.check_history');
 
 
     });
