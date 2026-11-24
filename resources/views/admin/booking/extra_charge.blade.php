@@ -1211,6 +1211,20 @@
                     if($.blueActionMenu)$.blueActionMenu.enhance($table.find('td.blue-actions-cell'));
                 });
             };
+            // The ECP Edit/Delete dialogs stack above their payment-history
+            // parent rather than replacing it or navigating away.
+            $('#fvcExtraCashEditModal,#fvcExtraCashDeleteModal').on('show.bs.modal',function(){
+                if($('#fvcPaymentHistoryModal').hasClass('show')){
+                    $(this).css('z-index',1070);
+                    setTimeout(function(){
+                        $('.modal-backdrop').last().css('z-index',1060);
+                    },0);
+                }
+            }).on('hidden.bs.modal',function(){
+                if($('#fvcPaymentHistoryModal').hasClass('show')){
+                    $('body').addClass('modal-open');
+                }
+            });
             $(document).on('click.fvcPaymentHistory','#example1 .fvc-payment-history',function(event){
                 event.preventDefault();
                 var id=String($(this).attr('data-charge-id')||'');
@@ -1236,13 +1250,17 @@
                     $('#fvcExtraCashEditForm').data('source',source);
                     $('#fvcExtraCashEditTitle').text('Edit '+d.type+' Voucher');
                     $('#fvcExtraCashIdentityFields').toggle(d.type==='EC');
-                    $('#fvcExtraCashCustomer').val(d.customer_id||'');
+                    if($('#fvcExtraCashCustomer')[0]?.tomselect){
+                        $('#fvcExtraCashCustomer')[0].tomselect.setValue(String(d.customer_id||''),true);
+                    }else $('#fvcExtraCashCustomer').val(d.customer_id||'');
                     var $plots=$('#fvcExtraCashPlot option');
                     $plots.each(function(){
                         var customer=$(this).attr('data-customer');
                         $(this).prop('hidden',!!customer&&Number(customer)!==Number(d.customer_id));
                     });
-                    $('#fvcExtraCashPlot').val(d.plot_id||'');
+                    if($('#fvcExtraCashPlot')[0]?.tomselect){
+                        $('#fvcExtraCashPlot')[0].tomselect.setValue(String(d.plot_id||''),true);
+                    }else $('#fvcExtraCashPlot').val(d.plot_id||'');
                     $('#fvcExtraCashChargeType').val(d.charge_type_id||'');
                     $('#fvcExtraCashReference').val(d.reference||'');
                     $('#fvcExtraCashDate').val(d.date);
@@ -1259,6 +1277,7 @@
             $('#fvcExtraCashCustomer').on('change',function(){
                 var id=Number($(this).val()),$plot=$('#fvcExtraCashPlot');
                 $plot.val('');
+                if($plot[0]?.tomselect)$plot[0].tomselect.clear(true);
                 $plot.find('option[data-customer]').each(function(){
                     $(this).prop('hidden',Number($(this).attr('data-customer'))!==id);
                 });
