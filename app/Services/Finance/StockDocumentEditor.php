@@ -58,7 +58,7 @@ final class StockDocumentEditor
         }
     }
 
-    /** @return array{0:object,1:\Illuminate\Support\Collection,2:\Illuminate\Support\Collection,3:object,4:\Illuminate\Support\Collection,5:string,6:string,7:string} */
+    /** @return array{0:object,1:\Illuminate\Support\Collection,2:\Illuminate\Support\Collection,3:object,4:\Illuminate\Support\Collection,5:string,6:string,7:string,8:bool} */
     private function source(int $projectId,string $kind,int $sourceId): array
     {
         $entry=$kind==='entry';
@@ -162,7 +162,7 @@ final class StockDocumentEditor
                 &&$this->parseMoney($leg->amount_in)===0)->count()!==1) {
             throw new \DomainException('Stock source ledger FK or balanced debit/credit legs differ.');
         }
-        return [$header,$lines,$moves,$customer,$legs,$direction,$date,$reference];
+        return [$header,$lines,$moves,$customer,$legs,$direction,$date,$reference,$legacyHundredfold];
     }
 
     private function balanceChanges(int $projectId,string $direction,
@@ -212,7 +212,7 @@ final class StockDocumentEditor
         $this->schema();
         DB::transaction(function()use($projectId,$kind,$sourceId,$date,$submitted,$narration,$vehicle,$driver):void {
             DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
-            [$header,$old,$moves,$customer,$legs,$direction,$oldDate,$reference]
+            [$header,$old,$moves,$customer,$legs,$direction,$oldDate,$reference,$legacyHundredfold]
                 =$this->source($projectId,$kind,$sourceId);
             $entry=$kind==='entry';$lineTable=$entry?'stock_entry_lines':'stock_bill_lines';
             $headerTable=$entry?'stock_entries':'stock_bills';
