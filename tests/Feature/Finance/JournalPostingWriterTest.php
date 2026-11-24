@@ -464,6 +464,43 @@ class JournalPostingWriterTest extends TestCase
         (new PostingReportReader())->lines(1);
     }
 
+    public function test_milestone05_reversal_switch_blocks_then_allows_same_verified_journal_batch(): void
+    {
+        Schema::create('daily_voucher_approval_policies',function(Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('project_id');
+            $table->string('voucher_type',12);
+            $table->boolean('approval_required')->default(false);
+            $table->boolean('reversal_enabled')->default(true);
+            $table->unique(['project_id','voucher_type']);
+        });
+        DB::table('daily_voucher_approval_policies')->insert([
+            'project_id'=>1,'voucher_type'=>'JV','reversal_enabled'=>false,
+        ]);
+        $original=(new JournalPostingWriter())->post(1,51,'JV-M05-ORIGINAL-20261124');
+        $writer=new PostingReversalWriter();
+        $beforeBatches=DB::table('finance_posting_batches')->count();
+        $beforeLines=DB::table('finance_posting_lines')->count();
+        try{
+            $writer->reverse(1,$original,'JV-M05-REVERSE-20261124','2026-10-31','Test reversal');
+            $this->fail('Disabled reversal must never create a posting.');
+        }catch(\DomainException $exception){
+            $this->assertSame('VOUCHER_REVERSAL_DISABLED',$exception->getMessage());
+        }
+        $this->assertSame($beforeBatches,DB::table('finance_posting_batches')->count());
+        $this->assertSame($beforeLines,DB::table('finance_posting_lines')->count());
+        DB::table('daily_voucher_approval_policies')
+            ->where('project_id',1)->where('voucher_type','JV')
+            ->update(['reversal_enabled'=>true]);
+        $reversal=$writer->reverse(1,$original,'JV-M05-REVERSE-20261124','2026-10-31','Test reversal');
+        $this->assertNotSame($original,$reversal);
+        $this->assertSame($original,(int)DB::table('finance_posting_batches')
+            ->where('id',$reversal)->value('reversal_of_batch_id'));
+        $this->assertSame($beforeBatches+1,DB::table('finance_posting_batches')->count());
+        $this->assertSame($beforeLines+2,DB::table('finance_posting_lines')->count());
+        $this->assertDatabaseCount('finance_posting_source_claims',1);
+    }
+
     public function test_v2_reversal_is_immutable_balanced_and_reported_with_original_typed_source(): void
     {
         $original = (new JournalPostingWriter())->post(1, 51, 'JV-REVERSAL-ORIGINAL-01');
