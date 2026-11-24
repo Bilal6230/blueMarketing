@@ -40,6 +40,7 @@ final class VoucherSettingsController extends Controller
         'ECP' => ['label'=>'Extra Charge Payment', 'supported'=>false],
         // These posted source series are reversible via the unified finance
         // API, without generic Daily Voucher approval controls.
+        'BO' => ['label'=>'Original Booking Posting', 'supported'=>false],
         'LAB' => ['label'=>'Labour Posting', 'supported'=>false],
         'ST-IN' => ['label'=>'Stock Entry In', 'supported'=>false],
         'ST-OUT' => ['label'=>'Stock Entry Out', 'supported'=>false],
