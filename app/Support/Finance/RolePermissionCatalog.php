@@ -39,6 +39,9 @@ final class RolePermissionCatalog
     public static function generalModule(string $name): string
     {
         $name = strtolower(trim($name));
+        if (preg_match('/^stock (items|parties|entries|billing) (view|create|edit|delete)$/',$name,$matches)) {
+            return 'stock-'.$matches[1];
+        }
         if ($name === 'filemanager') return 'filemanager';
         if ($name === 'send sms') return 'sms';
         // Exact historical names from the owner's actual permission audit:
@@ -79,6 +82,10 @@ final class RolePermissionCatalog
     public static function generalModuleLabel(string $module): string
     {
         return match ($module) {
+            'stock-items' => 'Stock · Items',
+            'stock-parties' => 'Stock · Parties',
+            'stock-entries' => 'Stock · Entries',
+            'stock-billing' => 'Stock · Billing',
             'filemanager' => 'File Manager',
             'sms' => 'SMS',
             'expence' => 'Expenses',
