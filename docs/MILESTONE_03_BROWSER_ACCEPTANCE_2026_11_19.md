@@ -1,3 +1,7 @@
+## M05 owner acceptance scope correction — 2026-11-24
+
+Owner confirms final browser Tests **1/2/3 PASS**. Test 4 was withdrawn because EC/ECP/Stock/Labour/Booking entries have no functional browser Reverse button. Removed their reversal-only cards and restricted the reversal-settings Save endpoint to **CR, CP, BD, BW, PPR and PP**; existing approval setup, posted history, and M05 backend posting guards remain unchanged. Latest small settings-contract test and view cache need owner smoke-run after pull. Re-doing earlier passed tests is unnecessary. M03 Labour CP remains ON HOLD.
+
 ## M05 source-aware API / independent Delete — final code handoff (2026-11-24)
 
 The M05 generic authenticated API reversal now resolves original project-scoped typed claim and delegates to guarded journal/commission, cash, bank or plot lifecycle service; generic Stock/Booking/Labour reversal fails closed until dedicated safe lifecycle exists. Original Plot Receipt/Purchase **ordinary Delete** retains its compensating posting even when user-initiated Reversal is OFF. Typed batch alias `PR/PPR` and `CHR/BOR`, `CHP/BOP` switches are unified. Reversal-only policy entries cover EC/ECP and typed Stock/Labour/BO series without enabling their approval controls. Contract, SQLite integration and posted JV integration regressions committed. **Latest code requires owner's final local test results and limited browser checks; existing M03 accepted tests must not be reopened.** Full commands in `docs/README.md`. Labour CP remains ON HOLD.
