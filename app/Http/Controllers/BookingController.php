@@ -4342,6 +4342,59 @@ class BookingController extends Controller
     }
 
 
+    /**
+     * A brand-new booking always has its initial BO/SV accounting. Such a
+     * booking is removable only if exactly that balanced initial posting
+     * exists and nothing has ever been received or linked to its plot.
+     * Preserve source IDs and audit history by deactivating, never deleting GL.
+     */
+    private function archiveUnpaidBookingSale(Booking $booking, int $projectId): void
+    {
+        $related=CustomerLedger::query()->where('project_id',$projectId)
+            ->where('customer_id',$booking->customer_id)
+            ->where('plot_id',$booking->plot_id)->lockForUpdate()->get();
+        $sv=JournalVoucher::query()->where('project_id',$projectId)
+            ->where('type','SV')->where('reference','BOOKING-'.$booking->id)
+            ->lockForUpdate()->first();
+        if($related->isEmpty()&&!$sv)return;
+        if($related->count()!==1||!$sv||$related->first()->transaction_type!=='Bo'
+            ||(int)$related->first()->is_active!==1
+            ||(float)$related->first()->amount_out!==0.0
+            ||bccomp((string)$related->first()->amount_in,(string)$booking->total_price,2)!==0){
+            throw new \DomainException('Booking has dependent financial history. Use Booking Cancellation.');
+        }
+        $bo=$related->first();
+        $legs=Ledger::query()->where('customer_ledger_id',$bo->id)
+            ->where('type','SV')->where('type_id',$sv->id)
+            ->where('is_active',1)->lockForUpdate()->get();
+        $details=JournalVoucherDetail::query()->where('journal_voucher_id',$sv->id)
+            ->lockForUpdate()->get();
+        if($legs->count()!==2||$details->count()!==2
+            ||Ledger::query()->where('customer_ledger_id',$bo->id)->count()!==2
+            ||$legs->pluck('journal_voucher_detail_id')->unique()->count()!==2
+            ||$legs->pluck('journal_voucher_detail_id')->sort()->values()->all()
+                !==$details->pluck('id')->sort()->values()->all()
+            ||bccomp((string)$legs->sum('amount_in'),(string)$booking->total_price,2)!==0
+            ||bccomp((string)$legs->sum('amount_out'),(string)$booking->total_price,2)!==0
+            ||bccomp((string)$details->sum('debit'),(string)$booking->total_price,2)!==0
+            ||bccomp((string)$details->sum('credit'),(string)$booking->total_price,2)!==0){
+            throw new \DomainException('Original SV is not an isolated balanced booking posting.');
+        }
+        // No unrelated ledger may use a customer/plot-scoped account.
+        $relatedMapIds=ProjectHeadSubhead::query()->where('project_id',$projectId)
+            ->where('customer_id',$booking->customer_id)
+            ->where('plot_id',$booking->plot_id)->pluck('id');
+        if(Ledger::query()->whereIn('project_head_subheads_id',$relatedMapIds)
+            ->whereNotIn('id',$legs->pluck('id'))->exists()){
+            throw new \DomainException('Booking has linked ledger history. Use Booking Cancellation.');
+        }
+        $now=now();
+        Ledger::query()->whereIn('id',$legs->pluck('id'))->update(['is_active'=>0,'updated_at'=>$now]);
+        CustomerLedger::query()->whereKey($bo->id)->update(['is_active'=>0,'updated_at'=>$now]);
+        foreach($details as $detail)$detail->delete();
+        $sv->delete();
+    }
+
     public function destroy_booking(Request $request)
     {
         $projectId = (int) getSelectedTown();
@@ -4379,11 +4432,21 @@ class BookingController extends Controller
                 })
                 ->exists();
 
-            if ($linkedCustomerLedgerExists || $linkedBookingVoucherExists || $linkedLedgerExists) {
+            if ($linkedBookingVoucherExists) {
                 return response()->json([
-                    'error' => 'booking_has_financial_history',
-                    'message' => 'A booking with financial history cannot be deleted.',
-                ], 409);
+                    'error'=>'booking_has_financial_history',
+                    'message'=>'Booking has linked receipts/vouchers. Use Booking Cancellation.',
+                ],409);
+            }
+            try {
+                // The only allowed financial history is the automatic,
+                // untouched BO/SV pair written during Booking creation.
+                $this->archiveUnpaidBookingSale($booking,$projectId);
+            } catch (\DomainException $exception) {
+                return response()->json([
+                    'error'=>'booking_has_financial_history',
+                    'message'=>$exception->getMessage(),
+                ],409);
             }
 
             $plot = Plot::query()
