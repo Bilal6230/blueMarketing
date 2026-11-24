@@ -74,11 +74,8 @@ final class Milestone02PermissionEnforcementContractTest extends TestCase
             'stocks.bills.store'=>':billing,create',
             'stocks.bills.index'=>':billing,view',
         ] as $route=>$scope) {
-            self::assertMatchesRegularExpression(
-                '~middleware\\(\\\\App\\\\Http\\\\Middleware\\\\AuthorizeStockAbility::class\\.\\\''.
-                    preg_quote($scope,'~').'\\\'\\)->name\\(\\\''.preg_quote($route,'~').'\\\'\\)~',
-                $routes,$route
-            );
+            $needle="->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.'".$scope."')->name('".$route."')";
+            self::assertStringContainsString($needle,$routes,$route);
         }
         self::assertStringContainsString('StockAbility::allows(', $controller);
         self::assertStringContainsString("name('stocks.finance.approve')", $routes);
