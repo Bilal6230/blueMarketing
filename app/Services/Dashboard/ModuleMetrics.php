@@ -90,8 +90,29 @@ final class ModuleMetrics
             return ['active' => 0, 'present' => 0, 'pending_bills' => 0, 'payable' => 0, 'cost' => 0];
         }
         $attendance = DB::table('labour_attendances')->where('project_id', $projectId);
+        // Labour identities were made global: newer databases no longer have
+        // labours.project_id. Count only workers linked to this project's
+        // attendance instead of querying a removed column or counting all
+        // workers from unrelated projects.
+        $labours = DB::table('labours');
+        if (Schema::hasColumn('labours', 'deleted_at')) {
+            $labours->whereNull('labours.deleted_at');
+        }
+        if (Schema::hasColumn('labours', 'status')) {
+            $labours->where('labours.status', 'active');
+        }
+        if (Schema::hasColumn('labours', 'project_id')) {
+            $labours->where('labours.project_id', $projectId);
+        } else {
+            $labours->whereExists(function ($query) use ($projectId): void {
+                $query->selectRaw('1')
+                    ->from('labour_attendances as la')
+                    ->whereColumn('la.labour_id', 'labours.id')
+                    ->where('la.project_id', $projectId);
+            });
+        }
         return [
-            'active' => DB::table('labours')->where('project_id', $projectId)->where('status', 'active')->count(),
+            'active' => $labours->count(),
             'present' => (clone $attendance)->whereDate('date', now())->where('status', 'present')->count(),
             'pending_bills' => (clone $attendance)->where('voucher_status', 'notcreated')->count(),
             'payable' => (float) (clone $attendance)->where('paid_status', 'unpaid')->sum('amount'),
