@@ -4,7 +4,7 @@ namespace App\Support\Stock;
 
 /**
  * Stock has four real workspaces. Rights are intentionally a small 4x4
- * matrix; existing slip grants remain valid during the compatibility rollout.
+ * matrix. Old slip grants must never authorize Stock: modules stay isolated.
  */
 final class StockAbility
 {
@@ -29,16 +29,10 @@ final class StockAbility
             return false;
         }
         if (!in_array($module,self::MODULES,true)) return false;
-        if ($user->hasAnyRole(['superadmin','super-admin','Super Admin','admin'])) return true;
-        if ($user->can(self::name($module,$action))) return true;
-        // The old live roles were granted slip rights, not CRUD stock rights.
-        $fallback=match($action) {
-            'view'=>'read slip',
-            'create'=>'add slip',
-            'edit'=>'add slip',
-            'delete'=>'delete slip',
-        };
-        return $user->can($fallback);
+        // Superadmin is the immutable system owner role. All other roles,
+        // including "admin", need the exact Stock module/action permission.
+        if ($user->hasAnyRole(['superadmin','super-admin','Super Admin'])) return true;
+        return $user->can(self::name($module,$action));
     }
 
     public static function authorize(string $module,string $action): void
