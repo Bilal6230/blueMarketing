@@ -1,3 +1,7 @@
+## 2026-11-24 — Stock Entry/Bill Edit skeleton loader (owner browser retest pending)
+
+Owner confirmed Stock Edit item rows and form are functioning but rejected the teal informational loading alert. Replaced the `Loading original voucher and item mappings...` message with a blue-grey animated **field-shaped skeleton** inside the shared Entry/Bill Edit modal. While fetching metadata/details, the actual form fields are hidden; once AJAX settles, skeleton disappears and the existing populated form or error is shown. Includes reduced-motion support and a contract regression in `StockDocumentLifecycleContractTest`. No accounting, stock balances, or modal close paths changed. **Code pushed; local test/browser confirmation pending. Labour CP still ON HOLD.**
+
 # Milestone 03 — Browser Acceptance and Local Verification (2026-11-19)
 
 **Current status (owner update 2026-11-24): All Milestone 03 terminal and browser acceptance tests are reported PASS except Stock Entry/Bill and Labour Payment (CP), which remain the only two browser gates. Full milestone sign-off awaits these two.** This document is the active browser checklist and exact handoff for `upgrade/laravel-framework`. Record actual PASS/FAIL and screenshots in a later owner response; do not mark untested areas green. Local data must be a disposable/test database. The configured project ID must come from current application selection, never a hardcoded number.
