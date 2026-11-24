@@ -42,16 +42,23 @@ final class Milestone02PermissionEnforcementContractTest extends TestCase
         self::assertFalse(StockAbility::allows($actor,'billing','delete'));
     }
 
-    public function test_historical_slip_roles_keep_existing_access_during_rollout(): void
+    public function test_old_slip_and_admin_roles_cannot_bypass_stock_permissions(): void
     {
-        $actor=$this->actor(['read slip','add slip','delete slip']);
-        foreach(StockAbility::MODULES as $module){
-            foreach(StockAbility::ACTIONS as $action){
-                self::assertTrue(StockAbility::allows($actor,$module,$action),$module.' '.$action);
+        foreach ([
+            $this->actor(['read slip','add slip','delete slip']),
+            $this->actor(['read slip','add slip','delete slip'],['admin']),
+            $this->actor(['direct-update','create stock','edit stock']),
+            $this->actor([],['admin']),
+        ] as $actor) {
+            foreach (StockAbility::MODULES as $module) {
+                foreach (StockAbility::ACTIONS as $action) {
+                    self::assertFalse(StockAbility::allows($actor,$module,$action),$module.' '.$action);
+                }
             }
+            self::assertFalse(StockAbility::allows($actor,'workspace','view'));
         }
+        self::assertTrue(StockAbility::allows($this->actor([],['superadmin']),'workspace','view'));
         self::assertFalse(StockAbility::allows($this->actor([]),'workspace','view'));
-        self::assertFalse(StockAbility::allows($this->actor([]),'items','create'));
     }
 
     public function test_stock_routes_enforce_crud_and_do_not_replace_approval_or_labour_cp(): void
@@ -78,6 +85,9 @@ final class Milestone02PermissionEnforcementContractTest extends TestCase
             self::assertStringContainsString($needle,$routes,$route);
         }
         self::assertStringContainsString('StockAbility::allows(', $controller);
+        self::assertStringNotContainsString("||\$actor->can('direct-update')", $controller);
+        self::assertStringNotContainsString("||\$actor->can(\$action.' stock')", $controller);
+        self::assertStringNotContainsString("auth()->user()->can('edit stock')", $controller);
         $view=file_get_contents($root.'/resources/views/admin/stock/index.blade.php');
         self::assertIsString($view);
         self::assertStringContainsString('const stockAbilities = @json($stockAbilities)', $view);
