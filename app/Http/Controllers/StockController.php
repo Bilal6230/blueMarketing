@@ -1602,6 +1602,8 @@ class StockController extends Controller
         $data=$request->validate([
             'date'=>['required','date_format:Y-m-d'],
             'narration'=>['nullable','string','max:1000'],
+            'vehicle'=>['nullable','string','max:80'],
+            'driver'=>['nullable','string','max:120'],
             'lines'=>['required','array','min:1','max:100'],
             'lines.*.detail_id'=>['nullable','integer','min:1','distinct'],
             'lines.*.item_id'=>['required','integer','min:1'],
@@ -1611,7 +1613,7 @@ class StockController extends Controller
         try {
             app(\App\Services\Finance\StockDocumentEditor::class)->update(
                 (int)getSelectedTown(),$kind,$id,$data['date'],$data['lines'],
-                $data['narration']??null);
+                $data['narration']??null,$data['vehicle']??null,$data['driver']??null);
         }catch(\DomainException $e){
             return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
         }
