@@ -34,21 +34,13 @@ final class VoucherSettingsController extends Controller
         'PPR' => ['label'=>'Plot Receive Payment Voucher', 'supported'=>true],
         'PP' => ['label'=>'Plot Purchase Voucher', 'supported'=>true],
         'SV' => ['label'=>'Sales Voucher', 'supported'=>true],
-        // Cash EC/ECP can have typed reversals, but their approval lifecycle
-        // is not managed by the generic voucher approval form.
-        'EC' => ['label'=>'Extra Charge', 'supported'=>false],
-        'ECP' => ['label'=>'Extra Charge Payment', 'supported'=>false],
-        // These posted source series are reversible via the unified finance
-        // API, without generic Daily Voucher approval controls.
-        'BO' => ['label'=>'Original Booking Posting', 'supported'=>false],
-        'LAB' => ['label'=>'Labour Posting', 'supported'=>false],
-        'ST-IN' => ['label'=>'Stock Entry In', 'supported'=>false],
-        'ST-OUT' => ['label'=>'Stock Entry Out', 'supported'=>false],
-        'SB-PUR' => ['label'=>'Stock Purchase Bill', 'supported'=>false],
-        'SB-SALE' => ['label'=>'Stock Sale Bill', 'supported'=>false],
         'ONL_CORR' => ['label'=>'Online Transaction Correction', 'supported'=>true],
         'CHQ_CORR' => ['label'=>'Cheque Correction', 'supported'=>true],
     ];
+
+    // Only voucher families with an existing functional browser Reverse action.
+    // Keep Approval configuration independent for every supported voucher type.
+    private const REVERSAL_TYPES = ['CR', 'CP', 'BD', 'BW', 'PPR', 'PP'];
 
     private function authorizeSettings(): int
     {
@@ -71,6 +63,7 @@ final class VoucherSettingsController extends Controller
                 fn(User $user)=>\App\Services\Finance\VoucherApproverAccess::eligibleForAssignment($user,$project)
             )->values();
         $types=self::TYPES;
+        $reversalTypes=self::REVERSAL_TYPES;
         return view('admin.finance.voucher.settings',compact('policies','approvers','types'));
     }
 
@@ -124,15 +117,11 @@ final class VoucherSettingsController extends Controller
         abort_unless(Schema::hasColumn('daily_voucher_approval_policies','reversal_enabled'),409,
             'Run the Milestone 05 reversal policy migration first.');
         $data=$request->validate([
-            'voucher_type'=>['required',Rule::in(array_keys(self::TYPES))],
+            'voucher_type'=>['required',Rule::in(self::REVERSAL_TYPES)],
             'reversal_enabled'=>['required','boolean'],
         ]);
         $type=$data['voucher_type'];
-        if (in_array($type,['CHQ_CORR','ONL_CORR'],true)) {
-            throw ValidationException::withMessages([
-                'voucher_type'=>'Management source corrections use the linked custody workflow, not voucher reversal settings.',
-            ]);
-        }
+
         // Avoid resetting an existing approver/approval configuration.
         $policy=DailyVoucherApprovalPolicy::query()->firstOrCreate(
             ['project_id'=>$project,'voucher_type'=>$type],
