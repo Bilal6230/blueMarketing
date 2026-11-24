@@ -29,6 +29,18 @@ final class BookingExistingSaleAndExtraChargePaginationContractTest extends Test
         self::assertStringContainsString('$this->syncOriginalSale(', $service);
     }
 
+    public function test_legacy_booking_sv_amount_is_resolved_from_balanced_posted_legs(): void
+    {
+        $service=file_get_contents(dirname(__DIR__,3).'/app/Services/Booking/BookingAmendmentService.php');
+        self::assertIsString($service);
+        self::assertStringContainsString("if(\$vouchers->count()!==1)", $service);
+        self::assertStringContainsString("bccomp((string)\$legs->sum('amount_in'),(string)\$legs->sum('amount_out'),2)===0", $service);
+        self::assertStringContainsString("\$postedTotal=(string)\$legs->sum('amount_in');", $service);
+        self::assertStringContainsString("bccomp((string)\$bo->amount_in,\$postedTotal,2)", $service);
+        self::assertStringContainsString("\$targetTotal=\$amountChanged?\$newTotal:\$postedTotal;", $service);
+        self::assertStringContainsString("\$pricingChanged && bccomp(\$oldTotal,\$newTotal,2)!==0", $service);
+    }
+
     public function test_extra_charge_table_keeps_only_final_bottom_pagination(): void
     {
         $root=dirname(__DIR__,3);
