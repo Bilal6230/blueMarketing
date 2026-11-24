@@ -480,26 +480,34 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::delete('/{id}', 'destroy')->middleware(['permission:delete dasticash'])->name('destroy');
     });
 
-    Route::resource('labours', LabourController::class)->except(['show']);
+    // The labour master and attendance paths use existing real Spatie grants.
+    // Labour payment/CP routes remain intentionally unchanged and ON HOLD.
+    Route::get('labours', [LabourController::class,'index'])->middleware('permission:read labour')->name('labours.index');
+    Route::get('labours/create', [LabourController::class,'create'])->middleware('permission:create labour')->name('labours.create');
+    Route::post('labours', [LabourController::class,'store'])->middleware('permission:create labour')->name('labours.store');
+    Route::get('labours/{labour}/edit', [LabourController::class,'edit'])->middleware('permission:update labour')->name('labours.edit');
+    Route::put('labours/{labour}', [LabourController::class,'update'])->middleware('permission:update labour')->name('labours.update');
+    Route::patch('labours/{labour}', [LabourController::class,'update'])->middleware('permission:update labour');
+    Route::delete('labours/{labour}', [LabourController::class,'destroy'])->middleware('permission:delete labour')->name('labours.destroy');
     Route::get('/contractors', [App\Http\Controllers\ContractorController::class, 'index'])->middleware(['permission:read labour'])->name('contractors.index');
     Route::post('/contractors', [App\Http\Controllers\ContractorController::class, 'store'])->middleware(['permission:create labour'])->name('contractors.store');
     Route::put('/contractors/{contractor}', [App\Http\Controllers\ContractorController::class, 'update'])->middleware(['permission:update labour'])->whereNumber('contractor')->name('contractors.update');
     Route::patch('/contractors/{contractor}/status', [App\Http\Controllers\ContractorController::class, 'toggleStatus'])->middleware(['permission:update labour'])->whereNumber('contractor')->name('contractors.status');
     Route::get('/contractors/{contractor}/ledger', [App\Http\Controllers\ContractorController::class, 'ledger'])->middleware(['permission:read labour'])->whereNumber('contractor')->name('contractors.ledger');
     Route::post('/labours/sitestore', [LabourController::class, 'siteStore'])
-        ->name('labours.sitestore');
+        ->middleware('permission:create labour')->name('labours.sitestore');
     Route::get('/labours/attendance/week', [LabourController::class, 'loadAttendanceWeek'])
-        ->name('attendance.week.load');
+        ->middleware('permission:read attendance|read labour')->name('attendance.week.load');
     Route::get('/labour/{id}', [LabourController::class, 'labourHistory'])
-        ->name('labour.history');
+        ->middleware('permission:read labour')->name('labour.history');
     Route::post('/labours/check/validate', [LabourController::class, 'checkValidate'])
-        ->name('labours.check.validate');
+        ->middleware('permission:read labour')->name('labours.check.validate');
     Route::patch('/labours/{labour}/status', [LabourController::class, 'updateStatus'])
-        ->name('labours.updateStatus');
+        ->middleware('permission:update labour')->name('labours.updateStatus');
     Route::post('/labours/attendance', [LabourController::class, 'attendanceStore'])
-        ->name('labours.attendance');
+        ->middleware('permission:create attendance|create labour')->name('labours.attendance');
     Route::post('/labours/report', [LabourController::class, 'attendanceReport'])
-        ->name('labours.report');
+        ->middleware('permission:read attendance|read labour')->name('labours.report');
     Route::post('/attendance/labour-payment', [LabourController::class, 'labourPayment'])->name('labours.payment');
     Route::get('/labours/payment/{source}', [LabourController::class, 'paymentDetails'])
         ->whereNumber('source')->name('labours.payment.details');
@@ -507,19 +515,19 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         ->whereNumber('source')->name('labours.payment.update');
     Route::delete('/labours/payment/{source}', [LabourController::class, 'deletePayment'])
         ->whereNumber('source')->name('labours.payment.delete');
-    Route::post('/labours/update-rate', [LabourController::class, 'updateRate'])->name('labours.updateRate');
+    Route::post('/labours/update-rate', [LabourController::class, 'updateRate'])->middleware('permission:update labour')->name('labours.updateRate');
     Route::post('/labours/person/report', [LabourController::class, 'personAttendanceReport'])
-        ->name('labours.person.report');
+        ->middleware('permission:read attendance|read labour')->name('labours.person.report');
     Route::post('/labours/create/voucher', [LabourController::class, 'createVoucher'])
-        ->name('labours.create.voucher');
+        ->middleware('permission:create labour')->name('labours.create.voucher');
     Route::get('/labours/site-vouchers', [LabourController::class, 'siteVouchers'])
-        ->name('labours.site.vouchers');
+        ->middleware('permission:read labour')->name('labours.site.vouchers');
     Route::post('/labours/print/site/report', [LabourController::class, 'printSiteReport'])
-        ->name('labours.print.site.report');
+        ->middleware('permission:read labour')->name('labours.print.site.report');
     Route::post('/labours/print/person/report', [LabourController::class, 'printPersonReport'])
-        ->name('labours.print.person.report');
+        ->middleware('permission:read labour')->name('labours.print.person.report');
     Route::post('/labours/print/attendance/report', [LabourController::class, 'printAttendanceReport'])
-        ->name('labours.print.attendance.report');
+        ->middleware('permission:read attendance|read labour')->name('labours.print.attendance.report');
     Route::get('stocks', [StockController::class, 'index'])->middleware(\App\Http\Middleware\AuthorizeStockAbility::class.':workspace,view')->name('stocks.index');
 
     // Meta (items/parties for dropdowns)
