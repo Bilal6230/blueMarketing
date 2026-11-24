@@ -7,7 +7,7 @@
 <li class="nav-item"><a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard')?'active':'' }}"><i class="nav-icon fas fa-home"></i><p>Dashboard</p></a></li>
 
 <li class="nav-header">MAIN MENU</li>
-@canany(['read setting','read project','read user','read role','read permission','read landing page','read accounting','read plot','read sector','read area','filemanager'])
+@canany(['read setting','read project','read user','read landing page','read accounting','read plot','read sector','read area','filemanager'])
 <li class="nav-item {{ $tree(['setting.*','finance.voucher-settings.*','project.*','area.*','accounting.*','user.*','role.*','permission.*','landing-page.*','filemanager','project.plot-definitions.*','employee-definitions.*'])?'menu-open':'' }}"><a href="#" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Definitions & Settings<i class="right fas fa-angle-left"></i></p></a><ul class="nav nav-treeview">
  @can('read landing page')<li class="nav-item"><a href="{{ route('landing-page.admin.index') }}" class="nav-link {{ request()->routeIs('landing-page.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Landing Page Manager</p></a></li>@endcan
  @can('read project')<li class="nav-item"><a href="{{ route('project.index') }}" class="nav-link {{ request()->routeIs('project.index')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Projects</p></a></li>@endcan
