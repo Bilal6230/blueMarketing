@@ -94,6 +94,10 @@ The owner explicitly confirms that all other Milestone 03 terminal **and browser
 | Labour Payment (CP) | Previously implemented; owner reports other terminal tests complete | **PENDING** | **ONLY REMAINING GATE 2** |
 | All-project posting integrity | Owner-reported PASS, 6 projects, zero invalid active batches | N/A | PASS |
 
+### Latest Stock UI re-test state (2026-11-24)
+
+Owner confirms Edit item rows render and stock modal close buttons now work; however both Stock Entry and Stock Bill Edit form item rows had inconsistent layout vs the corresponding New form. A focused layout parity correction is committed on `upgrade/laravel-framework`: Item / Unit / Qty / Rate / compact Remove button / Line Amount / Total styling now follows the same compact row components as New Entry/New Bill. Pending owner verification: open Edit Entry and Edit Bill, inspect row layout parity, change quantity and save. Do not reopen earlier passed voucher tests. Labour CP remains ON HOLD.
+
 ### Only two remaining browser gates
 
 **A — Stock Entry / Stock Bill (2026-11-24 browser FAIL: Edit item rows missing, modal X/Cancel and post-save/post-delete close inconsistent; code correction committed, owner re-test pending)** `/admin/stocks`: On disposable local test project, create stock IN Entry item A quantity 5; edit quantity to 7 and verify exactly +2 on-hand change and updated ledger; add item B/remove item A without negative inventory; save unchanged twice (no duplicate movements); delete and verify active stock and accounting impacts revert while source history is retained. Create standalone *unlinked* purchase/sale Bill; edit and delete it. Attempt to edit a linked/billed Entry and confirm safe rejection. Verify Bootstrap 5 modals, AJAX toast error and no full-page reload.
