@@ -269,6 +269,9 @@ final class DailyVoucherDirectoryController extends Controller
                     ->whereIn('source_id',$sources->pluck('id'))
                     ->orderByDesc('id')->get()->unique('source_id')->keyBy('source_id');
             }
+            // Reversal settings vary by canonical posted series, not row ID.
+            $reversalPolicy=app(\App\Services\Finance\VoucherReversalPolicy::class);
+            $reversalBySeries=[];
             foreach ($sources as $source) {
                 $bankRelease=$bankReleases->get($source->id);
                 $typedPosting=$typedCash->get($source->id);
@@ -284,11 +287,13 @@ final class DailyVoucherDirectoryController extends Controller
                 $module = \App\Support\Finance\FinanceActionPermission::moduleForSeries($displayType);
                 $canEdit = $module !== null && auth()->user()?->can('finance '.$module.' edit');
                 $canDelete = $module !== null && auth()->user()?->can('finance '.$module.' delete');
+                $reversalSeries=in_array($series,['CHR','CHP'],true)
+                    ? $displayType : ($series ?: $displayType);
+                if(!array_key_exists($reversalSeries,$reversalBySeries)){
+                    $reversalBySeries[$reversalSeries]=$reversalPolicy->enabled($projectId,$reversalSeries);
+                }
                 $canReverse = $module !== null && auth()->user()?->can('finance '.$module.' reverse')
-                    && app(\App\Services\Finance\VoucherReversalPolicy::class)->enabled(
-                        $projectId, in_array($series,['CHR','CHP'],true)
-                            ? $displayType : ($series ?: $displayType)
-                    );
+                    && $reversalBySeries[$reversalSeries];
                 $canRelease = $module !== null && auth()->user()?->can('finance '.$module.' release');
                 $linkedLines = DB::table('ledgers as linked')
                     ->join('project_head_subheads as a', 'a.id', '=', 'linked.project_head_subheads_id')
