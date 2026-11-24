@@ -29,7 +29,7 @@ final class StockDocumentLifecycleContractTest extends TestCase
     {
         $view=file_get_contents(dirname(__DIR__,3).'/resources/views/admin/stock/index.blade.php');
         self::assertIsString($view);
-        self::assertStringContainsString("appendTo(\\$wrap);", $view);
+        self::assertStringContainsString('appendTo($wrap);', $view);
         self::assertStringContainsString("stockDocAddLine(line);", $view);
         self::assertStringContainsString('stockDocumentEditTotal', $view);
         self::assertStringContainsString('stockDocRecalculate();', $view);
