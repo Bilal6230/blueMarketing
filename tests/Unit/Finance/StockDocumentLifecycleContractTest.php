@@ -32,6 +32,14 @@ final class StockDocumentLifecycleContractTest extends TestCase
         self::assertStringContainsString('appendTo($wrap);', $view);
         self::assertStringContainsString("stockDocAddLine(line);", $view);
         self::assertStringContainsString('stockDocumentEditTotal', $view);
+        self::assertStringContainsString('stockDocumentItemsHeading', $view);
+        self::assertStringContainsString('stock-line-field', $view);
+        self::assertStringContainsString('stock-line-caption', $view);
+        self::assertStringContainsString('stock-doc-unit', $view);
+        self::assertStringContainsString('stock-line-summary', $view);
+        self::assertStringContainsString('stock-doc-remove stock-line-remove', $view);
+        self::assertStringContainsString('Bill Items', $view);
+        self::assertStringNotContainsString('Rate (minor units)', $view);
         self::assertStringContainsString('stockDocRecalculate();', $view);
         self::assertStringContainsString('click.stockModalClose', $view);
         self::assertStringContainsString("stockModal('#'+modal.id,'hide')", $view);
