@@ -2796,7 +2796,7 @@ class BookingController extends Controller
         // when posting, rather than configured with guessed chart IDs.
         $x['ecBankReady'] = true;
         $x['ecCashReady'] = true;
-        // The V2 customer_ledger.bank_id FK references banks.id, not a
+        // The canonical customer_ledger.bank_id FK references banks.id, not a
         // project_bank_accounts identifier or a free-form numeric value.
         $x['receiptBanks'] = Schema::hasTable('banks')
             ? DB::table('banks')
