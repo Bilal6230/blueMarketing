@@ -284,7 +284,8 @@ final class DailyVoucherDirectoryController extends Controller
                 $module = \App\Support\Finance\FinanceActionPermission::moduleForSeries($displayType);
                 $canEdit = $module !== null && auth()->user()?->can('finance '.$module.' edit');
                 $canDelete = $module !== null && auth()->user()?->can('finance '.$module.' delete');
-                $canReverse = $module !== null && auth()->user()?->can('finance '.$module.' reverse');
+                $canReverse = $module !== null && auth()->user()?->can('finance '.$module.' reverse')
+                    && app(\App\Services\Finance\VoucherReversalPolicy::class)->enabled($projectId, $displayType);
                 $canRelease = $module !== null && auth()->user()?->can('finance '.$module.' release');
                 $linkedLines = DB::table('ledgers as linked')
                     ->join('project_head_subheads as a', 'a.id', '=', 'linked.project_head_subheads_id')
@@ -786,9 +787,11 @@ final class DailyVoucherDirectoryController extends Controller
             );
         } catch (\DomainException $e) {
             return response()->json(['status' => 'error',
-                'message' => $e->getMessage() === 'V2_CASH_REVERSE_BANK_CUSTODY_REQUIRED'
+                'message' => $e->getMessage() === 'VOUCHER_REVERSAL_DISABLED'
+                    ? 'Reversal is disabled for this voucher type in the selected project.'
+                    : ($e->getMessage() === 'V2_CASH_REVERSE_BANK_CUSTODY_REQUIRED'
                     ? 'Bank and cheque vouchers require their own custody reversal workflow.'
-                    : 'Cash voucher reversal was not permitted. Check the source, corrections and reversal history.',
+                    : 'Cash voucher reversal was not permitted. Check the source, corrections and reversal history.'),
             ], 409);
         }
         return response()->json(['status' => 'success',
