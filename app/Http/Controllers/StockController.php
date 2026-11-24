@@ -722,7 +722,7 @@ class StockController extends Controller
                     DB::table('stock_item_import_rows')->where('id', $row->id)->update(['stock_item_id' => $item->id, 'updated_at' => now()]);
                     $added++;
                 } else {
-                    if (!auth()->user()->can('edit stock') && !\App\Support\Stock\StockAbility::allows(auth()->user(),'items','create')) abort(403, 'You do not have permission to update stock items through import.');
+                    if (!\App\Support\Stock\StockAbility::allows(auth()->user(),'items','edit')) abort(403, 'You do not have permission to update stock items through import.');
                     $item = $this->projectItemDefinitions($projectId)->where('item.id', (int) $row->stock_item_id)
                         ->lockForUpdate()->first(['item.id', 'definition.name', 'definition.unit', 'definition.default_rate_minor']);
                     abort_unless($item, 409, 'An item in this import was archived after preview.');
@@ -1551,14 +1551,9 @@ class StockController extends Controller
     private function authorizeStockDocumentAction(string $action): void
     {
         $actor=auth()->user();
-        abort_unless($actor && (
-            $actor->hasRole('superadmin')||$actor->hasRole('super-admin')
-            ||\App\Support\Stock\StockAbility::allows(
-                $actor, request()->route('kind')==='bill'?'billing':'entries',
-                $action==='read'?'view':($action==='update'?'edit':$action)
-            )
-            ||$actor->can('direct-update')
-            ||$actor->can($action.' stock')
+        abort_unless($actor && \App\Support\Stock\StockAbility::allows(
+            $actor, request()->route('kind')==='bill'?'billing':'entries',
+            $action==='read'?'view':($action==='update'?'edit':$action)
         ),403);
         abort_unless((int)getSelectedTown()>0,403);
     }
