@@ -1,3 +1,37 @@
+# OWNER LOCAL DATABASE AUDIT — 2026-11-24, authoritative (supersedes older pending-audit notes below)
+
+Owner provided full file `permissions-audit.json` (database `bluenew_clean_final`, generated `2026-11-24T17:18:51+05:00`; read-only report). The complete JSON was parsed (441 `permissions` entries). Results:
+
+| Metric | Actual database count |
+|---|---:|
+| All permissions | 441 |
+| Finance granular | 340 |
+| General / non-finance | 90 |
+| Hidden legacy voucher names | 11 |
+| Finance permissions not selectable in current role editor | 171 |
+| Hidden entries with active grants | 181 |
+| Unassigned permissions | 3 |
+| Direct user grants | 0 |
+
+The **three unassigned** are `direct-update` (id 87), `stock module` (id 89), `voucher approver` (id 101). **They are review candidates only, NOT automatically safe to delete**, since route references, direct `can()` calls and seeders may still depend on names or framework Super Admin override. `stock module` is now categorized under Stock in editor even though currently unassigned. The **171 finance-unexposed** are legacy cross-product action names outside supported UI choices; many of these have role grants. The **181 assigned hidden** must remain intact until route-level and role-level migration is proven.
+
+The uploaded JSON contains **340 finance** permissions: 21 modules × 16 actions (=336), plus four additional verified Cheque/Online correction rights (`finance cheque correct`, `finance cheque correction approve`, `finance online correct`, `finance online correction approve`). They are security-sensitive, currently assigned to Super Admin, and not redundant just because they are excluded from generic role toggles. All 11 legacy voucher names are present. No direct-user permission assignments were recorded.
+
+Found existing general permission strings that the previous generic module parser wrongly dumped into `Other Access`: `add slip`, `bank posting`, `pass cheque`, `party_reprot` (original spelling), `report cashbook`, `report party_ledger`, `report party_report`, `plot voucher`, `plot voucher form`, `plot voucher report`, `print voucher`, `view inventory`; all now mapped into existing matching resource tabs **without renaming permission names or altering grants**. Only `direct-update` remains in the miscellaneous bucket in this complete local audit. New role grouping regression assertions added; **this follow-up patch has not been run in the owner's environment yet**.
+
+**Owner terminal results immediately before this categorization patch:** `RoleManagementModernizationTest` **7 PASS / 466 assertions**; `FinanceActionPermissionMatrixTest` **6 PASS / 365 assertions**; `php artisan view:cache` PASS. These validate the previous tested commit, not the new follow-up. Current M02 status remains **IN PROGRESS**. Later work is required to implement Stock Entries/Bills/Items/Parties and Labour/Attendance route permission parity; Labour CP browser workflow expressly ON HOLD, no new permission tables/migrations.
+
+**Focused verification for the current follow-up:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=RoleManagementModernizationTest
+php artisan view:cache
+```
+Browser: Roles → Create/Edit test role, verify historical report/cheque/plot/stock permission names are categorized into relevant tabs, and previously selected permissions persist across tabs and after Save. No need to re-export the audit JSON or rerun accepted FinanceActionPermissionMatrixTest.
+
+---
+
 ## 2026-11-24 — First owner terminal gate / pasted audit excerpt (fix committed, re-run pending)
 
 Owner ran first M02 gate: `view:cache` PASS; `FinanceActionPermissionMatrixTest` 6 PASS / 365 assertions; `RoleManagementModernizationTest` 6 PASS, 1 FAIL (442 assertions) specifically `update booking price`: expected module `booking` but got `other`. Cause was the existing per-resource grouping regex accepting only two-token names. Fixed `RolePermissionCatalog::generalModule` for real multiword resource permissions (`update booking price`, `view booking report`, `read landing page`, `update plot number`, `stock module`, `labour module`) and expanded regression. No grants/DB actions changed; awaiting owner re-run before marking PASS.
