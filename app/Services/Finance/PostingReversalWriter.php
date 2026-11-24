@@ -64,6 +64,12 @@ final class PostingReversalWriter
                 throw new \DomainException('V2_REVERSAL_ORIGINAL_NOT_POSTED');
             }
 
+            // Settings are enforced at the write boundary, not just in UI.
+            // Disabling reversals cannot affect ordinary voucher Edit/Delete.
+            app(VoucherReversalPolicy::class)->assertEnabled(
+                $projectId, (string) $original->voucher_series
+            );
+
             if ($effectiveDate < (string) $original->effective_date) {
                 throw new \DomainException('V2_REVERSAL_DATE_BEFORE_ORIGINAL');
             }
