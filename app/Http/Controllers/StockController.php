@@ -353,6 +353,15 @@ class StockController extends Controller
     public function meta()
     {
         $projectId = (int) getSelectedTown();
+        $actor = auth()->user();
+        $canReference = \App\Support\Stock\StockAbility::allows($actor,'entries','create')
+            || \App\Support\Stock\StockAbility::allows($actor,'entries','edit')
+            || \App\Support\Stock\StockAbility::allows($actor,'billing','create')
+            || \App\Support\Stock\StockAbility::allows($actor,'billing','edit');
+        $canItems = $canReference
+            || \App\Support\Stock\StockAbility::allows($actor,'items','view');
+        $canParties = $canReference
+            || \App\Support\Stock\StockAbility::allows($actor,'parties','view');
         $items = $this->projectItemDefinitions($projectId)->where('definition.is_active', 1)
             ->select(['item.id', 'definition.name', 'definition.unit', 'definition.default_rate_minor'])
             ->orderBy('definition.name')
@@ -392,6 +401,10 @@ class StockController extends Controller
             ];
         });
 
+        // Metadata is also a read endpoint: a user with Items View alone
+        // must not receive Parties data, and vice versa.
+        if (!$canItems) $items = collect();
+        if (!$canParties) $parties = collect();
         return response()->json([
             'status' => 'success',
             'data' => compact('items', 'parties'),
