@@ -10,7 +10,15 @@ use Illuminate\Validation\Rule;
 
 class EmployeeTaskController extends Controller
 {
-    private function manager(): bool { return auth()->user()->hasAnyRole(['superadmin','admin']); }
+    private function canTask(string $action): bool
+    {
+        return auth()->user()->hasAnyRole(['superadmin','super-admin'])
+            || auth()->user()->can($action.' employee task');
+    }
+    private function manager(): bool
+    {
+        return $this->canTask('create') || $this->canTask('update') || $this->canTask('delete');
+    }
     private function scope()
     {
         $q = EmployeeTask::with(['assignee:id,name','creator:id,name'])->where('project_id', (int) getSelectedTown());
@@ -27,35 +35,38 @@ class EmployeeTaskController extends Controller
         if ($this->manager() && !empty($data['employee_id'])) $q->where('assigned_to',$data['employee_id']);
         return view('admin.employee-tasks.index', ['title'=>'Employee Tasks','tasks'=>$q->latest()->paginate(20)->withQueryString(),
             'employees'=>User::where('project_id',getSelectedTown())->where('status_id',1)->orderBy('name')->get(['id','name']),
-            'canManage'=>$this->manager()]);
+            'canManage'=>$this->manager(),
+            'canCreate'=>$this->canTask('create'),
+            'canUpdate'=>$this->canTask('update'),
+            'canDelete'=>$this->canTask('delete')]);
     }
     public function store(Request $request)
     {
-        abort_unless($this->manager(),403);
+        abort_unless($this->canTask('create'),403);
         $data=$this->validated($request); $data['project_id']=(int)getSelectedTown(); $data['created_by']=auth()->id();
         $task=EmployeeTask::create($data); $this->notify($task->assignee,$task,'A new task was assigned to you.');
         return back()->with('success','Task created successfully.');
     }
     public function update(Request $request, EmployeeTask $employeeTask)
     {
-        abort_unless($this->manager() && $employeeTask->project_id==(int)getSelectedTown(),403);
+        abort_unless($this->canTask('update') && $employeeTask->project_id==(int)getSelectedTown(),403);
         $oldAssignee=$employeeTask->assigned_to; $employeeTask->update($this->validated($request));
         $this->notify($employeeTask->assignee,$employeeTask,$oldAssignee===$employeeTask->assigned_to?'Your task was updated.':'A task was assigned to you.');
         return back()->with('success','Task updated successfully.');
     }
     public function status(Request $request, EmployeeTask $employeeTask)
     {
-        abort_unless($employeeTask->project_id==(int)getSelectedTown() && ($this->manager() || $employeeTask->assigned_to===auth()->id()),403);
-        $allowed=$this->manager()?['new','pending','in_progress','completed','rework','cancelled']:['pending','in_progress','completed'];
+        abort_unless($employeeTask->project_id==(int)getSelectedTown() && ($this->canTask('update') || ($this->canTask('read') && $employeeTask->assigned_to===auth()->id())),403);
+        $allowed=$this->canTask('update')?['new','pending','in_progress','completed','rework','cancelled']:['pending','in_progress','completed'];
         $data=$request->validate(['status'=>['required',Rule::in($allowed)], 'completion_note'=>[Rule::requiredIf($request->input('status')==='rework'),'nullable','string','max:2000']]);
         $data['completed_at']=$data['status']==='completed'?now():null; $employeeTask->update($data);
-        if ($this->manager()) $this->notify($employeeTask->assignee,$employeeTask,'Task status changed to '.str_replace('_',' ',$data['status']).'.');
+        if ($this->canTask('update')) $this->notify($employeeTask->assignee,$employeeTask,'Task status changed to '.str_replace('_',' ',$data['status']).'.');
         else $this->notify($employeeTask->creator,$employeeTask,auth()->user()->name.' changed task status to '.str_replace('_',' ',$data['status']).'.');
         return back()->with('success','Task status updated.');
     }
     public function destroy(EmployeeTask $employeeTask)
     {
-        abort_unless($this->manager() && $employeeTask->project_id==(int)getSelectedTown(),403);
+        abort_unless($this->canTask('delete') && $employeeTask->project_id==(int)getSelectedTown(),403);
         $employeeTask->delete(); return back()->with('success','Task archived.');
     }
     public function readNotification(string $notification)
