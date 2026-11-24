@@ -1,3 +1,7 @@
+## M05 CLOSED — owner accepted 2026-11-24; settings grouping layout follow-up
+
+Owner confirms final six supported reversal switches correctly displayed in browser; unsupported extra switches removed, approval settings unaffected; final contract test **7 PASS / 111 assertions**, view cache PASS and all previous finance regression gates verified. Mark Milestone 05 **CLOSED / OWNER ACCEPTED**. Latest cosmetic Voucher Settings refinement groups **six Reversal-capable types first** (CR, CP, BD, BW, PPR, PP) and **approval-only types second** with distinct headings/counts; no finance policy or DB writes changed, new layout-only contract test and browser smoke pending owner pull. M03 Labour CP remains ON HOLD and M06 stays last.
+
 ## M05 owner acceptance scope correction — 2026-11-24
 
 Owner confirms final browser Tests **1/2/3 PASS**. Test 4 was withdrawn because EC/ECP/Stock/Labour/Booking entries have no functional browser Reverse button. Removed their reversal-only cards and restricted the reversal-settings Save endpoint to **CR, CP, BD, BW, PPR and PP**; existing approval setup, posted history, and M05 backend posting guards remain unchanged. Latest small settings-contract test and view cache need owner smoke-run after pull. Re-doing earlier passed tests is unnecessary. M03 Labour CP remains ON HOLD.
