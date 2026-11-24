@@ -20,6 +20,12 @@
         </div><!-- /.content-header -->
 
         <!-- Main content -->
+        @if($errors->any())
+            <div class="alert alert-danger mx-3" role="alert">
+                <strong>Booking could not be saved.</strong>
+                <ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+            </div>
+        @endif
         <form method="POST" action="{{ route('bookings.store') }}">
             <section class="content">
                 <div class="container-fluid">
@@ -241,7 +247,7 @@
                                         <div class="col-md-9">
                                             <div class="form-group">
                                                 <input type="text" class="form-control" id="discount_value"
-                                                    name="discount_value" placeholder="Discount Amount ">
+                                                    name="discount_value" placeholder="Discount Amount (optional)" value="{{ old('discount_value','0') }}">
                                             </div>
                                         </div>
                                     </div>
