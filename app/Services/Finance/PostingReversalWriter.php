@@ -32,7 +32,8 @@ final class PostingReversalWriter
         string $requestKey,
         string $effectiveDate,
         string $reason,
-        ?int $actorId = null
+        ?int $actorId = null,
+        bool $ordinaryDelete = false
     ): int {
         FinanceConnectionGuard::assertAllowed();
         foreach (['finance_posting_batches', 'finance_posting_lines',
@@ -51,7 +52,7 @@ final class PostingReversalWriter
         }
 
         return DB::transaction(function () use (
-            $projectId, $originalBatchId, $requestKey, $effectiveDate, $reason, $actorId
+            $projectId, $originalBatchId, $requestKey, $effectiveDate, $reason, $actorId, $ordinaryDelete
         ): int {
             if (!DB::table('projects')->where('id', $projectId)->lockForUpdate()->exists()) {
                 throw new \DomainException('V2_REVERSAL_PROJECT_NOT_FOUND');
@@ -66,9 +67,11 @@ final class PostingReversalWriter
 
             // Settings are enforced at the write boundary, not just in UI.
             // Disabling reversals cannot affect ordinary voucher Edit/Delete.
-            app(VoucherReversalPolicy::class)->assertEnabled(
-                $projectId, (string) $original->voucher_series
-            );
+            if (!$ordinaryDelete) {
+                app(VoucherReversalPolicy::class)->assertEnabled(
+                    $projectId, (string) $original->voucher_series
+                );
+            }
 
             if ($effectiveDate < (string) $original->effective_date) {
                 throw new \DomainException('V2_REVERSAL_DATE_BEFORE_ORIGINAL');
