@@ -455,7 +455,7 @@ final class FinanceApiController extends Controller
         ], 201);
     }
 
-    public function reverse(Request $request, int $projectId, PostingGateway $gateway): JsonResponse
+    public function reverse(Request $request, int $projectId): JsonResponse
     {
         $this->project($request, $projectId, true);
         $data = $request->validate([
@@ -465,14 +465,16 @@ final class FinanceApiController extends Controller
             'reason' => ['required', 'string', 'min:1', 'max:200'],
         ]);
         try {
-        $id = $gateway->reversePostedBatch(
+        $id = (new \App\Services\Finance\FinanceSourceReversalRouter())->reverse(
             $projectId, (int) $data['original_batch_id'],
             $data['request_key'], $data['effective_date'],
             $data['reason'], (int) $request->user()->getAuthIdentifier()
         );
         } catch (\DomainException $error) {
             return response()->json(['error' => $error->getMessage() === 'VOUCHER_REVERSAL_DISABLED'
-                ? 'FINANCE_REVERSAL_DISABLED' : 'FINANCE_REVERSAL_CONFLICT'], 409);
+                ? 'FINANCE_REVERSAL_DISABLED'
+                : ($error->getMessage() === 'FINANCE_REVERSAL_SOURCE_WORKFLOW_REQUIRED'
+                    ? 'FINANCE_REVERSAL_SOURCE_WORKFLOW_REQUIRED' : 'FINANCE_REVERSAL_CONFLICT')], 409);
         }
         return response()->json([
             'scope' => 'unified_finance', 'reversal_batch_id' => $id,
