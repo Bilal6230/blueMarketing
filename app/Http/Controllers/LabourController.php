@@ -35,8 +35,8 @@ class LabourController extends Controller
         $selectedProjectId = (int) getSelectedTown();
         $x['selectedSiteId'] = null;
         $x['title'] = 'Labour';
-        $x['labours'] = Labour::where('project_id', $selectedProjectId)->get();
-        $x['count'] = Labour::where('project_id', $selectedProjectId)->count();
+        $x['labours'] = Labour::query()->get();
+        $x['count'] = Labour::query()->count();
         $x['sites'] = Site::where('project_id', $selectedProjectId)->get();
         $x['contractors'] = Schema::hasTable('contractors')
             ? Contractor::where('project_id', $selectedProjectId)->where('is_active', true)->orderBy('name')->get()
@@ -61,7 +61,7 @@ class LabourController extends Controller
             $days[] = $day->format('Y-m-d');
             $day->addDay();
         }
-        $x['attendance_labours'] = Labour::where('project_id', $selectedProjectId)->whereHas('attendances', function ($query) use ($days, $selectedProjectId) {
+        $x['attendance_labours'] = Labour::query()->whereHas('attendances', function ($query) use ($days, $selectedProjectId) {
             $query->where('project_id', $selectedProjectId)->whereIn('date', $days)->with('site');
         })->get();
 
@@ -83,7 +83,7 @@ class LabourController extends Controller
     {
         $selectedProjectId = (int) getSelectedTown();
         $x['title'] = 'Labour History';
-        $x['labour'] = $labour = Labour::where('project_id', $selectedProjectId)->with([
+        $x['labour'] = $labour = Labour::query()->with([
             'attendances' => fn($q) => $q->where('status', 'present')->orderBy('date'),
             'labourLedgers' => fn($q) => $q
                 ->when(Schema::hasColumn('labour_ledgers','is_active'),
@@ -228,9 +228,9 @@ class LabourController extends Controller
         $labourIds = collect($request->labours)->pluck('id')->map(fn ($id) => (int) $id)->unique()->values();
         abort_unless(
             $selectedProjectId > 0
-                && Labour::where('project_id', $selectedProjectId)->whereIn('id', $labourIds)->count() === $labourIds->count(),
+                && Labour::query()->whereIn('id', $labourIds)->count() === $labourIds->count(),
             422,
-            'One or more labour records do not belong to the selected project.'
+            'One or more selected labour records do not exist.'
         );
 
         try {
@@ -392,7 +392,7 @@ class LabourController extends Controller
             $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
         }
 
-        $x['personWiseReports'] = $personWiseReports = Labour::where('project_id', (int) getSelectedTown())->select(
+        $x['personWiseReports'] = $personWiseReports = Labour::query()->select(
             'labours.id',
             'labours.name',
             'labours.father_name',
@@ -502,10 +502,10 @@ class LabourController extends Controller
             'daily_wage' => 'required|numeric',
         ]);
         $validated['join_date'] = date('Y-m-d');
-        $validated['project_id'] = $selectedProjectId;
-
+        // Labour identities are shared by every project. Attendance and
+        // payroll retain their own selected-project relationships.
         Labour::create($validated);
-        $labours = Labour::where('project_id', $selectedProjectId)->get();
+        $labours = Labour::query()->get();
         $view = '';
         $view .= view('admin.labours.labour', compact('labours'))->render();
 
@@ -593,7 +593,7 @@ class LabourController extends Controller
             'ratings' => 'nullable',
         ]);
 
-        $labour = Labour::where('project_id', $selectedProjectId)->findOrFail($validated['labour_id']);
+        $labour = Labour::query()->findOrFail($validated['labour_id']);
         if (!empty($validated['site_id'])) {
             $siteQuery = Site::where('project_id', $selectedProjectId);
             if (Schema::hasColumn('sites', 'is_active')) {
@@ -642,7 +642,6 @@ class LabourController extends Controller
     public function update(Request $request, Labour $labour)
     {
         $selectedProjectId = (int) getSelectedTown();
-        abort_unless((int) $labour->project_id === $selectedProjectId, 404);
         $request->validate([
             'name' => 'required|string|max:255',
             'cnic' => 'required|string|max:20|unique:labours,cnic,' . $labour->id,
@@ -651,7 +650,7 @@ class LabourController extends Controller
         ]);
 
         $labour->update($request->only(['name', 'father_name', 'cnic', 'phone', 'role', 'daily_wage']));
-        $labours = Labour::where('project_id', $selectedProjectId)->get();
+        $labours = Labour::query()->get();
         $view = '';
         $view .= view('admin.labours.labour', compact('labours'))->render();
 
@@ -663,7 +662,7 @@ class LabourController extends Controller
     }
     public function updateStatus($id)
     {
-        $labour = Labour::where('project_id', (int) getSelectedTown())->findOrFail($id);
+        $labour = Labour::query()->findOrFail($id);
         $labour->status = $labour->status === 'active' ? 'inactive' : 'active';
         $labour->save();
 
@@ -673,7 +672,6 @@ class LabourController extends Controller
 
     public function destroy(Labour $labour)
     {
-        abort_unless((int) $labour->project_id === (int) getSelectedTown(), 404);
         $labour->delete();
 
         return redirect()->route('labours.index')->with('success', 'Labour deleted successfully.');
@@ -741,7 +739,7 @@ class LabourController extends Controller
             $days[] = $startOfWeek->copy()->addDays($i)->format('Y-m-d');
         }
 
-        $reports = Labour::where('labours.project_id', (int) $selectedProjectId)
+        $reports = Labour::query()
             ->select('labours.id', 'labours.name', 'labours.father_name', 'labours.cnic', 'labours.phone as mobile', 'labours.role as designation')
             ->with([
                 'attendances' => function ($query) use ($request, $days, $selectedProjectId) {
@@ -845,7 +843,7 @@ class LabourController extends Controller
     public function checkValidate(Request $request)
     {
         // dd($request->all());
-        $query = Labour::where('project_id', (int) getSelectedTown());
+        $query = Labour::query();
         if ($request->has('name') && $request->name)
             $query->where('name', $request->name);
         if ($request->has('cnic') && $request->cnic)
@@ -1635,7 +1633,7 @@ class LabourController extends Controller
 
                 $labourId  = $request->labour_id;
                 $newRate   = $request->daily_wage;
-                $labour = Labour::where('project_id', $selectedProjectId)->lockForUpdate()->findOrFail($labourId);
+                $labour = Labour::query()->lockForUpdate()->findOrFail($labourId);
 
                 $applyFrom = Carbon::parse($request->apply_from_date)->startOfDay();
                 $today     = Carbon::today()->endOfDay();
@@ -1722,7 +1720,7 @@ class LabourController extends Controller
         }
         // LABOUR FILTER
         $selectedProjectId = (int) getSelectedTown();
-        $query = Labour::where('project_id', $selectedProjectId);
+        $query = Labour::query();
 
         if ($request->has('search') && $request->search) {
             $search = $request->search;
