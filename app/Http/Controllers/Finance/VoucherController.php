@@ -2000,12 +2000,18 @@ class VoucherController extends Controller
                 ->where('project_id',$projectId)
                 ->where('voucher_type',$kind==='deposit'?'BD':'BW')
                 ->pluck('voucher_id')->map(fn($id)=>(int)$id)->all() : [];
+        // Resolve the project policy once per actual source series, not per row.
+        $reversalBySeries=[];
+        $reversalPolicy=app(\App\Services\Finance\VoucherReversalPolicy::class);
+        foreach($rows->pluck('voucher_series')->unique() as $series){
+            $reversalBySeries[(string)$series]=$reversalPolicy->enabled($projectId,(string)$series);
+        }
         $rows=$rows->map(fn ($r) => ['posting_batch_id' => (int) $r->posting_batch_id,
                 'voucher' => (string) $r->voucher_series.'-'.($r->voucher_number ?: $r->posting_batch_id), 'date' => substr((string) $r->effective_date, 0, 10),
                 'cash_account' => trim((string) $r->cash_name.' / '.(string) $r->cash_child_name, ' /'), 'bank' => trim((string) $r->bank_name.' / '.(string) $r->account_title, ' /'),
                 'cheque' => $r->cheque_number ? 'CP-'.$r->cheque_number.' / '.(string) $r->cheque_reference : '', 'amount' => (string) $r->amount, 'narration' => (string) $r->narration,
                 'reversed' => $r->reversal_batch_id !== null,
-                'can_reverse' => app(\App\Services\Finance\VoucherReversalPolicy::class)->enabled($projectId,(string)$r->voucher_series)
+                'can_reverse' => ($reversalBySeries[(string)$r->voucher_series]??false)
                     && $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null
                     && !in_array((int)$r->posting_batch_id,$verifiedBatches,true),
                 'can_edit' => $r->reversal_batch_id === null && $r->linked_customer_ledger_id === null
