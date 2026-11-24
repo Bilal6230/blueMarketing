@@ -38,7 +38,7 @@
        @if($definition['supported'])
         <span class="badge badge-success vs-status">Approval supported</span>
        @else
-        <span class="badge badge-secondary vs-status">Integration pending</span>
+        <span class="badge badge-secondary vs-status">Approval unavailable</span>
        @endif
       </div>
       @if($definition['supported'])
@@ -63,14 +63,19 @@
          @can('update setting')<button type="submit" class="btn btn-sm btn-success vs-save">Save Settings</button>@endcan
         </div>
        </form>
-       @if(!in_array($type,['CHQ_CORR','ONL_CORR'],true))
+
+      @else
+       <div class="small mb-2">Approval configuration is not supported for this voucher type.</div>
+       <div class="small text-muted">This does not enable voucher posting or approval. Verified source reversal can still be independently controlled where available.</div>
+      @endif
+      @if(!in_array($type,['CHQ_CORR','ONL_CORR'],true))
        <form method="post" class="vs-reversal-form border-top pt-3 mt-3" action="{{ route('finance.voucher-settings.reversal.save') }}">@csrf
         <input type="hidden" name="voucher_type" value="{{ $type }}">
         <input type="hidden" name="reversal_enabled" value="0">
         <div class="vs-toolbar">
          <div>
           <label class="d-block mb-1" for="vs-reversal-{{ $type }}">Reversal Enabled</label>
-          <small class="text-muted">Only verified typed voucher reversals; ordinary Edit/Delete remains separate.</small>
+          <small class="text-muted">Applies to verified posted-batch reversals only; ordinary Edit/Delete and linked bank custody stay separate.</small>
          </div>
          <div class="custom-control custom-switch">
           <input type="checkbox" class="custom-control-input vs-reversal-enabled" id="vs-reversal-{{ $type }}" name="reversal_enabled" value="1"
@@ -84,10 +89,6 @@
         @endcan
        </form>
        @endif
-      @else
-       <div class="small mb-2">Approval configuration locked for this voucher type.</div>
-       <div class="small text-muted">No policy write or financial posting changes allowed at this stage.</div>
-      @endif
      </div>
     </div>
    </div>
