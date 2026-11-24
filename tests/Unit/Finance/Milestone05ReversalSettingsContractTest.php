@@ -39,9 +39,11 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertStringContainsString("enabled(\$projectId,'PPR')", $controller);
         self::assertStringContainsString("enabled(\$projectId,'PP')", $controller);
         self::assertStringContainsString("'can_reverse' => \$reversalEnabled &&", $controller);
-        self::assertStringContainsString("'can_reverse' => app(", $controller);
+        self::assertStringContainsString("'can_reverse' => (\$reversalBySeries[(string)\$r->voucher_series]??false)", $controller);
         self::assertStringContainsString("'can_edit' =>", $controller);
         self::assertStringContainsString('VoucherReversalPolicy::class', $directory);
+        self::assertStringContainsString('array_key_exists($reversalSeries,$reversalBySeries)', $directory);
+        self::assertStringContainsString('foreach($rows->pluck(\'voucher_series\')->unique() as $series)', $controller);
         self::assertStringContainsString('VOUCHER_REVERSAL_DISABLED', $directory);
         self::assertStringContainsString('if(r.can_reverse)', $receipt);
         self::assertStringContainsString('if(x.can_reverse)', $purchase);
