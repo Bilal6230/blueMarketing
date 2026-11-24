@@ -3031,15 +3031,15 @@
           // Match the existing stock-create modal fallback when neither
           // Bootstrap plugin is available (Laragon/offline environments).
           if(action==='show'){
-              $('.stock-doc-fallback-backdrop').remove();
+              $('.stock-modal-fallback-backdrop').remove();
               $modal.css({display:'block',position:'fixed',inset:0,zIndex:1060,overflowY:'auto'})
                   .addClass('show').attr('aria-hidden','false');
-              $('<div class="modal-backdrop fade show stock-doc-fallback-backdrop">')
+              $('<div class="modal-backdrop fade show stock-modal-fallback-backdrop">')
                   .css('z-index',1050).appendTo('body');
               $('body').addClass('modal-open').css('overflow','hidden');
           }else{
               $modal.hide().removeClass('show').attr('aria-hidden','true');
-              $('.stock-doc-fallback-backdrop').remove();
+              $('.stock-modal-fallback-backdrop').remove();
               $('body').removeClass('modal-open').css('overflow','');
           }
       };
