@@ -25,6 +25,29 @@ final class StockDocumentLifecycleContractTest extends TestCase
         self::assertStringContainsString('negative inventory',$editor);
     }
 
+    public function test_stock_bill_narration_round_trips_through_create_details_and_edit(): void
+    {
+        $root=dirname(__DIR__,3);
+        $controller=file_get_contents($root.'/app/Http/Controllers/StockController.php');
+        $editor=file_get_contents($root.'/app/Services/Finance/StockDocumentEditor.php');
+        $model=file_get_contents($root.'/app/Models/StockBill.php');
+        $view=file_get_contents($root.'/resources/views/admin/stock/index.blade.php');
+        $migration=file_get_contents($root.'/database/migrations/2026_11_24_160000_add_narration_to_stock_bills.php');
+        foreach ([$controller,$editor,$model,$view,$migration] as $file) {
+            self::assertIsString($file);
+        }
+        self::assertStringContainsString("'narration' => ['nullable', 'string', 'max:1000']", $controller);
+        self::assertStringContainsString("'narration' => trim((string) (\$data['narration'] ?? ''))", $controller);
+        self::assertStringContainsString("\$source->narration??''", $controller);
+        self::assertStringContainsString("\$headerUpdate['narration']=\$narration", $editor);
+        self::assertStringContainsString("\$header->narration??''", $editor);
+        self::assertStringContainsString("'narration',", $model);
+        self::assertStringContainsString('id="billNarration"', $view);
+        self::assertStringContainsString("narration: \$('#billNarration').val() || \"\"", $view);
+        self::assertStringContainsString("Schema::table('stock_bills'", $migration);
+        self::assertStringContainsString("\$table->text('narration')->nullable()", $migration);
+    }
+
     public function test_stock_edit_rows_and_modal_dismissals_remain_visible_and_functional(): void
     {
         $view=file_get_contents(dirname(__DIR__,3).'/resources/views/admin/stock/index.blade.php');
