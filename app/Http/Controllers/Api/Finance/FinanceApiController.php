@@ -364,7 +364,8 @@ final class FinanceApiController extends Controller
                 $data['reason'], (int) $request->user()->getAuthIdentifier()
             );
         } catch (\DomainException $error) {
-            return response()->json(['error' => 'FINANCE_PLOT_VOUCHER_VOID_CONFLICT'], 409);
+            return response()->json(['error' => $error->getMessage() === 'VOUCHER_REVERSAL_DISABLED'
+                ? 'FINANCE_REVERSAL_DISABLED' : 'FINANCE_PLOT_VOUCHER_VOID_CONFLICT'], 409);
         }
         return response()->json(['scope' => 'unified_finance', 'reversal_batch_id' => $batchId], 201);
     }
@@ -445,7 +446,8 @@ final class FinanceApiController extends Controller
                 $data['reason'], (int) $request->user()->getAuthIdentifier()
             );
         } catch (\DomainException $error) {
-            return response()->json(['error' => 'FINANCE_VOUCHER_VOID_CONFLICT'], 409);
+            return response()->json(['error' => $error->getMessage() === 'VOUCHER_REVERSAL_DISABLED'
+                ? 'FINANCE_REVERSAL_DISABLED' : 'FINANCE_VOUCHER_VOID_CONFLICT'], 409);
         }
         return response()->json([
             'scope' => 'unified_finance',
@@ -469,7 +471,8 @@ final class FinanceApiController extends Controller
             $data['reason'], (int) $request->user()->getAuthIdentifier()
         );
         } catch (\DomainException $error) {
-            return response()->json(['error' => 'FINANCE_REVERSAL_CONFLICT'], 409);
+            return response()->json(['error' => $error->getMessage() === 'VOUCHER_REVERSAL_DISABLED'
+                ? 'FINANCE_REVERSAL_DISABLED' : 'FINANCE_REVERSAL_CONFLICT'], 409);
         }
         return response()->json([
             'scope' => 'unified_finance', 'reversal_batch_id' => $id,
