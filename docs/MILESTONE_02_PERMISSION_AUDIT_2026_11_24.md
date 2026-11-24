@@ -1,3 +1,23 @@
+# 2026-11-24 — Owner terminal gates PASS; urgent Dashboard and Roles sort browser hotfix
+
+Owner pulled M02 Stock/Labour batch `8b2d2b16`, ran additive Stock permission migration **DONE**, `php artisan view:cache` **PASS**, `Milestone02PermissionEnforcementContractTest` **5 PASS / 95 assertions**, and `RoleManagementModernizationTest` **7 PASS / 478 assertions**. The code-level Stock and Labour/Attendance permission contract gate passes. **Browser role matrix acceptance is still pending**; owner reported two blockers first:
+
+1. **Dashboard crash after global Labour master migration:** Screenshot shows MySQL `SQLSTATE[42S22]` missing column on dashboard, `app/Services/Dashboard/ModuleMetrics.php:94`: old `labours.project_id` reference is invalid because `2026_11_24_120000_make_labours_global_master.php` removed the column. Implemented schema-aware Labour KPI: only filter by `labours.project_id` when present (older DB), otherwise count active, not-deleted global labour workers with an attendance row for the selected project using project-scoped `EXISTS`. Attendance present/pending/payable/cost metrics remain scoped to `labour_attendances.project_id`. No database change or Labour CP flow change. New `DashboardModuleMetricsGlobalLabourContractTest` ensures both branches and real migration contract. **Owner must verify browser dashboard and focused test after pull.**
+2. **Roles listing unclear order:** screenshot lists IDs 9→4, 1, 2, 3 because default sorting was `updated_at DESC`. Changed backend `RoleController::rows` and client table default/Reset to **ID ASC (1,2,3…9)**. Column sorting remains interactive, with stable ID tiebreak. Regression added to `RoleManagementModernizationTest`. **Owner must verify browser Roles order and focused test after pull.**
+
+**Only new hotfix acceptance gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=DashboardModuleMetricsGlobalLabourContractTest
+php artisan test --filter=RoleManagementModernizationTest
+```
+Browser: visit `/admin/dashboard` (no SQL exception; selected project's Labour KPI), visit `/admin/role` (IDs ascending 1..9; manual column sorting and Reset still work). Do not rerun previously owner-accepted Stock/Finance tests. After these 2 blockers PASS, finish the previously planned disposable-role Stock/Attendance permission browser matrix; **do not mark M02 closed until owner verifies it**. M03 Labour CP remains ON HOLD; M04/M05 CLOSED; M06 LAST.
+
+---
+
 # Milestone 02 — Final permissions enforcement code batch, 2026-11-24
 
 **Code implementation delivered, owner terminal/browser acceptance PENDING.** The previously owner-verified Roles UI grouping test remains **7 PASS / 478 assertions**, Finance Matrix **6 PASS / 365 assertions**, and Blade view cache PASS. The 441-permission live audit is closed and its data is retained below. No role-grant removal, no new business tables, no 21×16 permission explosion and no Labour CP voucher lifecycle edits.
