@@ -520,50 +520,50 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         ->name('labours.print.person.report');
     Route::post('/labours/print/attendance/report', [LabourController::class, 'printAttendanceReport'])
         ->name('labours.print.attendance.report');
-    Route::get('stocks', [StockController::class, 'index'])->name('stocks.index');
+    Route::get('stocks', [StockController::class, 'index'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,view')->name('stocks.index');
 
     // Meta (items/parties for dropdowns)
-    Route::get('stocks/meta', [StockController::class, 'meta'])->name('stocks.meta');
+    Route::get('stocks/meta', [StockController::class, 'meta'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,view')->name('stocks.meta');
 
     // Counters (slip/bill numbers)
-    Route::get('stocks/next-slip', [StockController::class, 'nextSlip'])->name('stocks.nextSlip');
-    Route::get('stocks/next-bill', [StockController::class, 'nextBill'])->name('stocks.nextBill'); // ?type=purchase|sale
+    Route::get('stocks/next-slip', [StockController::class, 'nextSlip'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':entries,create')->name('stocks.nextSlip');
+    Route::get('stocks/next-bill', [StockController::class, 'nextBill'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':billing,create')->name('stocks.nextBill'); // ?type=purchase|sale
 
     // Create actions (AJAX)
-    Route::post('stocks/items', [StockController::class, 'storeItem'])->name('stocks.items.store');
-    Route::get('stocks/items/export', [StockController::class, 'exportItems'])->name('stocks.items.export');
-    Route::post('stocks/items/import', [StockController::class, 'stageItemImport'])->name('stocks.items.import.stage');
-    Route::get('stocks/items/import/{batch}', [StockController::class, 'previewItemImport'])->whereNumber('batch')->name('stocks.items.import.preview');
-    Route::get('stocks/items/import-history', [StockController::class, 'itemImportHistory'])->name('stocks.items.import.history');
-    Route::post('stocks/items/import/{batch}/apply', [StockController::class, 'applyItemImport'])->whereNumber('batch')->name('stocks.items.import.apply');
-    Route::get('stocks/items/import/{batch}/errors', [StockController::class, 'downloadItemImportErrors'])->whereNumber('batch')->name('stocks.items.import.errors');
-    Route::post('stocks/parties', [StockController::class, 'storeParty'])->name('stocks.parties.store');
-    Route::post('stocks/entries', [StockController::class, 'storeEntry'])->name('stocks.entries.store');
-    Route::post('stocks/bills', [StockController::class, 'storeBill'])->name('stocks.bills.store');
+    Route::post('stocks/items', [StockController::class, 'storeItem'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,create')->name('stocks.items.store');
+    Route::get('stocks/items/export', [StockController::class, 'exportItems'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,view')->name('stocks.items.export');
+    Route::post('stocks/items/import', [StockController::class, 'stageItemImport'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,create')->name('stocks.items.import.stage');
+    Route::get('stocks/items/import/{batch}', [StockController::class, 'previewItemImport'])->whereNumber('batch')->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,view')->name('stocks.items.import.preview');
+    Route::get('stocks/items/import-history', [StockController::class, 'itemImportHistory'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,view')->name('stocks.items.import.history');
+    Route::post('stocks/items/import/{batch}/apply', [StockController::class, 'applyItemImport'])->whereNumber('batch')->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,edit')->name('stocks.items.import.apply');
+    Route::get('stocks/items/import/{batch}/errors', [StockController::class, 'downloadItemImportErrors'])->whereNumber('batch')->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,view')->name('stocks.items.import.errors');
+    Route::post('stocks/parties', [StockController::class, 'storeParty'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':parties,create')->name('stocks.parties.store');
+    Route::post('stocks/entries', [StockController::class, 'storeEntry'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':entries,create')->name('stocks.entries.store');
+    Route::post('stocks/bills', [StockController::class, 'storeBill'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':billing,create')->name('stocks.bills.store');
     Route::get('stocks/documents/{kind}/{id}', [StockController::class, 'stockDocumentDetails'])
         ->where(['kind'=>'entry|bill','id'=>'[0-9]+'])->name('stocks.documents.details');
     Route::put('stocks/documents/{kind}/{id}', [StockController::class, 'updateStockDocument'])
         ->where(['kind'=>'entry|bill','id'=>'[0-9]+'])->name('stocks.documents.update');
     Route::delete('stocks/documents/{kind}/{id}', [StockController::class, 'deleteStockDocument'])
         ->where(['kind'=>'entry|bill','id'=>'[0-9]+'])->name('stocks.documents.delete');
-    Route::post('stocks/legacy-reconciliation', [StockController::class, 'reconcileLegacyStock'])->name('stocks.legacy.reconcile');
+    Route::post('stocks/legacy-reconciliation', [StockController::class, 'reconcileLegacyStock'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':entries,edit')->name('stocks.legacy.reconcile');
     Route::post('stocks/finance/{kind}/{id}/approve', [StockController::class, 'approveFinance'])
         ->where('kind', 'stock_entry|stock_bill')->whereNumber('id')
         ->middleware(['permission:can approve'])->name('stocks.finance.approve');
-    Route::put('stocks/items/{item}', [StockController::class, 'updateItem'])->name('stocks.items.update');
-    Route::delete('stocks/items/{item}', [StockController::class, 'deleteItem'])->name('stocks.items.delete');
-    Route::put('stocks/parties/{party}', [StockController::class, 'updateParty'])->name('stocks.parties.update');
-    Route::patch('stocks/parties/{party}/status', [StockController::class, 'updatePartyStatus'])->name('stocks.parties.status');
-    Route::delete('stocks/parties/{party}', [StockController::class, 'deleteParty'])->name('stocks.parties.delete');
+    Route::put('stocks/items/{item}', [StockController::class, 'updateItem'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,edit')->name('stocks.items.update');
+    Route::delete('stocks/items/{item}', [StockController::class, 'deleteItem'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,delete')->name('stocks.items.delete');
+    Route::put('stocks/parties/{party}', [StockController::class, 'updateParty'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':parties,edit')->name('stocks.parties.update');
+    Route::patch('stocks/parties/{party}/status', [StockController::class, 'updatePartyStatus'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':parties,edit')->name('stocks.parties.status');
+    Route::delete('stocks/parties/{party}', [StockController::class, 'deleteParty'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':parties,delete')->name('stocks.parties.delete');
 
     // Lists (AJAX tables)
-    Route::get('stocks/entries', [StockController::class, 'entries'])->name('stocks.entries.index');
-    Route::get('stocks/bills', [StockController::class, 'bills'])->name('stocks.bills.index');
-    Route::get('stocks/items', [StockController::class, 'items'])->name('stocks.items.index');
-    Route::get('stocks/parties', [StockController::class, 'parties'])->name('stocks.parties.index');
+    Route::get('stocks/entries', [StockController::class, 'entries'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':entries,view')->name('stocks.entries.index');
+    Route::get('stocks/bills', [StockController::class, 'bills'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':billing,view')->name('stocks.bills.index');
+    Route::get('stocks/items', [StockController::class, 'items'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':items,view')->name('stocks.items.index');
+    Route::get('stocks/parties', [StockController::class, 'parties'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':parties,view')->name('stocks.parties.index');
 
     // Stock report (date range + optional item filter)
-    Route::get('stocks/report', [StockController::class, 'report'])->name('stocks.report');
+    Route::get('stocks/report', [StockController::class, 'report'])->middleware(\\App\\Http\\Middleware\\AuthorizeStockAbility::class.':entries,view')->name('stocks.report');
 
 
     Route::controller(App\Http\Controllers\LedgerController::class)->group(function () {
