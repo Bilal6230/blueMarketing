@@ -213,13 +213,27 @@ class BookingController extends Controller
                 Auth::user()->can('update plot'), Auth::user()->can('update booking price'), Auth::id()
             );
         } catch (DomainException $exception) {
+            // A generic error masked the exact accounting guard rejecting
+            // historical Booking edits (for example discounted SV history).
+            // Never bypass source/leg verification to make an edit succeed.
+            Log::warning('Booking amendment rejected by accounting validation.', [
+                'booking_id' => (int) $id,
+                'project_id' => $projectId,
+                'reason' => $exception->getMessage(),
+            ]);
             return back()->withErrors(['booking' => match ($exception->getMessage()) {
                 'PAYMENT_ATTRIBUTION_REQUIRED' => 'Some historical payments cannot be linked safely to this booking. Please review payment attribution before changing the sale price.',
                 'STALE_BOOKING' => 'This booking was changed after you opened the page. Refresh and review the latest information before saving.',
                 'BROKER_NOT_IN_PROJECT', 'BROKER_NOT_AVAILABLE_IN_PROJECT' => 'The selected broker is inactive or is not available for this project.',
                 'AMENDMENT_REASON_REQUIRED' => 'A reason is required for a pricing amendment.',
                 'BROKER_PERMISSION_REQUIRED', 'METADATA_PERMISSION_REQUIRED', 'PRICING_PERMISSION_REQUIRED' => 'You do not have permission to make one or more of these changes.',
-                default => 'This booking cannot be amended right now.',
+                'BOOKING_SV_SOURCE_MISSING' => 'The original Sales Voucher for this booking is missing. This booking requires accounting reconciliation before changing its price or date.',
+                'BOOKING_SV_SOURCE_AMBIGUOUS' => 'The original Sales Voucher does not have one uniquely matched, balanced Booking debit/credit pair. The edit was safely blocked.',
+                'BOOKING_BO_SOURCE_AMBIGUOUS' => 'The original Booking ledger amount and Sales Voucher do not reconcile with the saved sale price. Review the original BO/SV postings.',
+                'BOOKING_SV_DETAIL_MISMATCH' => 'The original Sales Voucher detail amounts differ from its ledger entries. Review the linked accounting before amending.',
+                'BOOKING_SV_UNBALANCED' => 'The resulting Sales Voucher would be unbalanced. No Booking or ledger change was saved.',
+                'BOOKING_NOT_ACTIVE' => 'Only an active booking can be amended.',
+                default => 'Booking amendment could not be completed. Reference: '.preg_replace('/[^A-Z0-9_]/','',strtoupper($exception->getMessage())),
             }])->withInput();
         } catch (\InvalidArgumentException $exception) {
             // Calculator errors are user-correctable validation failures, not
