@@ -2829,7 +2829,20 @@
           var klass=window.bootstrap.Modal;
           var existing=$.isFunction(klass.getInstance)?klass.getInstance($modal[0]):null;
           var instance=existing||($.isFunction(klass.getOrCreateInstance)?klass.getOrCreateInstance($modal[0]):new klass($modal[0]));
-          if(action==='hide')instance.hide();else instance.show();
+          if(action==='hide'){
+            instance.hide();
+            // On mixed ERP layouts a second Bootstrap modal handler can
+            // suppress the dismiss transition. Recover only if still open.
+            setTimeout(function(){
+              if($modal.hasClass('show')){
+                $modal.hide().removeClass('show').attr('aria-hidden','true');
+                if(!$('.modal.show').length){
+                  $('.modal-backdrop').remove();
+                  $('body').removeClass('modal-open').css('overflow','').css('padding-right','');
+                }
+              }
+            },450);
+          }else instance.show();
           return;
         }catch(error){
           if(window.console && console.warn)console.warn('Stock modal fallback:',error);
@@ -2857,28 +2870,16 @@
       var $modal=$($(this).attr('data-stock-modal'));
       setTimeout(function(){stockEnhanceDropdowns($modal);},0);
     });
-    // Bootstrap owns dismiss clicks and their animated fade/backdrop lifecycle.
-    // Do not attach a second manual hide() listener to X/Cancel buttons.
-    // The ERP shell may stop Bootstrap's delegated data-api dismiss click.
-    // Capture X/Cancel on the actual button and ask the *same* active Bootstrap
-    // instance to hide. No jQuery double-hide and no forced display:none.
-    document.querySelectorAll('.stock-create-modal [data-bs-dismiss="modal"], #editModal [data-bs-dismiss="modal"], #stockDocumentEditModal [data-bs-dismiss="modal"], #stockDocumentDeleteModal [data-bs-dismiss="modal"]').forEach(function(button){
-      if(button.dataset.stockCloseBound==='1')return;
-      button.dataset.stockCloseBound='1';
-      button.addEventListener('click',function(event){
+    // One delegated close path handles X and Cancel for both static and
+    // dynamically-rendered stock dialogs. Avoid capture stopImmediatePropagation
+    // that previously prevented the ERP/Bootstrap dismissal handler.
+    $(document).on('click.stockModalClose',
+      '.stock-create-modal [data-bs-dismiss="modal"], #editModal [data-bs-dismiss="modal"], #stockDocumentEditModal [data-bs-dismiss="modal"], #stockDocumentDeleteModal [data-bs-dismiss="modal"]',
+      function(event){
         event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        const modal=button.closest('.modal');
-        if(!modal)return;
-        stockModal('#'+modal.id,'hide');
-      },true);
-    });
-    // Dynamically rendered Edit form footer needs a delegated fallback.
-    $(document).on('click.stockModalClose','#editForm [data-bs-dismiss="modal"]',function(event){
-      event.preventDefault();event.stopPropagation();
-      stockModal('#editModal','hide');
-    });
+        var modal=$(this).closest('.modal')[0];
+        if(modal)stockModal('#'+modal.id,'hide');
+      });
 
     $(document).on('keydown.stockCreateModal',function(event){
       if(event.key==='Escape' && $('.stock-modal-fallback-backdrop').length){
@@ -3034,7 +3035,19 @@
                   var instance=$.isFunction(klass.getOrCreateInstance)
                       ?klass.getOrCreateInstance(element)
                       :($.isFunction(klass.getInstance)&&klass.getInstance(element))||new klass(element);
-                  if(action==='show')instance.show();else instance.hide();
+                  if(action==='show')instance.show();
+                  else{
+                      instance.hide();
+                      setTimeout(function(){
+                          if($modal.hasClass('show')){
+                              $modal.hide().removeClass('show').attr('aria-hidden','true');
+                              if(!$('.modal.show').length){
+                                  $('.modal-backdrop').remove();
+                                  $('body').removeClass('modal-open').css('overflow','').css('padding-right','');
+                              }
+                          }
+                      },450);
+                  }
                   return;
               }catch(error){
                   // An unavailable/broken Bootstrap bundle must not disable stock CRUD.
@@ -3154,8 +3167,12 @@
                       .addClass('alert-danger').text('This voucher has no editable item lines. Update is blocked to protect stock history.');
                   return;
               }
+              // Item selectors are populated after the modal's shown event.
+              // Initialize their searchable behavior after the row exists.
               $('#stockDocumentEditRows .stock-doc-item').each(function(){
-                  if($.isFunction(window.stockEnhanceDropdowns))window.stockEnhanceDropdowns($(this));
+                  if(window.TomSelect&&!this.tomselect){
+                      try{new window.TomSelect(this,{create:false,allowEmptyOption:true});}catch(error){}
+                  }
               });
               $('#stockDocumentEditError').removeClass('alert-info').addClass('alert-danger').addClass('d-none').text('');
               $('#stockDocumentSave').prop('disabled',false);
