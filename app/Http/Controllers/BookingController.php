@@ -2623,7 +2623,7 @@ class BookingController extends Controller
         abort_unless($projectId>0,403);
         $row=DB::table('customer_ledger')->where('id',$source)
             ->where('project_id',$projectId)->whereIn('transaction_type',['EC','ECP'])
-            ->first(['id','transaction_type','payment_type','date','reference',
+            ->first(['id','transaction_type','payment_type','customer_id','plot_id','date','reference',
                 'amount_in','amount_out','description','is_active']);
         abort_unless($row,404);
         $isTyped=(\Illuminate\Support\Facades\Schema::hasTable('finance_posting_cash_sources')
@@ -2640,12 +2640,22 @@ class BookingController extends Controller
             ->where('leg.customer_ledger_id',$source)
             ->where('mapping.project_id',$projectId)
             ->orderBy('leg.id')
-            ->get(['leg.amount_in','leg.amount_out','head.name as head_name','sub.name as sub_name'])
+            ->get(['leg.amount_in','leg.amount_out','leg.detail','head.name as head_name','sub.name as sub_name'])
             ->map(fn($leg)=>[
                 'side'=>(float)$leg->amount_in>0?'Debit':'Credit',
                 'account'=>trim(implode(' / ',array_filter([(string)$leg->head_name,(string)$leg->sub_name]))),
             ])->all();
+        $originalDetail=DB::table('ledgers')->where('customer_ledger_id',$source)
+            ->where('type',$row->transaction_type)->orderBy('id')->value('detail');
+        $chargeTypeId=null;
+        if($row->transaction_type==='EC'
+            &&preg_match('/ChargeType:([1-9][0-9]*)/',(string)$originalDetail,$matches)){
+            $chargeTypeId=(int)$matches[1];
+        }
         return response()->json(['status'=>'success','data'=>[
+            'customer_id'=>(int)$row->customer_id,
+            'plot_id'=>(int)$row->plot_id,
+            'charge_type_id'=>$chargeTypeId,
             'posting_accounts'=>$postingAccounts,
             'id'=>(int)$row->id,'type'=>(string)$row->transaction_type,
             'date'=>(string)$row->date,'reference'=>(string)$row->reference,
@@ -2665,10 +2675,16 @@ class BookingController extends Controller
             'date'=>['required','date_format:Y-m-d'],
             'amount'=>['required','regex:/^(0|[1-9][0-9]{0,12})(?:\\.[0-9]{1,2})?$/D'],
             'description'=>['nullable','string','max:1000'],
+            'customer_id'=>['nullable','integer','min:1'],
+            'plot_id'=>['nullable','integer','min:1'],
+            'charge_type_id'=>['nullable','integer','min:1'],
+            'reference'=>['nullable','string','max:100'],
         ]);
         try {
             app(\App\Services\Finance\ExtraChargeCashEditor::class)->update(
-                $projectId,$source,$data['date'],$data['amount'],$data['description']??'');
+                $projectId,$source,$data['date'],$data['amount'],$data['description']??'',
+                $data['customer_id']??null,$data['plot_id']??null,
+                $data['charge_type_id']??null,$data['reference']??null);
         }catch(\DomainException $e){
             return response()->json(['status'=>'error','message'=>$e->getMessage()],409);
         }
@@ -2769,6 +2785,9 @@ class BookingController extends Controller
             return $item;
         });
         $x['data'] = $data;
+        $x['ecEditableBookings']=Booking::with('plot')->where('project_id',$projectId)
+            ->where('status','active')->where('cancel_status','0')
+            ->whereNull('deleted_at')->get(['id','customer_id','plot_id']);
         $x['ecPendingPayments'] = $payments->filter(function ($payment) {
             return in_array((int) $payment->payment_type, [2, 3], true) &&
                 (int) $payment->passing_status === 0;
