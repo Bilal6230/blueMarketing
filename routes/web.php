@@ -520,10 +520,10 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         ->name('labours.print.person.report');
     Route::post('/labours/print/attendance/report', [LabourController::class, 'printAttendanceReport'])
         ->name('labours.print.attendance.report');
-    Route::get('stocks', [StockController::class, 'index'])->middleware(\App\Http\Middleware\AuthorizeStockAbility::class.':items,view')->name('stocks.index');
+    Route::get('stocks', [StockController::class, 'index'])->middleware(\App\Http\Middleware\AuthorizeStockAbility::class.':workspace,view')->name('stocks.index');
 
     // Meta (items/parties for dropdowns)
-    Route::get('stocks/meta', [StockController::class, 'meta'])->middleware(\App\Http\Middleware\AuthorizeStockAbility::class.':items,view')->name('stocks.meta');
+    Route::get('stocks/meta', [StockController::class, 'meta'])->middleware(\App\Http\Middleware\AuthorizeStockAbility::class.':workspace,view')->name('stocks.meta');
 
     // Counters (slip/bill numbers)
     Route::get('stocks/next-slip', [StockController::class, 'nextSlip'])->middleware(\App\Http\Middleware\AuthorizeStockAbility::class.':entries,create')->name('stocks.nextSlip');
