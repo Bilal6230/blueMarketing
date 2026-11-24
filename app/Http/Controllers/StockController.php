@@ -635,7 +635,7 @@ class StockController extends Controller
         if (!$rows) return $this->errorResponse('import_empty', 'The CSV contains no item rows.', 422);
 
         $hasNewItems = collect($rows)->contains(fn ($row) => $row['action'] === 'added');
-        if ($hasNewItems && !auth()->user()->can('create stock') && !auth()->user()->hasAnyRole(['admin', 'superadmin'])) {
+        if ($hasNewItems && !\App\Support\Stock\StockAbility::allows(auth()->user(),'items','create')) {
             abort(403, 'You do not have permission to create stock items through import.');
         }
         $batchId = DB::transaction(function () use ($rows, $projectId): int {
@@ -705,7 +705,7 @@ class StockController extends Controller
                 if ($row->action === 'skipped') continue;
                 $payload = json_decode($row->payload, true, 512, JSON_THROW_ON_ERROR);
                 if ($row->action === 'added') {
-                    if (!auth()->user()->can('create stock') && !auth()->user()->hasAnyRole(['admin', 'superadmin'])) abort(403, 'You do not have permission to create stock items through import.');
+                    if (!\App\Support\Stock\StockAbility::allows(auth()->user(),'items','create')) abort(403, 'You do not have permission to create stock items through import.');
                     $item = StockItem::create(['name' => $payload['name'], 'unit' => $payload['unit'], 'default_rate_minor' => (int) $payload['default_rate_minor'], 'created_by' => auth()->id()]);
                     DB::table('stock_project_item_definitions')->insert([
                         'project_id' => $projectId, 'item_id' => $item->id, 'name' => $payload['name'],
@@ -715,7 +715,7 @@ class StockController extends Controller
                     DB::table('stock_item_import_rows')->where('id', $row->id)->update(['stock_item_id' => $item->id, 'updated_at' => now()]);
                     $added++;
                 } else {
-                    if (!auth()->user()->can('edit stock') && !auth()->user()->can('create stock') && !auth()->user()->hasAnyRole(['admin', 'superadmin'])) abort(403, 'You do not have permission to update stock items through import.');
+                    if (!auth()->user()->can('edit stock') && !\App\Support\Stock\StockAbility::allows(auth()->user(),'items','create')) abort(403, 'You do not have permission to update stock items through import.');
                     $item = $this->projectItemDefinitions($projectId)->where('item.id', (int) $row->stock_item_id)
                         ->lockForUpdate()->first(['item.id', 'definition.name', 'definition.unit', 'definition.default_rate_minor']);
                     abort_unless($item, 409, 'An item in this import was archived after preview.');
@@ -798,7 +798,9 @@ class StockController extends Controller
 
     private function authorizeStockImportAccess(): void
     {
-        abort_unless(auth()->user()->can('create stock') || auth()->user()->can('edit stock') || auth()->user()->hasAnyRole(['admin', 'superadmin']), 403, 'You do not have permission to manage stock item imports.');
+        abort_unless(\App\Support\Stock\StockAbility::allows(auth()->user(),'items','create')
+            ||\App\Support\Stock\StockAbility::allows(auth()->user(),'items','edit'),
+            403, 'You do not have permission to manage stock item imports.');
     }
 
     public function parties(Request $request)
@@ -1544,6 +1546,10 @@ class StockController extends Controller
         $actor=auth()->user();
         abort_unless($actor && (
             $actor->hasRole('superadmin')||$actor->hasRole('super-admin')
+            ||\App\Support\Stock\StockAbility::allows(
+                $actor, request()->route('kind')==='bill'?'billing':'entries',
+                $action==='read'?'view':($action==='update'?'edit':$action)
+            )
             ||$actor->can('direct-update')
             ||$actor->can($action.' stock')
         ),403);
