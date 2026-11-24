@@ -1,3 +1,7 @@
+## Milestone 03 owner acceptance update — 2026-11-24
+
+**Only two browser acceptance gates remain:** (1) Stock Entry / Stock Bill, and (2) Labour Payment (CP). Owner confirms all other Milestone 03 terminal and browser tests PASS, including JV/SV/CV, Plot, BD/BW, CR/DR/CCR/CDR, BOR/BOP, PPR, EC/ECP, verified narration 7/7, Booking #242 and posting audit. Do not request passed browser tests again. Milestone 04 linked instrument custody/cascade remains separate. Refer to [Milestone 03 browser acceptance](MILESTONE_03_BROWSER_ACCEPTANCE_2026_11_19.md) for the exact two tests. Milestone 03 is not fully signed off until both remaining browser gates PASS.
+
 > **LATEST ACCEPTED STATUS — 2026-11-23:** **Milestone 04 CLOSED / OWNER ACCEPTED** (Cheque/Online correction, pending approval, Withdraw & Replace, zero-voucher same-ID edits, compact source narration, approval review, pending-state badge/actions). Owner reported all core browser scenarios PASS and confirmed the final compact design; final BankManagementRegisterJavaScriptContractTest **2 PASS / 28 assertions**, BankLinkedCorrectionApprovalIntegrationTest **19 PASS / 138 assertions**, and read-only posting audit **6 projects clean**. **Milestone 03 now next active work; NOT yet accepted.** Use the final M04 behavior specified below; older M04 sections are retained as historical superseded notes. Milestone 06 Activity Audit remains LAST/deferred.
 
 # BlueMarketing — Current Development Handoff
