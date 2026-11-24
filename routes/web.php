@@ -45,12 +45,12 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
     Route::get('attendance', [AttendanceController::class, 'index'])->middleware('permission:read attendance')->name('attendance.index');
     Route::post('attendance/device', [AttendanceController::class, 'saveDevice'])->middleware('permission:update setting')->name('attendance.device.save');
     Route::post('attendance/mapping', [AttendanceController::class, 'saveMapping'])->middleware('permission:update setting')->name('attendance.mapping.save');
-    Route::get('employee-tasks', [EmployeeTaskController::class, 'index'])->name('employee-tasks.index');
-    Route::post('employee-tasks', [EmployeeTaskController::class, 'store'])->name('employee-tasks.store');
-    Route::put('employee-tasks/{employeeTask}', [EmployeeTaskController::class, 'update'])->name('employee-tasks.update');
-    Route::patch('employee-tasks/{employeeTask}/status', [EmployeeTaskController::class, 'status'])->name('employee-tasks.status');
-    Route::patch('employee-task-notifications/{notification}', [EmployeeTaskController::class, 'readNotification'])->name('employee-tasks.notifications.read');
-    Route::delete('employee-tasks/{employeeTask}', [EmployeeTaskController::class, 'destroy'])->name('employee-tasks.destroy');
+    Route::get('employee-tasks', [EmployeeTaskController::class, 'index'])->middleware('permission:read employee task')->name('employee-tasks.index');
+    Route::post('employee-tasks', [EmployeeTaskController::class, 'store'])->middleware('permission:create employee task')->name('employee-tasks.store');
+    Route::put('employee-tasks/{employeeTask}', [EmployeeTaskController::class, 'update'])->middleware('permission:update employee task')->name('employee-tasks.update');
+    Route::patch('employee-tasks/{employeeTask}/status', [EmployeeTaskController::class, 'status'])->middleware('permission:read employee task|update employee task')->name('employee-tasks.status');
+    Route::patch('employee-task-notifications/{notification}', [EmployeeTaskController::class, 'readNotification'])->middleware('permission:read employee task')->name('employee-tasks.notifications.read');
+    Route::delete('employee-tasks/{employeeTask}', [EmployeeTaskController::class, 'destroy'])->middleware('permission:delete employee task')->name('employee-tasks.destroy');
     // Public website editor: same authentication and settings permission as the existing admin.
     Route::get('landing-page', [\App\Http\Controllers\LandingPageAdminController::class, 'index'])
         ->middleware('permission:read landing page')->name('landing-page.admin.index');
