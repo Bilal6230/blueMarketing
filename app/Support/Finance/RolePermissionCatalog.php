@@ -41,6 +41,23 @@ final class RolePermissionCatalog
         $name = strtolower(trim($name));
         if ($name === 'filemanager') return 'filemanager';
         if ($name === 'send sms') return 'sms';
+        // Exact historical names from the owner's actual permission audit:
+        // keep spelling/DB grants unchanged, only put choices in useful tabs.
+        $historical = [
+            'add slip'=>'slip',
+            'bank posting'=>'bank',
+            'pass cheque'=>'cheque',
+            'party_reprot'=>'report',
+            'report cashbook'=>'report',
+            'report party_ledger'=>'report',
+            'report party_report'=>'report',
+            'plot voucher'=>'plot',
+            'plot voucher form'=>'plot',
+            'plot voucher report'=>'plot',
+            'print voucher'=>'voucher',
+            'view inventory'=>'inventory',
+        ];
+        if (isset($historical[$name])) return $historical[$name];
         // Some real legacy permissions contain a multi-word resource, e.g.
         // "update booking price" and "view booking report". These still
         // belong to the resource tab, not the miscellaneous bucket.
