@@ -96,7 +96,14 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertSame(3,substr_count($api,"'FINANCE_REVERSAL_DISABLED'"));
         self::assertStringContainsString('reversePostedBatch(', $voucherLifecycle);
         self::assertStringContainsString('PostingReversalWriter())->reverse(', $plotLifecycle);
-        self::assertStringContainsString('$gateway->reversePostedBatch(', $api);
+        self::assertStringContainsString('FinanceSourceReversalRouter())->reverse(', $api);
+        $router=file_get_contents($root.'/app/Services/Finance/FinanceSourceReversalRouter.php');
+        self::assertIsString($router);
+        foreach (['VoucherLifecycleService','CashVoucherLifecycleService',
+                  'PlotEntryLifecycleService','BankTransferLifecycleService'] as $service) {
+            self::assertStringContainsString($service, $router);
+        }
+        self::assertStringContainsString('FINANCE_REVERSAL_SOURCE_WORKFLOW_REQUIRED', $router);
     }
 
     public function test_ec_ecp_get_reversal_switch_without_enabling_unsupported_approval(): void
@@ -112,6 +119,21 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertStringContainsString('@if($definition[\'supported\'])', $view);
         self::assertStringContainsString("vs-reversal-form", $view);
         self::assertStringContainsString('Approval configuration is not supported', $view);
+    }
+
+    public function test_ordinary_plot_delete_preserves_independent_offset_when_reverse_switch_is_off(): void
+    {
+        $root=dirname(__DIR__,3);
+        $writer=file_get_contents($root.'/app/Services/Finance/PostingReversalWriter.php');
+        $plot=file_get_contents($root.'/app/Services/Finance/PlotEntryLifecycleService.php');
+        self::assertIsString($writer);
+        self::assertIsString($plot);
+        self::assertStringContainsString('bool $ordinaryDelete = false', $writer);
+        self::assertStringContainsString('if (!$ordinaryDelete)', $writer);
+        self::assertStringContainsString('$this->reverseSource($projectId,$kind,$sourceId,$requestKey,', $plot);
+        self::assertStringContainsString('$effectiveDate,$reason,$actorId,true);', $plot);
+        self::assertStringContainsString('$effectiveDate,$reason,$actorId,false);', $plot);
+        self::assertStringContainsString('$effectiveDate, $reason, $actorId, $ordinaryDelete', $plot);
     }
 
     public function test_only_typed_reversal_writer_applies_the_policy_at_the_write_boundary(): void
