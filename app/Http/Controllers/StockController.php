@@ -2231,7 +2231,9 @@ class StockController extends Controller
 
     private function minorToLedgerAmount(int $amountMinor): string
     {
-        return number_format($amountMinor, 2, '.', '');
+        // Stock amounts are stored in minor units (cents); GL columns are
+        // decimal rupees. Never post minor units as whole rupees.
+        return number_format($amountMinor / 100, 2, '.', '');
     }
 
     private function buildStockLedgerDetail(array $meta, array $lines): string
