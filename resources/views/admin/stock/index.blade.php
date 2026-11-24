@@ -1096,8 +1096,9 @@
                       </div>
 
                       <div class="col-md-6">
-                        <label class="form-label pv-small">Entry No (optional)</label>
-                        <input class="form-control" id="billEntryNo" placeholder="Link to entry..." />
+                        <label class="form-label pv-small" for="billEntryNo">Entry No (optional)</label>
+                        <input class="form-control" id="billEntryNo" placeholder="Existing Stock Entry slip no., e.g. IN-001" />
+                        <small class="text-muted">Enter the Slip No. of an existing Stock Entry from the Entries tab to link this bill. Leave blank for an independent Purchase/Sale Bill. Linked entries cannot be independently edited or deleted.</small>
                       </div>
                       <div class="col-md-6">
                         <label class="form-label pv-small">Bill No (auto)</label>
