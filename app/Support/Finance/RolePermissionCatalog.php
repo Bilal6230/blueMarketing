@@ -41,6 +41,15 @@ final class RolePermissionCatalog
         $name = strtolower(trim($name));
         if ($name === 'filemanager') return 'filemanager';
         if ($name === 'send sms') return 'sms';
+        // Some real legacy permissions contain a multi-word resource, e.g.
+        // "update booking price" and "view booking report". These still
+        // belong to the resource tab, not the miscellaneous bucket.
+        if (preg_match('/^(?:read|create|update|delete|approve|reject|edit|view) (booking|landing|plot|labour|stock|party)(?:[ _][a-z0-9_-]+)+$/', $name, $match)) {
+            return $match[1];
+        }
+        if (in_array($name, ['labour module','stock module'], true)) {
+            return strtok($name, ' ');
+        }
         if (preg_match('/^(?:read|create|update|delete|approve|reject|edit) ([a-z][a-z0-9_-]*)$/', $name, $match)) {
             return $match[1];
         }
