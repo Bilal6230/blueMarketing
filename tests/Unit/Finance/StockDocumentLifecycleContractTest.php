@@ -25,6 +25,21 @@ final class StockDocumentLifecycleContractTest extends TestCase
         self::assertStringContainsString('negative inventory',$editor);
     }
 
+    public function test_stock_edit_rows_and_modal_dismissals_remain_visible_and_functional(): void
+    {
+        $view=file_get_contents(dirname(__DIR__,3).'/resources/views/admin/stock/index.blade.php');
+        self::assertIsString($view);
+        self::assertStringContainsString("appendTo(\\$wrap);", $view);
+        self::assertStringContainsString("stockDocAddLine(line);", $view);
+        self::assertStringContainsString('stockDocumentEditTotal', $view);
+        self::assertStringContainsString('stockDocRecalculate();', $view);
+        self::assertStringContainsString('click.stockModalClose', $view);
+        self::assertStringContainsString("stockModal('#'+modal.id,'hide')", $view);
+        self::assertStringNotContainsString('event.stopImmediatePropagation();', $view);
+        self::assertStringContainsString("stockDocHide('#stockDocumentEditModal')", $view);
+        self::assertStringContainsString("stockDocHide('#stockDocumentDeleteModal')", $view);
+    }
+
     public function test_stock_edit_delete_use_bootstrap_five_modals_with_jquery_ajax_and_refresh(): void
     {
         $root=dirname(__DIR__,3);
