@@ -36,13 +36,15 @@ final class Milestone03ActualBrowserRepairsContractTest extends TestCase
     {
         $controller=$this->source('app/Http/Controllers/BookingController.php');
         $view=$this->source('resources/views/admin/booking/extra_charge.blade.php');
-        self::assertStringContainsString("['null', 'EC', 'ECP']",$controller);
+        self::assertStringContainsString("['null', 'EC']",$controller);
+        self::assertStringContainsString('ecPaymentsByCharge',$controller);
         self::assertStringContainsString("'posting_accounts'=>\$postingAccounts",$controller);
         self::assertStringContainsString("['EC','ECP']",$view);
         self::assertStringContainsString('id="fvcExtraCashPostingAccounts"',$view);
         self::assertStringContainsString('data-id="{{ $i->id }}"',$view);
         self::assertStringContainsString('extraCashBase+\'/\'+source',$view);
-        self::assertStringContainsString('Linked EC payment',$view);
+        self::assertStringContainsString('fvcPaymentHistoryModal',$view);
+        self::assertStringContainsString('fvcPaymentRows',$view);
     }
 
     public function test_stock_edit_delete_modal_has_no_dependency_on_bootstrap_cdn(): void
