@@ -1060,10 +1060,19 @@
         $(function(){
             if($.blueTableSkeleton)$.blueTableSkeleton.show('#extraChargeInitialSkeleton',{rows:10,columns:14});
         });
-        $(document).on('init.dt',function(event,settings){
+        // Some shared table layouts render both a toolbar pager and the
+        // standard bottom pager. Preserve only the final bottom control.
+        var keepExtraChargeBottomPager=function(){
+            var $wrapper=$('#example1_wrapper');
+            if(!$wrapper.length)return;
+            var $pagers=$wrapper.find('.dataTables_paginate,.dt-paging');
+            if($pagers.length>1)$pagers.slice(0,-1).remove();
+        };
+        $(document).on('init.dt draw.dt',function(event,settings){
             if(settings&&settings.nTable&&settings.nTable.id==='example1'){
                 var $wrap=$('#example1').closest('.table-responsive');
                 $wrap.removeClass('bm-extra-list-pending bm-voucher-initial-pending').find('.bm-extra-list-skeleton').remove();
+                keepExtraChargeBottomPager();
             }
         });
         function submitForm() {
@@ -1208,6 +1217,7 @@
                     if(hasDataTable)$table.DataTable().destroy();
                     $table.find('tbody').html($new.html());
                     if(hasDataTable)$table.DataTable();
+                    keepExtraChargeBottomPager();
                     if($.blueActionMenu)$.blueActionMenu.enhance($table.find('td.blue-actions-cell'));
                 });
             };
