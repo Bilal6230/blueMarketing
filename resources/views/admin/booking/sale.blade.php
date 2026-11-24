@@ -472,6 +472,25 @@
                 var formattedGrandTotal = grandTotal.toLocaleString();
                 $('#total_price').val(formattedGrandTotal);
             }
+            // A blank Discount must never be required as a trigger for
+            // computing the read-only Grand Total on Booking creation.
+            $('form[action="{{ route('bookings.store') }}"]').on('submit',function(event){
+                if($.trim($('#discount_value').val())==='')$('#discount_value').val('0');
+                var rate=parseFloat(String($('#plot_rate').val()||'').replace(/,/g,''))||0;
+                var size=parseFloat(String($('#plot_size').val()||'').replace(/,/g,''))||0;
+                if(rate>0&&size>0){
+                    $('#sub_total_price').val((rate*size).toLocaleString('en-US'));
+                    updateConfiguredCharges();
+                }
+                updateGrandTotal();
+                var total=parseFloat(String($('#total_price').val()||'').replace(/,/g,''))||0;
+                if(total<=0){
+                    event.preventDefault();
+                    if(window.Swal)Swal.fire({icon:'warning',title:'Invalid Booking Price',
+                        text:'Select a plot with a positive rate. Discount can be zero.'});
+                    else alert('Select a plot with a positive sale price.');
+                }
+            });
             // Event listener for sub total price, park facing, and carner price change
             $('#sub_total_price, #park_facing, #carner_price , #discount_value').on('input', function () {
                 var subTotalPrice = parseFloat($('#sub_total_price').val().replace(/,/g, '')) || 0; // Remove commas for thousands separator
