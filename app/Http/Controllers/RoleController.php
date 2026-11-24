@@ -49,6 +49,10 @@ class RoleController extends Controller
                 'name'=>(string)$p->name,
                 'guard'=>(string)$p->guard_name,
                 'category'=>RolePermissionCatalog::category((string)$p->name),
+                'module'=>RolePermissionCatalog::generalModule((string)$p->name),
+                'module_label'=>RolePermissionCatalog::generalModuleLabel(
+                    RolePermissionCatalog::generalModule((string)$p->name)
+                ),
             ])->values()->all(),
             'legacyCount'=>$permissions->filter(fn($p)=>RolePermissionCatalog::isLegacyVoucher((string)$p->name))->count(),
             'financeDefinitions'=>collect(\App\Support\Finance\FinanceActionPermission::MODULES)->map(fn($module)=>[
@@ -95,13 +99,25 @@ class RoleController extends Controller
                 'permissions'=>'One or more permissions are not available for this guard.',
             ]);
         }
-        // Hidden old grants are automatically preserved on edit, never newly added.
-        // They cannot silently disappear while old non-finance routes still use them.
+        // Existing permissions excluded from the streamlined editor must not
+        // vanish when an admin edits only visible role choices. Preserve the
+        // unexposed finance actions and historical generic grants, but never
+        // allow adding them through the new role form.
         if ($role) {
-            $legacy = $role->permissions->pluck('name')->filter(
-                fn($p)=>RolePermissionCatalog::isLegacyVoucher((string)$p)
-            )->all();
-            $available = array_values(array_unique(array_merge($available,$legacy)));
+            $hidden = $role->permissions->filter(function ($permission): bool {
+                $name = (string)$permission->name;
+                if (RolePermissionCatalog::isLegacyVoucher($name)) return true;
+                if (!RolePermissionCatalog::isFinanceAction($name)) return false;
+                foreach (\App\Support\Finance\FinanceActionPermission::MODULES as $module) {
+                    $prefix = 'finance '.$module.' ';
+                    if (str_starts_with($name,$prefix)) {
+                        return !in_array(substr($name,strlen($prefix)),
+                            RolePermissionCatalog::moduleActions($module),true);
+                    }
+                }
+                return true;
+            })->pluck('name')->all();
+            $available = array_values(array_unique(array_merge($available,$hidden)));
         }
         return ['name'=>$name,'guard_name'=>$guard,'permissions'=>$available];
     }
