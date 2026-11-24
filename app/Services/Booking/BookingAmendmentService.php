@@ -226,7 +226,7 @@ final class BookingAmendmentService
                 $booking->total_price = $newTotal;
             }
             $booking->save();
-            if($pricingChanged && bccomp($oldTotal,$newTotal,2)!==0){
+            if($dateChanged||($pricingChanged && bccomp($oldTotal,$newTotal,2)!==0)){
                 $this->syncOriginalSale($projectId,(int)$booking->id,
                     $oldTotal,$newTotal,$newBookingDate);
             }
