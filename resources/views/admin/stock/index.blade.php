@@ -1104,6 +1104,10 @@
                         <label class="form-label pv-small">Bill No (auto)</label>
                         <input class="form-control" id="billNo" readonly />
                       </div>
+                      <div class="col-12">
+                        <label class="form-label pv-small" for="billNarration">Description / Narration</label>
+                        <textarea class="form-control" id="billNarration" rows="2" maxlength="1000" placeholder="Write bill details..."></textarea>
+                      </div>
                     </div>
 
                     <hr class="my-3" />
@@ -1935,6 +1939,7 @@
           date: billDate.value,
           party_id: Number(billParty.value),
           entry_no: billEntryNo.value || "",
+          narration: $('#billNarration').val() || "",
           lines,
         });
 
@@ -1946,6 +1951,7 @@
         stockModal('#stockBillCreateModal','hide');
 
         billEntryNo.value = "";
+        $('#billNarration').val('');
         $(billLinesWrap).html("");
         $(billLinesWrap).append(makeBillLineRow(1));
         recalcBillTotal();
