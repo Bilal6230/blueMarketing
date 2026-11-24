@@ -33,6 +33,62 @@ final class RoleManagementModernizationTest extends TestCase
         self::assertNotContains('approve',RolePermissionCatalog::moduleActions('draft'));
     }
 
+    public function test_existing_application_permissions_are_grouped_into_separate_modules(): void
+    {
+        $expected=[
+            'read attendance'=>'attendance',
+            'create payroll'=>'payroll',
+            'read labour'=>'labour',
+            'update booking price'=>'booking',
+            'delete plot'=>'plot',
+            'read role'=>'role',
+            'create permission'=>'permission',
+            'read user'=>'user',
+            'read setting'=>'setting',
+            'read report'=>'report',
+            'lead details'=>'lead',
+            'lead search'=>'lead',
+            'send sms'=>'sms',
+            'filemanager'=>'filemanager',
+        ];
+        foreach($expected as $name=>$module){
+            self::assertSame($module,RolePermissionCatalog::generalModule($name),$name);
+        }
+        self::assertSame('other',RolePermissionCatalog::generalModule('unrecognized special ability'));
+        self::assertSame('Settings',RolePermissionCatalog::generalModuleLabel('setting'));
+        self::assertSame('Expenses',RolePermissionCatalog::generalModuleLabel('expence'));
+        self::assertSame('Other Access',RolePermissionCatalog::generalModuleLabel('other'));
+    }
+
+    public function test_only_supported_reverse_actions_are_selectable(): void
+    {
+        foreach (['jv','sv','cv','ccr','cdr','bor','bop'] as $module) {
+            self::assertNotContains('reverse',RolePermissionCatalog::moduleActions($module),$module);
+        }
+        foreach (['cr','dr','cp','bank-deposit','bank-withdrawal','plot-receipt','plot-purchase'] as $module) {
+            self::assertContains('reverse',RolePermissionCatalog::moduleActions($module),$module);
+        }
+    }
+
+    public function test_role_editor_has_module_navigation_and_preserves_hidden_grants(): void
+    {
+        $root=dirname(__DIR__,2);
+        $view=file_get_contents($root.'/resources/views/admin/role.blade.php');
+        $controller=file_get_contents($root.'/app/Http/Controllers/RoleController.php');
+        self::assertIsString($view);
+        self::assertIsString($controller);
+        self::assertStringContainsString("id:'general:'+module", $view);
+        self::assertStringContainsString("group:'application'", $view);
+        self::assertStringContainsString("OTHER MODULES", $view);
+        self::assertStringContainsString("FINANCE & DAILY ENTRIES", $view);
+        self::assertStringContainsString("p.module_label||module", $view);
+        self::assertStringContainsString("RolePermissionCatalog::generalModule(", $controller);
+        self::assertStringContainsString("RolePermissionCatalog::generalModuleLabel(", $controller);
+        self::assertStringContainsString("RolePermissionCatalog::moduleActions(\$module)", $controller);
+        self::assertStringContainsString("array_merge(\$available,\$hidden)", $controller);
+        self::assertStringNotContainsString("sections.push({id:'general',title:'Other Modules'", $view);
+    }
+
     public function test_role_page_only_has_requested_six_columns_and_ajax_modals(): void
     {
         $root = dirname(__DIR__,2);
