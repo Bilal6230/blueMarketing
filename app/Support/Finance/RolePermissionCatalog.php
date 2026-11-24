@@ -100,6 +100,19 @@ final class RolePermissionCatalog
         };
     }
 
+    public static function isSelectableFinance(string $name): bool
+    {
+        if (!self::isFinanceAction($name)) return false;
+        foreach (\App\Support\Finance\FinanceActionPermission::MODULES as $module) {
+            $prefix='finance '.$module.' ';
+            if (str_starts_with($name,$prefix)) {
+                return in_array(substr($name,strlen($prefix)),
+                    self::moduleActions($module),true);
+            }
+        }
+        return false;
+    }
+
     public static function moduleLabel(string $module): string
     {
         return match ($module) {
