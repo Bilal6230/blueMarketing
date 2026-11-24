@@ -1,3 +1,29 @@
+## 2026-11-24 — Milestone 05 FINAL SOURCE-LIFECYCLE SAFETY BATCH (owner tests/browser pending)
+
+**Security/integrity finding resolved:** The authenticated unified finance API's generic `POST /finance/projects/{projectId}/reversals` previously called `PostingGateway::reversePostedBatch` directly. Although the M05 project ON/OFF policy reached the shared writer, this generic route could still bypass source-specific inventory/cheque/commission/cash lifecycle rules. It now uses `FinanceSourceReversalRouter`, resolving an exact project-scoped `finance_posting_source_claims` batch and delegating to existing guards for journal/commission, cash, bank transfer and plot receipt/purchase. Unimplemented stock/booking/labour source reversal lifecycles **fail closed** with `FINANCE_REVERSAL_SOURCE_WORKFLOW_REQUIRED`; do not pretend GL-only reversal is safe for inventory/payroll. The other API source-specific void endpoints already use specialized guards. No new table or migration.
+
+**Independent Delete correction:** Plot ordinary Delete archives source and offsets accounting using the same posting engine. It must continue working even if user-initiated Reversal is OFF. The trusted `PlotEntryLifecycleService::archive` path now marks its compensating posting as ordinary Delete when calling the writer; normal `reverse()` and any API/user reversal still enforce the selected policy. This is not a permission bypass from client input, and existing unsold/unbooked inventory/verified custody/linked source checks remain in the source service.
+
+**Canonical typed series mapping:** `PR -> PPR`, `CHR -> BOR`, `CHP -> BOP`, allowing the correct project UI policy to protect a direct posted batch. Reversal-only Voucher Settings entries added for `EC`, `ECP`, `BO`, `LAB`, `ST-IN`, `ST-OUT`, `SB-PUR`, `SB-SALE`, without enabling unsupported approval flows. These switches govern eligible guarded reversals only; no new Stock/Labour browser Reverse action was invented.
+
+**Regression files:** `Milestone05ReversalSettingsContractTest` now covers all 4 web + 3 API reversal/void routes, source-aware generic API routing and the ordinary Delete exception. `Milestone05ReversalPolicyIntegrationTest` checks project/series isolation, direct writer OFF, PPR/PR direct reversal OFF, generic API stock fail-closed, and cross-project refusal. `JournalPostingWriterTest` adds a real posted JV reversal OFF→ON preservation test. Existing old M05 3/40 terminal and browser pass do not certify these new changes; user must verify newest tests locally.
+
+**Local final test gate (no migrations):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone05ReversalSettingsContractTest
+php artisan test --filter=Milestone05ReversalPolicyIntegrationTest
+php artisan test --filter=JournalPostingWriterTest
+php artisan test --filter=PlotEntryWriterTest
+php artisan finance:audit-posting-balances
+```
+**Final browser acceptance (disposable local records only):** Reversal OFF on PPR hides Reverse; a direct reversal must be blocked even though posted series is PR; ordinary Plot Receipt/Purchase Delete should still complete its safe source archive. Newly exposed reversal-only EC/ECP and stock/labour settings persist after refresh without activating generic approval options. Avoid calling generic API to reverse a real linked stock or payroll posting; regression tests cover its fail-closed contract. No repeat of previously passed M05 PPR/PP/BD/BW/typed-cash visibility matrix is needed except these changed safety cases.
+
+**Status:** M05 implementation/code delivered for all existing web/API reversal routes with source-aware safeguards; **final owner tests/browser acceptance pending before marking M05 CLOSED**. M03 Labour CP on HOLD; M02 permission matrix pending; M04 completed; M06 activity audit LAST.
+
 ## 2026-11-24 — M05 final API audit correction / canonical source series safety fix
 
 An additional audit of **both `routes/web.php` and `routes/api.php`** found **seven HTTP reversal/void routes** (four web reverse routes plus three authenticated finance API routes: `POST reversals`, `POST plot-vouchers/{kind}/{sourceId}/void`, and `POST vouchers/{kind}/{sourceId}/void`). All seven flow into the shared `PostingReversalWriter` and now return explicit `FINANCE_REVERSAL_DISABLED` 409 for API policy denial. This supersedes the narrower previous statement that only four web routes existed. Existing ordinary Delete, booking cancellation, and bank/cheque withdraw/replace are NOT unconditional financial reversals and retain independent custody guards.
