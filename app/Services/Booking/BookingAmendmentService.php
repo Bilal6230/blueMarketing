@@ -24,21 +24,26 @@ final class BookingAmendmentService
      * Fail closed if the historic source/leg identity cannot be proven.
      */
     private function syncOriginalSale(int $projectId, int $bookingId,
-        string $oldTotal, string $newTotal, string $date): void
+        string $oldTotal, string $newTotal, string $date, bool $amountChanged): void
     {
-        $voucher=DB::table('journal_vouchers')->where('project_id',$projectId)
+        $vouchers=DB::table('journal_vouchers')->where('project_id',$projectId)
             ->where('type','SV')->where('reference','BOOKING-'.$bookingId)
-            ->whereNull('deleted_at')->lockForUpdate()->first();
-        if(!$voucher)throw new DomainException('BOOKING_SV_SOURCE_MISSING');
+            ->whereNull('deleted_at')->lockForUpdate()->get();
+        if($vouchers->isEmpty())throw new DomainException('BOOKING_SV_SOURCE_MISSING');
+        if($vouchers->count()!==1)throw new DomainException('BOOKING_SV_SOURCE_AMBIGUOUS');
+        $voucher=$vouchers->first();
         // BO rows can exist for a resold plot. Resolve only by the SV
         // detail-linked customer ledger, not by a bare project/plot match.
         $base=DB::table('ledgers')->where('type','SV')->where('type_id',$voucher->id)
             ->where('is_active',1)->whereNotNull('journal_voucher_detail_id')
             ->lockForUpdate()->get();
-        $groups=$base->groupBy('customer_ledger_id')->filter(function($legs)use($oldTotal){
+        // Historical bookings may store a different total than their original
+        // posted BO/SV. Identify the source from its own balanced pair first,
+        // rather than treating the booking's saved total as the source identity.
+        $groups=$base->groupBy('customer_ledger_id')->filter(function($legs){
             return $legs->count()===2
-                &&bccomp((string)$legs->sum('amount_in'),$oldTotal,2)===0
-                &&bccomp((string)$legs->sum('amount_out'),$oldTotal,2)===0;
+                &&bccomp((string)$legs->sum('amount_in'),(string)$legs->sum('amount_out'),2)===0
+                &&bccomp((string)$legs->sum('amount_in'),'0',2)===1;
         });
         if($groups->count()!==1)throw new DomainException('BOOKING_SV_SOURCE_AMBIGUOUS');
         $legs=$groups->first();
@@ -46,7 +51,8 @@ final class BookingAmendmentService
         $bo=DB::table('customer_ledger')->where('id',$customerId)
             ->where('project_id',$projectId)->where('transaction_type','Bo')
             ->where('is_active',1)->lockForUpdate()->first();
-        if(!$bo||bccomp((string)$bo->amount_in,$oldTotal,2)!==0
+        $postedTotal=(string)$legs->sum('amount_in');
+        if(!$bo||bccomp((string)$bo->amount_in,$postedTotal,2)!==0
             ||bccomp((string)$bo->amount_out,'0',2)!==0)
             throw new DomainException('BOOKING_BO_SOURCE_AMBIGUOUS');
         if($legs->filter(fn($leg)=>(float)$leg->amount_in>0)->count()!==1
@@ -62,18 +68,21 @@ final class BookingAmendmentService
                 ||bccomp((string)$detail->credit,(string)$leg->amount_out,2)!==0)
                 throw new DomainException('BOOKING_SV_DETAIL_MISMATCH');
         }
+        // A date-only amendment must not silently fix a historic price gap.
+        // Only an explicit price amendment replaces the verified posted amount.
+        $targetTotal=$amountChanged?$newTotal:$postedTotal;
         $now=now();
         DB::table('customer_ledger')->where('id',$customerId)
-            ->update(['amount_in'=>$newTotal,'date'=>$date,'updated_at'=>$now]);
+            ->update(['amount_in'=>$targetTotal,'date'=>$date,'updated_at'=>$now]);
         foreach($legs as $leg){
             $debit=(float)$leg->amount_in>0;
             DB::table('ledgers')->where('id',$leg->id)
-                ->update(['amount_in'=>$debit?$newTotal:'0.00',
-                    'amount_out'=>$debit?'0.00':$newTotal,
+                ->update(['amount_in'=>$debit?$targetTotal:'0.00',
+                    'amount_out'=>$debit?'0.00':$targetTotal,
                     'date'=>$date,'updated_at'=>$now]);
             DB::table('journal_voucher_details')->where('id',$leg->journal_voucher_detail_id)
-                ->update(['debit'=>$debit?$newTotal:'0.00',
-                    'credit'=>$debit?'0.00':$newTotal,'updated_at'=>$now]);
+                ->update(['debit'=>$debit?$targetTotal:'0.00',
+                    'credit'=>$debit?'0.00':$targetTotal,'updated_at'=>$now]);
         }
         $totals=DB::table('journal_voucher_details')
             ->where('journal_voucher_id',$voucher->id)->whereNull('deleted_at')
@@ -228,7 +237,8 @@ final class BookingAmendmentService
             $booking->save();
             if($dateChanged||($pricingChanged && bccomp($oldTotal,$newTotal,2)!==0)){
                 $this->syncOriginalSale($projectId,(int)$booking->id,
-                    $oldTotal,$newTotal,$newBookingDate);
+                    $oldTotal,$newTotal,$newBookingDate,
+                    $pricingChanged && bccomp($oldTotal,$newTotal,2)!==0);
             }
 
             BookingEditAudit::create([
