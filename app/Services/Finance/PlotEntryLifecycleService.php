@@ -11,6 +11,15 @@ final class PlotEntryLifecycleService
     public function reverse(int $projectId, string $kind, int $sourceId, string $requestKey,
         string $effectiveDate, string $reason, ?int $actorId): int
     {
+        return $this->reverseSource($projectId,$kind,$sourceId,$requestKey,
+            $effectiveDate,$reason,$actorId,false);
+    }
+
+    // An ordinary Delete needs its offset posting even when optional
+    // user-initiated Reverse has been disabled for this project.
+    private function reverseSource(int $projectId, string $kind, int $sourceId, string $requestKey,
+        string $effectiveDate, string $reason, ?int $actorId, bool $ordinaryDelete): int
+    {
         FinanceConnectionGuard::assertAllowed();
         $links = [
             'plot_receipt' => 'finance_plot_receipt_postings',
@@ -21,7 +30,7 @@ final class PlotEntryLifecycleService
         }
 
         return DB::transaction(function () use ($projectId, $kind, $sourceId, $requestKey,
-            $effectiveDate, $reason, $actorId, $links): int {
+            $effectiveDate, $reason, $actorId, $links, $ordinaryDelete): int {
             $sourceTable = $kind === 'plot_receipt' ? 'finance_plot_receipts' : 'finance_plot_purchases';
             $query = DB::table($sourceTable)->where('project_id', $projectId)
                 ->where('id', $sourceId)->lockForUpdate();
@@ -61,7 +70,7 @@ final class PlotEntryLifecycleService
 
             $batchId = (new PostingReversalWriter())->reverse(
                 $projectId, (int) $link->posting_batch_id, $requestKey,
-                $effectiveDate, $reason, $actorId
+                $effectiveDate, $reason, $actorId, $ordinaryDelete
             );
             foreach ($purchasePlots as $plot) {
                 DB::table('plots')->where('id', $plot->id)->where('project_id', $projectId)
@@ -104,7 +113,8 @@ final class PlotEntryLifecycleService
             $effectiveDate=max($effectiveDate,substr((string)$originalDate,0,10));
             // reverse() verifies exact source posting and unsold/unbooked
             // purchased plots before creating any compensating batch.
-            $batch=$this->reverse($projectId,$kind,$sourceId,$requestKey,$effectiveDate,$reason,$actorId);
+            $batch=$this->reverseSource($projectId,$kind,$sourceId,$requestKey,
+                $effectiveDate,$reason,$actorId,true);
             $affected=DB::table($sourceTable)->where('id',$sourceId)
                 ->where('project_id',$projectId)->where('is_active',1)->whereNull('deleted_at')
                 ->update(['is_active'=>0,'deleted_at'=>now(),'updated_at'=>now()]);
