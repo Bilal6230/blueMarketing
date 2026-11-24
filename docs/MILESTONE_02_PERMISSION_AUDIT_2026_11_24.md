@@ -1,3 +1,40 @@
+# 2026-11-24 — Strict permission integration audit / owner Stock bypass reproduction (CURRENT)
+
+Owner screenshot: role **Data Operator** has **0/4** permissions in Stock Items/Parties/Entries/Billing tabs yet a logged-in user can open Stock, see every tab and execute actions. **Confirmed root cause from source**: `StockAbility::allows()` treated generic `read slip`, `add slip`, `delete slip` as implicit grants to every Stock workspace, and treated plain `admin` as universal Stock rights. Separately `StockController::authorizeStockDocumentAction` accepted `direct-update` and `<action> stock`, while item import update accepted `edit stock`. These were direct bypass paths, and previous compatibility tests incorrectly expected the unsafe fallback. **This is a real authorization defect, not merely a sidebar display issue.**
+
+**Fixes committed in the same implementation batch:**
+1. `StockAbility` now grants each action **only** on the exact `stock <items|parties|entries|billing> <view|create|edit|delete>` permission, except protected system `superadmin` / `super-admin`. Plain `admin` and legacy slip rights are **not** implicit Stock grants. Stock index, sidebar, AJAX endpoints, row actions and server document Edit/Delete already reuse this central ability and therefore become strict together.
+2. Removed old `direct-update`, `edit stock` and generic `<action> stock` alternatives in document and item import update; retained proper finance approvals and selected-project/source checks. Stock metadata endpoint now returns only Items / Parties datasets needed by authorized View or Entry/Billing editing rights, not both indiscriminately.
+3. Expanded previous Stock contract test to assert **legacy slip/admin users get denied**, independent narrow permissions remain isolated and `superadmin` remains protected. Added `Milestone02StrictModuleAuthorizationContractTest` covering exact Stock permissions, no document/import bypass, metadata and sidebar consistency.
+4. **Employee Task Management** was a second verified View-ungated module: left menu appeared for everybody and routes only checked manager role internally. Added four true Employee Tasks permissions: `read employee task`, `create employee task`, `update employee task`, `delete employee task`; real route middleware, controller action checks, task UI controls and independent Roles tab. Additive migration `2026_11_24_190000_register_employee_task_permissions.php` uses the existing Spatie tables, **no new tables**. To preserve preexisting task access when deployed, assigns `read employee task` to existing web roles and manager CRUD to existing admin/superadmin role names; owner may then revoke View on specific roles, which will hide Task sidebar and deny direct GET. Status edits remain available for assigned employees with Task View, while managerial editing requires Update. No task records edited.
+5. Verified source for other primary sidebar groups: granular Daily Entries/CR/DR/BOR/BOP/etc link View checks align to the `AuthorizeFinanceAction` route boundary; Stock and Labour sidebars now match their module guard; Users/Settings/Projects/Plots/Reports/Attendance use their existing Spatie Read permissions. Do not claim every underlying custom AJAX endpoint is exhaustively verified: remaining unusual/legacy routes must be evaluated case-by-case before global close.
+6. **Effective permissions are cumulative across all assigned roles and direct-user grants.** The role-edit screenshot alone does not prove the signed-in user holds only that role. Owner should verify user roles when testing. Even if a role has 0 Stock permissions, another assigned role with explicit Stock rights will authorize that user. No role grants deleted automatically; no destructive migration.
+
+**Behavior change / important:** Because owner specifically requires revoked modules to disappear, former staff relying *only* on `read slip` to reach Stock will now lose Stock access and see a correct 403. Give them only necessary new `stock ... view/create/edit/delete` grants through Roles. **Do not re-enable broad fallback** merely to eliminate 403; previous backwards-compatibility note is superseded by this strict owner requirement. `superadmin` remains privileged by design.
+
+**New tests to run (previous M02 tests need not be repeated except the changed Stock contract):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan migrate --path=database/migrations/2026_11_24_190000_register_employee_task_permissions.php
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone02PermissionEnforcementContractTest
+php artisan test --filter=Milestone02StrictModuleAuthorizationContractTest
+php artisan test --filter=Milestone02SidebarViewPermissionContractTest
+```
+
+**Browser acceptance, use a disposable non-superadmin test user with only the target role**:
+- No Stock permissions: Stock sidebar hidden and `/admin/stocks` returns 403. This holds **even when read/add/delete slip are granted**. If a user holds multiple roles, check their effective union.
+- Only `stock items view`: Stock link and Items tab visible, not Entry/Billing/Parties; no New/Edit/Delete; direct writes 403.
+- Add `stock items create`: New Item available; unrelated Stock workspaces remain hidden. Revoke View: sidebar gone and Stock URL 403 (even if Create remains granted).
+- Task View present: Employee Tasks sidebar and GET allowed, permitted assigned tasks only; revoke `read employee task`: sidebar hidden and GET 403. Create/Update/Delete each affect only corresponding UI and server action.
+- Finance CR OFF/DR ON behavior from previous sidebar fix remains independent; do not repeat deep Finance voucher functionality tests. Labour Payment CP workflow stays ON HOLD.
+
+**Latest owner result preceding this fix:** `Milestone02SidebarViewPermissionContractTest` **3 PASS / 51 assertions** and `php artisan view:cache` PASS; these don't validate this new strict Stock change. **Local new tests and browser checks PENDING**. M02 must not be marked closed yet; M01/M04/M05 remain CLOSED, M03 Labour CP ON HOLD, M06 Activity Audit LAST.
+
+---
+
 # 2026-11-24 — M02 Sidebar View permission parity (code committed, owner acceptance pending)
 
 Owner's browser screenshot: logged-in limited role sees **Credit Voucher (CR)** in Daily Entries sidebar, but clicking `/admin/finance/daily-vouchers?type=CR` yields **403: You do not have permission for this finance action**. The backend already correctly checks granular `finance cr view`; the left menu incorrectly used old broad `read voucher` to show *all* daily voucher links. This was a **sidebar authorization presentation bug**, not a reason to weaken the backend permission guard.
