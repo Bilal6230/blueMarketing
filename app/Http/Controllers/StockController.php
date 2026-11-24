@@ -1581,6 +1581,9 @@ class StockController extends Controller
             'narration'=>(string)($entry?$source->reason:''),
             'type'=>(string)($entry?$source->flow:$source->type),
             'party_id'=>(int)$source->party_id,
+            'party_name'=>(string)(DB::table('stock_parties')->where('id',$source->party_id)->value('name')??''),
+            'vehicle'=>(string)($entry?($source->vehicle_no??''):''),
+            'driver'=>(string)($entry?($source->driver_name??''):''),
             'editable'=>!$typedClaim&&!$linked,
             'lines'=>$details->map(fn($line)=>[
                 'detail_id'=>(int)$line->id,
