@@ -41,6 +41,8 @@
 .role-editor .role-nav-item.active{background:#dfeeff;color:#1459a7;font-weight:800}
 .role-editor .role-nav-item:hover{background:#eaf3ff}
 .role-editor .role-nav-count{font-size:10px;font-weight:700;color:#5e7ba0}
+.role-editor .role-nav-group{padding:12px 9px 5px;color:#72869f;font-size:10px;font-weight:800;letter-spacing:.055em}
+.role-editor .role-nav-group:first-child{padding-top:5px}
 .role-editor .role-permission-content{overflow:auto;padding:13px 15px}
 .role-editor .role-panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:9px}
 .role-editor .role-panel-head h5{font-size:14px;font-weight:800;color:#21496f;margin:0}
@@ -134,7 +136,7 @@
      <div><label for="roleGuard">Guard *</label><select class="form-control" id="roleGuard" name="guard_name"><option value="web">Web</option><option value="api">API</option></select></div>
     </div>
     <div class="role-permission-tools">
-      <input type="search" id="rolePermissionSearch" class="form-control" placeholder="Search modules, permissions or actions..." aria-label="Search permissions">
+      <input type="search" id="rolePermissionSearch" class="form-control" placeholder="Search vouchers, modules or actions..." aria-label="Search permissions">
       <span class="role-selected" id="roleSelectedCount">0 selected</span>
       <button class="btn btn-outline-secondary btn-sm" id="roleClearVisible" type="button">Clear section</button>
     </div>
@@ -234,10 +236,22 @@ $(function(){
     $.each(modules,function(_,m){
       var names=m.actions.map(function(a){return 'finance '+m.module+' '+a;});
       var items=catalog.filter(function(p){return available(p)&&names.indexOf(p.name)>=0;});
-      if(items.length)sections.push({id:'finance:'+m.module,title:m.label,subtitle:'Daily Entries',items:items.map(function(p){return {name:p.name,label:p.name.slice(('finance '+m.module+' ').length)};})});
+      if(items.length)sections.push({id:'finance:'+m.module,title:m.label,subtitle:'Finance & Daily Entries',
+        group:'finance',items:items.map(function(p){return {name:p.name,label:p.name.slice(('finance '+m.module+' ').length)};})});
     });
+    // Keep one tab for each actual module, instead of dumping every
+    // non-finance permission into one overwhelming "Other Modules" tab.
     var general=catalog.filter(function(p){return available(p)&&p.category==='general';});
-    if(general.length)sections.push({id:'general',title:'Other Modules',subtitle:'General permissions',items:general.map(function(p){return {name:p.name,label:p.name};})});
+    var grouped={};
+    $.each(general,function(_,p){
+      var module=p.module||'other';
+      if(!grouped[module])grouped[module]={id:'general:'+module,title:p.module_label||module,
+        subtitle:'Application modules',group:'application',items:[]};
+      grouped[module].items.push({name:p.name,label:p.name});
+    });
+    $.each(Object.keys(grouped).sort(function(a,b){
+      return grouped[a].title.localeCompare(grouped[b].title);
+    }),function(_,key){sections.push(grouped[key]);});
     if(term){
       sections=sections.map(function(s){return $.extend({},s,{items:s.items.filter(function(i){return (s.title+' '+i.label+' '+i.name).toLowerCase().includes(term);})});}).filter(function(s){return s.items.length;});
     }
@@ -246,7 +260,12 @@ $(function(){
   function renderPermissions(){
     var sections=sectionList(),$nav=$('#roleNavigation').empty();
     if(!sections.some(function(s){return s.id===activeSection;}))activeSection=sections.length?sections[0].id:'';
+    var previousGroup='';
     $.each(sections,function(_,s){
+      if(s.group!==previousGroup){
+        previousGroup=s.group;
+        $nav.append($('<div>',{'class':'role-nav-group',text:s.group==='finance'?'FINANCE & DAILY ENTRIES':'OTHER MODULES'}));
+      }
       var count=s.items.filter(function(i){return selected.has(i.name);}).length;
       $nav.append($('<button>',{type:'button','class':'role-nav-item'+(s.id===activeSection?' active':''),'data-section':s.id}).append($('<span>',{text:s.title}),$('<span>',{'class':'role-nav-count',text:count+'/'+s.items.length})));
     });
