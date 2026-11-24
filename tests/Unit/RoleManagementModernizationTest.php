@@ -111,6 +111,20 @@ final class RoleManagementModernizationTest extends TestCase
         self::assertStringNotContainsString("sections.push({id:'general',title:'Other Modules'", $view);
     }
 
+    public function test_roles_default_to_stable_ascending_id_and_reset_restores_it(): void
+    {
+        $root=dirname(__DIR__,2);
+        $controller=file_get_contents($root.'/app/Http/Controllers/RoleController.php');
+        $view=file_get_contents($root.'/resources/views/admin/role.blade.php');
+        self::assertIsString($controller);
+        self::assertIsString($view);
+        self::assertStringContainsString("->orderBy('id')->get()", $controller);
+        self::assertStringNotContainsString("->orderByDesc('updated_at')->get()", $controller);
+        self::assertStringContainsString("sortColumn='id',sortDir='asc'", $view);
+        self::assertStringContainsString("sortColumn='id';sortDir='asc';render()", $view);
+        self::assertStringContainsString('Number(a.id)-Number(b.id)', $view);
+    }
+
     public function test_role_page_only_has_requested_six_columns_and_ajax_modals(): void
     {
         $root = dirname(__DIR__,2);
