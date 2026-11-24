@@ -1,3 +1,14 @@
+## 2026-11-24 — First owner terminal gate / pasted audit excerpt (fix committed, re-run pending)
+
+Owner ran first M02 gate: `view:cache` PASS; `FinanceActionPermissionMatrixTest` 6 PASS / 365 assertions; `RoleManagementModernizationTest` 6 PASS, 1 FAIL (442 assertions) specifically `update booking price`: expected module `booking` but got `other`. Cause was the existing per-resource grouping regex accepting only two-token names. Fixed `RolePermissionCatalog::generalModule` for real multiword resource permissions (`update booking price`, `view booking report`, `read landing page`, `update plot number`, `stock module`, `labour module`) and expanded regression. No grants/DB actions changed; awaiting owner re-run before marking PASS.
+
+Owner's pasted `permissions:audit --json` excerpt was truncated by terminal scrollback (starts partway into finance draft; no opening report totals) and cannot be used to calculate complete database counts. It **does** demonstrate many unselectable finance cross-product permissions still granted to legacy roles (e.g. `finance draft clear` and `finance jv reverse`), so **do not delete these assignments blindly**. Export entire read-only JSON directly to a disk file rather than printing 3000+ lines to PowerShell, then share the saved file:
+```powershell
+php artisan permissions:audit --json | Set-Content -Path .\permissions-audit.json -Encoding UTF8
+Get-Item .\permissions-audit.json | Select-Object FullName,Length
+```
+Full output is required for authoritative category totals and further safe cleanup recommendations. Do not paste terminal scrollback; share the file as an attachment. Existing finance permissions preserved.
+
 # Milestone 02 — Roles & Permissions / Daily Entries audit (2026-11-24)
 
 **Branch:** `upgrade/laravel-framework`. This is a **source-code audit and first implementation batch**. The owner's current local `permissions` and role-grant tables have **not** yet been read: do not invent counts of actual database grants, call entries unused, or delete them. Use `php artisan permissions:audit --json` against the owner's local DB to complete the live grant inventory.
