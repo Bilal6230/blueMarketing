@@ -55,6 +55,18 @@ final class RoleManagementModernizationTest extends TestCase
             'lead search'=>'lead',
             'send sms'=>'sms',
             'filemanager'=>'filemanager',
+            'add slip'=>'slip',
+            'bank posting'=>'bank',
+            'pass cheque'=>'cheque',
+            'party_reprot'=>'report',
+            'report cashbook'=>'report',
+            'report party_ledger'=>'report',
+            'report party_report'=>'report',
+            'plot voucher'=>'plot',
+            'plot voucher form'=>'plot',
+            'plot voucher report'=>'plot',
+            'print voucher'=>'voucher',
+            'view inventory'=>'inventory',
         ];
         foreach($expected as $name=>$module){
             self::assertSame($module,RolePermissionCatalog::generalModule($name),$name);
