@@ -91,6 +91,13 @@ final class Milestone05ReversalPolicyIntegrationTest extends TestCase
         self::assertTrue($policy->enabled(1,'BW'));
         self::assertTrue($policy->enabled(2,'BD'));
         self::assertTrue($policy->enabled(1,'PPR'));
+        DB::table('daily_voucher_approval_policies')->insert([
+            ['project_id'=>1,'voucher_type'=>'BOR','reversal_enabled'=>false],
+            ['project_id'=>1,'voucher_type'=>'BOP','reversal_enabled'=>false],
+        ]);
+        self::assertFalse($policy->enabled(1,'CHR'));
+        self::assertFalse($policy->enabled(1,'CHP'));
+        self::assertTrue($policy->enabled(2,'CHR'));
         self::assertFalse($policy->enabled(1,'REV'));
         self::assertFalse($policy->enabled(0,'BD'));
     }
