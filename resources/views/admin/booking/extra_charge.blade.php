@@ -492,6 +492,13 @@
                                                     @canany(['update voucher', 'delete slip', 'can approve', 'finance extra-charge edit', 'finance extra-charge delete'])
                                                         <td>
                                                             <div class="btn-group">
+                                                                @if($i->transaction_type==='EC')
+                                                                    <button class="btn btn-sm btn-outline-info fvc-payment-history"
+                                                                        type="button" data-charge-id="{{ $i->id }}"
+                                                                        data-charge-number="{{ $i->display_voucher_number ?? $i->reference }}"
+                                                                        data-blue-action-label="Payments"
+                                                                        title="View ECP payments"><i class="fas fa-list"></i> Payments ({{ ($ecPaymentsByCharge[$i->id] ?? collect())->count() }})</button>
+                                                                @endif
                                                                 @canany(['update voucher','finance extra-charge edit'])
                                                                     <button class="btn btn-sm btn-primary btn-edit"
                                                                         data-id="{{ $i->id }}"><i
@@ -608,6 +615,49 @@
 @endsection
 
 @section('modal')
+<div class="modal fade fvc-modern-modal" id="fvcPaymentHistoryModal" tabindex="-1" aria-labelledby="fvcPaymentHistoryTitle" aria-hidden="true">
+ <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
+  <div class="modal-header"><h5 id="fvcPaymentHistoryTitle" class="modal-title">Extra Charge Payments</h5>
+   <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+  <div class="modal-body">
+   <div class="table-responsive">
+    <table class="table table-bordered table-striped table-sm" id="fvcPaymentHistoryTable">
+     <thead><tr><th>Voucher #</th><th>Date</th><th>Reference</th><th>Details</th><th>Amount</th><th>Payment Type</th><th>Actions</th></tr></thead>
+     <tbody id="fvcPaymentRows">
+      @foreach(($ecPaymentsByCharge ?? collect()) as $parentChargeId => $chargePayments)
+       @foreach($chargePayments as $payment)
+        @if((int)$parentChargeId>0)
+        <tr data-charge-id="{{ (int)$parentChargeId }}">
+         <td><strong>{{ $payment->display_voucher_number ?? ('ECP-'.$payment->id) }}</strong></td>
+         <td>{{ $payment->date }}</td>
+         <td>{{ $payment->reference }}</td>
+         <td>{{ $payment->description }}</td>
+         <td>{{ Setting::roundformatAmount($payment->amount_in) }}</td>
+         <td>{{ [1=>'Cash',2=>'Online',3=>'Cheque'][(int)$payment->payment_type] ?? 'Other' }}</td>
+         <td>
+          @if((int)$payment->payment_type===1)
+           @canany(['update voucher','finance extra-charge edit'])
+            <button type="button" class="btn btn-sm btn-primary btn-edit" data-id="{{ $payment->id }}">Edit</button>
+           @endcanany
+           @canany(['delete slip','finance extra-charge delete'])
+            <button type="button" class="btn btn-sm btn-danger btn-delete" data-id="{{ $payment->id }}">Delete</button>
+           @endcanany
+          @else
+           <span class="text-muted">Managed through bank source</span>
+          @endif
+         </td>
+        </tr>
+        @endif
+       @endforeach
+      @endforeach
+     </tbody>
+    </table>
+   </div>
+   <div id="fvcPaymentHistoryEmpty" class="text-muted d-none">No ECP payments recorded for this charge.</div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">Close</button></div>
+ </div></div>
+</div>
 <div class="modal fade fvc-modern-modal" id="fvcExtraCashEditModal" tabindex="-1" aria-labelledby="fvcExtraCashEditTitle" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
   <div class="modal-header"><h5 id="fvcExtraCashEditTitle" class="modal-title">Edit Extra Charge</h5>
@@ -1111,6 +1161,16 @@
                 $.get(window.location.href).done(function(html){
                     var $page=$('<div>').append($.parseHTML(html,document,false)),
                         $new=$page.find('#example1 tbody'),$table=$('#example1');
+                    var $newPayments=$page.find('#fvcPaymentRows');
+                    if($newPayments.length){
+                        var currentCharge=$('#fvcPaymentRows tr:visible').first().attr('data-charge-id');
+                        $('#fvcPaymentRows').html($newPayments.html());
+                        if(currentCharge){
+                            var $rows=$('#fvcPaymentRows tr');
+                            $rows.hide().filter(function(){return $(this).attr('data-charge-id')===currentCharge;}).show();
+                            $('#fvcPaymentHistoryEmpty').toggleClass('d-none',$rows.filter(':visible').length>0);
+                        }
+                    }
                     if(!$new.length)return;
                     var hasDataTable=$.fn.dataTable&&$.fn.dataTable.isDataTable('#example1');
                     if(hasDataTable)$table.DataTable().destroy();
@@ -1119,7 +1179,16 @@
                     if($.blueActionMenu)$.blueActionMenu.enhance($table.find('td.blue-actions-cell'));
                 });
             };
-            $(document).on('click.fvcExtraCash','#example1 .btn-edit',function(event){
+            $(document).on('click.fvcPaymentHistory','#example1 .fvc-payment-history',function(event){
+                event.preventDefault();
+                var id=String($(this).attr('data-charge-id')||'');
+                $('#fvcPaymentHistoryTitle').text('ECP Payments — '+($(this).attr('data-charge-number')||'Extra Charge'));
+                var $rows=$('#fvcPaymentRows tr');
+                $rows.hide().filter(function(){return String($(this).attr('data-charge-id'))===id;}).show();
+                $('#fvcPaymentHistoryEmpty').toggleClass('d-none',$rows.filter(':visible').length>0);
+                $('#fvcPaymentHistoryModal').modal('show');
+            });
+            $(document).on('click.fvcExtraCash','#example1 .btn-edit,#fvcPaymentHistoryModal .btn-edit',function(event){
                 event.preventDefault();event.stopImmediatePropagation();
                 var source=Number($(this).data('id')),$button=$(this);
                 if(!source)return;
@@ -1161,7 +1230,7 @@
                 }).fail(function(xhr){extraCashError($('#fvcExtraCashEditError'),xhr);})
                 .always(function(){$button.prop('disabled',false);});
             });
-            $(document).on('click.fvcExtraCash','#example1 .btn-delete',function(event){
+            $(document).on('click.fvcExtraCash','#example1 .btn-delete,#fvcPaymentHistoryModal .btn-delete',function(event){
                 event.preventDefault();event.stopImmediatePropagation();
                 var source=Number($(this).data('id'));if(!source)return;
                 $('#fvcExtraCashDeleteSubmit').data('source',source);
