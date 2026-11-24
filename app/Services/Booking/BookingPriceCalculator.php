@@ -73,8 +73,11 @@ final class BookingPriceCalculator
         }
 
         $raw = trim((string) $value);
-        $plain = '/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/';
-        $grouped = '/^(?:[1-9]\d{0,2})(?:,\d{3})+(?:\.\d{1,2})?$/';
+        // Plot sizes are stored at four-decimal precision (e.g. 2.0000
+        // Marla). Money fields stay limited to two decimal places.
+        $precision = $field === 'plot_size' ? 4 : 2;
+        $plain = '/^(?:0|[1-9]\d*)(?:\.\d{1,' . $precision . '})?$/';
+        $grouped = '/^(?:[1-9]\d{0,2})(?:,\d{3})+(?:\.\d{1,' . $precision . '})?$/';
 
         if (!preg_match($plain, $raw) && !preg_match($grouped, $raw)) {
             throw new InvalidArgumentException(strtoupper($field) . '_INVALID');
@@ -86,7 +89,7 @@ final class BookingPriceCalculator
             throw new InvalidArgumentException(strtoupper($field) . '_DB_OVERFLOW');
         }
 
-        return $whole . '.' . str_pad($fraction, 2, '0');
+        return $whole . '.' . str_pad($fraction, $precision, '0');
     }
 
     private function assertDatabaseRange(string $value, string $field): void
