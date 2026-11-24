@@ -221,6 +221,19 @@ class BookingController extends Controller
                 'BROKER_PERMISSION_REQUIRED', 'METADATA_PERMISSION_REQUIRED', 'PRICING_PERMISSION_REQUIRED' => 'You do not have permission to make one or more of these changes.',
                 default => 'This booking cannot be amended right now.',
             }])->withInput();
+        } catch (\InvalidArgumentException $exception) {
+            // Calculator errors are user-correctable validation failures, not
+            // unexpected HTTP 500s. Do not leak SQL or internal stack traces.
+            $message = match ($exception->getMessage()) {
+                'PLOT_RATE_MUST_BE_POSITIVE' => 'Plot rate must be greater than zero.',
+                'DISCOUNT_EXCEEDS_GROSS' => 'Discount cannot exceed the total plot price and charges.',
+                'TOTAL_MUST_BE_POSITIVE' => 'Final sale price must be greater than zero.',
+                'PLOT_RATE_DB_OVERFLOW', 'BASE_AMOUNT_DB_OVERFLOW',
+                'GROSS_AMOUNT_DB_OVERFLOW', 'TOTAL_PRICE_DB_OVERFLOW'
+                    => 'The calculated amount exceeds the allowed sale-price limit.',
+                default => 'The amended pricing contains an invalid amount. Review rate, charges and discount.',
+            };
+            return back()->withErrors(['pricing' => $message])->withInput();
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
