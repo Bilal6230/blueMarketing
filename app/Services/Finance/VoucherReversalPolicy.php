@@ -14,7 +14,11 @@ final class VoucherReversalPolicy
 {
     public function enabled(int $projectId, string $series): bool
     {
-        if ($projectId < 1 || $series === '' || strtoupper($series) === 'REV') {
+        // PR is the persisted Plot Receipt posting series, while PPR is the
+        // project Voucher Settings series. Both must enforce one switch.
+        $series = strtoupper(trim($series));
+        $series = $series === 'PR' ? 'PPR' : $series;
+        if ($projectId < 1 || $series === '' || $series === 'REV') {
             return false;
         }
         if (!Schema::hasTable('daily_voucher_approval_policies')
@@ -22,7 +26,7 @@ final class VoucherReversalPolicy
             return true; // Migration rollout must not silently break old postings.
         }
         $configured = DB::table('daily_voucher_approval_policies')
-            ->where('project_id', $projectId)->where('voucher_type', strtoupper($series))
+            ->where('project_id', $projectId)->where('voucher_type', $series)
             ->value('reversal_enabled');
 
         return $configured === null || (bool) $configured;
