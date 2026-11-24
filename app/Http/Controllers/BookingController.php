@@ -2616,7 +2616,20 @@ class BookingController extends Controller
                 &&DB::table($row->transaction_type==='EC'
                     ?'finance_extra_charge_sources':'finance_extra_charge_payment_sources')
                     ->where('customer_ledger_id',$source)->exists());
+        $postingAccounts=DB::table('ledgers as leg')
+            ->join('project_head_subheads as mapping','mapping.id','=','leg.project_head_subheads_id')
+            ->leftJoin('head_accountings as head','head.id','=','mapping.head_accounting_id')
+            ->leftJoin('subhead_accountings as sub','sub.id','=','mapping.subhead_accounting_id')
+            ->where('leg.customer_ledger_id',$source)
+            ->where('mapping.project_id',$projectId)
+            ->orderBy('leg.id')
+            ->get(['leg.amount_in','leg.amount_out','head.name as head_name','sub.name as sub_name'])
+            ->map(fn($leg)=>[
+                'side'=>(float)$leg->amount_in>0?'Debit':'Credit',
+                'account'=>trim(implode(' / ',array_filter([(string)$leg->head_name,(string)$leg->sub_name]))),
+            ])->all();
         return response()->json(['status'=>'success','data'=>[
+            'posting_accounts'=>$postingAccounts,
             'id'=>(int)$row->id,'type'=>(string)$row->transaction_type,
             'date'=>(string)$row->date,'reference'=>(string)$row->reference,
             'amount'=>(string)$row->amount_in,
