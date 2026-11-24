@@ -7,14 +7,14 @@
 <li class="nav-item"><a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard')?'active':'' }}"><i class="nav-icon fas fa-home"></i><p>Dashboard</p></a></li>
 
 <li class="nav-header">MAIN MENU</li>
-@canany(['read setting','read project','read user','read role','read permission','read landing page','read accounting','read plot'])
+@canany(['read setting','read project','read user','read role','read permission','read landing page','read accounting','read plot','read sector','read area','filemanager'])
 <li class="nav-item {{ $tree(['setting.*','finance.voucher-settings.*','project.*','area.*','accounting.*','user.*','role.*','permission.*','landing-page.*','filemanager','project.plot-definitions.*','employee-definitions.*'])?'menu-open':'' }}"><a href="#" class="nav-link"><i class="nav-icon fas fa-cogs"></i><p>Definitions & Settings<i class="right fas fa-angle-left"></i></p></a><ul class="nav nav-treeview">
  @can('read landing page')<li class="nav-item"><a href="{{ route('landing-page.admin.index') }}" class="nav-link {{ request()->routeIs('landing-page.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Landing Page Manager</p></a></li>@endcan
  @can('read project')<li class="nav-item"><a href="{{ route('project.index') }}" class="nav-link {{ request()->routeIs('project.index')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Projects</p></a></li>@endcan
  @can('read sector')<li class="nav-item"><a href="{{ route('project.zone.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Sectors</p></a></li>@endcan
  @can('read area')<li class="nav-item"><a href="{{ route('area.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Areas</p></a></li>@endcan
  @can('read plot')<li class="nav-item"><a href="{{ route('project.plot-definitions.index') }}" class="nav-link {{ request()->routeIs('project.plot-definitions.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Plot Definitions</p></a></li>@endcan
- @can('read user')<li class="nav-item"><a href="{{ route('accounting.head_index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Main Accounts</p></a></li><li class="nav-item"><a href="{{ route('accounting.subhead_index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Party Accounts</p></a></li><li class="nav-item"><a href="{{ route('accounting.category_index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Joint Accounts</p></a></li>@endcan
+ @can('read accounting')<li class="nav-item"><a href="{{ route('accounting.head_index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Main Accounts</p></a></li><li class="nav-item"><a href="{{ route('accounting.subhead_index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Party Accounts</p></a></li><li class="nav-item"><a href="{{ route('accounting.category_index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Joint Accounts</p></a></li>@endcan
  @can('read user')<li class="nav-item"><a href="{{ route('employee-definitions.index') }}" class="nav-link {{ request()->routeIs('employee-definitions.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Employee Setup</p></a></li>@endcan
  @can('read accounting')<li class="nav-item"><a href="{{ route('accounting.Accountant') }}" class="nav-link {{ request()->routeIs('accounting.Accountant*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Accountant</p></a></li>@endcan
  @can('read setting')
@@ -25,31 +25,54 @@
 </ul></li>
 @endcanany
 
-@canany(['read voucher','read jv','read slip','add slip'])
+@php
+ $financeView = fn(string $module) => auth()->user()->can(\App\Support\Finance\FinanceActionPermission::name($module,'view'));
+ $dailyVoucherLinks = [
+  'CR' => ['Credit Voucher (CR)','cr'],
+  'DR' => ['Debit Voucher (DR)','dr'],
+  'CCR' => ['Cash Credit (CCR)','ccr'],
+  'CDR' => ['Cash Debit (CDR)','cdr'],
+  'BOR' => ['Bank Receipt Voucher (BOR)','bor'],
+  'BOP' => ['Bank Payment Voucher (BOP)','bop'],
+ ];
+ $hasDailyMenu = collect(['online','cheque','directory','bank-deposit','bank-withdrawal',
+   'plot-receipt','plot-purchase','draft','jv','sv','cv','extra-charge'])
+   ->contains(fn($module) => $financeView($module))
+   || collect($dailyVoucherLinks)->contains(fn($item) => $financeView($item[1]))
+   || auth()->user()->can('read slip');
+@endphp
+@if($hasDailyMenu)
 <li class="nav-item {{ $tree(['finance.voucher.*','finance.daily-vouchers.*','finance.cheques.*','finance.online.*','journal.voucher.*','sales.voucher.*','commision.voucher.*','payment_schedule.*'])?'menu-open':'' }}"><a href="#" class="nav-link"><i class="nav-icon fas fa-edit"></i><p>Daily Entries<i class="right fas fa-angle-left"></i></p></a><ul class="nav nav-treeview">
- @can('read voucher')<li class="nav-item"><a href="{{ route('finance.online.index') }}" class="nav-link {{ request()->routeIs('finance.online.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Online Transactions</p></a></li>
- <li class="nav-item"><a href="{{ route('finance.cheques.index') }}" class="nav-link {{ request()->routeIs('finance.cheques.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Cheque Management</p></a></li>
- <li class="nav-item"><a href="{{ route('finance.daily-vouchers.index') }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.index','finance.daily-vouchers.data','finance.daily-vouchers.source.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Voucher Directory</p></a></li>
- @foreach(['CR'=>'Credit Voucher (CR)','DR'=>'Debit Voucher (DR)','CCR'=>'Cash Credit (CCR)','CDR'=>'Cash Debit (CDR)','BOR'=>'Bank Receipt Voucher (BOR)','BOP'=>'Bank Payment Voucher (BOP)'] as $voucherType=>$voucherLabel)<li class="nav-item"><a href="{{ route('finance.daily-vouchers.index',['type'=>$voucherType]) }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.index') && request()->query('type')===$voucherType?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>{{ $voucherLabel }}</p></a></li>@endforeach
- @if($canFinanceApprovals)<li class="nav-item"><a href="{{ route('finance.daily-vouchers.approvals.index') }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.approvals.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Voucher Approvals</p></a></li>@endif
- <li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace', ['kind'=>'deposit']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind')==='deposit'?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Bank Deposit</p></a></li>
- <li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace', ['kind'=>'withdrawal']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind')==='withdrawal'?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Bank Withdrawal</p></a></li>
- <li class="nav-item"><a href="{{ route('finance.voucher.plot-receipt.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-receipt.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Plot Receive Payment</p></a></li>
- <li class="nav-item"><a href="{{ route('finance.voucher.plot-purchase.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-purchase.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Plot Purchase Voucher</p></a></li>
- <li class="nav-item"><a href="{{ route('finance.voucher.draft') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Draft Vouchers</p></a></li>@endcan
- @can('read jv')<li class="nav-item"><a href="{{ route('journal.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Journal Vouchers</p></a></li><li class="nav-item"><a href="{{ route('sales.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Sales Vouchers</p></a></li><li class="nav-item"><a href="{{ route('commision.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Commission Vouchers</p></a></li>@endcan
- @canany(['read slip','add slip'])<li class="nav-item"><a href="{{ route('payment_schedule.cash') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Receive Payment</p></a></li><li class="nav-item"><a href="{{ route('payment_schedule.extra_charge') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Extra Charge</p></a></li>@endcanany
+ @if($financeView('online'))<li class="nav-item"><a href="{{ route('finance.online.index') }}" class="nav-link {{ request()->routeIs('finance.online.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Online Transactions</p></a></li>@endif
+ @if($financeView('cheque'))<li class="nav-item"><a href="{{ route('finance.cheques.index') }}" class="nav-link {{ request()->routeIs('finance.cheques.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Cheque Management</p></a></li>@endif
+ @if($financeView('directory'))<li class="nav-item"><a href="{{ route('finance.daily-vouchers.index') }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.index') && !request()->filled('type')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Voucher Directory</p></a></li>@endif
+ @foreach($dailyVoucherLinks as $voucherType=>$voucherInfo)
+  @if($financeView($voucherInfo[1]))
+  <li class="nav-item"><a href="{{ route('finance.daily-vouchers.index',['type'=>$voucherType]) }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.index') && request()->query('type')===$voucherType?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>{{ $voucherInfo[0] }}</p></a></li>
+  @endif
+ @endforeach
+ @if($canFinanceApprovals && $financeView('directory'))<li class="nav-item"><a href="{{ route('finance.daily-vouchers.approvals.index') }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.approvals.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Voucher Approvals</p></a></li>@endif
+ @if($financeView('bank-deposit'))<li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace',['kind'=>'deposit']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind')==='deposit'?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Bank Deposit</p></a></li>@endif
+ @if($financeView('bank-withdrawal'))<li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace',['kind'=>'withdrawal']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind')==='withdrawal'?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Bank Withdrawal</p></a></li>@endif
+ @if($financeView('plot-receipt'))<li class="nav-item"><a href="{{ route('finance.voucher.plot-receipt.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-receipt.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Plot Receive Payment</p></a></li>@endif
+ @if($financeView('plot-purchase'))<li class="nav-item"><a href="{{ route('finance.voucher.plot-purchase.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-purchase.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Plot Purchase Voucher</p></a></li>@endif
+ @if($financeView('draft'))<li class="nav-item"><a href="{{ route('finance.voucher.draft') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Draft Vouchers</p></a></li>@endif
+ @if($financeView('jv'))<li class="nav-item"><a href="{{ route('journal.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Journal Vouchers</p></a></li>@endif
+ @if($financeView('sv'))<li class="nav-item"><a href="{{ route('sales.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Sales Vouchers</p></a></li>@endif
+ @if($financeView('cv'))<li class="nav-item"><a href="{{ route('commision.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Commission Vouchers</p></a></li>@endif
+ @can('read slip')<li class="nav-item"><a href="{{ route('payment_schedule.cash') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Receive Payment</p></a></li>@endcan
+ @if($financeView('extra-charge'))<li class="nav-item"><a href="{{ route('payment_schedule.extra_charge') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Extra Charge</p></a></li>@endif
 </ul></li>
-@endcanany
+@endif
 
-@if(auth()->user()->canAny(['read user','read role','read permission','read voucher']) || $canLeadApprovals || $canFinanceApprovals)
+@if(auth()->user()->canAny(['read user','read role','read permission']) || $canLeadApprovals || $canFinanceApprovals)
 <li class="nav-item {{ $tree(['user.*','role.*','permission.*','approvals.*'])?'menu-open':'' }}"><a href="#" class="nav-link"><i class="nav-icon fas fa-user-shield"></i><p>Administration<i class="right fas fa-angle-left"></i></p></a><ul class="nav nav-treeview">
  @can('read user')<li class="nav-item"><a href="{{ route('user.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Users</p></a></li>@endcan @can('read role')<li class="nav-item"><a href="{{ route('role.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Roles</p></a></li>@endcan @can('read permission')<li class="nav-item"><a href="{{ route('permission.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Permissions</p></a></li>@endcan
  @if($canLeadApprovals)<li class="nav-item"><a href="{{ route('approvals.leads.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Lead Approvals</p></a></li>@endif @if($canFinanceApprovals)<li class="nav-item"><a href="{{ route('approvals.finance.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Finance Change Approvals</p></a></li>@endif
 </ul></li>
 @endif
 
-@canany(['report party_report','report cashbook','report party_ledger','lead report','cheque report','view inventory'])
+@canany(['report party_report','report cashbook','report party_ledger','lead report','cheque report','view inventory','read plot'])
 <li class="nav-item {{ $tree(['finance.reports.*','report.*','booking.*report*'])?'menu-open':'' }}"><a href="#" class="nav-link"><i class="nav-icon fas fa-chart-bar"></i><p>Reports<i class="right fas fa-angle-left"></i></p></a><ul class="nav nav-treeview">
  @can('report party_ledger')<li class="nav-item"><a href="{{ route('finance.reports.details_index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Party Ledger</p></a></li>@endcan @can('report cashbook')<li class="nav-item"><a href="{{ route('finance.reports.show_ledger') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Cash Book</p></a></li>@endcan
  @can('report party_report')<li class="nav-item"><a href="{{ route('finance.reports.trial_balance') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Trial Balance</p></a></li><li class="nav-item"><a href="{{ route('finance.reports.show_ledger_party') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Party Wise</p></a></li>@endcan
@@ -64,8 +87,8 @@
 
 @canany(['read plot','view inventory'])<li class="nav-item {{ $tree(['project.plot.*','booking.plot.*','booking.customer.*'])?'menu-open':'' }}"><a href="#" class="nav-link"><i class="nav-icon fas fa-building"></i><p>Sales & Plot Management<i class="right fas fa-angle-left"></i></p></a><ul class="nav nav-treeview">@can('read plot')<li class="nav-item"><a href="{{ route('project.plot.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Plots</p></a></li><li class="nav-item"><a href="{{ route('project.plot.hold_plot') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Hold Plots</p></a></li><li class="nav-item"><a href="{{ route('booking.plot.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Plot Sales</p></a></li><li class="nav-item"><a href="{{ route('booking.customer.report.form') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Customer Report</p></a></li>@endcan @can('view inventory')<li class="nav-item"><a href="{{ route('booking.plot.inventory') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Inventory</p></a></li>@endcan</ul></li>@endcanany
 
-@can('stock module')<li class="nav-item"><a href="{{ route('stocks.index') }}" class="nav-link {{ request()->routeIs('stocks.*')?'active':'' }}"><i class="nav-icon fas fa-boxes"></i><p>Store & Inventory</p></a></li>@endcan
-@can('labour module')<li class="nav-item"><a href="{{ route('labours.index') }}" class="nav-link {{ request()->routeIs('labours.*','labour.*')?'active':'' }}"><i class="nav-icon fas fa-hard-hat"></i><p>Labour Management</p></a></li>@endcan
+@if(\App\Support\Stock\StockAbility::allows(auth()->user(),'workspace','view'))<li class="nav-item"><a href="{{ route('stocks.index') }}" class="nav-link {{ request()->routeIs('stocks.*')?'active':'' }}"><i class="nav-icon fas fa-boxes"></i><p>Store & Inventory</p></a></li>@endcan
+@can('read labour')<li class="nav-item"><a href="{{ route('labours.index') }}" class="nav-link {{ request()->routeIs('labours.*','labour.*')?'active':'' }}"><i class="nav-icon fas fa-hard-hat"></i><p>Labour Management</p></a></li>@endcan
 <li class="nav-item"><a href="{{ route('employee-tasks.index') }}" class="nav-link {{ request()->routeIs('employee-tasks.*')?'active':'' }}"><i class="nav-icon fas fa-tasks"></i><p>Employee Task Management</p></a></li>
 @can('read attendance')<li class="nav-item"><a href="{{ route('attendance.index') }}" class="nav-link {{ request()->routeIs('attendance.*','employee-attendance.*','employee-payroll.*')?'active':'' }}"><i class="nav-icon fas fa-user-clock"></i><p>Employee Attendance</p></a></li><li class="nav-item"><a href="{{ route('employee-attendance.index') }}" class="nav-link {{ request()->routeIs('employee-attendance.*')?'active':'' }}"><i class="nav-icon fas fa-clipboard-check"></i><p>Attendance Review</p></a></li>@endcan
 
