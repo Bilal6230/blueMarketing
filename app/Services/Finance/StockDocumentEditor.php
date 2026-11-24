@@ -126,10 +126,18 @@ final class StockDocumentEditor
             throw new \DomainException('Stock source has no unique active financial voucher.');
         }
         $customer=$customers[0];
-        $expectedDebit=$direction==='OUT'?$oldTotal:0;
-        $expectedCredit=$direction==='IN'?$oldTotal:0;
-        if($this->parseMoney($customer->amount_in)!==$expectedDebit
-            ||$this->parseMoney($customer->amount_out)!==$expectedCredit) {
+        // Old stock writers formatted the minor-unit total as whole rupees,
+        // causing a 100x financial amount. Accept that exact legacy signature
+        // only when the original source and both GL legs agree; an Edit then
+        // normalizes the historical posting to the corrected amount.
+        $postedTotal=$direction==='OUT'
+            ?$this->parseMoney($customer->amount_in)
+            :$this->parseMoney($customer->amount_out);
+        $legacyHundredfold=$oldTotal<=intdiv(PHP_INT_MAX,100)
+            &&$postedTotal===$oldTotal*100;
+        if(($postedTotal!==$oldTotal&&!$legacyHundredfold)
+            ||($direction==='OUT'?$this->parseMoney($customer->amount_out)
+                :$this->parseMoney($customer->amount_in))!==0) {
             throw new \DomainException('Stock source customer-ledger amount is inconsistent.');
         }
         $legs=DB::table('ledgers as ledger')
@@ -146,8 +154,8 @@ final class StockDocumentEditor
                 ||(string)$leg->date!==$date||(int)$leg->is_active!==1)
             ||$legs->pluck('type_id')->unique()->count()!==1
             ||$legs->pluck('voucher_number')->unique()->count()!==1
-            ||$this->parseMoney($legs->sum('amount_in'))!==$oldTotal
-            ||$this->parseMoney($legs->sum('amount_out'))!==$oldTotal
+            ||$this->parseMoney($legs->sum('amount_in'))!==$postedTotal
+            ||$this->parseMoney($legs->sum('amount_out'))!==$postedTotal
             ||$legs->filter(fn($leg)=>$this->parseMoney($leg->amount_in)>0
                 &&$this->parseMoney($leg->amount_out)===0)->count()!==1
             ||$legs->filter(fn($leg)=>$this->parseMoney($leg->amount_out)>0
@@ -256,7 +264,7 @@ final class StockDocumentEditor
                     }
                 }
             }
-            if($same)return;
+            if($same&&!$legacyHundredfold)return;
             $newBalance=$this->balanceChanges($projectId,$direction,$oldQty,$newQty);
             $now=now();
             foreach($old as $id=>$previous){
