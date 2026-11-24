@@ -386,7 +386,7 @@
                                                         {{ $i->description }}
                                                     </td>
                                                     <td>
-                                                        {{ Setting::roundformatAmount($i->transaction_type === 'EC' ? $i->amount_in : $i->amount_out) }}
+                                                        {{ Setting::roundformatAmount(in_array($i->transaction_type, ['EC','ECP'], true) ? $i->amount_in : $i->amount_out) }}
                                                     </td>
                                                     <td>
                                                         @if ($i->transaction_type === 'EC')
@@ -405,6 +405,8 @@
                                                     <td>
                                                         @if ($i->transaction_type === 'EC')
                                                             {{ Setting::roundformatAmount($i->outstanding_amount) }}
+                                                        @elseif ($i->transaction_type === 'ECP')
+                                                            <small class="text-muted">Linked EC payment</small>
                                                         @else
                                                             Legacy - verify source
                                                         @endif
@@ -423,6 +425,7 @@
                                                                     <input type="date" name="date" class="form-control form-control-sm" required>
                                                                     <input type="text" name="reference" class="form-control form-control-sm" placeholder="Payment slip reference" maxlength="100" required>
                                                                     <input type="number" name="amount" class="form-control form-control-sm" min="0.01" step="0.01" max="{{ $i->available_amount }}" required>
+                                                                    <div class="small text-muted mt-1">Debit: Extra Charge Cash · Credit: Extra Charge Receivable (linked customer/plot). Project-specific accounts are resolved automatically.</div>
                                                                     <input type="hidden" name="detail" value="Extra Charge cash payment">
                                                                     <button type="submit" class="btn btn-sm btn-primary mt-1">Receive Cash</button>
                                                                 </form>
@@ -611,6 +614,7 @@
    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
   <form id="fvcExtraCashEditForm"><div class="modal-body">
    <div class="alert alert-info small">The original EC/ECP voucher number and ledger links remain unchanged.</div>
+   <div class="alert alert-secondary small">Account mappings are tied to this Extra Charge: EC uses Receivable (Debit) / Income (Credit); Cash ECP uses Cash (Debit) / Receivable (Credit). Customer, plot and charge-type changes require a separately reviewed correction, not an ordinary amount edit.</div>
    <div class="form-group"><label for="fvcExtraCashDate">Date</label><input type="date" class="form-control" id="fvcExtraCashDate" required></div>
    <div class="form-group"><label for="fvcExtraCashAmount">Amount</label><input type="number" min="0.01" step="0.01" class="form-control" id="fvcExtraCashAmount" required></div>
    <div class="form-group"><label for="fvcExtraCashDescription">Description</label><textarea class="form-control" id="fvcExtraCashDescription" rows="3" maxlength="1000"></textarea></div>
