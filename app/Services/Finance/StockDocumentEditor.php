@@ -252,7 +252,7 @@ final class StockDocumentEditor
             }
             if($total<1)throw new \DomainException('Stock corrected financial total must be positive.');
             $same=count($all)===$old->count()&&$oldDate===$date
-                &&($narration===null||trim($narration)===(string)($entry?$header->reason:''))
+                &&($narration===null||trim($narration)===(string)($entry?$header->reason:($header->narration??'')))
                 &&(!$entry||(($vehicle===null||$vehicle===(string)($header->vehicle_no??''))
                     &&($driver===null||$driver===(string)($header->driver_name??''))));
             if($same){
@@ -329,7 +329,10 @@ final class StockDocumentEditor
                 if($narration!==null)$headerUpdate['reason']=$narration;
                 if($vehicle!==null)$headerUpdate['vehicle_no']=$vehicle;
                 if($driver!==null)$headerUpdate['driver_name']=$driver;
-            }else $headerUpdate['total_minor']=$total;
+            }else {
+                $headerUpdate['total_minor']=$total;
+                if($narration!==null)$headerUpdate['narration']=$narration;
+            }
             DB::table($headerTable)->where('id',$sourceId)
                 ->where('project_id',$projectId)->whereNull('deleted_at')
                 ->update($headerUpdate);
