@@ -4290,12 +4290,13 @@ class BookingController extends Controller
     public function destroy_booking(Request $request)
     {
         $projectId = (int) getSelectedTown();
+        $data = $request->validate(['booking_id' => ['required','integer','min:1']]);
 
-        return DB::transaction(function () use ($request, $projectId) {
+        return DB::transaction(function () use ($data, $projectId) {
             $booking = Booking::query()
                 ->where('project_id', $projectId)
                 ->lockForUpdate()
-                ->findOrFail($request->id);
+                ->findOrFail((int) $data['booking_id']);
 
             // Booking cancellation has a separate audited workflow. Never
             // soft-delete a booking whose receipt/source history exists:
