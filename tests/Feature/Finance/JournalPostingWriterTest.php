@@ -766,11 +766,37 @@ class JournalPostingWriterTest extends TestCase
             $table->string('transaction_type')->nullable();
             $table->unsignedBigInteger('type_id')->nullable();
         });
+        // This fixture must include the real detail-ledger linking columns.
+        // A minimal "ledgers" table without the attribution table previously
+        // skipped the linker while the strict posting gate correctly rejected
+        // the unlinked SV posting.
         Schema::create('ledgers',function(Blueprint $table){
             $table->id();
+            $table->unsignedBigInteger('journal_voucher_detail_id')->nullable()->unique();
             $table->unsignedBigInteger('project_head_subheads_id');
             $table->string('type');
+            $table->unsignedBigInteger('type_id')->nullable();
             $table->unsignedBigInteger('voucher_number')->nullable();
+            $table->string('reference')->nullable();
+            $table->date('date')->nullable();
+            $table->decimal('amount_in',15,2)->default(0);
+            $table->decimal('amount_out',15,2)->default(0);
+            $table->text('detail')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->string('status')->default('0');
+            $table->unsignedBigInteger('create_by')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('ledger_source_attributions',function(Blueprint $table){
+            $table->id();
+            $table->unsignedBigInteger('ledger_id')->unique();
+            $table->unsignedBigInteger('project_id');
+            $table->string('source_kind',32);
+            $table->unsignedBigInteger('source_id');
+            $table->string('evidence_kind',48);
+            $table->string('evidence_reference',191)->nullable();
+            $table->unsignedBigInteger('attributed_by')->nullable();
+            $table->timestamps();
         });
         Schema::table('journal_vouchers',function(Blueprint $table){
             $table->unsignedBigInteger('created_by')->nullable();
@@ -802,6 +828,15 @@ class JournalPostingWriterTest extends TestCase
         self::assertSame(2,DB::table('finance_journal_line_sources')
             ->join('finance_posting_lines as line','line.id','=','finance_journal_line_sources.posting_line_id')
             ->where('line.posting_batch_id',$batch)->count());
+        // Both posted accounting legs must have distinct real legacy ledgers
+        // and exact source attributions, including on idempotent replay.
+        self::assertSame(2,DB::table('finance_posting_lines')
+            ->where('posting_batch_id',$batch)->whereNotNull('legacy_ledger_id')->count());
+        self::assertSame(2,DB::table('ledgers')->where('type','SV')->where('type_id',$id)->count());
+        self::assertSame(2,DB::table('ledger_source_attributions')
+            ->where('project_id',1)->where('source_kind','journal_voucher')
+            ->where('source_id',$id)->count());
+        \App\Services\Finance\PostedVoucherLedgerGate::assertLinked(1,(int)$batch);
         self::assertSame(1,DB::table('finance_posting_batches')->count());
         self::assertSame(250.0,(float)DB::table('finance_posting_lines')
             ->where('posting_batch_id',$batch)->sum('credit'));
