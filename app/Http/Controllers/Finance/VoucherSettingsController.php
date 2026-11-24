@@ -101,4 +101,41 @@ final class VoucherSettingsController extends Controller
             'data'=>['voucher_type'=>$type,'approval_required'=>$required,'approver_user_id'=>$approverId],
         ]);
     }
+    /**
+     * Reversal is an independent switch, never an alias for approval or Delete.
+     * The posting writer enforces OFF for verified typed postings.
+     */
+    public function saveReversal(Request $request)
+    {
+        $project=$this->authorizeSettings();
+        abort_unless($request->user()->can('update setting'),403);
+        abort_unless(Schema::hasColumn('daily_voucher_approval_policies','reversal_enabled'),409,
+            'Run the Milestone 05 reversal policy migration first.');
+        $data=$request->validate([
+            'voucher_type'=>['required',Rule::in(array_keys(self::TYPES))],
+            'reversal_enabled'=>['required','boolean'],
+        ]);
+        $type=$data['voucher_type'];
+        if (in_array($type,['CHQ_CORR','ONL_CORR'],true)) {
+            throw ValidationException::withMessages([
+                'voucher_type'=>'Management source corrections use the linked custody workflow, not voucher reversal settings.',
+            ]);
+        }
+        // Avoid resetting an existing approver/approval configuration.
+        $policy=DailyVoucherApprovalPolicy::query()->firstOrCreate(
+            ['project_id'=>$project,'voucher_type'=>$type],
+            ['approval_required'=>false,'approver_user_id'=>null,
+                'updated_by'=>(int)$request->user()->id]
+        );
+        $policy->reversal_enabled=(bool)$data['reversal_enabled'];
+        $policy->updated_by=(int)$request->user()->id;
+        $policy->save();
+
+        return response()->json([
+            'success'=>true,
+            'message'=>$type.' reversal '.($policy->reversal_enabled?'enabled':'disabled').' for the selected project. Existing posted records are unchanged.',
+            'data'=>['voucher_type'=>$type,'reversal_enabled'=>(bool)$policy->reversal_enabled],
+        ]);
+    }
+
 }
