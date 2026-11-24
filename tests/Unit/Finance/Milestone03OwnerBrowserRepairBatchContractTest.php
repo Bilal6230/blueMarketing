@@ -58,6 +58,7 @@ final class Milestone03OwnerBrowserRepairBatchContractTest extends TestCase
         self::assertStringContainsString('$legacyHundredfold',$editor);
         self::assertStringContainsString('$postedTotal===$oldTotal*100',$editor);
         self::assertStringContainsString('if($same&&!$legacyHundredfold)return;',$editor);
+        self::assertStringContainsString('$reference,$legacyHundredfold]', $editor);
         self::assertStringContainsString('stockDocumentNumber',$view);
         self::assertStringContainsString('stockDocumentParty',$view);
         self::assertStringContainsString('stockDocumentVehicle',$view);
@@ -79,5 +80,9 @@ final class Milestone03OwnerBrowserRepairBatchContractTest extends TestCase
         self::assertStringContainsString("subhead_accounting_id +", $view);
         self::assertStringContainsString("dropColumn('project_id')",$migration);
         self::assertStringContainsString("Schema::getForeignKeys('labours')",$migration);
+        self::assertStringContainsString("information_schema.KEY_COLUMN_USAGE",$migration);
+        self::assertStringContainsString("REFERENCED_TABLE_NAME = 'labours'",$migration);
+        self::assertStringContainsString("->references('id')->on('labours')",$migration);
+        self::assertStringContainsString("dropForeign",$migration);
     }
 }
