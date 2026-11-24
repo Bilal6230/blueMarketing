@@ -78,6 +78,14 @@ final class Milestone02PermissionEnforcementContractTest extends TestCase
             self::assertStringContainsString($needle,$routes,$route);
         }
         self::assertStringContainsString('StockAbility::allows(', $controller);
+        $view=file_get_contents($root.'/resources/views/admin/stock/index.blade.php');
+        self::assertIsString($view);
+        self::assertStringContainsString('const stockAbilities = @json($stockAbilities)', $view);
+        self::assertStringContainsString("stockCan('entries','edit')", $view);
+        self::assertStringContainsString("stockCan('billing','delete')", $view);
+        self::assertStringContainsString("stockCan('items','edit')", $view);
+        self::assertStringContainsString("stockCan('parties','delete')", $view);
+        self::assertStringContainsString("if (!stockCan('billing','view')) return", $view);
         self::assertStringContainsString("name('stocks.finance.approve')", $routes);
         self::assertStringContainsString("name('labours.payment')", $routes);
         self::assertStringContainsString('Permission::findOrCreate', $migration);
