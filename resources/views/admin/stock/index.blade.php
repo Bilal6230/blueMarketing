@@ -1239,6 +1239,15 @@
      <form id="stockDocumentEditForm">
       <div class="modal-body">
        <div class="alert alert-info small">The original stock document, inventory movements and ledger IDs remain linked.</div>
+       <div class="row g-2 mb-2">
+        <div class="col-md-4"><label class="form-label">Original Slip / Bill No</label><input type="text" class="form-control" id="stockDocumentNumber" readonly></div>
+        <div class="col-md-4"><label class="form-label">In/Out or Purchase/Sale</label><input type="text" class="form-control" id="stockDocumentFlow" readonly></div>
+        <div class="col-md-4"><label class="form-label">Shop / Party</label><input type="text" class="form-control" id="stockDocumentParty" readonly></div>
+       </div>
+       <div class="row g-2 mb-2 stock-doc-transport">
+        <div class="col-md-6"><label class="form-label">Vehicle No</label><input type="text" class="form-control" id="stockDocumentVehicle" readonly></div>
+        <div class="col-md-6"><label class="form-label">Driver</label><input type="text" class="form-control" id="stockDocumentDriver" readonly></div>
+       </div>
        <div class="row g-2">
         <div class="col-md-4"><label for="stockDocumentDate" class="form-label">Date</label>
          <input type="date" class="form-control" id="stockDocumentDate" required></div>
@@ -3046,8 +3055,9 @@
       var stockDocHide=function(selector){stockDocModal(selector,'hide');};
       var stockDocAddLine=function(line){
           line=line||{};
-          var $wrap=$('<div class="row g-2 align-items-end mb-2 stock-doc-line">')
+          var $wrap=$('<div class="pv-line stock-compact-line stock-doc-line mb-2">')
               .attr('data-detail-id',line.detail_id||'');
+          var $fields=$('<div class="row g-2 align-items-center">').appendTo($fields);
           var $item=$('<select class="form-control stock-doc-item">');
           $('<option>').val('').text('Choose item').appendTo($item);
           $.each(stockDocItems,function(_,item){
@@ -3056,18 +3066,18 @@
           });
           $item.val(line.item_id?String(line.item_id):'');
           $('<div class="col-md-5">').append(
-              $('<label class="form-label small">Item</label>'),$item).appendTo($wrap);
+              $('<label class="form-label small">Item</label>'),$item).appendTo($fields);
           $('<div class="col-md-3">').append(
               $('<label class="form-label small">Qty</label>'),
               $('<input type="number" class="form-control stock-doc-qty" min="0.001" step="0.001" required>')
-                  .val(line.qty||'')).appendTo($wrap);
+                  .val(line.qty||'')).appendTo($fields);
           $('<div class="col-md-3">').append(
               $('<label class="form-label small">Rate (minor units)</label>'),
               $('<input type="number" class="form-control stock-doc-rate" min="0" step="1" required>')
-                  .val(line.rate==null?'':line.rate)).appendTo($wrap);
+                  .val(line.rate==null?'':line.rate)).appendTo($fields);
           $('<div class="col-md-1">').append(
               $('<button class="btn btn-sm btn-outline-danger stock-doc-remove" type="button">Remove</button>'))
-              .appendTo($wrap);
+              .appendTo($fields);
           $('#stockDocumentEditRows').append($wrap);
       };
       $('#stockDocumentEditRows').on('click','.stock-doc-remove',function(){
@@ -3105,6 +3115,12 @@
               }
               $('#stockDocumentEditForm').data('kind',kind).data('source',id);
               $('#stockDocumentEditTitle').text('Edit '+(kind==='entry'?'Stock Entry':'Stock Bill')+' '+(data.number||''));
+              $('#stockDocumentNumber').val(data.number||'');
+              $('#stockDocumentFlow').val(data.type||'');
+              $('#stockDocumentParty').val(data.party_name||'');
+              $('.stock-doc-transport').toggle(kind==='entry');
+              $('#stockDocumentVehicle').val(data.vehicle||'');
+              $('#stockDocumentDriver').val(data.driver||'');
               $('#stockDocumentDate').val(data.date);
               $('#stockDocumentNarration').val(data.narration||'');
               $('#stockDocumentEditRows').empty();
