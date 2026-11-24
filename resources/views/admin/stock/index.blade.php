@@ -3080,6 +3080,14 @@
           var kind=$(this).attr('data-kind'),id=Number($(this).attr('data-id')),
               $button=$(this);
           if(!id||$.inArray(kind,['entry','bill'])<0)return;
+          $('#stockDocumentEditTitle').text('Edit '+(kind==='entry'?'Stock Entry':'Stock Bill'));
+          $('#stockDocumentEditForm').removeData('source').removeData('kind');
+          $('#stockDocumentEditRows').empty();
+          $('#stockDocumentDate,#stockDocumentNarration').val('');
+          $('#stockDocumentEditError').removeClass('d-none').removeClass('alert-danger')
+              .addClass('alert-info').text('Loading original voucher and item mappings...');
+          $('#stockDocumentSave').prop('disabled',true);
+          stockDocModal('#stockDocumentEditModal','show');
           $button.prop('disabled',true);
           $.when(
               $.ajax({url:stockMetaUrl,dataType:'json',headers:{Accept:'application/json'}}),
@@ -3089,7 +3097,9 @@
               stockDocItems=(metaResponse[0].data||{}).items||[];
               var data=documentResponse[0].data||{};
               if(!data.editable){
-                  stockDocNotify('error','This stock voucher is linked to a bill or typed posting and needs its owning workflow.');
+                  $('#stockDocumentEditError').removeClass('d-none').removeClass('alert-info')
+                      .addClass('alert-warning').text(
+                          'This voucher belongs to a billed Entry or another typed posting. Ordinary Edit is blocked to protect inventory and accounting; use the owning workflow.');
                   return;
               }
               $('#stockDocumentEditForm').data('kind',kind).data('source',id);
@@ -3098,10 +3108,11 @@
               $('#stockDocumentNarration').val(data.narration||'');
               $('#stockDocumentEditRows').empty();
               $.each(data.lines||[],function(_,line){stockDocAddLine(line);});
-              $('#stockDocumentEditError').addClass('d-none').text('');
-              stockDocModal('#stockDocumentEditModal','show');
+              $('#stockDocumentEditError').removeClass('alert-info').addClass('alert-danger').addClass('d-none').text('');
+              $('#stockDocumentSave').prop('disabled',false);
           }).fail(function(xhr){
-              stockDocError($('#stockDocumentEditError'),xhr,'Could not load stock voucher.');
+              $('#stockDocumentEditError').removeClass('alert-info').addClass('alert-danger');
+              stockDocError($('#stockDocumentEditError'),xhr,'Could not load stock voucher. Check your Stock read permission and linked source status.');
           }).always(function(){$button.prop('disabled',false);});
       });
       $('#stockDocumentEditForm').on('submit',function(event){
