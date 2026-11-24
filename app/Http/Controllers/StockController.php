@@ -2142,6 +2142,12 @@ class StockController extends Controller
             'total_minor' => $totalMinor,
         ], $lines);
 
+        // Preserve the generated stock accounting detail while retaining
+        // the optional narration entered on the Bill Create form.
+        if (trim((string) ($bill->narration ?? '')) !== '') {
+            $detail .= ' | Narration: ' . trim((string) $bill->narration);
+        }
+
         $reference = 'STOCK-BILL:' . $bill->id;
         $ledgerType = 'JV';
         $amount = $this->minorToLedgerAmount($totalMinor);
