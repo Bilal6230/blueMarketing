@@ -171,6 +171,17 @@
     .stock-compact-line .stock-line-remove,#stockDocumentEditModal .stock-doc-remove{height:26px!important;width:26px!important;min-height:26px!important;min-width:26px!important;padding:0!important;border:1px solid #f4c5ca!important;border-radius:8px!important;background:#fff4f5!important;color:#d14252!important;display:inline-flex!important;align-items:center;justify-content:center;font-size:11px!important;box-shadow:none!important}
     .stock-compact-line .stock-line-remove:hover,#stockDocumentEditModal .stock-doc-remove:hover{background:#d14252!important;color:#fff!important;border-color:#d14252!important}
     #stockDocumentEditModal .modal-footer,#stockDocumentDeleteModal .modal-footer{display:flex!important;justify-content:flex-end!important}
+    /* Edit Entry/Bill uses the same blue-grey shimmer as the stock table skeleton. */
+    #stockDocumentEditSkeleton .stock-doc-skeleton-bar{
+      display:block;height:34px;border-radius:8px;
+      background:linear-gradient(90deg,#dfeaf9 22%,#f2f7fd 42%,#dfeaf9 67%);
+      background-size:200% 100%;animation:stockDocSkeletonShimmer 1.3s ease-in-out infinite;
+    }
+    #stockDocumentEditSkeleton .stock-doc-skeleton-label{height:10px;width:42%;margin-bottom:8px}
+    #stockDocumentEditSkeleton .stock-doc-skeleton-line{height:55px;margin-top:12px}
+    #stockDocumentEditSkeleton .stock-doc-skeleton-total{height:36px;margin-top:12px}
+    @keyframes stockDocSkeletonShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+    @media(prefers-reduced-motion:reduce){#stockDocumentEditSkeleton .stock-doc-skeleton-bar{animation:none}}
     @media(max-width:767.98px){.stock-compact-line .stock-line-caption{min-width:45px}}
 
 
@@ -1242,6 +1253,24 @@
        <button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
      <form id="stockDocumentEditForm">
       <div class="modal-body">
+       <div id="stockDocumentEditSkeleton" class="d-none" role="status" aria-label="Loading stock voucher details" aria-live="polite">
+        <div class="row g-2 mb-3">
+         <div class="col-md-4"><span class="stock-doc-skeleton-bar stock-doc-skeleton-label"></span><span class="stock-doc-skeleton-bar"></span></div>
+         <div class="col-md-4"><span class="stock-doc-skeleton-bar stock-doc-skeleton-label"></span><span class="stock-doc-skeleton-bar"></span></div>
+         <div class="col-md-4"><span class="stock-doc-skeleton-bar stock-doc-skeleton-label"></span><span class="stock-doc-skeleton-bar"></span></div>
+        </div>
+        <div class="row g-2 mb-3">
+         <div class="col-md-6"><span class="stock-doc-skeleton-bar stock-doc-skeleton-label"></span><span class="stock-doc-skeleton-bar"></span></div>
+         <div class="col-md-6"><span class="stock-doc-skeleton-bar stock-doc-skeleton-label"></span><span class="stock-doc-skeleton-bar"></span></div>
+        </div>
+        <div class="row g-2">
+         <div class="col-md-4"><span class="stock-doc-skeleton-bar stock-doc-skeleton-label"></span><span class="stock-doc-skeleton-bar"></span></div>
+         <div class="col-md-8"><span class="stock-doc-skeleton-bar stock-doc-skeleton-label"></span><span class="stock-doc-skeleton-bar"></span></div>
+        </div>
+        <div class="stock-doc-skeleton-bar stock-doc-skeleton-line"></div>
+        <div class="stock-doc-skeleton-bar stock-doc-skeleton-total"></div>
+       </div>
+       <div id="stockDocumentEditFields" class="d-none">
        <p class="pv-small pv-muted mb-2">Original voucher, stock movements and ledger IDs remain linked.</p>
        <div class="row g-2 mb-2">
         <div class="col-md-4"><label class="form-label">Original Slip / Bill No</label><input type="text" class="form-control" id="stockDocumentNumber" readonly></div>
@@ -1267,6 +1296,7 @@
        <div class="pv-line mt-3"><div class="d-flex align-items-center justify-content-between">
         <div class="pv-small pv-muted">Total Amount</div><div class="fw-bold" id="stockDocumentEditTotal">PKR 0</div>
        </div></div>
+       </div>
        <div id="stockDocumentEditError" class="alert alert-danger d-none mt-2" role="alert"></div>
       </div>
       <div class="stock-modal-actions px-3 pb-3 pt-1">
@@ -3151,8 +3181,9 @@
           $('#stockDocumentEditForm').removeData('source').removeData('kind');
           $('#stockDocumentEditRows').empty();
           $('#stockDocumentDate,#stockDocumentNarration').val('');
-          $('#stockDocumentEditError').removeClass('d-none').removeClass('alert-danger')
-              .addClass('alert-info').text('Loading original voucher and item mappings...');
+          $('#stockDocumentEditError').addClass('d-none').removeClass('alert-info alert-warning').addClass('alert-danger').text('');
+          $('#stockDocumentEditFields').addClass('d-none');
+          $('#stockDocumentEditSkeleton').removeClass('d-none');
           $('#stockDocumentSave').prop('disabled',true);
           stockDocModal('#stockDocumentEditModal','show');
           $button.prop('disabled',true);
@@ -3200,7 +3231,11 @@
           }).fail(function(xhr){
               $('#stockDocumentEditError').removeClass('alert-info').addClass('alert-danger');
               stockDocError($('#stockDocumentEditError'),xhr,'Could not load stock voucher. Check your Stock read permission and linked source status.');
-          }).always(function(){$button.prop('disabled',false);});
+          }).always(function(){
+              $('#stockDocumentEditSkeleton').addClass('d-none');
+              $('#stockDocumentEditFields').removeClass('d-none');
+              $button.prop('disabled',false);
+          });
       });
       $('#stockDocumentEditForm').on('submit',function(event){
           event.preventDefault();
