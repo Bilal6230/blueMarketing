@@ -106,6 +106,9 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         $view=file_get_contents($root.'/resources/views/admin/finance/voucher/settings.blade.php');
         self::assertStringContainsString("'EC' => ['label'=>'Extra Charge', 'supported'=>false]", $controller);
         self::assertStringContainsString("'ECP' => ['label'=>'Extra Charge Payment', 'supported'=>false]", $controller);
+        foreach (['LAB','ST-IN','ST-OUT','SB-PUR','SB-SALE'] as $series) {
+            self::assertStringContainsString("'".$series."' => [", $controller);
+        }
         self::assertStringContainsString('@if($definition[\'supported\'])', $view);
         self::assertStringContainsString("vs-reversal-form", $view);
         self::assertStringContainsString('Approval configuration is not supported', $view);
@@ -121,7 +124,8 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertStringContainsString('(string) $original->voucher_series', $writer);
         self::assertStringContainsString('VOUCHER_REVERSAL_DISABLED', $policy);
         self::assertStringContainsString("where('project_id', \$projectId)", $policy);
-        self::assertStringContainsString("where('voucher_type', strtoupper(\$series))", $policy);
+        self::assertStringContainsString("where('voucher_type', \$series)", $policy);
+        self::assertStringContainsString("\$series === 'PR' ? 'PPR' : \$series", $policy);
         self::assertStringContainsString('return $configured === null || (bool) $configured;', $policy);
         self::assertStringNotContainsString('PostingReversalWriter', file_get_contents($root.'/app/Http/Controllers/Finance/VoucherSettingsController.php'));
     }
