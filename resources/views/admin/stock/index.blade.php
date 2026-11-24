@@ -1254,8 +1254,14 @@
         <div class="col-md-8"><label for="stockDocumentNarration" class="form-label">Description / Narration</label>
          <input type="text" class="form-control" id="stockDocumentNarration" maxlength="1000"></div>
        </div>
-       <div id="stockDocumentEditRows" class="mt-3"></div>
-       <button type="button" class="btn btn-sm btn-outline-primary" id="stockDocumentAddRow">Add Item</button>
+       <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+        <strong>Items / Material</strong>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="stockDocumentAddRow">+ Add Row</button>
+       </div>
+       <div id="stockDocumentEditRows"></div>
+       <div class="d-flex justify-content-between align-items-center border rounded px-3 py-2 mt-2">
+        <span class="small text-muted">Total Amount</span><strong id="stockDocumentEditTotal">PKR 0</strong>
+       </div>
        <div id="stockDocumentEditError" class="alert alert-danger d-none mt-2" role="alert"></div>
       </div>
       <div class="modal-footer">
@@ -3053,11 +3059,22 @@
           }
       };
       var stockDocHide=function(selector){stockDocModal(selector,'hide');};
+      var stockDocRecalculate=function(){
+          var total=0;
+          $('#stockDocumentEditRows .stock-doc-line').each(function(){
+              var $line=$(this),qty=Number($line.find('.stock-doc-qty').val())||0,
+                  rate=Number($line.find('.stock-doc-rate').val())||0,
+                  amount=qty*rate;
+              total+=amount;
+              $line.find('.stock-doc-line-amount').text('PKR '+amount.toLocaleString('en-PK'));
+          });
+          $('#stockDocumentEditTotal').text('PKR '+total.toLocaleString('en-PK'));
+      };
       var stockDocAddLine=function(line){
           line=line||{};
           var $wrap=$('<div class="pv-line stock-compact-line stock-doc-line mb-2">')
               .attr('data-detail-id',line.detail_id||'');
-          var $fields=$('<div class="row g-2 align-items-center">').appendTo($fields);
+          var $fields=$('<div class="row g-2 align-items-center">').appendTo($wrap);
           var $item=$('<select class="form-control stock-doc-item">');
           $('<option>').val('').text('Choose item').appendTo($item);
           $.each(stockDocItems,function(_,item){
@@ -3067,25 +3084,31 @@
           $item.val(line.item_id?String(line.item_id):'');
           $('<div class="col-md-5">').append(
               $('<label class="form-label small">Item</label>'),$item).appendTo($fields);
-          $('<div class="col-md-3">').append(
+          $('<div class="col-md-2">').append(
               $('<label class="form-label small">Qty</label>'),
               $('<input type="number" class="form-control stock-doc-qty" min="0.001" step="0.001" required>')
                   .val(line.qty||'')).appendTo($fields);
           $('<div class="col-md-3">').append(
-              $('<label class="form-label small">Rate (minor units)</label>'),
+              $('<label class="form-label small">Rate</label>'),
               $('<input type="number" class="form-control stock-doc-rate" min="0" step="1" required>')
                   .val(line.rate==null?'':line.rate)).appendTo($fields);
-          $('<div class="col-md-1">').append(
+          $('<div class="col-md-2">').append(
+              $('<label class="form-label small">Line Amount</label>'),
+              $('<div class="form-control-plaintext stock-doc-line-amount text-end">PKR 0</div>')).appendTo($fields);
+          $('<div class="col-md-12 d-flex justify-content-end">').append(
               $('<button class="btn btn-sm btn-outline-danger stock-doc-remove" type="button">Remove</button>'))
               .appendTo($fields);
           $('#stockDocumentEditRows').append($wrap);
+          stockDocRecalculate();
       };
       $('#stockDocumentEditRows').on('click','.stock-doc-remove',function(){
           if($('#stockDocumentEditRows .stock-doc-line').length<2){
               stockDocNotify('error','Stock voucher requires at least one item.');return;
           }
           $(this).closest('.stock-doc-line').remove();
+          stockDocRecalculate();
       });
+      $('#stockDocumentEditRows').on('input change','.stock-doc-qty,.stock-doc-rate',stockDocRecalculate);
       $('#stockDocumentAddRow').on('click',function(){stockDocAddLine();});
       $(document).on('click','.stock-doc-edit',function(){
           var kind=$(this).attr('data-kind'),id=Number($(this).attr('data-id')),
@@ -3125,6 +3148,15 @@
               $('#stockDocumentNarration').val(data.narration||'');
               $('#stockDocumentEditRows').empty();
               $.each(data.lines||[],function(_,line){stockDocAddLine(line);});
+              stockDocRecalculate();
+              if(!$('#stockDocumentEditRows .stock-doc-line').length){
+                  $('#stockDocumentEditError').removeClass('d-none').removeClass('alert-info')
+                      .addClass('alert-danger').text('This voucher has no editable item lines. Update is blocked to protect stock history.');
+                  return;
+              }
+              $('#stockDocumentEditRows .stock-doc-item').each(function(){
+                  if($.isFunction(window.stockEnhanceDropdowns))window.stockEnhanceDropdowns($(this));
+              });
               $('#stockDocumentEditError').removeClass('alert-info').addClass('alert-danger').addClass('d-none').text('');
               $('#stockDocumentSave').prop('disabled',false);
           }).fail(function(xhr){
