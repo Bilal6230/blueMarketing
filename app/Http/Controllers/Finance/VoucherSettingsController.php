@@ -38,6 +38,13 @@ final class VoucherSettingsController extends Controller
         // is not managed by the generic voucher approval form.
         'EC' => ['label'=>'Extra Charge', 'supported'=>false],
         'ECP' => ['label'=>'Extra Charge Payment', 'supported'=>false],
+        // These posted source series are reversible via the unified finance
+        // API, without generic Daily Voucher approval controls.
+        'LAB' => ['label'=>'Labour Posting', 'supported'=>false],
+        'ST-IN' => ['label'=>'Stock Entry In', 'supported'=>false],
+        'ST-OUT' => ['label'=>'Stock Entry Out', 'supported'=>false],
+        'SB-PUR' => ['label'=>'Stock Purchase Bill', 'supported'=>false],
+        'SB-SALE' => ['label'=>'Stock Sale Bill', 'supported'=>false],
         'ONL_CORR' => ['label'=>'Online Transaction Correction', 'supported'=>true],
         'CHQ_CORR' => ['label'=>'Cheque Correction', 'supported'=>true],
     ];
