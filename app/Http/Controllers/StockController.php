@@ -50,6 +50,7 @@ class StockController extends Controller
             && Schema::hasColumn('stock_bill_lines', 'project_id');
         $x['canReconcileLegacyStock'] = $projectStockSchemaReady
             && auth()->user()->hasAnyRole(['admin', 'superadmin'])
+            && \App\Support\Stock\StockAbility::allows(auth()->user(),'entries','edit')
             && Schema::hasTable('stock_legacy_reconciliation_audits');
         $x['legacyStockCandidates'] = $x['canReconcileLegacyStock']
             ? $this->legacyStockCandidates((int) $selectedProjectId)
