@@ -1,3 +1,13 @@
+# 2026-11-24 — Latest owner verification and Stock route compatibility discovery
+
+**Owner latest terminal PASS:** pulled `7126bc40`; `RoleManagementModernizationTest` **7 PASS / 478 assertions**, `php artisan view:cache` PASS. Earlier `FinanceActionPermissionMatrixTest` **6 PASS / 365 assertions**. The categorization of real old permissions is verified; no need to rerun that gate.
+
+**Stock security audit finding requiring compatibility planning before enforcement:** the 441-permission local audit contains **no** `read stock`, `create stock`, `edit stock`, `update stock`, or `delete stock` records. It does contain `read slip` (4 role grants), `add slip` (2), `delete slip` (2), and `stock module` (0), all already granted/non-granted as reported by the actual database. Meanwhile, `routes/web.php` stock items, parties, entries, bills, document edits/deletes and exports/imports do not consistently have named Spatie permission middleware; `StockController` import logic and some document flows reference `create stock`/`edit stock`/other compatibility fallbacks even though those names are absent from this DB. **Do not abruptly add `permission:create stock` middleware**: it would block all existing non-superadmin users when these rights have not been seeded/granted. Likewise, an unreviewed broad stock permission cross-product would add unnecessary options.
+
+**Safe proposed next change:** use the real functional stock surfaces—Items, Parties, Entries, Bills—to design a small explicit View/Create/Edit/Delete permission set only when those actions actually exist; implement a controlled grant migration or deliberate compatibility bridge for existing `read/add/delete slip` roles; enforce AJAX + page + export endpoints together; audit and test actual roles before switching over. Keep stock approval on its already separate approval policy and preserve existing user grants. Avoid changing Labour CP while its browser gate is ON HOLD.
+
+**M02 remains IN PROGRESS.** This security-related compatibility discovery prevents claiming full Stock permission enforcement from the passed role-editor tests.
+
 # OWNER LOCAL DATABASE AUDIT — 2026-11-24, authoritative (supersedes older pending-audit notes below)
 
 Owner provided full file `permissions-audit.json` (database `bluenew_clean_final`, generated `2026-11-24T17:18:51+05:00`; read-only report). The complete JSON was parsed (441 `permissions` entries). Results:
