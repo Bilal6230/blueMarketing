@@ -17,7 +17,12 @@ final class VoucherReversalPolicy
         // PR is the persisted Plot Receipt posting series, while PPR is the
         // project Voucher Settings series. Both must enforce one switch.
         $series = strtoupper(trim($series));
-        $series = $series === 'PR' ? 'PPR' : $series;
+        $series = match ($series) {
+            'PR' => 'PPR',   // Plot Receipt posted batch -> voucher setting
+            'CHR' => 'BOR', // Cleared cheque receipt display series
+            'CHP' => 'BOP', // Cleared cheque payment display series
+            default => $series,
+        };
         if ($projectId < 1 || $series === '' || $series === 'REV') {
             return false;
         }
