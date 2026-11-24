@@ -614,7 +614,7 @@
    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
   <form id="fvcExtraCashEditForm"><div class="modal-body">
    <div class="alert alert-info small">The original EC/ECP voucher number and ledger links remain unchanged.</div>
-   <div class="alert alert-secondary small">Account mappings are tied to this Extra Charge: EC uses Receivable (Debit) / Income (Credit); Cash ECP uses Cash (Debit) / Receivable (Credit). Customer, plot and charge-type changes require a separately reviewed correction, not an ordinary amount edit.</div>
+   <div class="alert alert-secondary small">Account mappings are tied to this Extra Charge: EC uses dedicated Receivable and Income accounts; Cash ECP uses dedicated Cash and Receivable accounts. The exact stored Debit / Credit direction is shown below. Customer, plot and charge-type changes require a separately reviewed correction, not an ordinary amount edit.</div>
    <div class="form-group"><label for="fvcExtraCashPostingAccounts">Linked Debit / Credit Accounts</label>
     <textarea id="fvcExtraCashPostingAccounts" class="form-control" rows="2" readonly></textarea>
     <small class="text-muted">Original voucher ledger account identities cannot be changed through a same-source amount correction.</small>
