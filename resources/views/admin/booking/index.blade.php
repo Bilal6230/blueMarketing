@@ -331,7 +331,6 @@
 
             // Open modal and set values
             $(".btn-delete-booking").click(function () {
-                debugger;
                 let bookingId = $(this).data("id");
                 plotName = $(this).data("plot"); // Store correct plot name
 
@@ -375,7 +374,11 @@
                         location.reload(); // Reload page after deletion
                     },
                     error: function (xhr) {
-                        alert("Error deleting booking. Please try again!"); // Show error message
+                        const message=(xhr.responseJSON&&xhr.responseJSON.message)
+                            ||(xhr.status===409
+                                ?'This booking has linked financial history and cannot be deleted. Use the audited cancellation workflow.'
+                                :'Booking could not be deleted. Please check permissions and try again.');
+                        Swal.fire({icon:'error',title:'Booking Not Deleted',text:message});
                     }
                 });
             });
