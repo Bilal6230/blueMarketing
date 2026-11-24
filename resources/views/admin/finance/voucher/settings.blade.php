@@ -26,6 +26,7 @@
   <div class="alert alert-info small">
    Approval policy applies to <strong>new vouchers only</strong>. CR, CP, CCR, CDR, BOR, BOP, JV and SV use the guarded approval engine. Approvers must have the <code>voucher approver</code> permission through their role or direct assignment. Super Admin has universal decision authority.
    BOR and BOP have <strong>independent</strong> switches and do not inherit CR/CP approval settings. With approval OFF, new bank vouchers post directly; with approval ON, they remain inactive until approved. Existing Posted vouchers are unchanged.<br>
+   <strong>Reversal ON/OFF:</strong> Controls the verified posted-batch reversal workflow independently of Approval and ordinary Edit/Delete. Active Reverse actions currently exist for typed cash source vouchers, Bank Deposit/Withdrawal and Plot Receipt/Purchase. A switch does not create a new Reverse action for a voucher family with no such route; bank/cheque custody restrictions still apply.<br>
    <strong>Cheque Correction (CHQ_CORR)</strong> and <strong>Online Correction (ONL_CORR)</strong> are separate policies for existing confirmed/cleared management records: ON stages a proposed amount/voucher adjustment until the assigned finance approver decides; OFF allows users with the corresponding <code>finance cheque correct</code> or <code>finance online correct</code> permission to apply a reviewed same-ID correction immediately. Both paths preserve original voucher identities and change history.
   </div>
   <div class="row">
