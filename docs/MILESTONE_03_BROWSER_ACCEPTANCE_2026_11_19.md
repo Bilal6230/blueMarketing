@@ -1,3 +1,10 @@
+# CURRENT CROSS-MILESTONE ACCEPTANCE — 2026-11-24 (authoritative)
+
+- **Milestone 05 CLOSED / OWNER ACCEPTED**: grouped Voucher Settings browser PASS after pull; `Milestone05ReversalSettingsContractTest` **8 PASS / 122 assertions**; `view:cache` PASS. Six working reversal-enabled browser families `CR, CP, BD, BW, PPR, PP` grouped above approval-only families; unsupported reversal-only switches removed. Earlier M05 pending notes below are historical and superseded.
+- **Milestone 03**: Stock Entry/Billing edit, skeleton and narration browser fixes previously owner-accepted; all other voucher-family browser tests passed. **Only Labour Payment CP browser acceptance remains, explicitly ON HOLD**. Do not repeat passed tests.
+- **Milestone 04**: CLOSED/OWNER ACCEPTED. **Milestone 02**: cross-module permission matrix formal acceptance remains. **Milestone 01**: CLOSED. **Milestone 06**: deferred until LAST (application activity audit).
+- **No further Milestone 05 browser or terminal checks pending.** Do not reopen M05 without a new change/defect.
+
 ## M05 CLOSED — owner accepted 2026-11-24; settings grouping layout follow-up
 
 Owner confirms final six supported reversal switches correctly displayed in browser; unsupported extra switches removed, approval settings unaffected; final contract test **7 PASS / 111 assertions**, view cache PASS and all previous finance regression gates verified. Mark Milestone 05 **CLOSED / OWNER ACCEPTED**. Latest cosmetic Voucher Settings refinement groups **six Reversal-capable types first** (CR, CP, BD, BW, PPR, PP) and **approval-only types second** with distinct headings/counts; no finance policy or DB writes changed, new layout-only contract test and browser smoke pending owner pull. M03 Labour CP remains ON HOLD and M06 stays last.
@@ -36,7 +43,7 @@ Owner confirmed Stock Edit item rows and form are functioning but rejected the t
 
 # Milestone 03 — Browser Acceptance and Local Verification (2026-11-19)
 
-**Current status (owner update 2026-11-24): All Milestone 03 terminal and browser acceptance tests are reported PASS except Stock Entry/Bill and Labour Payment (CP), which remain the only two browser gates. Full milestone sign-off awaits these two.** This document is the active browser checklist and exact handoff for `upgrade/laravel-framework`. Record actual PASS/FAIL and screenshots in a later owner response; do not mark untested areas green. Local data must be a disposable/test database. The configured project ID must come from current application selection, never a hardcoded number.
+**Current status (owner update 2026-11-24): All previously reported Milestone 03 browser gates, including Stock Entry/Bill, are PASS except Labour Payment (CP), which remains explicitly ON HOLD. Full milestone sign-off awaits only that Labour CP gate.** This document is the active browser checklist and exact handoff for `upgrade/laravel-framework`. Record actual PASS/FAIL and screenshots in a later owner response; do not mark untested areas green. Local data must be a disposable/test database. The configured project ID must come from current application selection, never a hardcoded number.
 
 ## Code fixes completed in the latest review batch
 
