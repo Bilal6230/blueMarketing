@@ -156,10 +156,10 @@
 
 
     /* Unified finance modal finishing styles. */
-    .stock-create-modal .stock-modal-actions,#editModal .stock-modal-actions{display:flex!important;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}
+    .stock-create-modal .stock-modal-actions,#editModal .stock-modal-actions,#stockDocumentEditModal .stock-modal-actions{display:flex!important;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}
     .stock-create-modal .stock-modal-actions .pv-small{width:100%;text-align:right;margin:0!important}
-    .stock-create-modal .stock-compact-line{padding:7px 9px!important}
-    .stock-create-modal .stock-compact-line .row{--bs-gutter-x:8px!important;--bs-gutter-y:5px!important}
+    .stock-create-modal .stock-compact-line,#stockDocumentEditModal .stock-compact-line{padding:7px 9px!important}
+    .stock-create-modal .stock-compact-line .row,#stockDocumentEditModal .stock-compact-line .row{--bs-gutter-x:8px!important;--bs-gutter-y:5px!important}
     .stock-compact-line .stock-line-field{display:flex;align-items:stretch;border:1px solid #dce5f2;border-radius:8px;background:#fff;min-width:0;height:34px}
     .stock-compact-line .stock-line-caption{display:flex;align-items:center;justify-content:center;flex:0 0 auto;padding:0 8px;background:#edf2f8;color:#718198;border-right:1px solid #dce5f2;border-radius:7px 0 0 7px;font-size:10px;font-weight:700;min-width:36px}
     .stock-compact-line .stock-line-field>.form-control,.stock-compact-line .stock-line-field>.form-select{flex:1 1 auto;min-width:0;width:100%;border:0!important;border-radius:0 7px 7px 0!important;box-shadow:none!important;height:32px!important;min-height:32px!important}
@@ -1238,7 +1238,7 @@
        <button class="stock-modal-close" type="button" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
      <form id="stockDocumentEditForm">
       <div class="modal-body">
-       <div class="alert alert-info small">The original stock document, inventory movements and ledger IDs remain linked.</div>
+       <p class="pv-small pv-muted mb-2">Original voucher, stock movements and ledger IDs remain linked.</p>
        <div class="row g-2 mb-2">
         <div class="col-md-4"><label class="form-label">Original Slip / Bill No</label><input type="text" class="form-control" id="stockDocumentNumber" readonly></div>
         <div class="col-md-4"><label class="form-label">In/Out or Purchase/Sale</label><input type="text" class="form-control" id="stockDocumentFlow" readonly></div>
@@ -1254,19 +1254,20 @@
         <div class="col-md-8"><label for="stockDocumentNarration" class="form-label">Description / Narration</label>
          <input type="text" class="form-control" id="stockDocumentNarration" maxlength="1000"></div>
        </div>
-       <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
-        <strong>Items / Material</strong>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="stockDocumentAddRow">+ Add Row</button>
+       <hr class="my-3">
+       <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="fw-bold" id="stockDocumentItemsHeading">Items / Material</div>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="stockDocumentAddRow"><i class="bi bi-plus-lg"></i> Add Row</button>
        </div>
-       <div id="stockDocumentEditRows"></div>
-       <div class="d-flex justify-content-between align-items-center border rounded px-3 py-2 mt-2">
-        <span class="small text-muted">Total Amount</span><strong id="stockDocumentEditTotal">PKR 0</strong>
-       </div>
+       <div id="stockDocumentEditRows" class="vstack gap-2"></div>
+       <div class="pv-line mt-3"><div class="d-flex align-items-center justify-content-between">
+        <div class="pv-small pv-muted">Total Amount</div><div class="fw-bold" id="stockDocumentEditTotal">PKR 0</div>
+       </div></div>
        <div id="stockDocumentEditError" class="alert alert-danger d-none mt-2" role="alert"></div>
       </div>
-      <div class="modal-footer">
+      <div class="stock-modal-actions px-3 pb-3 pt-1">
        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-       <button type="submit" id="stockDocumentSave" class="btn btn-primary">Update Stock Voucher</button>
+       <button type="submit" id="stockDocumentSave" class="btn btn-primary btn-lg"><i class="bi bi-check2-circle me-1"></i> Update Stock Voucher</button>
       </div>
      </form>
     </div>
@@ -3083,35 +3084,48 @@
           });
           $('#stockDocumentEditTotal').text('PKR '+total.toLocaleString('en-PK'));
       };
+      // Reuse the Add Entry/Bill compact field structure for Edit, while
+      // retaining existing detail IDs for same-source ledger corrections.
       var stockDocAddLine=function(line){
           line=line||{};
-          var $wrap=$('<div class="pv-line stock-compact-line stock-doc-line mb-2">')
+          var $wrap=$('<div class="pv-line stock-compact-line stock-doc-line">')
               .attr('data-detail-id',line.detail_id||'');
           var $fields=$('<div class="row g-2 align-items-center">').appendTo($wrap);
-          var $item=$('<select class="form-control stock-doc-item">');
+          var $item=$('<select class="form-select stock-doc-item" aria-label="Item" required>');
           $('<option>').val('').text('Choose item').appendTo($item);
           $.each(stockDocItems,function(_,item){
-              $('<option>').val(item.id).text(item.name+' / '+(item.unit||''))
-                  .appendTo($item);
+              $('<option>').val(item.id).text(item.name+' / '+(item.unit||'')).appendTo($item);
           });
           $item.val(line.item_id?String(line.item_id):'');
-          $('<div class="col-md-5">').append(
-              $('<label class="form-label small">Item</label>'),$item).appendTo($fields);
-          $('<div class="col-md-2">').append(
-              $('<label class="form-label small">Qty</label>'),
-              $('<input type="number" class="form-control stock-doc-qty" min="0.001" step="0.001" required>')
-                  .val(line.qty||'')).appendTo($fields);
-          $('<div class="col-md-3">').append(
-              $('<label class="form-label small">Rate</label>'),
-              $('<input type="number" class="form-control stock-doc-rate" min="0" step="1" required>')
-                  .val(line.rate==null?'':line.rate)).appendTo($fields);
-          $('<div class="col-md-2">').append(
-              $('<label class="form-label small">Line Amount</label>'),
-              $('<div class="form-control-plaintext stock-doc-line-amount text-end">PKR 0</div>')).appendTo($fields);
-          $('<div class="col-md-12 d-flex justify-content-end">').append(
-              $('<button class="btn btn-sm btn-outline-danger stock-doc-remove" type="button">Remove</button>'))
+          var field=function(caption,$control){
+              return $('<div class="stock-line-field">')
+                  .append($('<span class="stock-line-caption">').text(caption))
+                  .append($control);
+          };
+          $('<div class="col-md-5">').append(field('Item',$item)).appendTo($fields);
+          var $unit=$('<input class="form-control stock-doc-unit" aria-label="Unit" readonly>');
+          $('<div class="col-md-2">').append(field('Unit',$unit)).appendTo($fields);
+          $('<div class="col-md-2">').append(field('Qty',
+              $('<input type="number" class="form-control stock-doc-qty" aria-label="Quantity" min="0.001" step="0.001" required>')
+                  .val(line.qty==null?'':line.qty))).appendTo($fields);
+          $('<div class="col-md-2">').append(field('Rate',
+              $('<input type="number" class="form-control stock-doc-rate" aria-label="Rate" min="0" step="1" required>')
+                  .val(line.rate==null?'':line.rate))).appendTo($fields);
+          $('<div class="col-md-1 d-flex align-items-center justify-content-center">')
+              .append($('<button class="stock-doc-remove stock-line-remove" type="button" title="Remove row" aria-label="Remove item row"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'))
               .appendTo($fields);
+          $('<div class="stock-line-summary">')
+              .append($('<span class="pv-small pv-muted">').text('Line Amount'))
+              .append($('<strong class="stock-doc-line-amount">').text('PKR 0'))
+              .appendTo($wrap);
           $('#stockDocumentEditRows').append($wrap);
+          var syncUnit=function(){
+              var id=String($item.val()||'');
+              var item=stockDocItems.find(function(entry){return String(entry.id)===id;});
+              $unit.val(item?(item.unit||'—'):'—');
+          };
+          $item.on('change',syncUnit);
+          syncUnit();
           stockDocRecalculate();
       };
       $('#stockDocumentEditRows').on('click','.stock-doc-remove',function(){
@@ -3151,6 +3165,7 @@
               }
               $('#stockDocumentEditForm').data('kind',kind).data('source',id);
               $('#stockDocumentEditTitle').text('Edit '+(kind==='entry'?'Stock Entry':'Stock Bill')+' '+(data.number||''));
+              $('#stockDocumentItemsHeading').text(kind==='entry'?'Items / Material':'Bill Items');
               $('#stockDocumentNumber').val(data.number||'');
               $('#stockDocumentFlow').val(data.type||'');
               $('#stockDocumentParty').val(data.party_name||'');
