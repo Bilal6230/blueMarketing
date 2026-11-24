@@ -79,6 +79,26 @@ final class Milestone05ReversalSettingsContractTest extends TestCase
         self::assertStringContainsString('VOUCHER_REVERSAL_DISABLED', $daily);
     }
 
+    public function test_finance_api_reversal_and_void_routes_use_the_same_policy_guard(): void
+    {
+        $root=dirname(__DIR__,3);
+        $routes=file_get_contents($root.'/routes/api.php');
+        $api=file_get_contents($root.'/app/Http/Controllers/Api/Finance/FinanceApiController.php');
+        $voucherLifecycle=file_get_contents($root.'/app/Services/Finance/VoucherLifecycleService.php');
+        $plotLifecycle=file_get_contents($root.'/app/Services/Finance/PlotEntryLifecycleService.php');
+        foreach ([$routes,$api,$voucherLifecycle,$plotLifecycle] as $source)self::assertIsString($source);
+        self::assertStringContainsString("Route::post('reversals'", $routes);
+        self::assertStringContainsString("Route::post('plot-vouchers/{kind}/{sourceId}/void'", $routes);
+        self::assertStringContainsString("Route::post('vouchers/{kind}/{sourceId}/void'", $routes);
+        self::assertStringContainsString('function voidPlotVoucher(', $api);
+        self::assertStringContainsString('function voidVoucher(', $api);
+        self::assertStringContainsString('function reverse(Request $request', $api);
+        self::assertSame(3,substr_count($api,"'FINANCE_REVERSAL_DISABLED'"));
+        self::assertStringContainsString('reversePostedBatch(', $voucherLifecycle);
+        self::assertStringContainsString('PostingReversalWriter())->reverse(', $plotLifecycle);
+        self::assertStringContainsString('$gateway->reversePostedBatch(', $api);
+    }
+
     public function test_ec_ecp_get_reversal_switch_without_enabling_unsupported_approval(): void
     {
         $root=dirname(__DIR__,3);
