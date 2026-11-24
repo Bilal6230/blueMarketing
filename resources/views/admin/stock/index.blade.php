@@ -2465,7 +2465,7 @@
               <td>${fmtPKR(en.rate || 0)}</td>
               <td>${fmtPKR(en.amount || 0)}</td>
               <td>${billingPill}</td>
-              ${stockActionsCell(`<button type="button" class="stock-doc-edit" data-kind="entry" data-id="${Number(en.id)}">Edit</button><button type="button" class="stock-doc-delete" data-kind="entry" data-id="${Number(en.id)}">Delete</button>`)}
+              ${stockActionsCell((stockCan('entries','edit')?`<button type="button" class="stock-doc-edit" data-kind="entry" data-id="${Number(en.id)}">Edit</button>`:'')+(stockCan('entries','delete')?`<button type="button" class="stock-doc-delete" data-kind="entry" data-id="${Number(en.id)}">Delete</button>`:''))}
             </tr>
           `
         );
@@ -2504,7 +2504,7 @@
               <td class="text-truncate" style="max-width:260px;">${b.bill_no || ""}${b.entry_no ? " • Entry: " + b.entry_no : ""
           }</td>
               <td>${fmtPKR(b.total || 0)}</td>
-              ${stockActionsCell(`<button type="button" class="stock-doc-edit" data-kind="bill" data-id="${Number(b.id)}">Edit</button><button type="button" class="stock-doc-delete" data-kind="bill" data-id="${Number(b.id)}">Delete</button>`)}
+              ${stockActionsCell((stockCan('billing','edit')?`<button type="button" class="stock-doc-edit" data-kind="bill" data-id="${Number(b.id)}">Edit</button>`:'')+(stockCan('billing','delete')?`<button type="button" class="stock-doc-delete" data-kind="bill" data-id="${Number(b.id)}">Delete</button>`:''))}
             </tr>
           `
         );
@@ -2693,7 +2693,7 @@
               <td>${p.subhead || "—"}</td>
               <td><span class="pv-pill">${p.type}</span></td>
               <td><span class="pv-pill ${p.is_active ? "ok" : "bad"}">${p.is_active ? "Active" : "Inactive"}</span></td>
-              ${stockActionsCell(`<button type="button" data-act="edit">Edit</button><button type="button" data-act="del">Delete</button><button type="button" data-act="status">${p.is_active ? "Deactivate" : "Activate"}</button>`)}
+              ${stockActionsCell((stockCan('parties','edit')?'<button type="button" data-act="edit">Edit</button>':'')+(stockCan('parties','delete')?'<button type="button" data-act="del">Delete</button>':'')+(stockCan('parties','edit')?`<button type="button" data-act="status">${p.is_active ? "Deactivate" : "Activate"}</button>`:''))}
             </tr>
           `
         );
