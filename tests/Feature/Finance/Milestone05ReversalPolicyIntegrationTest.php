@@ -95,6 +95,30 @@ final class Milestone05ReversalPolicyIntegrationTest extends TestCase
         self::assertFalse($policy->enabled(0,'BD'));
     }
 
+    public function test_plot_receipt_pr_batch_obeys_ppr_switch_for_direct_api_reversal(): void
+    {
+        DB::table('finance_posting_batches')->insert([
+            'id'=>52,'project_id'=>1,'voucher_series'=>'PR',
+            'voucher_number'=>8,'effective_date'=>'2026-11-24','posted_at'=>'2026-11-24 10:00:00',
+        ]);
+        DB::table('daily_voucher_approval_policies')->insert([
+            'project_id'=>1,'voucher_type'=>'PPR','reversal_enabled'=>false,
+        ]);
+        self::assertFalse((new VoucherReversalPolicy())->enabled(1,'PR'));
+        self::assertFalse((new VoucherReversalPolicy())->enabled(1,'PPR'));
+        self::assertTrue((new VoucherReversalPolicy())->enabled(2,'PR'));
+        $before=DB::table('finance_posting_batches')->count();
+        try {
+            (new PostingReversalWriter())->reverse(
+                1,52,'plotreceiptm05disable2026','2026-11-24','Test disabled plot receipt',1
+            );
+            self::fail('PPR OFF must reject a direct PR posting reversal.');
+        } catch (\DomainException $exception) {
+            self::assertSame('VOUCHER_REVERSAL_DISABLED',$exception->getMessage());
+        }
+        self::assertSame($before,DB::table('finance_posting_batches')->count());
+    }
+
     public function test_existing_reversal_defaults_to_on_without_a_policy_row(): void
     {
         $policy=new VoucherReversalPolicy();
