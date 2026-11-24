@@ -270,7 +270,7 @@
    if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-delete ml-1','data-id':r.id,text:'Delete'}));
    @endcan
    @can('finance plot-receipt reverse')
-   if(!r.reversed)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-void ml-1','data-id':r.id,text:'Reverse'}));
+   if(r.can_reverse)$actions.append($('<button>',{'type':'button','class':'btn btn-sm btn-outline-danger pr-void ml-1','data-id':r.id,text:'Reverse'}));
    @endcan
    $row.append($actions);
    $body.append($row);
