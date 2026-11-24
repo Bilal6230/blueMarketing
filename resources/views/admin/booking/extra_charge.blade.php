@@ -615,6 +615,10 @@
   <form id="fvcExtraCashEditForm"><div class="modal-body">
    <div class="alert alert-info small">The original EC/ECP voucher number and ledger links remain unchanged.</div>
    <div class="alert alert-secondary small">Account mappings are tied to this Extra Charge: EC uses Receivable (Debit) / Income (Credit); Cash ECP uses Cash (Debit) / Receivable (Credit). Customer, plot and charge-type changes require a separately reviewed correction, not an ordinary amount edit.</div>
+   <div class="form-group"><label for="fvcExtraCashPostingAccounts">Linked Debit / Credit Accounts</label>
+    <textarea id="fvcExtraCashPostingAccounts" class="form-control" rows="2" readonly></textarea>
+    <small class="text-muted">Original voucher ledger account identities cannot be changed through a same-source amount correction.</small>
+   </div>
    <div class="form-group"><label for="fvcExtraCashDate">Date</label><input type="date" class="form-control" id="fvcExtraCashDate" required></div>
    <div class="form-group"><label for="fvcExtraCashAmount">Amount</label><input type="number" min="0.01" step="0.01" class="form-control" id="fvcExtraCashAmount" required></div>
    <div class="form-group"><label for="fvcExtraCashDescription">Description</label><textarea class="form-control" id="fvcExtraCashDescription" rows="3" maxlength="1000"></textarea></div>
@@ -1133,6 +1137,9 @@
                     $('#fvcExtraCashDate').val(d.date);
                     $('#fvcExtraCashAmount').val(d.amount);
                     $('#fvcExtraCashDescription').val(d.description);
+                    $('#fvcExtraCashPostingAccounts').val($.map(d.posting_accounts||[],function(line){
+                        return (line.side||'Account')+': '+(line.account||'Unmapped');
+                    }).join('\n'));
                     $('#fvcExtraCashEditError').addClass('d-none').text('');
                     $('#fvcExtraCashEditModal').modal('show');
                 }).fail(function(xhr){extraCashError($('#fvcExtraCashEditError'),xhr);})
