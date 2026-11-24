@@ -25,6 +25,19 @@ final class StockDocumentLifecycleContractTest extends TestCase
         self::assertStringContainsString('negative inventory',$editor);
     }
 
+    public function test_stock_document_edit_uses_skeleton_instead_of_loading_alert(): void
+    {
+        $view=file_get_contents(dirname(__DIR__,3).'/resources/views/admin/stock/index.blade.php');
+        self::assertIsString($view);
+        self::assertStringContainsString('id="stockDocumentEditSkeleton"', $view);
+        self::assertStringContainsString('id="stockDocumentEditFields"', $view);
+        self::assertStringContainsString('stockDocSkeletonShimmer', $view);
+        self::assertStringContainsString("$('#stockDocumentEditSkeleton').removeClass('d-none')", $view);
+        self::assertStringContainsString("$('#stockDocumentEditSkeleton').addClass('d-none')", $view);
+        self::assertStringContainsString("$('#stockDocumentEditFields').removeClass('d-none')", $view);
+        self::assertStringNotContainsString('Loading original voucher and item mappings...', $view);
+    }
+
     public function test_stock_bill_narration_round_trips_through_create_details_and_edit(): void
     {
         $root=dirname(__DIR__,3);
