@@ -64,7 +64,7 @@ final class VoucherSettingsController extends Controller
             )->values();
         $types=self::TYPES;
         $reversalTypes=self::REVERSAL_TYPES;
-        return view('admin.finance.voucher.settings',compact('policies','approvers','types'));
+        return view('admin.finance.voucher.settings',compact('policies','approvers','types','reversalTypes'));
     }
 
     public function save(Request $request)
