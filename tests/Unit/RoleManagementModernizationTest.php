@@ -58,6 +58,11 @@ final class RoleManagementModernizationTest extends TestCase
         self::assertSame('Settings',RolePermissionCatalog::generalModuleLabel('setting'));
         self::assertSame('Expenses',RolePermissionCatalog::generalModuleLabel('expence'));
         self::assertSame('Other Access',RolePermissionCatalog::generalModuleLabel('other'));
+        self::assertTrue(RolePermissionCatalog::isSelectableFinance('finance cr create'));
+        self::assertTrue(RolePermissionCatalog::isSelectableFinance('finance plot-purchase reverse'));
+        self::assertFalse(RolePermissionCatalog::isSelectableFinance('finance jv reverse'));
+        self::assertFalse(RolePermissionCatalog::isSelectableFinance('finance ccr reverse'));
+        self::assertFalse(RolePermissionCatalog::isSelectableFinance('finance cr withdraw'));
     }
 
     public function test_only_supported_reverse_actions_are_selectable(): void
@@ -116,6 +121,8 @@ final class RoleManagementModernizationTest extends TestCase
         $audit = file_get_contents($root.'/app/Console/Commands/AuditRolePermissions.php');
         self::assertStringContainsString('RolePermissionCatalog::isLegacyVoucher',$controller);
         self::assertStringContainsString('->syncPermissions(',$controller);
+        self::assertStringContainsString('hidden_with_active_grants',$audit);
+        self::assertStringContainsString('finance_unexposed',$audit);
         self::assertStringContainsString('->lockForUpdate()',$controller);
         self::assertStringContainsString('$role->delete()',$controller);
         self::assertStringNotContainsString('forceDelete',$controller);
