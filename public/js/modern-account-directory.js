@@ -235,7 +235,7 @@ $(function(){
      submitAjax($form,function(){$root.find('.bm-account-create-modal').modal('hide');$form[0].reset();});
    });
  }
- if(kind!=='joint'){
+ if(kind==='head'||kind==='subhead'){
    $('#modal-edit form').on('submit.bmAccount',function(event){
      event.preventDefault();submitAjax($(this),function(){$('#modal-edit').modal('hide');});
    });
