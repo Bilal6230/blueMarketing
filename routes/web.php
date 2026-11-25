@@ -497,7 +497,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
     Route::post('/labours/sitestore', [LabourController::class, 'siteStore'])
         ->middleware('permission:create labour')->name('labours.sitestore');
     Route::get('/labours/attendance/week', [LabourController::class, 'loadAttendanceWeek'])
-        ->middleware('permission:read attendance|read labour')->name('attendance.week.load');
+        ->middleware('permission:read attendance')->name('attendance.week.load');
     Route::get('/labour/{id}', [LabourController::class, 'labourHistory'])
         ->middleware('permission:read labour')->name('labour.history');
     Route::post('/labours/check/validate', [LabourController::class, 'checkValidate'])
@@ -505,9 +505,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
     Route::patch('/labours/{labour}/status', [LabourController::class, 'updateStatus'])
         ->middleware('permission:update labour')->name('labours.updateStatus');
     Route::post('/labours/attendance', [LabourController::class, 'attendanceStore'])
-        ->middleware('permission:create attendance|create labour')->name('labours.attendance');
+        ->middleware('permission:create attendance')->name('labours.attendance');
     Route::post('/labours/report', [LabourController::class, 'attendanceReport'])
-        ->middleware('permission:read attendance|read labour')->name('labours.report');
+        ->middleware('permission:read attendance')->name('labours.report');
     Route::post('/attendance/labour-payment', [LabourController::class, 'labourPayment'])->name('labours.payment');
     Route::get('/labours/payment/{source}', [LabourController::class, 'paymentDetails'])
         ->whereNumber('source')->name('labours.payment.details');
@@ -517,7 +517,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         ->whereNumber('source')->name('labours.payment.delete');
     Route::post('/labours/update-rate', [LabourController::class, 'updateRate'])->middleware('permission:update labour')->name('labours.updateRate');
     Route::post('/labours/person/report', [LabourController::class, 'personAttendanceReport'])
-        ->middleware('permission:read attendance|read labour')->name('labours.person.report');
+        ->middleware('permission:read attendance')->name('labours.person.report');
     Route::post('/labours/create/voucher', [LabourController::class, 'createVoucher'])
         ->middleware('permission:create labour')->name('labours.create.voucher');
     Route::get('/labours/site-vouchers', [LabourController::class, 'siteVouchers'])
@@ -527,7 +527,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
     Route::post('/labours/print/person/report', [LabourController::class, 'printPersonReport'])
         ->middleware('permission:read labour')->name('labours.print.person.report');
     Route::post('/labours/print/attendance/report', [LabourController::class, 'printAttendanceReport'])
-        ->middleware('permission:read attendance|read labour')->name('labours.print.attendance.report');
+        ->middleware('permission:read attendance')->name('labours.print.attendance.report');
     Route::get('stocks', [StockController::class, 'index'])->middleware(\App\Http\Middleware\AuthorizeStockAbility::class.':workspace,view')->name('stocks.index');
 
     // Meta (items/parties for dropdowns)
