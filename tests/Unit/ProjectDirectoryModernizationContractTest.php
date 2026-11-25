@@ -61,8 +61,8 @@ final class ProjectDirectoryModernizationContractTest extends TestCase
         $routes = $this->source('routes/web.php');
 
         self::assertStringContainsString('public function index(Request $request)', $controller);
-        self::assertStringContainsString("return response()->json(['status' => 'success', 'data' => $rows])", $controller);
-        self::assertStringContainsString("'projectRows' => $rows", $controller);
+        self::assertStringContainsString('return response()->json([\'status\' => \'success\', \'data\' => $rows])', $controller);
+        self::assertStringContainsString('\'projectRows\' => $rows', $controller);
         foreach ([
             "permission:read project", "permission:create project",
             "permission:update project", "permission:delete project"
