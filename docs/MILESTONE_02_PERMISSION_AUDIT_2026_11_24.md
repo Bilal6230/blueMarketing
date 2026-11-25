@@ -1,3 +1,20 @@
+# 2026-11-25 — M02 cross-module browser acceptance: OWNER PASS
+
+**Owner confirmed all browser checks PASS** for the final permissions matrix:
+- Booking: independent Read/Create/Update/Delete and Price Update.
+- Leads / CRM: CRUD permissions separate from Assign Lead.
+- Labour Master: independent from Attendance view/mark permissions.
+- Accounting: Read-only cannot Create or Update.
+- Role Management: toggling permissions correctly affects sidebar, buttons and direct endpoint/API authorization.
+
+These five browser groups are **accepted**. Do not request any of them again unless an actual new regression or affected code change requires it.
+
+**Terminal verification status:** The prior 2026-11-25 Booking/Labour/Attendance/Leads permission migration and focused regression suite were documented as pending. Browser PASS does not itself establish those terminal commands ran. No terminal PASS output has yet been supplied in this thread for the latest `Milestone02BookingLabourPermissionsContractTest` batch. Therefore M02 browser acceptance is **CLOSED**, but overall M02 stays **terminal sign-off pending** until the relevant targeted automated gate is verified. This note does NOT ask for another browser check. The outstanding command set is already in the section below, and should not be broadened to previously accepted older tests.
+
+**Other milestones:** M01, M04, M05, M06 CLOSED/ACCEPTED. M03 Labour Payment CP remains ON HOLD.
+
+---
+
 # 2026-11-25 — M02 Role Permission discovery + module integration batch (NEW OWNER GATE PENDING)
 
 Owner confirmed **3 browser acceptance scenarios PASS**: CR View OFF / DR View ON; Employee Tasks View OFF; Users Read ON / Update OFF. Earlier Stock no-permission and exact Stock action browser test PASS; latest permission suites **Milestone02PermissionEnforcementContractTest 5/150**, **Milestone02StrictModuleAuthorizationContractTest 5/67**, **RoleManagementModernizationTest 8/485** PASS, total **18/702 assertions**. These are accepted results on prior source. Do NOT request repetition except where this new batch changes the tested area.
