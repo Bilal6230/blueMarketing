@@ -428,9 +428,9 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <div class="modal-body">
-                    <form action="{{ route('accounting.subhead_destroy') }}" method="POST"
+                <form action="{{ route('accounting.subhead_destroy') }}" method="POST"
                         enctype="multipart/form-data">
+                <div class="modal-body">
                         @csrf
                         @method('DELETE')
                         <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
