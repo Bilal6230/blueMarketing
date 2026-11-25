@@ -238,3 +238,21 @@ body.bm-account-directory-page [data-account-kind="joint"]>.content>.container-f
     max-width:100%!important;
   }
 }
+
+
+/* Match Area List's lower application-footer baseline without letting the
+   directory table or its pager escape the card. The content wrapper was
+   ending early while Area retains additional space below its card. */
+body.bm-account-directory-page .content-wrapper.bm-modern-accounts{
+  height:calc(100dvh - 123px)!important;
+  max-height:calc(100dvh - 123px)!important;
+  padding-bottom:38px!important;
+  box-sizing:border-box!important;
+}
+@media(max-width:767px){
+  body.bm-account-directory-page .content-wrapper.bm-modern-accounts{
+    height:calc(100dvh - 97px)!important;
+    max-height:calc(100dvh - 97px)!important;
+    padding-bottom:38px!important;
+  }
+}
