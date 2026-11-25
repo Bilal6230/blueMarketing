@@ -12,6 +12,8 @@
 .bm-areas .area-table-wrap{width:100%;overflow:auto;min-height:0;flex:1 1 auto}
 .bm-areas .area-table{width:100%;margin:0;font-size:14px;white-space:nowrap;border-collapse:separate!important;border-spacing:0!important}
 .bm-areas .area-table thead th{background:#f0f5fc;color:#294366;font-weight:750;font-size:13px;padding:11px 12px;border-bottom:2px solid #2563eb!important;border-right:1.5px solid #b6c7da!important}
+/* Keep column names and filter controls visible while scrolling table rows. */
+.bm-areas .area-table thead th{position:sticky;top:0;z-index:3;background:#f0f5fc!important;background-clip:padding-box}
 .bm-areas .area-table tbody td{padding:11px 12px!important;border-top:1.5px solid #c5d2e2!important;border-right:1.5px solid #c5d2e2!important;vertical-align:middle;height:48px!important}
 .bm-areas .area-table thead th:last-child,.bm-areas .area-table tbody td:last-child{border-right:0!important}
 .bm-areas .area-table tbody tr:nth-child(even){background:#f1f5fa!important}
