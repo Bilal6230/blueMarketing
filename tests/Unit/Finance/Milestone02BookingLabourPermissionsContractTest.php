@@ -121,9 +121,7 @@ final class Milestone02BookingLabourPermissionsContractTest extends TestCase
         self::assertStringContainsString("contains('name','update lead')",$migration);
         self::assertStringContainsString("can('assign lead')",$controller);
         self::assertStringContainsString(
-            "category_store')->middleware(['permission:create accounting'])",
-            str_replace("->middleware(['permission:create accounting'])->name('accounting.category_store')",
-                "category_store')->middleware(['permission:create accounting'])",$routes)
+            "middleware(['permission:create accounting'])->name('accounting.category_store')",$routes
         );
         self::assertStringContainsString(
             "middleware(['permission:update accounting'])->name('accounting.category_update')",$routes
