@@ -1,3 +1,18 @@
+# 2026-11-25 — Project/Sector modernization contract assertion-only repair
+
+**Owner terminal:** `php artisan view:cache` PASS; `SafeMasterDeletionContractTest` **2 PASS / 36 assertions**. `ProjectDirectoryModernizationContractTest` 2 PASS, 1 FAIL and 1 warning; `SectorDirectoryModernizationContractTest` 1 PASS, 1 FAIL. Both failures came from double-quoted PHP test expectation strings interpolating `$id` to empty, not from the Delete controller implementations. Project test also emitted an undefined `$control` warning in its jQuery source assertion. All three expectations are now single-quoted with escaped interior delimiters where required. **No application code, permissions, migrations or data changed.**
+
+**Only tests needing a rerun:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ProjectDirectoryModernizationContractTest
+php artisan test --filter=SectorDirectoryModernizationContractTest
+```
+Expected **4/4 Project** and **2/2 Sector** contract tests; new revision pending owner verification. `view:cache` and `SafeMasterDeletionContractTest` already PASS; do not repeat. Browser Delete permission/confirmation/linked-record safety checks remain pending using **only disposable local test records**. M03 Labour CP ON HOLD.
+
+---
+
 # 2026-11-25 — Project & Sector Delete actions restored with dependency safety (OWNER VERIFICATION PENDING)
 
 Owner noticed **Delete disappeared** from both modern `/admin/project` and `/admin/zone` listings. Historical Delete buttons used the wrong `user.destroy` route, while both master controllers had nonfunctional Delete stubs; previous modernization hid these actions instead of replacing them. Owner requires normal permission-scoped actions.
