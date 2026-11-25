@@ -1,3 +1,18 @@
+# 2026-11-25 — Project List column borders corrected (owner verification pending)
+
+Owner identified missing vertical column borders in the modern Project List table. Added **Project-only** scoped CSS in `resources/views/admin/projects/index.blade.php`: subtle right-side borders for header cells and body cells, retained horizontal row borders, and omitted outermost duplicate edge. Explicit `!important` prevents global finance/table styles from removing these separators. All CR/DR-style heading filters, full-height card and bottom pagination remain unchanged. Added targeted regression `test_project_table_has_visible_column_separators_without_changing_other_pages` to `ProjectDirectoryModernizationContractTest.php`. No business logic, data, permissions or migrations changed.
+
+**Owner gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan view:cache
+php artisan test --filter=ProjectDirectoryModernizationContractTest
+```
+Browser: Ctrl+F5 `/admin/project`; confirm subtle vertical lines across all header/body columns while heading filters, + action and full-height card remain intact. New test now expected **4 PASS**, pending owner execution. M03 Labour CP ON HOLD.
+
+---
+
 # 2026-11-25 — Project List CR/DR UI parity correction (owner browser pending)
 
 **Owner screenshot/feedback:** The first Project List modernization still used a top-level search/status toolbar, and its table card stopped directly under six rows rather than reaching the application footer. The explicitly required standard is CR/DR-style **per-column heading filters** and a **full-height directory card**, and applies to all subsequently modernized listing pages.
