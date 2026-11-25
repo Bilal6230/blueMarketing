@@ -55,3 +55,7 @@
     margin-left:0!important;
   }
 }
+
+/* Keep Column Visibility adjacent to Print; only employee actions float right. */
+.bm-user-directory .bm-modern-export-toolbar .bm-modern-column-menu{order:0!important;margin-left:3px!important}
+.bm-user-directory .bm-modern-export-toolbar .bm-user-toolbar-actions{order:20!important;margin-left:auto!important}
