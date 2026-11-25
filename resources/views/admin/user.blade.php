@@ -65,7 +65,7 @@
                                         @foreach ($data as $i)
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
-                                                <td>@if($i->avatar)<img src="{{ asset('storage/'.$i->avatar) }}" class="bm-user-avatar" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'"><span class="bm-user-avatar-fallback" style="display:none" aria-hidden="true"><i class="fas fa-user"></i></span>@else<span class="bm-user-avatar-fallback" aria-hidden="true"><i class="fas fa-user"></i></span>@endif</td>
+                                                <td>@if($i->avatar)<img src="{{ asset('storage/'.$i->avatar) }}" class="bm-user-avatar" alt="" loading="lazy"><span class="bm-user-avatar-fallback" style="display:none" aria-hidden="true"><i class="fas fa-user"></i></span>@else<span class="bm-user-avatar-fallback" aria-hidden="true"><i class="fas fa-user"></i></span>@endif</td>
                                                 <td>{{ $i->name }}</td>
                                                 <td>{{ $i->email }}</td>
                                                 <td>{{ $i->phone_number }}</td>
@@ -205,6 +205,16 @@
                 });
             });
         });
+    </script>
+    <script>
+    $(function(){
+        $('.bm-user-avatar').each(function(){
+            var $img=$(this);
+            function fallback(){ $img.hide().next('.bm-user-avatar-fallback').css('display','inline-flex'); }
+            $img.on('error',fallback);
+            if(this.complete && this.naturalWidth===0)fallback();
+        });
+    });
     </script>
     <script src="{{ asset('js/modern-account-directory.js') }}"></script>
 @endsection
