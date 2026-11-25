@@ -75,6 +75,7 @@
       @media(prefers-reduced-motion:reduce){.bm-voucher-directory .bm-skeleton-neutral .bm-skeleton-bar{animation:none}}
     </style>
     @stack('style')
+    <link rel="stylesheet" href="{{ asset('css/blue-modern-directory-tools.css') }}?v=1">
     <style>
                 .card-loader-overlay {
             position: absolute;
@@ -219,6 +220,7 @@
     <script src="{{ asset('js/finance-voucher-feedback.js') }}?v=10"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+    <script src="{{ asset('js/blue-modern-directory-tools.js') }}?v=1"></script>
     @yield('js')
     @include('admin.layouts.script')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
