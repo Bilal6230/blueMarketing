@@ -1,6 +1,10 @@
 @extends('admin.layouts.master')
+@push('style')
+<link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}">
+<link rel="stylesheet" href="{{ asset('css/modern-permission-directory.css') }}?v=1">
+@endpush
 @section('content')
-    <div class="content-wrapper">
+    <div class="content-wrapper bm-modern-accounts bm-permission-directory" data-account-kind="permission">
         <!-- Content Header (Page header) -->
         <div class="content-header">
             <div class="container-fluid">
@@ -25,9 +29,9 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <div class="card">
+                        <div class="card bm-account-card">
                             @can('create permission')
-                            <div class="card-header">
+                            <div class="card-header bm-permission-card-actions">
                                 <h3 class="card-title">
                                     <div class="btn-group">
                                         <a href="#" class="btn btn-sm btn-success" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i class="fas fa-plus"></i> Add</a>
@@ -37,8 +41,8 @@
                             </div>
                             @endcan
                             <!-- /.card-header -->
-                            <div class="card-body table-responsive">
-                                <table class="table table-bordered table-hover datatable">
+                            <div class="card-body table-responsive bm-account-table-wrap"><div class="bm-account-loading" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                                <table id="bmAccountDirectory" class="table table-bordered bm-account-table" style="visibility:hidden">
                                     <thead>
                                         <tr>
                                             <th>#</th>
@@ -102,7 +106,6 @@
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(data) {
-                        // console.log(data);
                         var data = data.data;
                         $("#name").val(data.name);
                         $("#guard_name").val(data.guard_name);
@@ -110,27 +113,32 @@
                         $('#modal-loading').modal('hide');
                         $('#modal-edit').modal({backdrop: 'static', keyboard: false, show: true});
                     },
+                    error: function(xhr) {
+                        $('#modal-loading').modal('hide');
+                        if(window.toastr)toastr.error((xhr.responseJSON||{}).message||'Unable to load permission details.');
+                    }
                 });
             });
-            
+
             $(document).on("click", '.btn-delete', function() {
                 let id = $(this).attr("data-id");
                 let name = $(this).attr("data-name");
                 $("#did").val(id);
-                $("#delete-data").html(name);
+                $("#delete-data").text(name);
                 $('#modal-delete').modal({backdrop: 'static', keyboard: false, show: true});
             });
         });
     </script>
+    <script src="{{ asset('js/modern-account-directory.js') }}"></script>
 @endsection
 
 @section('modal')
     {{-- Modal Add --}}
-    <div class="modal fade" id="modal-tambah">
+    <div class="modal fade bm-permission-modal" id="modal-tambah">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title">Add Data</h4>
+                    <h4 class="modal-title">Add Permission</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -171,11 +179,11 @@
         <!-- /.modal-dialog -->
     </div>
     {{-- Modal Update --}}
-    <div class="modal fade" id="modal-edit">
+    <div class="modal fade bm-permission-modal" id="modal-edit">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title">Edit Data</h4>
+                    <h4 class="modal-title">Edit Permission</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -218,11 +226,11 @@
         <!-- /.modal-dialog -->
     </div>
     {{-- Modal delete --}}
-    <div class="modal fade" id="modal-delete">
+    <div class="modal fade bm-permission-modal" id="modal-delete">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title">Hapus Data</h4>
+                    <h4 class="modal-title">Delete Permission</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -231,12 +239,12 @@
                     <form action="{{ route('permission.destroy') }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('DELETE')
-                        <p class="modal-text">Apakah anda yakin akan menghapus? <b id="delete-data"></b></p>
+                        <p class="modal-text">Are you sure you want to delete this permission? <b id="delete-data"></b></p>
                         <input type="hidden" name="id" id="did">
                 </div>
                 <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Tutup</button>
-                    <button type="submit" class="btn btn-danger">Hapus</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
                 </div>
                 </form>
             </div>
