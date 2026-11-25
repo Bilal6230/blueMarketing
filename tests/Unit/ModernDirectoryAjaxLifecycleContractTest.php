@@ -116,8 +116,8 @@ final class ModernDirectoryAjaxLifecycleContractTest extends TestCase
         self::assertStringContainsString("not('.bm-cell-skeleton-row')", $shared);
         self::assertStringContainsString("removeClass('bm-pending-directory')", $shared);
         self::assertStringContainsString('function skeleton(selector)', $tools);
-        self::assertStringContainsString("var $old=$body.children().detach()", $tools);
-        self::assertStringContainsString("var $row=$('<tr>',{'class':'bm-cell-skeleton-row'", $tools);
+        self::assertStringContainsString('var $old=$body.children().detach()', $tools);
+        self::assertStringContainsString("var \$row=\$('<tr>',{'class':'bm-cell-skeleton-row'", $tools);
     }
 
     public function test_other_modern_directories_keep_ajax_and_show_refetch_skeleton(): void
