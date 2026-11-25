@@ -1,3 +1,22 @@
+# 2026-11-25 — Project List CR/DR UI parity correction (owner browser pending)
+
+**Owner screenshot/feedback:** The first Project List modernization still used a top-level search/status toolbar, and its table card stopped directly under six rows rather than reaching the application footer. The explicitly required standard is CR/DR-style **per-column heading filters** and a **full-height directory card**, and applies to all subsequently modernized listing pages.
+
+**Correction implemented:** `resources/views/admin/projects/index.blade.php` removes the top filter/search toolbar. Every actual data heading (`#`, Project, Code, Address/Location, Project Dates, Corner/Facing, Status and Created) now has its own trigger opening the **existing shared** `$.financeVoucherComponents.createFilter({kind:'heading'})` popup. Text fields have live search, Status has Active/Inactive selector, date columns have From/To range, every heading has ascending/descending sorting and Clear. Filters can be combined; reset and page-size controls remain in the **bottom pagination footer only**. The table card is a flex child filling the viewport between heading and footer, with internal scrolling and pagination anchored at the bottom. Kept first-paint skeleton and shared plus action menu, AJAX project form, permission checks and project charge history unchanged. No new tables, migrations or business data changes.
+
+**Regression:** Updated `tests/Unit/ProjectDirectoryModernizationContractTest.php` to require heading filters, shared popover and full-height card and to reject the former top toolbar. `AGENTS.md` now explicitly locks this CR/DR directory design rule for **future** pages so this regression is not repeated. New batch is **not yet locally verified**.
+
+**Focused owner gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan view:cache
+php artisan test --filter=ProjectDirectoryModernizationContractTest
+```
+Browser: hard-refresh `/admin/project`, confirm no top filters; clicking Project, Code, Status and Created heading arrows opens CR/DR-style search/selection/date-range popover with sort/clear; card/table bottom pagination sits directly above the app footer even with six records; modern plus/Edit and AJAX form work as before. Do not rerun unrelated milestones. **M03 Labour CP ON HOLD**.
+
+---
+
 # 2026-11-25 — Project modernization contract assertion repair
 
 **Owner verification:** \`php artisan view:cache\` PASS. \`ProjectDirectoryModernizationContractTest\`: **2 PASS / 1 FAIL (35 assertions)**; failed case \`project_index_provides_authorized_read_only_json_refresh\`. Root cause is test-source comparison only: PHP double-quoted string interpolated \`$rows\` to empty before comparison, despite controller containing the correct \`'data' => $rows\` expression. Repaired both the JSON-response and \`'projectRows' => $rows\` checks using PHP single-quoted strings with escaped delimiters. **No application, database, migration, project records, permissions or UI changes** in this repair.
