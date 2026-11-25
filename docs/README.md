@@ -1,3 +1,22 @@
+# 2026-11-25 — Role list first-paint legacy action flicker FIX (browser gate pending)
+
+**Owner screenshots** of `/admin/role` show server-rendered legacy **Edit / Archive** buttons before jQuery initialization, which later rewrites the table and `$.blueActionMenu.enhance` converts them into the correct modern action button. This was a first-paint SSR→jQuery visual flash, **not a permission backend failure**.
+
+**Fix delivered:** `resources/views/admin/role.blade.php` no longer renders the legacy action buttons/role records in the initial `roleRows` tbody. It renders 5 compact field-shaped skeleton rows while the page initializes, then the existing jQuery `render()` replaces them with the same final client table, pagination, guard filters and `$.blueActionMenu.enhance`. `aria-busy` becomes false when rendering completes. Skeleton animation respects reduced-motion. No permissions, data, DB tables, migrations, role controller, role action endpoints or non-role UI behavior changed.
+
+**Regression:** `RoleManagementModernizationTest` has a new test ensuring initial skeleton rather than legacy server-side row actions, and the modern action menu enhancement remains. Not yet owner-verified.
+
+**Only new gates:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan view:cache
+php artisan test --filter=RoleManagementModernizationTest
+```
+**One focused browser test:** Hard-refresh `/admin/role` (Ctrl+F5), preferably with DevTools Network throttled. From first paint through page ready, only table skeleton→modern menu should appear; no transient Edit/Archive pair. Check action menu still opens Edit and Archive as permitted. Previously accepted M02/M06 suites are not reopened. **M03 Labour CP stays ON HOLD**.
+
+---
+
 # 2026-11-25 — M02 Roles & Permissions ACCEPTED / CLOSED
 
 **Final owner confirmation:** `Milestone02BookingLabourPermissionsContractTest` **6 PASS / 95 assertions** on `upgrade/laravel-framework` after pull to `d6e52f16`. Owner also explicitly confirmed all five M02 cross-module browser permission matrices PASS: Booking independent CRUD / Price Update; Leads independent CRUD / assignment; Labour Master vs Attendance; Accounting read-only Create/Update denial; and Role Management toggles affecting sidebar, buttons and direct endpoints. Earlier M02 Stock, Employee Tasks, Users and finance permission tests and browser checks were previously accepted. **M02 scope is ACCEPTED/CLOSED for the locally verified owner workflow; do not repeat browser or automated tests without related changes.**
