@@ -89,7 +89,10 @@ final class ProjectDirectoryModernizationContractTest extends TestCase
         ] as $permission) {
             self::assertStringContainsString($permission, $routes);
         }
-        self::assertStringContainsString('public function destroy(Project $project)', $controller);
-        self::assertStringNotContainsString("route('project.destroy')", $this->source('resources/views/admin/projects/index.blade.php'));
+        self::assertStringContainsString('public function destroy(Request $request)', $controller);
+        self::assertStringContainsString("route('project.destroy')", $this->source('resources/views/admin/projects/index.blade.php'));
+        self::assertStringContainsString("SafeMasterRecordDeletion::assertUnreferenced('projects', $id, 'project_id')", $controller);
+        self::assertStringContainsString('projectDeleteModal', $this->source('resources/views/admin/projects/index.blade.php'));
+        self::assertStringContainsString("can('delete project')", $this->source('resources/views/admin/projects/index.blade.php'));
     }
 }
