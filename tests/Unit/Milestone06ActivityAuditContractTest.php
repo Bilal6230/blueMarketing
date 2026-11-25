@@ -239,18 +239,20 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringNotContainsString('DB::unprepared(', $health);
     }
 
-    public function test_real_mysql_rollback_probe_refuses_main_or_nonempty_database(): void
+    public function test_real_mysql_rollback_probe_uses_existing_local_tables_without_schema_changes(): void
     {
         $probe = $this->source('tests/Feature/ActivityAuditMysqlTriggerRollbackTest.php');
-        $this->assertStringContainsString('AUDIT_MYSQL_TEST_DATABASE', $probe);
-        $this->assertStringContainsString('strcasecmp($database, (string) ($source[', $probe);
-        $this->assertStringContainsString('test database must be EMPTY', $probe);
-        $this->assertStringContainsString('test_mysql_trigger_rollback_removes_both_business_row_and_audit_snapshot', $probe);
-        $this->assertStringContainsString('test_mysql_trigger_commit_persists_matching_audit_row_and_allowlisted_snapshot', $probe);
-        $this->assertStringContainsString('DROP TRIGGER IF EXISTS', $probe);
-        $this->assertStringContainsString('Schema::connection(self::CONNECTION)->dropIfExists', $probe);
-        $this->assertStringContainsString('SET @activity_audit_token = NULL', $probe);
-        $this->assertStringNotContainsString('Schema::connection(\'mysql\')', $probe);
+        $this->assertStringContainsString("'127.0.0.1', 'localhost', '::1'", $probe);
+        $this->assertStringContainsString("'bm_audit_users_au'", $probe);
+        $this->assertStringContainsString('->update([\'status_id\' => $this->originalStatus])', $probe);
+        $this->assertStringContainsString('test_mysql_existing_trigger_discards_audit_snapshot_after_rollback', $probe);
+        $this->assertStringContainsString('test_mysql_existing_trigger_commits_audit_snapshot_then_cleans_probe', $probe);
+        $this->assertStringContainsString('where(\'request_token\', $this->token)', $probe);
+        $this->assertStringContainsString("SET @activity_audit_token = NULL", $probe);
+        $this->assertStringNotContainsString('Schema::create(', $probe);
+        $this->assertStringNotContainsString('dropIfExists(', $probe);
+        $this->assertStringNotContainsString('CREATE TRIGGER', $probe);
+        $this->assertStringNotContainsString('DROP TRIGGER', $probe);
     }
 
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
