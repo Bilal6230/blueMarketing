@@ -609,9 +609,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
     });
 
     Route::controller(App\Http\Controllers\BookingController::class)->group(function () {
-        Route::post('booking/cancel/{id}', 'cancel')->middleware(['permission:read plot'])->name('booking.cancel');
+        Route::post('booking/cancel/{id}', 'cancel')->middleware(['permission:update booking'])->name('booking.cancel');
         Route::get('booking/plot', 'index')->middleware(['permission:read booking'])->name('booking.plot.index');
-        Route::get('booking/plot/sale', 'sale')->middleware(['permission:read booking'])->name('booking.plot.sale');
+        Route::get('booking/plot/sale', 'sale')->middleware(['permission:create booking'])->name('booking.plot.sale');
         Route::get('booking/{id}/edit', 'editBooking')->middleware(['permission:update booking|update booking price'])->name('booking.edit');
         Route::put('booking/{id}', 'updateBooking')->middleware(['permission:update booking|update booking price'])->name('booking.update');
         Route::get('booking/plot/file-transfer/{id}', 'fileTransfer')->middleware(['permission:read booking'])->name('booking.plot.file-transfer');
