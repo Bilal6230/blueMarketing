@@ -1,3 +1,29 @@
+# 2026-11-25 — Darker table grid + Main / Party / Joint Account modernization (owner verification PENDING)
+
+**Owner scope:** Slightly darker, thicker horizontal/vertical borders on existing modern Project, Sectors and Area lists, then modernize three specified accounting master pages: **Main Account**, **Party Account** and **Joint Account**.
+
+**Delivered:**
+- `resources/views/admin/projects/index.blade.php`, `resources/views/admin/zone/index.blade.php`, `resources/views/admin/area/index.blade.php`: border separators now **1.5px** with darker `#b6c7da` headers and `#c5d2e2` body cells and row dividers; approved 14px data/13px heading font, alternating white/light-grey rows, footer-height cards and CR/DR heading filters preserved. Updated three existing source tests accordingly.
+- Main: `resources/views/admin/finance/accounting/head_accounts.blade.php` (`GET /admin/finance/accounting/head_account`); Party: `resources/views/admin/finance/accounting/child_accounts.blade.php` (`GET /admin/finance/accounting/child_account`); Joint: `resources/views/admin/finance/accounting/category_index.blade.php` (`GET /admin/finance/accounting/category`) now use shared `public/css/modern-account-directory.css` and `public/js/modern-account-directory.js`. The existing master table rows are initially concealed behind a lightweight skeleton, then jQuery displays a full-height modern card, 14px table/13px heading fonts, 1.5px visible grid borders, alternating row colors, header sort/search popovers (shared CR/DR `$.financeVoucherComponents.createFilter`), bottom-only `$.blueVoucherPagination`, and modern `+` actions via `$.blueActionMenu.enhance`. No top DataTables export/search toolbar. Common New Account modal built from the original underlying create form, preserving form inputs and validation.
+- Main/Party view authorization typo fixed: replaced legacy Lead permission checks with **create/update/delete accounting**, exactly matching existing route permissions. Joint create/edit/delete buttons now also respect accounting permissions.
+- `app/Http/Controllers/AccountingController.php`: Added `expectsJson()` response branches for Main/Party store and update, and Joint mapping create, without altering financial data mapping, lock/transaction/status audit, or project scoping rules. The shared jQuery UI saves these forms by AJAX, shows inline 422 errors and toast, and refreshes table rows from a read-only server-rendered GET without full-page reload. Joint mapping update/delete also triggers in-place refresh; existing `AccountMappingHistoryGuard`, row locks and active-account rules remain intact.
+- **Important deletion limitation**: Main and Party Account `head_destroy`/`subhead_destroy` were previously empty, and deleting such definitions without verified lifecycle could corrupt historical finance. They now return an explicit **409 protected response** instead of a misleading successful no-op. Their role-gated Delete action is still shown in the modern `+` menu, but actual deletion remains blocked pending a separately approved finance-safe deletion workflow. Joint Account mapping delete remains supported only through its existing financial-history guard; its delete/reassign modal is preserved.
+- `AGENTS.md` now records darker 1.5px borders permanently. `tests/Unit/ModernAccountingDirectoryContractTest.php` adds six focused static regression tests for design, permissions and finance safety. **No migrations, new tables, or data deletion.** Local PHP tests/browser checks are **NOT YET owner verified**. M03 Labour CP remains ON HOLD.
+
+**Focused local gates:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan view:cache
+php artisan test --filter=ModernAccountingDirectoryContractTest
+php artisan test --filter=AreaDirectoryModernizationContractTest
+```
+The Area contract check covers changed Project/Sector/Area border expectations; if it passes, no need to repeat the previously accepted Project/Sector full suites solely for border changes.
+
+**Browser:** First verify thicker visible borders on Project/Sectors/Area, then hard-refresh Main Account, Party Account and Joint Account. Confirm skeleton→striped full-height table, header popovers, bottom pagination, role-permitted `+` actions, New/Edit AJAX forms and inline validation. Use **disposable local accounting names and mappings only**, avoid editing financial history or existing linked account definitions. Test Joint mapping Delete *Cancel*; actual delete only of a known unused disposable mapping. For Main/Party Delete, expect 409 protected notification and no record loss. Status flips require a written status-change reason and must preserve audit history. No browser or automated check is claimed PASS yet.
+
+---
+
 # 2026-11-25 — Project/Sectors typography + stripes; Area List modernization (OWNER GATE PENDING)
 
 **Owner request:** Increase font slightly on both already-modernized Project and Sectors lists; preserve the legacy Area List's alternating shaded rows across all three; modernize `/admin/area` to the accepted directory standard.
