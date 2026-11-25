@@ -46,21 +46,7 @@ $(function(){
  }
  // Purely decorative wrapping: preserve original delegated click handlers,
  // modal flow and financial route targets. No action authorization is inferred.
- $table.find('tbody tr').addBack().each(function(){});
- $(rows).each(function(){
-   var $row=$(this),$cell=$row.children('td').last();
-   if(!$cell.find('.btn-edit,.btn-delete,.editBtn,.deleteBtn').length)return;
-   var $actions=$cell.find('.btn-edit,.btn-delete,.editBtn,.deleteBtn');
-   $cell.addClass('blue-actions-cell');
-   $actions.each(function(){
-     var $button=$(this);
-     $button.attr('type','button');
-     $button.attr('data-blue-action-label',
-       $button.hasClass('btn-delete')||$button.hasClass('deleteBtn')?'Delete':'Edit');
-     $button.appendTo($cell);
-   });
-   $cell.children('.btn-group').remove();
- });
+
  function cellValue(row,col){return $.trim($(row).children('td').eq(col).text()).replace(/\s+/g,' ');}
  function visibleRows(){
    var list=rows.filter(function(row){
@@ -162,6 +148,82 @@ $(function(){
  $reset.on('click',function(){
    filters={};dateRanges={};sortColumn=0;sortDescending=false;currentPage=1;$size.val('25');closeFilter();render();
  });
+ function prepareRows(){
+   $(rows).each(function(){
+     var $cell=$(this).children('td').last();
+     var $actions=$cell.find('.btn-edit,.btn-delete,.editBtn,.deleteBtn');
+     if(!$actions.length)return;
+     $cell.addClass('blue-actions-cell');
+     $actions.each(function(){
+       var $button=$(this);
+       $button.attr('type','button').attr('data-blue-action-label',
+         $button.hasClass('btn-delete')||$button.hasClass('deleteBtn')?'Delete':'Edit');
+       $button.appendTo($cell);
+     });
+     $cell.children('.btn-group').remove();
+   });
+ }
+ function notify(message,isError){
+   if(window.toastr){isError?window.toastr.error(message):window.toastr.success(message);}
+   else if(window.Swal)window.Swal.fire({icon:isError?'error':'success',text:message});
+ }
+ function reloadRows(){
+   $.ajax({url:window.location.pathname+window.location.search,type:'GET',dataType:'html',
+     headers:{Accept:'text/html'}}).done(function(html){
+     var $html=$('<div>').append($.parseHTML(html,document,false));
+     var $fresh=$html.find('#bmAccountDirectory tbody tr');
+     if(!$fresh.length && $html.find('#bmAccountDirectory').length===0){
+       notify('Changes saved. Unable to refresh the table. Please reload.',true);return;
+     }
+     rows=$fresh.detach().toArray();
+     prepareRows();currentPage=1;render();
+   }).fail(function(){notify('Saved, but table refresh failed. Please reload.',true);});
+ }
+ function submitAjax($form,onSuccess){
+   var $submit=$form.find('[type=submit]').first();
+   var oldLabel=$submit.html();
+   $form.find('.bm-account-form-error').remove();
+   $form.find('.is-invalid').removeClass('is-invalid');
+   $submit.prop('disabled',true).text('Saving...');
+   $.ajax({url:$form.attr('action'),type:'POST',data:$form.serialize(),dataType:'json',
+     headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
+   .done(function(data){
+     notify(data.message||'Account saved.',false);
+     onSuccess();reloadRows();
+   }).fail(function(xhr){
+     var payload=xhr.responseJSON||{},errors=payload.errors||{};
+     $.each(errors,function(name,messages){
+       var $control=$form.find('[name="'+name+'"]').first().addClass('is-invalid');
+       $control.after($('<small>',{'class':'bm-account-form-error text-danger d-block',
+         text:messages[0]||'Invalid value'}));
+     });
+     var message=payload.message||'Unable to save account. Please review the fields.';
+     if(!Object.keys(errors).length)$form.prepend($('<div>',{'class':'bm-account-form-error text-danger p-2',text:message}));
+     notify(message,true);
+   }).always(function(){$submit.prop('disabled',false).html(oldLabel);});
+ }
+ if($createSource.length){
+   $root.find('.bm-account-create-modal form').on('submit.bmAccount',function(event){
+     event.preventDefault();
+     var $form=$(this);
+     submitAjax($form,function(){$root.find('.bm-account-create-modal').modal('hide');$form[0].reset();});
+   });
+ }
+ if(kind!=='joint'){
+   $('#modal-edit form').on('submit.bmAccount',function(event){
+     event.preventDefault();submitAjax($(this),function(){$('#modal-edit').modal('hide');});
+   });
+   $('#modal-delete form').on('submit.bmAccount',function(event){
+     event.preventDefault();
+     var $form=$(this);
+     $.ajax({url:$form.attr('action'),type:'POST',data:$form.serialize(),dataType:'json',
+       headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
+     .done(function(data){notify(data.message||'Action completed.',false);$('#modal-delete').modal('hide');reloadRows();})
+     .fail(function(xhr){notify((xhr.responseJSON||{}).message||'This accounting definition cannot be deleted.',true);});
+   });
+ }
+ $(document).on('bm:account-refresh',function(){reloadRows();});
+ prepareRows();
  $root.find('.bm-account-loading').remove();
  $table.css('visibility','visible');
  render();
