@@ -258,6 +258,14 @@ $(function(){
      });
    }
  });
+ if(kind==='user'){
+   var $userActions=$root.find('.bm-user-card-actions .card-title');
+   var $exportBar=$card.find('.bm-modern-export-toolbar');
+   if($userActions.length&&$exportBar.length){
+     $userActions.appendTo($exportBar).addClass('bm-user-toolbar-actions');
+     $root.find('.bm-user-card-actions').remove();
+   }
+ }
  prepareRows();
  $root.find('.bm-account-loading').remove();
  $table.css('visibility','visible');
