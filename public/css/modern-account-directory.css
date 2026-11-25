@@ -71,7 +71,8 @@
 /* Keep long lists inside the card: footer and pager never scroll out of view. */
 .bm-modern-accounts>.content{overflow:hidden!important}
 .bm-modern-accounts>.content>.container-fluid{overflow:hidden!important}
-.bm-modern-accounts .bm-account-card{max-height:100%!important;min-height:0!important}
+.bm-modern-accounts .bm-account-card{max-height:100%!important;min-height:0!important;flex:1 1 0%!important}
+.bm-modern-accounts .bm-account-footer{position:relative;z-index:3;flex:0 0 auto!important}
 .bm-modern-accounts .bm-account-table-wrap{overscroll-behavior:contain;scrollbar-gutter:stable}
 .bm-modern-accounts .bm-account-table thead th{position:sticky;top:0;z-index:2}
 .bm-modern-accounts .bm-account-create-modal .modal-dialog{max-width:780px!important;width:calc(100% - 28px)!important;margin:1.75rem auto!important}
@@ -87,11 +88,11 @@
 
 /* The application shell stays still; only the account card's table body scrolls. */
 body.bm-account-directory-page{overflow:hidden!important}
-body.bm-account-directory-page .content-wrapper.bm-modern-accounts{height:calc(100dvh - 171px)!important;max-height:calc(100dvh - 171px)!important;overflow:hidden!important}
-body.bm-account-directory-page .bm-account-card>.bm-account-table-wrap{overflow-y:auto!important;overflow-x:auto!important;height:100%!important;min-height:0!important}
+body.bm-account-directory-page .content-wrapper.bm-modern-accounts{height:var(--bm-account-available-height,calc(100dvh - 225px))!important;max-height:var(--bm-account-available-height,calc(100dvh - 225px))!important;min-height:0!important;overflow:hidden!important}
+body.bm-account-directory-page .bm-account-card>.bm-account-table-wrap{display:block!important;flex:1 1 0%!important;height:0!important;min-height:0!important;max-height:none!important;overflow-y:scroll!important;overflow-x:auto!important;scrollbar-gutter:stable}
 body.bm-account-directory-page .bm-account-footer{flex-shrink:0!important}
 @media(max-width:767px){
- body.bm-account-directory-page .content-wrapper.bm-modern-accounts{height:calc(100dvh - 145px)!important;max-height:calc(100dvh - 145px)!important}
+ body.bm-account-directory-page .content-wrapper.bm-modern-accounts{height:var(--bm-account-available-height,calc(100dvh - 190px))!important;max-height:var(--bm-account-available-height,calc(100dvh - 190px))!important}
 }
 /* Only the modal forms are allowed to grow; never inherit page-table flex sizing. */
 .bm-modern-accounts .bm-account-create-modal form,
