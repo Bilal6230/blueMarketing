@@ -19,3 +19,17 @@
 .bm-modern-fetch-skeleton span{display:block;height:13px;max-width:75%;border-radius:5px;background:linear-gradient(90deg,#e8eef7 25%,#fff 50%,#e8eef7 75%);background-size:200% 100%;animation:bmModernFetchShimmer 1.35s linear infinite}
 @keyframes bmModernFetchShimmer{to{background-position-x:-200%}}
 @media(prefers-reduced-motion:reduce){.bm-modern-fetch-skeleton span{animation:none}}
+
+
+/* AJAX refetch: placeholders replace body cells, never overlay the card. */
+.project-table .bm-cell-skeleton-row td,
+.sector-table .bm-cell-skeleton-row td,
+.area-table .bm-cell-skeleton-row td{height:48px!important}
+.bm-cell-skeleton-row .bm-cell-skeleton{
+ display:block;width:72%;max-width:190px;height:13px;margin:3px 0;
+ border-radius:5px;background:linear-gradient(90deg,#e6edf6 25%,#f9fcff 50%,#e6edf6 75%);
+ background-size:200% 100%;animation:bmModernFetchShimmer 1.35s linear infinite;
+}
+.bm-cell-skeleton-row td:first-child .bm-cell-skeleton,
+.bm-cell-skeleton-row td:last-child .bm-cell-skeleton{width:40%;min-width:20px}
+@media(prefers-reduced-motion:reduce){.bm-cell-skeleton-row .bm-cell-skeleton{animation:none}}
