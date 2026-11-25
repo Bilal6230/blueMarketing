@@ -129,7 +129,16 @@ $(function(){
    if(!widget)return;
    var label=$.trim($btn.closest('th').text());
    widget.setTitle(label);
-   if(/date|created/i.test(label)){
+   if(/status/i.test(label)){
+     var $status=$('<select>',{'class':'form-control form-control-sm','aria-label':'Filter status'})
+       .append($('<option>',{value:'',text:'All statuses'}),$('<option>',{value:'Active',text:'Active'}),$('<option>',{value:'Inactive',text:'Inactive'}))
+       .val(filters[col]||'');
+     widget.$control.empty().append($status);
+     $status.on('change',function(){
+       if($(this).val())filters[col]=$(this).val();else delete filters[col];
+       currentPage=1;render();
+     });
+   }else if(/date|created/i.test(label)){
      widget.dates(dateRanges[col]||{from:'',to:''},function(which,value){
        if(!dateRanges[col])dateRanges[col]={from:'',to:''};
        dateRanges[col][which]=value;currentPage=1;render();
