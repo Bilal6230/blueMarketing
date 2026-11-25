@@ -17,6 +17,10 @@
 .bm-roles .role-table tbody td{padding:10px 12px!important;vertical-align:middle;border-top:1px solid #e9eff6;height:48px!important}
 .bm-roles .role-table tbody tr:hover{background:#f8fbff}.bm-roles .role-id{font-weight:650;color:#6b7d92}
 .bm-roles .role-name{font-weight:750;color:#1d4c8c}.bm-roles .role-guard{background:#eaf2ff;border-radius:6px;padding:4px 8px;color:#1d5fb6;font-size:11px}
+.bm-roles .role-skeleton{display:block;height:12px;max-width:100%;border-radius:5px;background:linear-gradient(90deg,#edf2f8 25%,#f8fbff 48%,#edf2f8 75%);background-size:200% 100%;animation:bmRoleSkeleton 1.4s ease-in-out infinite}
+.bm-roles .role-skeleton-id{width:24px}.bm-roles .role-skeleton-name{width:145px}.bm-roles .role-skeleton-guard{width:35px;height:21px}.bm-roles .role-skeleton-date{width:125px}.bm-roles .role-skeleton-person{width:90px}.bm-roles .role-skeleton-action{width:27px;height:28px;border-radius:7px;margin:auto}
+@keyframes bmRoleSkeleton{to{background-position-x:-200%}}
+@media(prefers-reduced-motion:reduce){.bm-roles .role-skeleton{animation:none}}
 .bm-roles .role-foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;min-height:44px;gap:9px;padding:7px 12px;border-top:1px solid #e5edf6}
 .bm-roles .role-foot .role-pages{display:flex;align-items:center;gap:4px}.bm-roles .role-pages .dv-page-btn{height:29px;min-width:29px;border:1px solid #aacaf5;border-radius:5px;background:white;color:#2563eb;font-size:11px}
 .bm-roles .role-pages .dv-page-btn.active{background:#2563eb;color:white}.bm-roles .role-pages .dv-page-btn:disabled{opacity:.45}
@@ -86,26 +90,20 @@
           @endforeach
           <th>Actions</th>
         </tr></thead>
-        <tbody id="roleRows">
-          @forelse ($roleRows as $role)
-            <tr>
-              <td class="role-id">{{ $role['id'] }}</td>
-              <td class="role-name">{{ $role['name'] }}</td>
-              <td><span class="role-guard">{{ $role['guard'] }}</span></td>
-              <td>{{ $role['updated'] ?: '—' }}</td>
-              <td>{{ $role['updated_by'] }}</td>
-              <td class="blue-actions-cell">
-                @if (!$role['locked'])
-                  @can('update role')<button type="button" class="btn btn-outline-primary btn-sm btn-edit" data-id="{{ $role['id'] }}">Edit</button>@endcan
-                  @can('delete role')<button type="button" class="btn btn-outline-danger btn-sm btn-delete" data-id="{{ $role['id'] }}">Archive</button>@endcan
-                @else
-                  <i class="fas fa-lock text-muted" title="Protected system role"></i>
-                @endif
-              </td>
+        <tbody id="roleRows" aria-busy="true">
+          {{-- The jQuery role renderer owns the actual rows and shared action menu.
+               Show field-shaped skeletons during first paint instead of legacy
+               Edit / Archive buttons that disappear after JS enhancement. --}}
+          @for ($i = 0; $i < 5; $i++)
+            <tr class="role-skeleton-row" aria-hidden="true">
+              <td><span class="role-skeleton role-skeleton-id"></span></td>
+              <td><span class="role-skeleton role-skeleton-name"></span></td>
+              <td><span class="role-skeleton role-skeleton-guard"></span></td>
+              <td><span class="role-skeleton role-skeleton-date"></span></td>
+              <td><span class="role-skeleton role-skeleton-person"></span></td>
+              <td><span class="role-skeleton role-skeleton-action"></span></td>
             </tr>
-          @empty
-            <tr><td colspan="6" class="text-center text-muted py-4">No roles found</td></tr>
-          @endforelse
+          @endfor
         </tbody>
       </table>
     </div>
@@ -212,6 +210,7 @@ $(function(){
       $row.append($action);$body.append($row);
     });
     if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
+    $body.attr('aria-busy','false');
     var summary='Showing '+(matches.length?start+1:0)+'–'+Math.min(matches.length,start+length)+' of '+matches.length+' roles';
     $('#roleSummary').text(summary);$('#roleResultCount').text(matches.length+' records');
     if($.blueVoucherPagination)$.blueVoucherPagination.render({container:'#rolePages',summary:'#roleSummary',total:matches.length,length:length,start:start,buttonClass:'dv-page-btn',onPage:function(next){page=Math.floor(next/length)+1;render();}});
