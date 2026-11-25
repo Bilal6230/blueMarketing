@@ -1,3 +1,20 @@
+# 2026-11-25 — M06 fix: MySQL trigger integration test skipped due PHPUnit SQLite override
+
+**Owner verified:** `Milestone06ActivityAuditContractTest` 16 tests PASS, 181 assertions. `activity-audit:health --strict` PASS: existing MySQL DB has 129 applicable triggers, 0 missing, 0 invalid definitions, 0 nontransactional engines, 0 skipped tables and 0 stale/unlinked audit snapshots. `ActivityAuditMysqlTriggerRollbackTest` had **2 SKIPPED / 0 assertions**, *not* PASS.
+
+**Root cause:** `phpunit.xml` forces `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:` for all tests; the first local MySQL probe attempted to use the PHPUnit-overridden connection configuration. Repaired the probe to read the **existing local `.env`** with `Dotenv::parse` and configure a separate named Laravel connection pointed to that same local MySQL database for just the probe; never alters the global PHPUnit database connection or the .env file. It checks a named DB and loopback host, forbids a DATABASE_URL shortcut, verifies the installed users trigger and existing audit table, does a same-value user status UPDATE, and deletes only its uniquely token-matched audit evidence. No new database, no new table, no migration, no trigger installation and no user status alteration. Explicit connection is disconnected after the test. Updated contract assertion guards the connection behavior.
+
+**Owner local gate — no migration, existing local database only:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ActivityAuditMysqlTriggerRollbackTest
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+Expected MySQL rollback **2 PASS** (not SKIPPED), and contract tests **16 PASS**. If MySQL tests still skip or fail, provide exact output. Continue to use `php artisan activity-audit:health --strict` for integrity checks; previous health gate was already accepted and need not be repeated for this test-only fix. M06 remains IN PROGRESS: authenticated mobile API end-to-end, background/CLI actor scope and retention/performance.
+
+---
+
 # 2026-11-25 — M06: owner-approved same-local-DB MySQL rollback test, no extra DB/table
 
 **Owner instruction:** This development database is local testing data. Do not require a new test database or create any additional table. Replaced the previous opt-in fixture-based `ActivityAuditMysqlTriggerRollbackTest` with an in-place test of the **already-installed** `bm_audit_users_au` trigger against the configured local `mysql` connection. It refuses non-loopback database hosts. The existing lowest-ID user is updated with its **existing `status_id` value** (no actual state change). In one test the UPDATE executes inside an explicit rollback and the trigger snapshot must disappear; in another, the same-value UPDATE commits and produces a token-correlated `db_trigger_row` snapshot. After each test, only audit impacts matching its unique probe token, unattached activity_id, table name, operation and capture type are deleted; the session audit token is cleared. No database/table/trigger creation, no migration, no business row deletion, no finance posting changes. Existing `users` table and Activity Audit trigger are prerequisites. This is testing-only code and must not run against a remote DB host.
