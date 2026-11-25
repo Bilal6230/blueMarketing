@@ -3,7 +3,7 @@
 
 @push('style')
 <style>
-.bm-projects{--voucher-accent:#2563eb;--fvd-accent:#2563eb;--fvd-pop-accent:#2563eb;padding:15px 16px 10px;color:#263b56;font-size:12px;min-height:calc(100vh - 175px);display:flex;flex-direction:column}
+.bm-projects{--voucher-accent:#2563eb;--fvd-accent:#2563eb;--fvd-pop-accent:#2563eb;padding:15px 16px 10px;color:#263b56;font-size:13px;min-height:calc(100vh - 175px);display:flex;flex-direction:column}
 .bm-projects *{box-sizing:border-box}
 .bm-projects .project-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
 .bm-projects .project-heading h2{font-size:19px;font-weight:750;color:#173a75;margin:0}
@@ -14,16 +14,16 @@
 .bm-projects .project-control:focus{border-color:#3b82f6;outline:0;box-shadow:0 0 0 2px #3b82f622}
 .bm-projects .project-search{flex:1 1 280px;min-width:190px}
 .bm-projects .project-table-wrap{width:100%;overflow:auto;min-height:0;flex:1 1 auto}
-.bm-projects .project-table{width:100%;margin:0;font-size:12px;white-space:nowrap}
+.bm-projects .project-table{width:100%;margin:0;font-size:13px;white-space:nowrap}
 .bm-projects .project-table{border-collapse:separate!important;border-spacing:0!important}
-.bm-projects .project-table thead th{background:#f0f5fc;color:#294366;font-weight:750;font-size:11px;padding:11px 12px;border-bottom:2px solid #2563eb!important;border-right:1px solid #d9e4f0!important}
+.bm-projects .project-table thead th{background:#f0f5fc;color:#294366;font-weight:750;font-size:12px;padding:11px 12px;border-bottom:2px solid #2563eb!important;border-right:1px solid #d9e4f0!important}
 .bm-projects .project-table tbody td{padding:11px 12px!important;border-top:1px solid #eaf0f7!important;border-right:1px solid #e2eaf4!important;vertical-align:middle;height:48px!important}
 .bm-projects .project-table thead th:last-child,.bm-projects .project-table tbody td:last-child{border-right:0!important}
 .bm-projects .project-table tbody tr:hover{background:#f7faff}
 .bm-projects .project-name{font-weight:750;color:#1d54a0}
 .bm-projects .project-address{white-space:normal;min-width:165px;max-width:310px}
 .bm-projects .project-code{background:#edf4fe;color:#3469a9;border-radius:5px;padding:4px 7px;display:inline-block}
-.bm-projects .project-status{display:inline-flex;align-items:center;border-radius:14px;font-size:11px;padding:4px 9px;background:#e8f8ef;color:#16754a;font-weight:700}
+.bm-projects .project-status{display:inline-flex;align-items:center;border-radius:14px;font-size:12px;padding:4px 9px;background:#e8f8ef;color:#16754a;font-weight:700}
 .bm-projects .project-status.inactive{background:#f3f4f6;color:#69788b}
 .bm-projects .project-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid #e7edf6;min-height:46px;flex:0 0 auto;margin-top:auto}
 .bm-projects .project-pages{display:flex;gap:4px;align-items:center}
@@ -33,7 +33,7 @@
 .bm-projects .project-table th .project-col-trigger{float:right;border:0;background:transparent;color:#607b9e;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:11px}
 .bm-projects .project-table th .project-col-trigger:hover,.bm-projects .project-table th .project-col-trigger.project-col-active{background:#dfedff;color:#155fc3}
 .bm-projects .project-footer-controls{display:flex;align-items:center;gap:8px}
-.bm-projects .project-footer-controls select{height:29px;padding:3px 7px;font-size:11px;border:1px solid #d5e0ec;border-radius:5px;background:white}
+.bm-projects .project-footer-controls select{height:29px;padding:3px 7px;font-size:12px;border:1px solid #d5e0ec;border-radius:5px;background:white}
 .bm-projects .project-footer-controls button{font-size:11px}
 @media(max-width:767px){.bm-projects{min-height:calc(100vh - 160px)}.bm-projects .project-table-wrap{overflow-x:auto}}
 .bm-projects .project-skeleton{height:12px;display:block;max-width:100%;border-radius:5px;background:linear-gradient(90deg,#edf2f8 25%,#f9fbfe 50%,#edf2f8 75%);background-size:200% 100%;animation:bmProjectShimmer 1.4s ease infinite}
