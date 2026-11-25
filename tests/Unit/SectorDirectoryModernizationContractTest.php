@@ -59,7 +59,7 @@ final class SectorDirectoryModernizationContractTest extends TestCase
         self::assertStringContainsString('Zone::query()->findOrFail', $controller);
         self::assertStringContainsString('Rule::unique', $controller);
         self::assertStringContainsString('\'data\' => $rows', $controller);
-        self::assertStringContainsString("SafeMasterRecordDeletion::assertUnreferenced('zones', $id, 'zone_id')", $controller);
+        self::assertStringContainsString('SafeMasterRecordDeletion::assertUnreferenced(\'zones\', $id, \'zone_id\')', $controller);
         self::assertStringContainsString('sectorDeleteModal', $view);
         self::assertStringContainsString("can('delete sector')", $view);
         self::assertStringNotContainsString('DB::rollback()', $controller);
