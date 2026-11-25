@@ -20,8 +20,11 @@ final class ProjectDirectoryModernizationContractTest extends TestCase
 
         foreach ([
             'bm-voucher-directory bm-projects',
-            'project-toolbar', 'projectSearch', 'projectStatusFilter',
-            'projectPageSize', 'projectPages', 'project-skeleton',
+            'project-col-trigger', 'data-field="{{ $field }}"',
+            '$.financeVoucherComponents.createFilter', 'filterWidget.dates(',
+            'filterWidget.search(', "filterWidget.$control", 'projectPageSize',
+            'projectPages', 'project-skeleton', 'project-card', 'flex:1 1 auto',
+            'min-height:calc(100vh - 123px)',
             '<tbody id="projectRows" aria-busy="true">',
             '$.blueActionMenu.enhance', '$.blueVoucherPagination.render',
             "attr('aria-busy','false')",
@@ -29,6 +32,13 @@ final class ProjectDirectoryModernizationContractTest extends TestCase
             self::assertStringContainsString($required, $view);
         }
 
+        self::assertStringNotContainsString('id="projectSearch"', $view);
+        self::assertStringNotContainsString('id="projectStatusFilter"', $view);
+        self::assertStringNotContainsString('class="project-toolbar"', $view);
+        self::assertStringContainsString('project-footer-controls', $view);
+        self::assertStringContainsString('statusSelection', $view);
+        self::assertStringContainsString('dateRanges', $view);
+        self::assertStringContainsString('columnSearch', $view);
         self::assertStringNotContainsString('id="example1"', $view);
         self::assertStringNotContainsString("route('user.destroy')", $view);
         self::assertStringNotContainsString('id="modal-delete"', $view);
