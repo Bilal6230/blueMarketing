@@ -3,10 +3,22 @@
 .bm-lead-approvals .bm-account-card{border:1px solid #c4d2e3!important;border-top:3px solid #2563eb!important}
 .bm-lead-approvals .bm-account-table thead th{position:sticky;top:0;z-index:3}
 .bm-lead-approvals .bm-account-table tbody td{height:50px!important}
-.bm-lead-approvals .bm-account-table tbody td:last-child{min-width:190px}
+/* One familiar + action control per row, expanding into the shared
+   floating Approve / Reject / View Details speed dial. */
+.bm-lead-approvals{--bm-action-col:92px;--bm-action-toggle:34px}
+.bm-lead-approvals .bm-account-table thead th:last-child,
+.bm-lead-approvals .bm-account-table tbody td:last-child{
+ width:92px!important;min-width:92px!important;max-width:92px!important;
+ text-align:center!important;
+}
+.bm-lead-approvals .bm-account-table .blue-actions-toggle{
+ border-radius:10px!important;
+}
 .bm-lead-approvals .bm-account-table .approve-btn,
 .bm-lead-approvals .bm-account-table .reject-btn,
-.bm-lead-approvals .bm-account-table .btn-view-details{font-size:12px!important;border-radius:6px!important;padding:6px 9px!important;margin:2px}
+.bm-lead-approvals .bm-account-table .btn-view-details{
+ font-size:12px!important;border-radius:8px!important;padding:7px 10px!important;margin:2px;
+}
 .bm-lead-approvals .bm-account-table .badge{font-size:12px;font-weight:650;padding:5px 9px;border-radius:999px}
 .bm-lead-approvals .bm-account-table .badge-warning{background:#fff2cf!important;color:#916000!important;border:1px solid #f8d574}
 #leadApprovalModal .modal-content{border:1px solid #bfcee2;border-top:3px solid #2563eb;border-radius:12px;overflow:hidden;box-shadow:0 20px 50px #142c4930}
@@ -14,4 +26,4 @@
 #leadApprovalModal .modal-title{font-size:18px;font-weight:750}
 #leadApprovalModal .modal-body{padding:20px;max-height:calc(100dvh - 200px);overflow:auto}
 #leadApprovalModal .modal-footer{background:#fff;border-top:1px solid #d4e1ee}
-@media(max-width:700px){.bm-lead-approvals .bm-account-table tbody td:last-child{min-width:175px}}
+@media(max-width:700px){.bm-lead-approvals{--bm-action-col:78px}.bm-lead-approvals .bm-account-table thead th:last-child,.bm-lead-approvals .bm-account-table tbody td:last-child{width:78px!important;min-width:78px!important;max-width:78px!important}}
