@@ -59,13 +59,15 @@ final class SectorDirectoryModernizationContractTest extends TestCase
         self::assertStringContainsString('Zone::query()->findOrFail', $controller);
         self::assertStringContainsString('Rule::unique', $controller);
         self::assertStringContainsString('\'data\' => $rows', $controller);
-        self::assertStringContainsString('Sector deletion is not available.', $controller);
+        self::assertStringContainsString("SafeMasterRecordDeletion::assertUnreferenced('zones', $id, 'zone_id')", $controller);
+        self::assertStringContainsString('sectorDeleteModal', $view);
+        self::assertStringContainsString("can('delete sector')", $view);
         self::assertStringNotContainsString('DB::rollback()', $controller);
-        self::assertStringNotContainsString('->delete()', $controller);
+        self::assertStringContainsString('->delete()', $controller);
 
         foreach (['read sector','create sector','update sector','delete sector'] as $ability) {
             self::assertStringContainsString('permission:'.$ability, $routes);
         }
-        self::assertStringNotContainsString("route('project.zone.destroy')", $view);
+        self::assertStringContainsString("route('project.zone.destroy')", $view);
     }
 }
