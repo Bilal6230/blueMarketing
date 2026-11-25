@@ -1,3 +1,19 @@
+# 2026-11-25 — M06 retention/index health PASS; assertion quote repair pending local test
+
+**Owner verification:** `activity-audit:health --strict` **PASS** on existing MySQL DB. Missing audit query indexes **0**; expected triggers **129**, missing **0**, invalid definitions **0**, nontransactional engines **0**, skipped tables **0**, old unlinked snapshots **0**, missing-parent references **0**; older-than-90-days event/impact counts both **0**. This health gate is accepted and does not need to be rerun. `Milestone06ActivityAuditContractTest`: **19 PASS, 1 FAIL (218 assertions)** solely because a test expectation for `'SEQ_IN_INDEX'` included literal backslashes (`"\\'SEQ_IN_INDEX\\'"`). Actual code contains normal single quotes. Changed the expectation to `"'SEQ_IN_INDEX'"`. No application logic, migration, audit evidence or database changes.
+
+**Only local follow-up gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+Expected **20 PASS**, but not yet owner verified. Do not rerun already accepted health, API, UI, MySQL rollback, or background tests for this assertion-only change.
+
+**Remaining M06:** Real CRM controller end-to-end API audit test (existing safe local data only), explicit integration of selected background jobs only with real actor attribution, and retention decision (no automatic deletion); final release acceptance. Labour CP ON HOLD.
+
+---
+
 # 2026-11-25 — M06 API audit 3/3 PASS; read-only retention and index diagnostics batch
 
 **Owner-verified:** `ActivityAuditAuthenticatedApiTest` **3 PASS / 16 assertions**. Earlier M06 contract suite **19 PASS / 216 assertions**, background audit suite 5 PASS / 15 assertions, real MySQL rollback/commit 2 PASS / 10 assertions, SQLite transaction suite 8 PASS / 25 assertions, strict MySQL trigger health 129/129 and owner-confirmed browser tests PASS. Accepted gates should not be repeated unless their underlying implementation changes.
