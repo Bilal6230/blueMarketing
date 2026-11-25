@@ -88,7 +88,7 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $capture = $this->source('app/Support/Audit/ActivityAuditCapture.php');
         $this->assertStringContainsString('hasObservedWrites()', $source);
         $this->assertStringContainsString('if (!$hasCapturedRows && (!$capture || !$capture->hasObservedWrites()))', $source);
-        $this->assertStringContainsString("where('request_token', "+', $source);
+        $this->assertStringContainsString("where('request_token',", $source);
         $this->assertStringContainsString('public function hasObservedWrites(): bool', $capture);
         $this->assertStringContainsString("'cache_locks'", $capture);
     }
