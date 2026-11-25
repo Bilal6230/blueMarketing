@@ -50,11 +50,11 @@ final class ModernLeadApprovalDirectoryContractTest extends TestCase
         self::assertStringContainsString("'data-blue-action-label':'Approve'", $shared);
         self::assertStringContainsString("'data-blue-action-label':'Reject'", $shared);
         self::assertStringContainsString("'data-blue-action-label':'View Details'", $shared);
-        self::assertStringContainsString("$.blueActionMenu.enhance($body.find('td.blue-actions-cell'))", $shared);
+        self::assertStringContainsString("\$.blueActionMenu.enhance(\$body.find('td.blue-actions-cell'))", $shared);
         self::assertStringContainsString('--bm-action-col:92px', $css);
         self::assertStringContainsString('blue-actions-toggle', $css);
         self::assertStringContainsString('blue-actions-source', $actionMenu);
-        self::assertStringContainsString("$original.trigger('click')", $actionMenu);
+        self::assertStringContainsString("\$original.trigger('click')", $actionMenu);
         foreach (['approve-btn','reject-btn','btn-view-details','lead-approval-payload-'] as $action) {
             self::assertStringContainsString($action, $view);
         }
