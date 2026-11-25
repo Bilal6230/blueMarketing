@@ -39,7 +39,7 @@
                     <!-- Plots List Card -->
                     <div class="col-12">
                         <div class="card">
-                            @can('create plot')
+                            @can('create booking')
                                 <div class="card-header">
                                     <h3 class="card-title">
                                         <a href="{{ route('booking.plot.sale') }}" class="btn btn-sm btn-success"><i
@@ -59,7 +59,7 @@
                                             <th>Customer</th>
                                             <th>Phone</th>
                                             <th>Sale Amount</th>
-                                            @canany(['update plot', 'delete plot'])
+                                            @canany(['update booking', 'update booking price', 'delete booking'])
                                                 <th>Action</th>
                                             @endcanany
                                         </tr>
@@ -102,10 +102,10 @@
                                                         {{ Setting::formatAmount($i->total_price) }}
                                                     @endcan
                                                 </td>
-                                                @canany(['update plot', 'delete plot', 'delete booking'])
+                                                @canany(['update booking', 'update booking price', 'delete booking'])
                                                     <td>
                                                         <div class="btn-group">
-                                                            @can('update plot')
+                                                            @can('update booking')
                                                                 <a href="{{ route('booking.edit', ['id' => $i->id]) }}"
                                                                     class="btn btn-xs ml-1 btn-outline-primary"
                                                                     title="Edit Booking" aria-label="Edit Booking">
