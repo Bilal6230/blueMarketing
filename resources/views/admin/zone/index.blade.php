@@ -285,9 +285,9 @@ $(function(){
       dataType:'json',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
       .done(function(response){
         $('#sectorDeleteModal').modal('hide');inform(response.message||'Sector deleted.');
-        $.ajax({url:@json(route('project.zone.index')),dataType:'json',headers:{Accept:'application/json'}})
+        (function(){var stopSkeleton=$.blueModernDirectoryTools.skeleton('.sector-table-wrap');return $.ajax({url:@json(route('project.zone.index')),dataType:'json',headers:{Accept:'application/json'}})
           .done(function(reply){sectors=reply.data||[];render();})
-          .fail(function(){inform('Deleted, but sector list could not refresh.',true);});
+          .fail(function(){inform('Deleted, but sector list could not refresh.',true);}).always(function(){stopSkeleton();});}());
       }).fail(function(xhr){
         var message=(xhr.responseJSON||{}).message||'Sector could not be deleted.';
         $('#sectorDeleteError').text(message);inform(message,true);
@@ -305,9 +305,9 @@ $(function(){
       headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
     .done(function(response){
       $('#sectorEditor').modal('hide');inform(response.message||'Sector saved.');
-      $.ajax({url:@json(route('project.zone.index')),dataType:'json',headers:{Accept:'application/json'}})
+      (function(){var stopSkeleton=$.blueModernDirectoryTools.skeleton('.sector-table-wrap');return $.ajax({url:@json(route('project.zone.index')),dataType:'json',headers:{Accept:'application/json'}})
         .done(function(reply){sectors=reply.data||[];render();})
-        .fail(function(){inform('Sector saved, but list refresh failed. Reload the page.',true);});
+        .fail(function(){inform('Sector saved, but list refresh failed. Reload the page.',true);}).always(function(){stopSkeleton();});}());
     }).fail(function(xhr){
       var body=xhr.responseJSON||{},errors=body.errors||{};
       $.each(errors,function(key,messages){$('#sectorForm').find('[data-error="'+key+'"]').text(messages[0]||'Invalid value');});
