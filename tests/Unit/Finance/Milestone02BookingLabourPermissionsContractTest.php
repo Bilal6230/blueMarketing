@@ -112,6 +112,29 @@ final class Milestone02BookingLabourPermissionsContractTest extends TestCase
         }
     }
 
+    public function test_lead_assignment_and_accounting_write_actions_are_independent(): void
+    {
+        $routes=$this->source('routes/web.php');
+        $migration=$this->source('database/migrations/2026_11_25_112000_register_lead_assignment_permission.php');
+        $controller=$this->source('app/Http/Controllers/LeadController.php');
+        self::assertStringContainsString("Permission::findOrCreate('assign lead', 'web')",$migration);
+        self::assertStringContainsString("contains('name','update lead')",$migration);
+        self::assertStringContainsString("can('assign lead')",$controller);
+        self::assertStringContainsString(
+            "category_store')->middleware(['permission:create accounting'])",
+            str_replace("->middleware(['permission:create accounting'])->name('accounting.category_store')",
+                "category_store')->middleware(['permission:create accounting'])",$routes)
+        );
+        self::assertStringContainsString(
+            "middleware(['permission:update accounting'])->name('accounting.category_update')",$routes
+        );
+        self::assertStringContainsString("permission:read lead",$routes);
+        self::assertStringContainsString("permission:create lead",$routes);
+        self::assertStringContainsString("permission:update lead",$routes);
+        self::assertStringContainsString("permission:delete lead",$routes);
+        self::assertStringNotContainsString('Schema::create(',$migration);
+    }
+
     public function test_obsolete_module_toggles_are_hidden_but_assigned_grants_are_preserved(): void
     {
         $controller=$this->source('app/Http/Controllers/RoleController.php');
