@@ -86,15 +86,21 @@ class Milestone06ActivityAuditContractTest extends TestCase
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
         $controller = $this->source('app/Http/Controllers/ActivityAuditController.php');
-        $this->assertStringContainsString('audit-column-filter', $blade);
+        $this->assertStringContainsString('<x-finance.voucher-column-filters />', $blade);
+        $this->assertStringContainsString('$.blueVoucherColumnFilters.init', $blade);
+        $this->assertStringContainsString('$.blueVoucherPagination.render', $blade);
+        $this->assertStringContainsString('dv-excel-trigger', $blade);
+        $this->assertStringContainsString('dv-page-length', $blade);
+        $this->assertStringContainsString('dv-table-search', $blade);
         $this->assertStringContainsString('$.blueTableSkeleton.show', $blade);
         $this->assertStringContainsString('audit-detail-modal', $blade);
         $this->assertStringContainsString('audit-view', $blade);
         $this->assertStringContainsString('db_trigger_row', $blade);
         $this->assertStringContainsString('affected_tables', $blade);
         $this->assertStringContainsString('sql_statement', $blade);
-        $this->assertStringContainsString("->paginate(25)", $controller);
-        $this->assertStringContainsString("DB::table('activity_audit_impacts')", $controller);
+        $this->assertStringContainsString("->offset($start)->limit($length)->get()", $controller);
+        $this->assertStringContainsString("activity_audit_impacts", $controller);
+        $this->assertStringContainsString("'recordsFiltered'", $controller);
         $this->assertStringNotContainsString('method="POST"', $blade);
         $this->assertStringNotContainsString('method="DELETE"', $blade);
     }
