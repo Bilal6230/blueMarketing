@@ -11,8 +11,8 @@
 .bm-sectors .sector-card{background:#fff;border:1px solid #dae4f2;border-top:3px solid #2563eb;border-radius:11px;overflow:hidden;box-shadow:0 3px 13px #122b460a;flex:1 1 auto;min-height:350px;display:flex;flex-direction:column}
 .bm-sectors .sector-table-wrap{width:100%;overflow:auto;min-height:0;flex:1 1 auto}
 .bm-sectors .sector-table{width:100%;margin:0;font-size:14px;white-space:nowrap;border-collapse:separate!important;border-spacing:0!important}
-.bm-sectors .sector-table thead th{background:#f0f5fc;color:#294366;font-weight:750;font-size:13px;padding:11px 12px;border-bottom:2px solid #2563eb!important;border-right:1px solid #d9e4f0!important}
-.bm-sectors .sector-table tbody td{padding:11px 12px!important;border-top:1px solid #eaf0f7!important;border-right:1px solid #e2eaf4!important;vertical-align:middle;height:48px!important}
+.bm-sectors .sector-table thead th{background:#f0f5fc;color:#294366;font-weight:750;font-size:13px;padding:11px 12px;border-bottom:2px solid #2563eb!important;border-right:1.5px solid #b6c7da!important}
+.bm-sectors .sector-table tbody td{padding:11px 12px!important;border-top:1.5px solid #c5d2e2!important;border-right:1.5px solid #c5d2e2!important;vertical-align:middle;height:48px!important}
 .bm-sectors .sector-table thead th:last-child,.bm-sectors .sector-table tbody td:last-child{border-right:0!important}
 .bm-sectors .sector-table tbody tr:nth-child(even){background:#f1f5fa!important}
 .bm-sectors .sector-table tbody tr:nth-child(odd){background:#ffffff!important}
