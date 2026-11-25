@@ -1,3 +1,9 @@
+# 2026-11-25 — Accounting directory finishing details
+
+Main Account and Party Account now additionally display **Status** (Active/Inactive badges with header dropdown choices) and **Created** (header date-range filter) to match modern master directory conventions. `public/js/modern-account-directory.js` has been syntax-checked using a JavaScript parser; shared CSS and all three Blade views passed targeted static presence checks. **These are source-level checks, not a substitute for the local PHP/Blade and browser gates noted below.** No new migration, table or business-data change. Main/Party Delete still fail closed by design; Joint mapping Delete remains guarded and enabled. Labour CP remains ON HOLD.
+
+---
+
 # 2026-11-25 — Darker table grid + Main / Party / Joint Account modernization (owner verification PENDING)
 
 **Owner scope:** Slightly darker, thicker horizontal/vertical borders on existing modern Project, Sectors and Area lists, then modernize three specified accounting master pages: **Main Account**, **Party Account** and **Joint Account**.
