@@ -1,3 +1,25 @@
+# 2026-11-25 — M06 API audit expansion (owner terminal verified prior batch; API gate pending)
+
+**Latest owner verification:** `2026_11_25_134000_expand_activity_audit_stock_plot_bank_sources.php` migration completed successfully. `Milestone06ActivityAuditContractTest` passed **9 tests / 105 assertions**; existing browser acceptance for activity audit UI and early CRUD tracking was previously reported PASS. Do not repeat these passed checks.
+
+**Implemented in next batch:** `routes/api.php` now attaches the existing `RecordActivityAudit` middleware to *already-authenticated* `v1/mobile` (CRM leads, follow-ups, assignment, attendance and stock mutations, mobile approvals) and unified `finance/projects/{projectId}` routes. Middleware order is explicitly `auth:sanctum` before auditing. Read-only GETs and public/login endpoints remain untouched. Write-style POST endpoints performing no business writes are filtered out by the existing activity evidence gate. Existing MySQL transaction-token linked rows are correlated to the actor and request, with a separate SQL-observation fallback where exact row capture is not available. No new table or migration; no changes to authorization, financial posting, or Labour CP.
+
+**New regression contract:** test checks both API middleware groups are authenticated before audit capture, and mobile CRM/Stock and Finance posting routes retain their original endpoints. API functional/browser acceptance and current contract test run **still pending**, so M06 remains IN PROGRESS.
+
+**Next local gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+**Targeted API test after green:** Via existing authenticated employee app, create/edit a disposable CRM lead or test Stock Entry (NOT Labour CP), then open `http://localhost:8001/admin/activity-audit`. A new /api/v1/mobile/ record with the actor and linked tables should appear. Confirm read-only mobile dashboard GET does not create an entry. Unified finance API mutation checks should be on isolated disposable data only; no need to replay high-risk finance postings if no safe fixture is available.
+
+**Remaining:** write activities from scheduled/queued background jobs, direct CLI/database operations, and non-triggered tables are not exhaustively covered. Transactional correlation/rollback and retention policy require deeper integration testing before M06 closure. Historical rows are not backfilled.
+
+---
+
 # 2026-11-25 — Milestone 06 continued: latest browser gate PASS; Stock/Plot/Bank/Labour row-audit implementation (local tests pending)
 
 **Owner verified:** Milestone 06 batch 3 browser acceptance PASS, including no read-only AJAX `get_account` activity on new requests and the disposable user/update View workflow. Earlier full-height Activity Audit CR/DR-style table and targeted terminal tests also PASS. Do not re-request already accepted browser/UI gates.
