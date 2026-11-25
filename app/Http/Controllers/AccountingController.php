@@ -271,8 +271,10 @@ class AccountingController extends Controller
             'acct_type' => ['required', 'integer', 'exists:account_types,id'],
         ]);
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Please correct the account fields.', 'errors' => $validator->errors()], 422);
+            }
+            return back()->withErrors($validator)->withInput();
         }
 
 
@@ -286,8 +288,15 @@ class AccountingController extends Controller
 
             ]);
 
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'success', 'message' => 'Account created successfully.', 'id' => $data->id], 201);
+            }
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
+            if ($request->expectsJson()) {
+                report($th);
+                return response()->json(['message' => 'Account could not be created. Please try again.'], 422);
+            }
             DB::rollback();
             Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
         }
@@ -318,6 +327,9 @@ class AccountingController extends Controller
 
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Please correct the account fields.', 'errors' => $validator->errors()], 422);
+            }
             return back()->withErrors($validator)->withInput();
         }
 
@@ -345,12 +357,19 @@ class AccountingController extends Controller
             }
 
             DB::commit();
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'success', 'message' => 'Account updated successfully.', 'id' => $result->id]);
+            }
 
             Alert::success('Notification', 'Data <b>' . $result->name . '</b> updated successfully')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
             if ($th instanceof \Illuminate\Validation\ValidationException) {
                 throw $th;
+            }
+            if ($request->expectsJson()) {
+                report($th);
+                return response()->json(['message' => 'Account update could not be completed.'], 422);
             }
             Alert::error('Notification', 'Update failed: <b>' . $th->getMessage() . '</b>')->toToast()->toHtml();
         }
@@ -397,8 +416,10 @@ class AccountingController extends Controller
             'is_active' => ['required', 'boolean'],
         ]);
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Please correct the account fields.', 'errors' => $validator->errors()], 422);
+            }
+            return back()->withErrors($validator)->withInput();
         }
 
 
@@ -413,8 +434,15 @@ class AccountingController extends Controller
 
             ]);
 
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'success', 'message' => 'Account created successfully.', 'id' => $data->id], 201);
+            }
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
+            if ($request->expectsJson()) {
+                report($th);
+                return response()->json(['message' => 'Account could not be created. Please try again.'], 422);
+            }
             report($th);
             DB::rollback();
             Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
@@ -450,8 +478,10 @@ class AccountingController extends Controller
 
         $validator = Validator::make($request->all(), $rules);
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Please correct the account fields.', 'errors' => $validator->errors()], 422);
+            }
+            return back()->withErrors($validator)->withInput();
         }
         $data = [
             'name' => $request->name,
@@ -480,11 +510,18 @@ class AccountingController extends Controller
             }
             //$result->syncRoles($request->role);
             DB::commit();
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'success', 'message' => 'Account updated successfully.', 'id' => $result->id]);
+            }
             Alert::success('Notification', 'Data <b>' . $result->name . '</b> berhasil disimpan')->toToast()->toHtml();
         } catch (\Throwable $th) {
             DB::rollback();
             if ($th instanceof \Illuminate\Validation\ValidationException) {
                 throw $th;
+            }
+            if ($request->expectsJson()) {
+                report($th);
+                return response()->json(['message' => 'Account update could not be completed.'], 422);
             }
             Alert::error('Notification', 'Update failed: ' . $th->getMessage())->toToast()->toHtml();
         }
@@ -858,8 +895,15 @@ class AccountingController extends Controller
                 ]);
             }, 3);
 
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'success', 'message' => 'Joint account mapping saved successfully.'], 201);
+            }
             Alert::success('Notification', 'Account mapping saved successfully.')->toToast()->toHtml();
         } catch (\Throwable $th) {
+            if ($request->expectsJson()) {
+                report($th);
+                return response()->json(['message' => 'Joint account mapping was not saved. Check existing mappings and account status.'], 422);
+            }
             Alert::error('Notification', 'Account mapping could not be saved. ' . $th->getMessage())->toToast()->toHtml();
         }
         return back();
