@@ -229,9 +229,9 @@
                         <div class="row">
                             <div class="col-sm-3">
                                 <div class="input-group">
-                                    <label class="fbox">First Name</label>
+                                    <label class="fbox">Main Account Name</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control @error('name') is-invalid @enderror" placeholder="First Name" name="name" value="{{ old('name') }}">
+                                        <input type="text" class="form-control @error('name') is-invalid @enderror" placeholder="Main Account Name" name="name" value="{{ old('name') }}">
                                         @error('name')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -363,8 +363,8 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
+                <form action="{{ route('accounting.head_destroy') }}" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
-                    <form action="{{ route('accounting.head_destroy') }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('DELETE')
                         <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
