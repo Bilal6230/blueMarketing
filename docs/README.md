@@ -1,3 +1,21 @@
+# 2026-11-25 — M06 scope finalized: authenticated user actions only; close-out regression pending
+
+**Owner-verified acceptance:** `ActivityAuditAuthenticatedApiTest` **4 PASS / 29 assertions**, including real `MobileCrmController::store` using in-memory SQLite, actor identity, lead assignment and row/SQL impacts. `Milestone06ActivityAuditContractTest` **20 PASS / 232 assertions**; `ActivityAuditTransactionBoundaryTest` 8 PASS / 25 assertions; `BackgroundActivityAuditTest` 5 PASS / 15 assertions (utility only, not required); real MySQL trigger rollback/commit 2 PASS / 10 assertions; strict MySQL audit health PASS with 129/129 triggers, 0 missing/invalid/nontransactional/skipped, 0 missing query indexes and 0 stale/orphan impacts. Owner confirmed all requested browser tests PASS.
+
+**Agreed M06 release scope:** User-driven authenticated admin, mobile and finance HTTP writes recorded by `RecordActivityAudit` and transactional triggers. **Cron, scheduled jobs, queue processing and background/CLI attribution are NOT M06 requirements.** No scheduled jobs have been activated, and optional `BackgroundActivityAudit` remains unreferenced/unused (not integrated with existing commands). Do not install or activate cron jobs in the name of M06. Health's 90-day counters are **observation only**; no auto-prune, no deletion, no archive and no retention schedule. Any future background integration or deletion/archival policy must be a separate approved requirement, not an M06 blocker. M03 Labour CP ON HOLD.
+
+**New permanent regression guard:** `tests/Unit/Milestone06CloseoutScopeTest.php` checks four release invariants: admin/Sanctum-finance-mobile audit middleware, no required or scheduled background audit, no automated retention deletion, and retention of CRM/rollback integration tests. **New test not yet owner-verified.** No production application logic, persistent DB schema/migrations, finance posting, UI or installed job schedule changed.
+
+**Final owner gate (only new suite):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=Milestone06CloseoutScopeTest
+```
+Expected **4 PASS**. On PASS, mark M06 **ACCEPTED/CLOSED** without rerunning previously verified gates. If one test fails, repair the narrow source-assertion or real scope drift before closure. This scoped M06 acceptance is not a claim that every possible future background job is audited or that production deployment/regression has been performed.
+
+---
+
 # 2026-11-25 — M06 real CRM audit: assert both non-trigger observation types (owner gate pending)
 
 **Owner results:** `Milestone06ActivityAuditContractTest` **20 PASS / 232 assertions**. `ActivityAuditAuthenticatedApiTest` **3 PASS, 1 FAIL / 26 assertions**. The real `MobileCrmController::store` request returned success, created one lead and one lead-user assignment, and its actor ID, route and action checks passed. The final assertion expected only one `leads` impact but there were **two**. On isolated SQLite (no installed MySQL triggers), `ActivityAuditCapture` records both `eloquent_row` (model identity/allowlisted values) and `sql_statement` (table-level observed write) for one lead insert. These are distinct capture evidence, not two lead rows. Updated test to require **exactly one of each**, verify the Eloquent record ID and SQL statement count. No production controller, business data, local database or migrations changed.
