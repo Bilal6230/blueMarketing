@@ -69,6 +69,9 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringContainsString("'journal_voucher_details'", $source);
         $this->assertStringContainsString("'ledgers'", $source);
         $this->assertStringContainsString("'customer_ledger'", $source);
+        $this->assertStringContainsString("'finance_posting_batches'", $source);
+        $this->assertStringContainsString("'finance_posting_lines'", $source);
+        $this->assertStringContainsString("'finance_posting_journal_sources'", $source);
         $this->assertStringContainsString("['INSERT' => 'ai', 'UPDATE' => 'au', 'DELETE' => 'ad']", $source);
         $this->assertStringContainsString('JSON_OBJECT(', $source);
         $this->assertStringContainsString('@activity_audit_token', $source);
