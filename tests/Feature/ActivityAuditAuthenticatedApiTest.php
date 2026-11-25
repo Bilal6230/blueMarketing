@@ -32,6 +32,7 @@ final class ActivityAuditAuthenticatedApiTest extends TestCase
             $table->string('name');
             $table->string('email')->nullable();
             $table->string('password')->nullable();
+            $table->timestamps();
         });
         Schema::create('activity_audits', function (Blueprint $table): void {
             $table->increments('id');
