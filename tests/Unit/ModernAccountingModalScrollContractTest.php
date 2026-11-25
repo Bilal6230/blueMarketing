@@ -28,6 +28,9 @@ final class ModernAccountingModalScrollContractTest extends TestCase
         self::assertStringContainsString('flex:1 1 0%!important;height:0!important', $css);
         self::assertStringNotContainsString('.bm-account-table-wrap{height:100%!important', $css);
         self::assertStringContainsString('body.bm-account-directory-page .bm-account-footer{flex-shrink:0!important}', $css);
+        self::assertStringContainsString('height:calc(100dvh - 171px)!important', $css);
+        self::assertStringContainsString('body.bm-account-directory-page .bm-modern-accounts .bm-account-card{', $css);
+        self::assertStringContainsString('body.bm-account-directory-page [data-account-kind="joint"]>.content>.container-fluid', $css);
         self::assertStringContainsString('.bm-modern-accounts .bm-account-table thead th{position:sticky', $css);
         self::assertStringNotContainsString('.bm-modern-accounts .content .row{flex:1 1 auto', $css);
     }
@@ -45,6 +48,8 @@ final class ModernAccountingModalScrollContractTest extends TestCase
         self::assertStringContainsString('.bm-account-finance-modal .modal-body{max-height:', $css);
         self::assertStringContainsString('dropdownParent:$modal,width:\'100%\'', $js);
         self::assertStringContainsString('.bm-account-create-modal', $js);
+        self::assertStringContainsString('.bm-modern-accounts .bm-account-create-modal .select2-container', $css);
+        self::assertStringContainsString('justify-content:flex-end', $css);
     }
 
     public function test_edit_account_and_mapping_modals_keep_fields_and_finance_status_reason(): void
