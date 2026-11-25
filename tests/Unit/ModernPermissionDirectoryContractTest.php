@@ -51,7 +51,7 @@ final class ModernPermissionDirectoryContractTest extends TestCase
             "route('permission.show')", "route('permission.update')",
             "route('permission.destroy')", 'btn-edit', 'btn-delete',
             'id="modal-tambah"', 'id="modal-edit"', 'id="modal-delete"',
-            'bm-permission-modal', 'bm-permission-card-actions',
+            'bm-permission-modal', 'bm-permission-toolbar-actions',
         ] as $needle) {
             self::assertStringContainsString($needle, $view);
         }
