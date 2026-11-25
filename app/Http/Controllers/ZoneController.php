@@ -129,11 +129,19 @@ class ZoneController extends Controller
             });
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
             throw $exception;
-        } catch (\Throwable $exception) {
+        } catch (\RuntimeException $exception) {
+            $message = 'Sector cannot be deleted: '.$exception->getMessage();
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Sector cannot be deleted: '.$exception->getMessage()], 409);
+                return response()->json(['message' => $message], 409);
             }
-            return back()->withErrors(['sector' => 'Sector cannot be deleted: '.$exception->getMessage()]);
+            return back()->withErrors(['sector' => $message]);
+        } catch (\Throwable $exception) {
+            report($exception);
+            $message = 'Sector cannot be deleted because related records or database constraints prevent it.';
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 409);
+            }
+            return back()->withErrors(['sector' => $message]);
         }
 
         if ($request->expectsJson()) {
