@@ -143,8 +143,9 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
+                <form action="{{ route('permission.store') }}" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
-                    <form action="{{ route('permission.store') }}" method="POST" enctype="multipart/form-data">
+
                         @csrf
                         <div class="input-group">
                             <label>Name</label>
@@ -188,8 +189,9 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
+                <form action="{{ route('permission.update') }}" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
-                    <form action="{{ route('permission.update') }}" method="POST" enctype="multipart/form-data">
+
                         @csrf
                         @method("PUT")
                         <div class="input-group">
@@ -235,8 +237,9 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
+                <form action="{{ route('permission.destroy') }}" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
-                    <form action="{{ route('permission.destroy') }}" method="POST" enctype="multipart/form-data">
+
                         @csrf
                         @method('DELETE')
                         <p class="modal-text">Are you sure you want to delete this permission? <b id="delete-data"></b></p>
