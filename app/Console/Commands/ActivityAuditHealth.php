@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Support\Audit\TriggerDefinitionValidator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -147,13 +148,7 @@ final class ActivityAuditHealth extends Command
                     $missing[] = $trigger;
                     continue;
                 }
-                $body = (string) $definition->ACTION_STATEMENT;
-                if ($definition->EVENT_OBJECT_TABLE !== $table
-                    || strtoupper((string) $definition->EVENT_MANIPULATION) !== $event
-                    || strtoupper((string) $definition->ACTION_TIMING) !== 'AFTER'
-                    || !str_contains($body, '@activity_audit_token')
-                    || !preg_match('/INSERT\\s+INTO\\s+`?activity_audit_impacts`?/i', $body)
-                    || !str_contains($body, 'db_trigger_row')) {
+                if (!TriggerDefinitionValidator::valid($definition, $table, $event)) {
                     $invalid[] = $trigger.' (wrong table/event/timing or missing audit capture)';
                 }
             }
