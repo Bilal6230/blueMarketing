@@ -2,17 +2,17 @@
 @section('title', 'Activity Audit')
 @push('style')
 <style>
-.activity-audit-page{--dv-accent:#167d42;--dv-pale:#eaf8ef;background:#ecf7f0;min-height:calc(100vh - 100px);padding:10px 9px 18px;font-size:12px}
-.activity-audit-page .audit-heading{border-bottom:2px solid var(--dv-accent);background:#e9f8ef;border-radius:9px;padding:15px 13px;margin-bottom:11px;display:flex;align-items:center;justify-content:space-between}
+.activity-audit-page{--dv-accent:#167d42;--dv-pale:#eaf8ef;background:#ecf7f0;min-height:calc(100vh - 96px);height:calc(100dvh - 96px);padding:10px 9px 10px;font-size:12px;display:flex;flex-direction:column;overflow:hidden}
+.activity-audit-page .audit-heading{border-bottom:2px solid var(--dv-accent);background:#e9f8ef;border-radius:9px;padding:15px 13px;margin-bottom:11px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto}
 .activity-audit-page .audit-heading h2{font-size:16px;font-weight:750;color:var(--dv-accent);margin:0 0 4px}
 .activity-audit-page .audit-heading small{color:#59796b}
-.activity-audit-page .audit-register{border:1px solid #d8e5dd;border-top:3px solid var(--dv-accent);background:#fff;border-radius:10px;box-shadow:0 2px 13px #193a2910;overflow:hidden}
-.activity-audit-page .dv-table-tools{padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.activity-audit-page .audit-register{border:1px solid #d8e5dd;border-top:3px solid var(--dv-accent);background:#fff;border-radius:10px;box-shadow:0 2px 13px #193a2910;overflow:hidden;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.activity-audit-page .dv-table-tools{padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;flex:0 0 auto}
 .activity-audit-page .dv-table-tools label{display:flex;align-items:center;gap:6px;margin:0;font-size:11px;font-weight:600}
 .activity-audit-page .dv-table-tools select{width:66px}
 .activity-audit-page .dv-table-tools input{width:195px}
 .activity-audit-page .dv-table-tools .form-control{height:29px;font-size:11px}
-.activity-audit-page .audit-table-wrap{max-height:610px;overflow:auto;position:relative}
+.activity-audit-page .audit-table-wrap{flex:1 1 auto;min-height:0;max-height:none;overflow:auto;position:relative}
 .activity-audit-page table.audit-table{font-size:11px;width:100%;margin:0;white-space:nowrap}
 .activity-audit-page .audit-table thead th{position:sticky;top:0;background:#e8f7ee;color:#27394b;border:1px solid #d8e4de;border-bottom:2px solid var(--dv-accent);padding:7px;vertical-align:middle;font-weight:750;z-index:1}
 .activity-audit-page .audit-table td{border:1px solid #e0e8e3;padding:7px;vertical-align:middle;height:42px}
@@ -20,7 +20,7 @@
 .activity-audit-page .audit-table tbody tr:hover{background:#eaf7ee}
 .activity-audit-page .dv-excel-trigger{float:right;background:transparent;border:1px solid transparent;color:var(--dv-accent);border-radius:4px;min-width:22px;height:22px}
 .activity-audit-page .dv-excel-trigger:hover,.activity-audit-page .dv-excel-trigger[aria-expanded=true],.activity-audit-page .dv-excel-trigger.dv-has-filter{border-color:var(--dv-accent);background:white}
-.activity-audit-page .dv-pagination-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 12px;flex-wrap:wrap;border-top:1px solid #dbe9de}
+.activity-audit-page .dv-pagination-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 12px;flex-wrap:wrap;border-top:1px solid #dbe9de;flex:0 0 auto}
 .activity-audit-page #dv-pages{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .activity-audit-page .dv-page-btn{border:1px solid var(--dv-accent);color:var(--dv-accent);background:white;border-radius:5px;min-width:30px;height:29px;font-size:11px}
 .activity-audit-page .dv-page-btn.active{background:var(--dv-accent);color:white}
@@ -53,6 +53,7 @@
 .activity-audit-page .bm-skeleton-row td{height:42px}
 .activity-audit-page .bm-skeleton-bar{height:12px;display:block;border-radius:5px;background:#e0e9e4}
 @media(max-width:700px){.activity-audit-page .dv-table-tools input{width:140px}}
+@media(max-height:480px){.activity-audit-page{height:auto;min-height:380px;overflow:visible}.activity-audit-page .audit-register{min-height:260px}}
 </style>
 @endpush
 
