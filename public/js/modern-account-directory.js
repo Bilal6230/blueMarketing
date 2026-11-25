@@ -266,6 +266,14 @@ $(function(){
      $root.find('.bm-user-card-actions').remove();
    }
  }
+ if(kind==='permission'){
+   var $permissionActions=$root.find('.bm-permission-card-actions .card-title');
+   var $permissionBar=$card.find('.bm-modern-export-toolbar');
+   if($permissionActions.length&&$permissionBar.length){
+     $permissionActions.appendTo($permissionBar).addClass('bm-permission-toolbar-actions');
+     $root.find('.bm-permission-card-actions').remove();
+   }
+ }
  prepareRows();
  $root.find('.bm-account-loading').remove();
  $table.css('visibility','visible');
