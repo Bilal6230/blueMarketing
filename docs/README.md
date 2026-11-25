@@ -1,3 +1,13 @@
+# 2026-11-25 — M02 Roles & Permissions ACCEPTED / CLOSED
+
+**Final owner confirmation:** `Milestone02BookingLabourPermissionsContractTest` **6 PASS / 95 assertions** on `upgrade/laravel-framework` after pull to `d6e52f16`. Owner also explicitly confirmed all five M02 cross-module browser permission matrices PASS: Booking independent CRUD / Price Update; Leads independent CRUD / assignment; Labour Master vs Attendance; Accounting read-only Create/Update denial; and Role Management toggles affecting sidebar, buttons and direct endpoints. Earlier M02 Stock, Employee Tasks, Users and finance permission tests and browser checks were previously accepted. **M02 scope is ACCEPTED/CLOSED for the locally verified owner workflow; do not repeat browser or automated tests without related changes.**
+
+**Scope qualification:** The owner has not separately pasted migration status of the three M02 permission-only migrations in this close-out response. This local acceptance does not establish production deployment or universal endpoint exhaustiveness. No code or database migration has been changed in this acceptance commit.
+
+**Current roadmap:** M01 CLOSED; M02 CLOSED; M04 CLOSED; M05 CLOSED; M06 CLOSED. **M03 Labour Payment CP browser acceptance remains ON HOLD**; all other reported M03 browser gates accepted. Do not remove or bypass this hold.
+
+---
+
 # 2026-11-25 — M02 permission browser acceptance OWNER PASS
 
 Owner explicitly confirms **all final M02 browser matrices PASS**: independent Booking CRUD vs Price Update; Lead CRUD vs Assign Lead; Labour Master vs Attendance; Accounting read-only Create/Update denial; and Roles ON/OFF controlling sidebar, action buttons and direct API endpoints. These browser checks are **accepted and must not be repeated** without a relevant regression.
