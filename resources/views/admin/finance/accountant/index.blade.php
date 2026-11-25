@@ -1,60 +1,85 @@
 @extends('admin.layouts.master')
+@section('title', 'Accountants List')
+@push('style')
+<link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}">
+<style>
+/* Accountant listing shares the verified Main/Party/Joint card, row, filter and pagination contract. */
+.bm-modern-accounts.bm-accountants .content-header{margin-bottom:12px!important}
+.bm-modern-accounts.bm-accountants .bm-account-card{border-top:3px solid #2563eb!important}
+.bm-modern-accounts.bm-accountants .bm-account-table tbody td{height:48px!important}
+.bm-modern-accounts.bm-accountants .bm-account-table td:last-child{text-align:center}
+.bm-modern-accounts.bm-accountants .bm-account-table .viewLedgersBtn{
+  border:1px solid #b9dcca!important;background:#fff!important;color:#087747!important;
+  border-radius:9px!important;width:32px;height:32px;padding:0!important;
+  display:inline-flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px #173d2210;font-size:14px;
+}
+.bm-modern-accounts.bm-accountants .bm-account-table .viewLedgersBtn:hover{background:#e8f8ef!important}
+.bm-modern-accounts.bm-accountants .bm-account-empty{padding:24px;text-align:center;color:#60758e}
+#ledgerModal .modal-content{border:1px solid #c5d3e5;border-top:3px solid #2563eb;border-radius:12px;overflow:hidden}
+#ledgerModal .modal-header{background:#f5f9ff;border-bottom:1px solid #cbd8e8;padding:15px 20px}
+#ledgerModal .modal-title{font-size:17px;font-weight:750;color:#193d73}
+#ledgerModal .modal-body{padding:18px 20px}
+#ledgerModal #ledgerSummary .border{background:#f7faff;border-color:#d5e2f0!important}
+#ledgerModal #ledgerSummary strong{font-size:17px;color:#184783}
+#ledgerModal #ledgerTable{font-size:13px}
+#ledgerModal #ledgerTable thead th{background:#eaf2fa;border-bottom:2px solid #2563eb}
+</style>
+@endpush
 
 @section('content')
-    <div class="content-wrapper pt-4">
+    <div class="content-wrapper bm-modern-accounts bm-accountants" data-account-kind="accountant">
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="m-0">Accountants List</h1>
+                    </div>
+                    <div class="col-sm-6"></div>
+                </div>
+            </div>
+        </div>
         <section class="content">
             <div class="container-fluid">
-                <div class="custom_card h-100">
-                    <div class="card-body">
-                        @if ($accountants->isNotEmpty())
-                            <table class="table table-hover" id="accountantTable">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Name</th>
-                                        <th>NIC</th>
-                                        <th>Email</th>
-                                        <th>Phone</th>
-                                        <th>Ledgers</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($accountants as $idx => $user)
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card bm-account-card">
+                            <div class="card-body bm-account-table-wrap">
+                                <div class="bm-account-loading" aria-hidden="true"><span></span><span></span><span></span></div>
+                                <table class="table table-bordered bm-account-table" id="bmAccountDirectory" style="visibility:hidden">
+                                    <thead>
                                         <tr>
-                                            <td>{{ $idx + 1 }}</td>
-                                            <td>{{ $user->name ?? 'N/A' }}</td>
-                                            <td>{{ $user->nic_number ?? 'N/A' }}</td>
-                                            <td>{{ $user->email ?? 'N/A' }}</td>
-                                            <td>{{ $user->phone_number ?? 'N/A' }}</td>
-                                            <td>{{ $user->matching_ledgers_count ?? '—' }}</td>
-                                            <td>
-                                                <button class="btn btn-info btn-sm viewLedgersBtn"
-                                                    data-id="{{ $user->id }}" data-name="{{ $user->name }}">
-                                                    <i class="fas fa-eye"></i> View
-                                                </button>
-                                            </td>
+                                            <th>#</th>
+                                            <th>Name</th>
+                                            <th>NIC</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
+                                            <th>Ledgers</th>
+                                            <th>Actions</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        @else
-                            <div class="notfound bg-white p-3">
-                                <div class="d-flex flex-wrap justify-content-center align-items-center">
-                                    <div class="image-notfound mr-3">
-                                        <img src="{{ asset('dist/images/not-found.png') }}" class="img-fluid"
-                                            alt="No data">
-                                    </div>
-                                    <div class="text-notfound text-center">
-                                        <h4 class="mb-0 f-20 text-dark">{{ __('Sorry! No data found.') }}</h4>
-                                        <p class="mb-0 f-16 text-gray-100 mt-2">
-                                            {{ __('The requested data does not exist for this feature overview.') }}
-                                        </p>
-                                    </div>
-                                </div>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($accountants as $idx => $user)
+                                            <tr>
+                                                <td>{{ $idx + 1 }}</td>
+                                                <td>{{ $user->name ?? 'N/A' }}</td>
+                                                <td>{{ $user->nic_number ?? 'N/A' }}</td>
+                                                <td>{{ $user->email ?? 'N/A' }}</td>
+                                                <td>{{ $user->phone_number ?? 'N/A' }}</td>
+                                                <td>{{ $user->matching_ledgers_count ?? '—' }}</td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm viewLedgersBtn"
+                                                        data-id="{{ $user->id }}" data-name="{{ $user->name }}"
+                                                        aria-label="View ledgers for {{ $user->name }}" title="View ledgers">
+                                                        <i class="fas fa-eye" aria-hidden="true"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
                             </div>
-                        @endif
-
+                        </div>
                     </div>
                 </div>
             </div>
@@ -141,15 +166,7 @@
     (function () {
         "use strict";
 
-        // -------- Main accountants table --------
-        $(function () {
-            $("#accountantTable").DataTable({
-                responsive: true,
-                lengthChange: true,
-                autoWidth: false,
-                buttons: ["copy", "csv", "excel", "pdf", "colvis"]
-            }).buttons().container().appendTo('#accountantTable_wrapper .col-md-6:eq(0)');
-        });
+        // Main listing uses the unified jQuery directory; ledger modal keeps its own DataTable.
 
         // -------- Helpers --------
         function fmt(num) {
@@ -325,5 +342,6 @@
         });
         </script>
     @endif
+    <script src="{{ asset('js/modern-account-directory.js') }}"></script>
 @endsection
 
