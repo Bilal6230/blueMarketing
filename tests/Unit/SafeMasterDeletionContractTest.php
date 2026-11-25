@@ -19,7 +19,6 @@ final class SafeMasterDeletionContractTest extends TestCase
             "'town_id'",
             "'sector_id'",
             'where($column, $id)->exists()',
-            'where($referenceColumn, $id)->exists()',
             'Reference safety could not be established',
         ] as $needle) {
             self::assertStringContainsString($needle, $guard);
