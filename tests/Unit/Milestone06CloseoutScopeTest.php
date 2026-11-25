@@ -49,7 +49,7 @@ final class Milestone06CloseoutScopeTest extends TestCase
         $this->assertStringNotContainsString('activity-audit:prune', $kernel);
         $this->assertStringNotContainsString('activity-audit:prune', $routes);
         $this->assertStringContainsString('public function run(int $actorId, string $source, Closure $work)', $runner);
-        $this->assertStringContainsString("DB::table('users')->where('id', $actorId)->exists()", $runner);
+        $this->assertStringContainsString('DB::table(\'users\')->where(\'id\', $actorId)->exists()', $runner);
         $this->assertStringNotContainsString('schedule(', $runner);
     }
 
