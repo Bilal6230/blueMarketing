@@ -196,7 +196,7 @@
                 let id = $(this).attr("data-id");
                 let name = $(this).attr("data-name");
                 $("#did").val(id);
-                $("#delete-data").html(name);
+                $("#delete-data").text(name);
                 $('#modal-delete').modal({
                     backdrop: 'static',
                     keyboard: false,
@@ -268,7 +268,7 @@
         <!-- /.modal-dialog -->
     </div> --}}
     {{-- Modal Update --}}
-    <div class="modal fade" id="modal-edit">
+    <div class="modal fade bm-account-finance-modal" id="modal-edit">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -350,7 +350,7 @@
         </div>
     </div>
     {{-- Modal delete --}}
-    <div class="modal fade" id="modal-delete">
+    <div class="modal fade bm-account-finance-modal" id="modal-delete">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
