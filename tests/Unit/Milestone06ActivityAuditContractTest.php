@@ -220,6 +220,25 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringContainsString('test_error_response_without_business_write_is_not_logged', $integration);
     }
 
+    public function test_strict_health_validates_trigger_metadata_and_transactional_engines(): void
+    {
+        $health = $this->source('app/Console/Commands/ActivityAuditHealth.php');
+        $validator = $this->source('app/Support/Audit/TriggerDefinitionValidator.php');
+        $this->assertStringContainsString('information_schema.TABLES', $health);
+        $this->assertStringContainsString('information_schema.TRIGGERS', $health);
+        $this->assertStringContainsString('TriggerDefinitionValidator::valid(', $health);
+        $this->assertStringContainsString('Invalid trigger definitions:', $health);
+        $this->assertStringContainsString('Nontransactional/unknown engines:', $health);
+        $this->assertStringContainsString("'InnoDB'", $health);
+        $this->assertStringContainsString('EVENT_OBJECT_TABLE', $validator);
+        $this->assertStringContainsString('EVENT_MANIPULATION', $validator);
+        $this->assertStringContainsString('ACTION_TIMING', $validator);
+        $this->assertStringContainsString('@activity_audit_token', $validator);
+        $this->assertStringContainsString('activity_audit_impacts', $validator);
+        $this->assertStringNotContainsString('DB::statement(', $health);
+        $this->assertStringNotContainsString('DB::unprepared(', $health);
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
