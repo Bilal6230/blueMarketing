@@ -14,7 +14,7 @@ use Tests\TestCase;
  */
 final class ActivityAuditMysqlTriggerRollbackTest extends TestCase
 {
-    private const CONNECTION = 'mysql';
+    private const CONNECTION = 'activity_audit_local_mysql_probe';
     private ?string $token = null;
     private ?int $userId = null;
     private $originalStatus = null;
@@ -23,16 +23,38 @@ final class ActivityAuditMysqlTriggerRollbackTest extends TestCase
     {
         parent::setUp();
 
-        $config = config('database.connections.'.self::CONNECTION);
-        if (!is_array($config) || ($config['driver'] ?? null) !== 'mysql') {
-            $this->markTestSkipped('Requires a configured local MySQL connection.');
+        // phpunit.xml force-overrides DB_CONNECTION=sqlite and DB_DATABASE=:memory:.
+        // Read the existing local .env WITHOUT modifying global test variables.
+        // Reusing config('database.connections.mysql') unmodified would point
+        // the MySQL connection at :memory: and can silently skip this gate.
+        $envFile = base_path('.env');
+        if (!is_file($envFile)) {
+            $this->markTestSkipped('Existing local .env is required for the MySQL probe.');
+        }
+        $values = \Dotenv\Dotenv::parse(file_get_contents($envFile));
+        $host = strtolower(trim((string) ($values['DB_HOST'] ?? '127.0.0.1')));
+        $database = trim((string) ($values['DB_DATABASE'] ?? ''));
+        if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)
+            || $database === '' || $database === ':memory:'
+            || !empty($values['DATABASE_URL'])) {
+            $this->markTestSkipped('A named loopback MySQL database in local .env is required.');
         }
 
-        // This probe must never run over a remote/live database connection.
-        $host = strtolower(trim((string) ($config['host'] ?? '')));
-        if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
-            $this->markTestSkipped('MySQL trigger probe is restricted to a local database host.');
+        $config = config('database.connections.mysql');
+        if (!is_array($config)) {
+            $this->markTestSkipped('Laravel MySQL driver configuration is missing.');
         }
+        config()->set('database.connections.'.self::CONNECTION, array_merge($config, [
+            'driver' => 'mysql',
+            'url' => null,
+            'host' => $host,
+            'port' => $values['DB_PORT'] ?? '3306',
+            'database' => $database,
+            'username' => $values['DB_USERNAME'] ?? 'root',
+            'password' => $values['DB_PASSWORD'] ?? '',
+            'unix_socket' => $values['DB_SOCKET'] ?? '',
+        ]));
+        DB::purge(self::CONNECTION);
 
         $db = DB::connection(self::CONNECTION);
         if ($db->getDriverName() !== 'mysql'
@@ -84,6 +106,7 @@ final class ActivityAuditMysqlTriggerRollbackTest extends TestCase
                 $db->statement('SET @activity_audit_token = NULL');
             }
         }
+        DB::disconnect(self::CONNECTION);
         parent::tearDown();
     }
 
