@@ -82,6 +82,77 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringContainsString("->whereNull('activity_audit_id')", $middleware);
     }
 
+    public function test_read_only_ajax_post_is_not_logged_as_mutation_without_write_evidence(): void
+    {
+        $source = $this->source('app/Http/Middleware/RecordActivityAudit.php');
+        $capture = $this->source('app/Support/Audit/ActivityAuditCapture.php');
+        $this->assertStringContainsString('hasObservedWrites()', $source);
+        $this->assertStringContainsString('if (!$hasCapturedRows && (!$capture || !$capture->hasObservedWrites()))', $source);
+        $this->assertStringContainsString("where('request_token', "+', $source);
+        $this->assertStringContainsString('public function hasObservedWrites(): bool', $capture);
+        $this->assertStringContainsString("'cache_locks'", $capture);
+    }
+
+    public function test_module_row_triggers_cover_high_value_modules_without_sensitive_fields(): void
+    {
+        $migration = $this->source('database/migrations/2026_11_25_133000_expand_activity_audit_row_triggers.php');
+        foreach (['users', 'roles', 'leads', 'bookings', 'booking_details',
+                  'employee_tasks', 'daily_voucher_approvals'] as $table) {
+            $this->assertStringContainsString("'".$table."'", $migration);
+        }
+        $this->assertStringContainsString("['INSERT'=>'ai', 'UPDATE'=>'au', 'DELETE'=>'ad']", $migration);
+        $this->assertStringContainsString('@activity_audit_token', $migration);
+        $this->assertStringContainsString("'db_trigger_row'", $migration);
+        foreach (["'password'", "'remember_token'", "'email'", "'phone_number'",
+                  "'t_number'", "'description'", "'check_history'"] as $sensitive) {
+            $this->assertStringNotContainsString($sensitive, $migration);
+        }
+    }
+
+    public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
+    {
+        $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
+        $controller = $this->source('app/Http/Controllers/ActivityAuditController.php');
+        $this->assertStringContainsString('<x-finance.voucher-column-filters />', $blade);
+        $this->assertStringContainsString('$.blueVoucherColumnFilters.init', $blade);
+        $this->assertStringContainsString('$.blueVoucherPagination.render', $blade);
+        $this->assertStringContainsString('dv-excel-trigger', $blade);
+        $this->assertStringContainsString('dv-page-length', $blade);
+        $this->assertStringContainsString('dv-table-search', $blade);
+        $this->assertStringContainsString('$.blueTableSkeleton.show', $blade);
+        $this->assertStringContainsString('audit-detail-modal', $blade);
+        $this->assertStringContainsString('audit-view', $blade);
+        $this->assertStringContainsString('db_trigger_row', $blade);
+        $this->assertStringContainsString('affected_tables', $blade);
+        $this->assertStringContainsString('sql_statement', $blade);
+        $this->assertStringContainsString('->offset($start)->limit($length)->get()', $controller);
+        $this->assertStringContainsString("activity_audit_impacts", $controller);
+        $this->assertStringContainsString("'recordsFiltered'", $controller);
+        $this->assertStringNotContainsString('method="POST"', $blade);
+        $this->assertStringNotContainsString('method="DELETE"', $blade);
+    }
+}
++"captureToken)", $source);
+        $this->assertStringContainsString('public function hasObservedWrites(): bool', $capture);
+        $this->assertStringContainsString("'cache_locks'", $capture);
+    }
+
+    public function test_module_row_triggers_cover_high_value_modules_without_sensitive_fields(): void
+    {
+        $migration = $this->source('database/migrations/2026_11_25_133000_expand_activity_audit_row_triggers.php');
+        foreach (['users', 'roles', 'leads', 'bookings', 'booking_details',
+                  'employee_tasks', 'daily_voucher_approvals'] as $table) {
+            $this->assertStringContainsString("'".$table."'", $migration);
+        }
+        $this->assertStringContainsString("['INSERT'=>'ai', 'UPDATE'=>'au', 'DELETE'=>'ad']", $migration);
+        $this->assertStringContainsString('@activity_audit_token', $migration);
+        $this->assertStringContainsString("'db_trigger_row'", $migration);
+        foreach (["'password'", "'remember_token'", "'email'", "'phone_number'",
+                  "'t_number'", "'description'", "'check_history'"] as $sensitive) {
+            $this->assertStringNotContainsString($sensitive, $migration);
+        }
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
