@@ -49,7 +49,7 @@ final class ActivityAuditCapture
             $verb = strtoupper(strtok($sql, ' '));
             $operation = in_array($verb, ['INSERT', 'REPLACE'], true) ? 'INSERT' : $verb;
             $table = strtolower($match[1]);
-            if (str_starts_with($table, 'activity_audit') || $table === 'sessions') {
+            if (str_starts_with($table, 'activity_audit') || in_array($table, ['sessions', 'cache', 'cache_locks'], true)) {
                 return;
             }
             $key = $table.':'.$operation;
@@ -101,6 +101,15 @@ final class ActivityAuditCapture
     public function stop(): void
     {
         $this->active = false;
+    }
+
+    /**
+     * A write-style HTTP method is not proof that a business mutation happened.
+     * Many legacy account lookup endpoints are POST requests with no writes.
+     */
+    public function hasObservedWrites(): bool
+    {
+        return $this->rows !== [] || $this->statements !== [];
     }
 
     public function impacts(): array
