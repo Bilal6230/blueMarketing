@@ -298,6 +298,20 @@ class Milestone06ActivityAuditContractTest extends TestCase
         }
     }
 
+    public function test_authenticated_mobile_api_audit_pipeline_has_feature_coverage(): void
+    {
+        $source = $this->source('tests/Feature/ActivityAuditAuthenticatedApiTest.php');
+        $routes = $this->source('routes/api.php');
+        $this->assertStringContainsString('Sanctum::actingAs($user)', $source);
+        $this->assertStringContainsString("'auth:sanctum', RecordActivityAudit::class", $source);
+        $this->assertStringContainsString('test_authenticated_mobile_style_api_write_records_real_actor_and_impact', $source);
+        $this->assertStringContainsString('test_unauthenticated_api_mutation_is_denied_without_write_or_audit', $source);
+        $this->assertStringContainsString('test_authenticated_api_read_only_post_creates_no_false_activity', $source);
+        $this->assertStringContainsString('\'actor_id\' => (int) $request->user()->getAuthIdentifier()', $source);
+        $this->assertStringContainsString("Route::post('leads', [MobileCrmController::class, 'store'])", $routes);
+        $this->assertStringNotContainsString("Schema::connection('mysql')->create", $source);
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
