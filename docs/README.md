@@ -1,3 +1,29 @@
+# 2026-11-25 — M06 trigger definition owner gate PASS; opt-in isolated REAL MySQL rollback integration probe (not yet run)
+
+**Owner verification:** `ActivityAuditTriggerDefinitionValidatorTest` **5/5 PASS (7 assertions)**, `Milestone06ActivityAuditContractTest` **15/15 PASS (170 assertions)**, and `activity-audit:health --strict` **PASS** on MySQL. The health output shows 6 activity events, 34 impacts, zero stale unlinked snapshots or missing-parent references, **129/129 named triggers**, **0 invalid trigger definitions**, **0 nontransactional/unknown engines**, **0 missing triggers**, and **0 skipped source tables**. This is verified source/database metadata coverage, not an actual MySQL rollback execution test.
+
+**New code:** `tests/Feature/ActivityAuditMysqlTriggerRollbackTest.php` is a genuinely MySQL-backed, **opt-in** isolated integration test. It exercises real `AFTER INSERT` audit-trigger behavior during transaction rollback and commit, including token correlation and an allowlisted JSON snapshot. It only runs when `AUDIT_MYSQL_TEST_DATABASE` names an **existing EMPTY separate MySQL test schema**, and explicitly rejects the application's configured MySQL database or any test schema containing even one table. It temporarily creates two disposable fixture tables and one trigger **only in the empty separate test schema**, tests rollback and commit, then drops those fixtures in `tearDown`. No existing data or production application tables are modified; no new persistent table/migration. The probe verifies MySQL trigger atomicity using test fixtures, *not* live accounting rows. Added a source-level safety contract test.
+
+**Regular regression (no separate MySQL test DB required):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan test --filter=Milestone06ActivityAuditContractTest
+php artisan activity-audit:health --strict
+```
+**Optional real MySQL transaction probe:** Create/select a genuinely separate **EMPTY local testing database** using your normal database administration tool (never use production or your current configured app database). Then, in PowerShell, replace the name below with that empty schema:
+```powershell
+$env:AUDIT_MYSQL_TEST_DATABASE = "blue_audit_isolated_test"
+php artisan test --filter=ActivityAuditMysqlTriggerRollbackTest
+Remove-Item Env:\AUDIT_MYSQL_TEST_DATABASE
+```
+If the env var is absent, tests will deliberately report SKIPPED; a skip does NOT prove MySQL rollback. If the test schema is the app schema or is nonempty, the test fails closed without changing existing tables. If MySQL test DB setup is unavailable, leave this gate pending rather than claiming success.
+
+**Next remaining M06:** End-to-end mobile API write with authenticated employee-app actor, background/CLI audit attribution and scope, retention/performance strategy, exception/no-response gap, final acceptance. M03 Labour CP is still ON HOLD. Keep prior user-accepted browser/UI gates closed; M06 IN PROGRESS.
+
+---
+
 # 2026-11-25 — M06 owner verified 19 tests / 171 assertions; strict audit trigger definition + transactional-engine validation added
 
 **Owner-proven prior gate:** `ActivityAuditTransactionBoundaryTest` **5/5 PASS (14 assertions)**, `Milestone06ActivityAuditContractTest` **14/14 PASS (157 assertions)**, strict MySQL health 129 expected audit triggers, 0 missing, 0 skipped, 0 orphan records or missing-parent references. That user-verified gate stands; do not repeat accepted browser checks.
