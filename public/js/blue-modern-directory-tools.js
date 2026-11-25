@@ -12,14 +12,13 @@ function mount(options){
   $table.attr('id',id);
   var titles=$table.find('thead th').map(function(){return $.trim($(this).find('span').first().text()||$(this).clone().children('button').remove().end().text());}).get();
   var actions=titles.map(function(t,i){return /^(actions?|options?)$/i.test(t)?i:-1;}).filter(function(i){return i>=0;});
-  var enabled=titles.map(function(_,i){return actions.indexOf(i)<0;});
+  var enabled=titles.map(function(){return true;});
   var $toolbar=$('<div>',{'class':'bm-modern-export-toolbar','aria-label':'Table exports and column controls'});
   var formats=[['copy','Copy'],['csv','CSV'],['excel','Excel'],['pdf','PDF'],['print','Print']];
   var $visibility=$('<div>',{'class':'bm-modern-column-menu'});
   var $toggle=$('<button>',{type:'button','class':'bm-modern-export-btn bm-modern-col-toggle','aria-expanded':'false',text:'Column Visibility'});
   var $menu=$('<div>',{'class':'bm-modern-column-options',role:'group','aria-label':'Visible table columns'}).hide();
   titles.forEach(function(title,i){
-    if(actions.indexOf(i)>=0)return;
     var $label=$('<label>',{'class':'bm-modern-column-option'});
     var $check=$('<input>',{type:'checkbox',checked:true,'data-column':i});
     $check.on('change',function(){
