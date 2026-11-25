@@ -47,7 +47,7 @@ Route::prefix('v1/mobile')->group(function () {
     Route::post('auth/login', [MobileAuthController::class, 'login'])
         ->middleware('throttle:5,1');
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', \App\Http\Middleware\RecordActivityAudit::class])->group(function () {
         Route::get('auth/me', [MobileAuthController::class, 'me']);
         Route::post('auth/logout', [MobileAuthController::class, 'logout']);
         Route::get('projects', [MobileProjectController::class, 'index']);
@@ -132,7 +132,7 @@ Route::get('/test', function () {
 | permissions are enforced on every request.
 */
 {
-    Route::middleware(['auth:sanctum', 'throttle:30,1'])
+    Route::middleware(['auth:sanctum', 'throttle:30,1', \App\Http\Middleware\RecordActivityAudit::class])
         ->prefix('finance/projects/{projectId}')
         ->group(function (): void {
             $controller = \App\Http\Controllers\Api\Finance\FinanceApiController::class;
