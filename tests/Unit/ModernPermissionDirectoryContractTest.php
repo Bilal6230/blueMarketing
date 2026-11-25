@@ -26,7 +26,7 @@ final class ModernPermissionDirectoryContractTest extends TestCase
             'data-account-kind="permission"',
             'bm-account-card', 'bm-account-table-wrap',
             'bm-account-table', 'id="bmAccountDirectory"',
-            'bm-account-loading', 'modern-account-directory.js',
+            'bm-cell-skeleton-row', 'modern-account-directory.js',
             'modern-permission-directory.css',
         ] as $needle) {
             self::assertStringContainsString($needle, $view);
