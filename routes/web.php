@@ -44,6 +44,8 @@ Route::middleware(['auth'])->get('/home', [DashboardController::class, 'index'])
 Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action', \App\Http\Middleware\RecordActivityAudit::class])->group(function () {
     Route::get('activity-audit', [\App\Http\Controllers\ActivityAuditController::class, 'index'])
         ->middleware('permission:read activity audit')->name('activity-audit.index');
+    Route::get('activity-audit/{audit}', [\App\Http\Controllers\ActivityAuditController::class, 'show'])
+        ->whereNumber('audit')->middleware('permission:read activity audit')->name('activity-audit.show');
     Route::get('attendance', [AttendanceController::class, 'index'])->middleware('permission:read attendance')->name('attendance.index');
     Route::post('attendance/device', [AttendanceController::class, 'saveDevice'])->middleware('permission:update setting')->name('attendance.device.save');
     Route::post('attendance/mapping', [AttendanceController::class, 'saveMapping'])->middleware('permission:update setting')->name('attendance.mapping.save');
