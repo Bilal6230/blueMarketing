@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  */
 final class ActivityAuditHealth extends Command
 {
-    protected $signature = 'activity-audit:health {--strict : Fail when any applicable row-capture trigger is missing}';
+    protected $signature = 'activity-audit:health {--strict : Fail for missing/invalid triggers, nontransactional storage or broken audit evidence}';
     protected $description = 'Check audit tables, transaction-linked rows and MySQL audit trigger coverage without changing records';
 
     private const TRIGGER_SUFFIXES = ['ai', 'au', 'ad'];
@@ -92,13 +92,28 @@ final class ActivityAuditHealth extends Command
             return $issues > 0 ? self::FAILURE : self::SUCCESS;
         }
 
+        // Checking names alone is insufficient: a trigger with the right
+        // name could point at a different table/event, run BEFORE a write, or
+        // silently omit the request token / audit evidence insertion.
         $installed = DB::table('information_schema.TRIGGERS')
             ->where('TRIGGER_SCHEMA', DB::getDatabaseName())
-            ->where('TRIGGER_NAME', 'like', 'bm_audit_%')
-            ->pluck('TRIGGER_NAME')->all();
-        $installedSet = array_fill_keys($installed, true);
+            ->where('TRIGGER_NAME', 'like', 'bm\\_audit\\_%')
+            ->get(['TRIGGER_NAME', 'EVENT_OBJECT_TABLE', 'EVENT_MANIPULATION',
+                'ACTION_TIMING', 'ACTION_STATEMENT']);
+        $installedByName = $installed->keyBy('TRIGGER_NAME');
+        $engines = DB::table('information_schema.TABLES')
+            ->where('TABLE_SCHEMA', DB::getDatabaseName())
+            ->whereIn('TABLE_NAME', array_merge(self::EXPECTED_TABLES, ['activity_audits', 'activity_audit_impacts']))
+            ->pluck('ENGINE', 'TABLE_NAME')->all();
+        $badEngines = [];
+        foreach (['activity_audits', 'activity_audit_impacts'] as $table) {
+            if (strcasecmp((string) ($engines[$table] ?? ''), 'InnoDB') !== 0) {
+                $badEngines[] = $table.' ('.($engines[$table] ?? 'unknown').')';
+            }
+        }
         $expectedCount = 0;
         $missing = [];
+        $invalid = [];
         $skipped = [];
         foreach (self::EXPECTED_TABLES as $table) {
             if (!Schema::hasTable($table)) {
@@ -121,26 +136,44 @@ final class ActivityAuditHealth extends Command
                 }
                 $this->line('COMPOSITE PRIMARY KEY '.$table.' ('.implode(', ', $primary).')');
             }
-            foreach (self::TRIGGER_SUFFIXES as $suffix) {
+            if (strcasecmp((string) ($engines[$table] ?? ''), 'InnoDB') !== 0) {
+                $badEngines[] = $table.' ('.($engines[$table] ?? 'unknown').')';
+            }
+            foreach (['ai' => 'INSERT', 'au' => 'UPDATE', 'ad' => 'DELETE'] as $suffix => $event) {
                 $trigger = 'bm_audit_'.$table.'_'.$suffix;
                 $expectedCount++;
-                if (!isset($installedSet[$trigger])) {
+                $definition = $installedByName->get($trigger);
+                if (!$definition) {
                     $missing[] = $trigger;
+                    continue;
+                }
+                $body = (string) $definition->ACTION_STATEMENT;
+                if ($definition->EVENT_OBJECT_TABLE !== $table
+                    || strtoupper((string) $definition->EVENT_MANIPULATION) !== $event
+                    || strtoupper((string) $definition->ACTION_TIMING) !== 'AFTER'
+                    || !str_contains($body, '@activity_audit_token')
+                    || !preg_match('/INSERT\\s+INTO\\s+`?activity_audit_impacts`?/i', $body)
+                    || !str_contains($body, 'db_trigger_row')) {
+                    $invalid[] = $trigger.' (wrong table/event/timing or missing audit capture)';
                 }
             }
         }
 
         $this->line('Expected applicable triggers: '.$expectedCount);
         $this->line('Missing applicable triggers: '.count($missing));
+        $this->line('Invalid trigger definitions: '.count($invalid));
+        $this->line('Nontransactional/unknown engines: '.count($badEngines));
         $this->line('Skipped source tables: '.count($skipped));
         foreach ($missing as $trigger) $this->warn('MISSING '.$trigger);
+        foreach ($invalid as $trigger) $this->warn('INVALID '.$trigger);
+        foreach ($badEngines as $engine) $this->warn('ENGINE '.$engine.' (transactional auditing requires InnoDB)');
         foreach ($skipped as $table) $this->line('SKIPPED '.$table);
 
-        if ($issues > 0 || ($this->option('strict') && count($missing) > 0)) {
+        if ($issues > 0 || ($this->option('strict') && ($missing !== [] || $invalid !== [] || $badEngines !== []))) {
             return self::FAILURE;
         }
-        if ($missing !== []) {
-            $this->warn('Partial row coverage: missing trigger names shown above. Use --strict to fail the gate.');
+        if ($missing !== [] || $invalid !== [] || $badEngines !== []) {
+            $this->warn('Audit capture integrity is incomplete. Use --strict to fail this gate.');
         }
         $this->info('Health check completed without modifying business or audit data.');
         return self::SUCCESS;
