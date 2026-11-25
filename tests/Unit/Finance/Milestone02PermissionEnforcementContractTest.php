@@ -110,8 +110,8 @@ final class Milestone02PermissionEnforcementContractTest extends TestCase
             'labours.store'=>'permission:create labour',
             'labours.update'=>'permission:update labour',
             'labours.destroy'=>'permission:delete labour',
-            'labours.attendance'=>'permission:create attendance|create labour',
-            'attendance.week.load'=>'permission:read attendance|read labour',
+            'labours.attendance'=>'permission:create attendance',
+            'attendance.week.load'=>'permission:read attendance',
             'labours.updateRate'=>'permission:update labour',
         ] as $route=>$ability) {
             self::assertStringContainsString("middleware('".$ability."')->name('".$route."')",$routes);
