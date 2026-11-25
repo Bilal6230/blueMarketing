@@ -221,6 +221,7 @@ $(function(){
     });
     if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
     $body.attr('aria-busy','false');
+    if(exportControls)exportControls.refresh();
     updateColumnButtons();
     $('#projectSummary').text('Showing '+(list.length?start+1:0)+'–'+Math.min(start+size,list.length)+' of '+list.length+' projects');
     if($.blueVoucherPagination){
@@ -385,6 +386,10 @@ $(function(){
         $('#projectFormErrors').text(body.message||'Unable to save project. Please try again.');
         inform(body.message||'Unable to save project.',true);
       }).always(function(){$save.prop('disabled',false).html('<i class="fas fa-check mr-1"></i> Save Project');});
+  });
+  var exportControls=$.blueModernDirectoryTools.mount({
+    card:'.project-card',table:'#projectsTable',title:'Projects List',
+    getRows:function(){return activeRows().map(function(p){return [p.id,p.project,p.project_code||'Legacy',(p.address||'')+' '+(p.location||''),presentDate(p.opening_date)+' → '+presentDate(p.closing_date),Number(p.corner_charge_percent||0).toFixed(2)+'% / '+Number(p.facing_charge_percent||0).toFixed(2)+'%',columnValue(p,'is_active'),field(p.created_at)||'—'];});}
   });
   render();
 });
