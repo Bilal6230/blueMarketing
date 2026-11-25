@@ -214,6 +214,7 @@ class BookingEditPageTest extends TestCase
     public function test_price_only_form_submits_current_metadata_and_can_save_pricing(): void
     {
         $booking = $this->createBooking();
+        $this->seedOriginalSale($booking);
         $this->user->givePermissionTo(Permission::create(['name' => 'update booking price', 'guard_name' => 'web']));
         DB::table('booking_details')->insert([
             'booking_id' => $booking->id, 'installment_details' => 'Due',
@@ -268,7 +269,8 @@ class BookingEditPageTest extends TestCase
         $this->assertSame('2026-09-08', \Carbon\Carbon::parse($updated->booking_date)->format('Y-m-d'));
         $this->assertSame('active', $updated->status);
         $this->assertSame((int) $original->broker_id, (int) $updated->broker_id);
-        $this->assertSame($accountingBefore, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
+        $this->assertOriginalSaleMatches($updated, (string) $updated->total_price, '2026-09-08');
+        $this->assertNotSame($accountingBefore, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
         $this->assertSame(0, \App\Models\BookingDetail::where('booking_id', $booking->id)->count());
     }
 
@@ -288,8 +290,8 @@ class BookingEditPageTest extends TestCase
         $metadata = $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
             ->get(route('booking.edit', ['id' => $booking->id], false));
         $metadata->assertOk()->assertSee('Save Changes')->assertSee('Confirm Booking Update');
-        $this->assertStringContainsString('const bookingDate = document.getElementById(\'booking_date\');', $metadata->getContent());
-        $this->assertStringContainsString('const status = document.getElementById(\'status\');', $metadata->getContent());
+        $this->assertStringContainsString('const bookingDate = $(\'#booking_date\')[0];', $metadata->getContent());
+        $this->assertStringContainsString('const status = $(\'#status\')[0];', $metadata->getContent());
     }
 
     public function test_unauthenticated_update_is_blocked(): void
@@ -377,6 +379,7 @@ class BookingEditPageTest extends TestCase
     public function test_booking_date_only_update_preserves_schedule_and_accounting(): void
     {
         $booking = $this->createBooking();
+        $this->seedOriginalSale($booking);
         DB::table('booking_details')->insert(['booking_id' => $booking->id, 'installment_details' => 'Due', 'amount' => 100000, 'due_date' => '2026-10-01']);
         $this->authorizeUpdate();
         $scheduleBefore = $this->snapshot(['booking_details']);
@@ -388,7 +391,8 @@ class BookingEditPageTest extends TestCase
 
         $this->assertSame('2026-09-20', \Carbon\Carbon::parse($booking->fresh()->booking_date)->format('Y-m-d'));
         $this->assertSame($scheduleBefore, $this->snapshot(['booking_details']));
-        $this->assertSame($accountingBefore, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
+        $this->assertOriginalSaleMatches($booking->fresh(), (string) $booking->total_price, '2026-09-20');
+        $this->assertNotSame($accountingBefore, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
         $audit = json_decode(DB::table('booking_edit_audits')->sole()->new_values, true);
         $this->assertSame('2026-09-20', $audit['booking_date']);
     }
@@ -640,6 +644,7 @@ class BookingEditPageTest extends TestCase
     public function test_amendment_resets_schedule_and_preserves_all_accounting(): void
     {
         $booking = $this->createBooking();
+        $this->seedOriginalSale($booking);
         $this->receipt($booking, '1000000.00', 1, null);
         DB::table('booking_details')->insert(['booking_id' => $booking->id, 'installment_details' => 'Due', 'amount' => 100000, 'due_date' => '2026-10-01']);
         $before = $this->snapshot(array_diff($this->protectedTables(), ['booking_details']));
@@ -649,7 +654,8 @@ class BookingEditPageTest extends TestCase
         $this->assertSame('5150000.00', $result['new_outstanding']);
         $this->assertTrue($result['schedule_reset']);
         $this->assertSame(0, \App\Models\BookingDetail::where('booking_id', $booking->id)->count());
-        $this->assertSame($before, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
+        $this->assertOriginalSaleMatches($booking->fresh(), '6150000.00', '2026-09-08');
+        $this->assertNotSame($before, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
         $audit = DB::table('booking_edit_audits')->sole();
         $this->assertSame('booking_price_amendment', $audit->operation);
         $this->assertCount(1, json_decode($audit->old_values, true)['schedule_before']);
@@ -707,6 +713,7 @@ class BookingEditPageTest extends TestCase
     public function test_same_total_preserves_schedule_and_refund_requires_no_voucher(): void
     {
         $booking = $this->createBooking();
+        $this->seedOriginalSale($booking);
         DB::table('booking_details')->insert(['booking_id' => $booking->id, 'installment_details' => 'Due', 'amount' => 100000, 'due_date' => '2026-10-01']);
         $service = app(\App\Services\Booking\BookingAmendmentService::class);
         $sameTotal = $service->update($booking->id, $this->projectId,
@@ -723,12 +730,14 @@ class BookingEditPageTest extends TestCase
         $this->assertSame('0.00', $refund['new_outstanding']);
         $this->assertSame('1950000.00', $refund['refund_due']);
         $this->assertTrue($refund['schedule_reset']);
-        $this->assertSame($before, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
+        $this->assertOriginalSaleMatches($booking->fresh(), (string) $booking->fresh()->total_price, '2026-09-08');
+        $this->assertNotSame($before, $this->snapshot(array_diff($this->protectedTables(), ['booking_details'])));
     }
 
     public function test_broker_and_price_change_share_one_audit_and_transaction(): void
     {
         $booking = $this->createBooking();
+        $this->seedOriginalSale($booking);
         $newBroker = $this->createBroker('Combined Broker', $this->projectId);
         $before = $this->snapshot($this->protectedTables());
         $result = app(\App\Services\Booking\BookingAmendmentService::class)->update($booking->id, $this->projectId,
@@ -738,7 +747,8 @@ class BookingEditPageTest extends TestCase
         $this->assertSame($newBroker, (int) $booking->fresh()->broker_id);
         $this->assertSame(1, DB::table('booking_edit_audits')->count());
         $this->assertSame('booking_price_amendment', DB::table('booking_edit_audits')->sole()->operation);
-        $this->assertSame($before, $this->snapshot($this->protectedTables()));
+        $this->assertOriginalSaleMatches($booking->fresh(), (string) $booking->fresh()->total_price, '2026-09-08');
+        $this->assertNotSame($before, $this->snapshot($this->protectedTables()));
     }
 
     public function test_stale_paid_snapshot_rejects_combined_change_without_mutation(): void
@@ -790,6 +800,63 @@ class BookingEditPageTest extends TestCase
         $this->assertSame(0, DB::table('booking_edit_audits')->count());
         $this->assertSame(0, DB::transactionLevel());
         $this->assertStringNotContainsString('Deterministic audit-stage failure', session('errors')->first('booking'));
+    }
+
+    /** One balanced, detail-linked original sale for amendment integration tests. */
+    private function seedOriginalSale(Booking $booking): void
+    {
+        $total = (string) $booking->total_price;
+        $date = \Carbon\Carbon::parse($booking->booking_date)->format('Y-m-d');
+        $boId = DB::table('customer_ledger')->insertGetId([
+            'customer_id' => $booking->customer_id,
+            'project_id' => $booking->project_id,
+            'plot_id' => $booking->plot_id,
+            'date' => $date, 'transaction_type' => 'Bo',
+            'amount_in' => $total, 'amount_out' => '0.00', 'is_active' => 1,
+        ]);
+        $voucherId = DB::table('journal_vouchers')->insertGetId([
+            'project_id' => $booking->project_id, 'type' => 'SV',
+            'reference' => 'BOOKING-'.$booking->id, 'date' => $date,
+            'total_debit' => $total, 'total_credit' => $total,
+        ]);
+        foreach (['debit', 'credit'] as $side) {
+            $in = $side === 'debit';
+            $detailId = DB::table('journal_voucher_details')->insertGetId([
+                'journal_voucher_id' => $voucherId,
+                'debit' => $in ? $total : '0.00',
+                'credit' => $in ? '0.00' : $total,
+            ]);
+            DB::table('ledgers')->insert([
+                'type' => 'SV', 'type_id' => $voucherId,
+                'journal_voucher_detail_id' => $detailId,
+                'customer_ledger_id' => $boId, 'date' => $date,
+                'amount_in' => $in ? $total : '0.00',
+                'amount_out' => $in ? '0.00' : $total,
+                'is_active' => 1,
+            ]);
+        }
+    }
+
+    private function assertOriginalSaleMatches(Booking $booking, string $total, string $date): void
+    {
+        $voucher = DB::table('journal_vouchers')
+            ->where('project_id', $booking->project_id)->where('type', 'SV')
+            ->where('reference', 'BOOKING-'.$booking->id)->sole();
+        $this->assertSame($date, $voucher->date);
+        $this->assertSame(0, bccomp((string) $voucher->total_debit, $total, 2));
+        $this->assertSame(0, bccomp((string) $voucher->total_credit, $total, 2));
+        $details = DB::table('journal_voucher_details')->where('journal_voucher_id', $voucher->id)->get();
+        $this->assertCount(2, $details);
+        $this->assertSame(0, bccomp((string) $details->sum('debit'), $total, 2));
+        $this->assertSame(0, bccomp((string) $details->sum('credit'), $total, 2));
+        $legs = DB::table('ledgers')->where('type', 'SV')->where('type_id', $voucher->id)->get();
+        $this->assertCount(2, $legs);
+        $this->assertSame(0, bccomp((string) $legs->sum('amount_in'), $total, 2));
+        $this->assertSame(0, bccomp((string) $legs->sum('amount_out'), $total, 2));
+        foreach ($legs as $leg) $this->assertSame($date, $leg->date);
+        $bo = DB::table('customer_ledger')->where('id', $legs->first()->customer_ledger_id)->sole();
+        $this->assertSame($date, $bo->date);
+        $this->assertSame(0, bccomp((string) $bo->amount_in, $total, 2));
     }
 
     private function receipt(Booking $booking, string $amount, int $paymentType, $status): int
