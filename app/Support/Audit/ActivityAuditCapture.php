@@ -4,6 +4,9 @@ namespace App\Support\Audit;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Events\TransactionBeginning;
+use Illuminate\Database\Events\TransactionCommitted;
+use Illuminate\Database\Events\TransactionRolledBack;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 
@@ -18,6 +21,7 @@ final class ActivityAuditCapture
     private bool $active = true;
     private array $rows = [];
     private array $statements = [];
+    private array $transactionSnapshots = [];
 
     /** Only known non-secret values can leave the originating business record. */
     private const VISIBLE = [
@@ -38,6 +42,26 @@ final class ActivityAuditCapture
 
     public function start(): void
     {
+        // SQL and Eloquent hooks fire *before* the surrounding DB transaction
+        // is committed. Save a snapshot at each transaction boundary so a
+        // caught rollback does not masquerade as a committed model mutation.
+        Event::listen(TransactionBeginning::class, function (TransactionBeginning $event): void {
+            if (!$this->active) return;
+            $this->transactionSnapshots[] = [
+                'rows' => $this->rows,
+                'statements' => $this->statements,
+            ];
+        });
+        Event::listen(TransactionCommitted::class, function (TransactionCommitted $event): void {
+            if (!$this->active || $this->transactionSnapshots === []) return;
+            array_pop($this->transactionSnapshots);
+        });
+        Event::listen(TransactionRolledBack::class, function (TransactionRolledBack $event): void {
+            if (!$this->active || $this->transactionSnapshots === []) return;
+            $snapshot = array_pop($this->transactionSnapshots);
+            $this->rows = $snapshot['rows'];
+            $this->statements = $snapshot['statements'];
+        });
         DB::listen(function (QueryExecuted $query): void {
             if (!$this->active) {
                 return;
