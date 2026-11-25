@@ -1,3 +1,11 @@
+# 2026-11-25 — M02 OWNER ACCEPTED / CLOSED
+
+Owner ran `Milestone02BookingLabourPermissionsContractTest` and confirmed **6 PASS / 95 assertions**. All five current browser test groups were previously explicitly confirmed **PASS**: Booking CRUD vs separate Price Update, Leads CRUD vs Assign Lead, Labour Master vs Attendance, Accounting read-only Write denial, and Roles permission revocation/visibility/direct endpoint guards. Previously accepted Stock, Tasks, Users and finance permission gates are preserved. **Final owner-accepted M02 local scope: CLOSED.** No repeat browser tests needed.
+
+The three permission-only migrations previously listed below have no separately pasted migration-status output in this close-out; do not assert live production deployment. M03 Labour CP ON HOLD; M01/M04/M05/M06 CLOSED.
+
+---
+
 # 2026-11-25 — M02 cross-module browser acceptance: OWNER PASS
 
 **Owner confirmed all browser checks PASS** for the final permissions matrix:
