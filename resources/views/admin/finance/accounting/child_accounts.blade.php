@@ -1,6 +1,7 @@
 @extends('admin.layouts.master')
+@push('style')<link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}">@endpush
 @section('content')
-    <div class="content-wrapper">
+    <div class="content-wrapper bm-modern-accounts" data-account-kind="subhead">
         <!-- Content Header (Page header) -->
         <div class="content-header">
             <div class="container-fluid">
@@ -25,9 +26,9 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <div class="card">
-                            @can('create lead')
-                                <div class="card-header">
+                        <div class="card bm-account-card">
+                            @can('create accounting')
+                                <div class="card-header bm-account-create-source">
                                     {{-- <h3 class="card-title">
                                         <a href="#" class="btn btn-sm btn-success" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i class="fas fa-plus"></i> Add</a>
                                     </h3> --}}
@@ -127,15 +128,15 @@
                                 </div>
                             @endcan
                             <!-- /.card-header -->
-                            <div class="card-body table-responsive">
-                                <table id="example1" class="table table-bordered table-striped">
+                            <div class="card-body table-responsive bm-account-table-wrap"><div class="bm-account-loading" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                                <table id="bmAccountDirectory" class="table table-bordered bm-account-table" style="visibility:hidden">
                                     <thead>
                                         <tr>
                                             <th>#</th>
                                             <th>Name</th>
                                             <th>CNIC</th>
                                             <th>Phone</th>
-                                            @canany(['update lead'])
+                                            @canany(['update accounting','delete accounting'])
                                                 <th>Action</th>
                                             @endcanany
                                         </tr>
@@ -155,15 +156,15 @@
                                                 <td>
                                                     {{ $i->phone }}
                                                 </td>
-                                                @canany(['update lead', 'delete lead'])
+                                                @canany(['update accounting','delete accounting'])
                                                     <td>
                                                         <div class="btn-group">
-                                                            @can('update lead')
+                                                            @can('update accounting')
                                                                 <button class="btn btn-sm btn-primary btn-edit"
                                                                     data-id="{{ $i->id }}"><i
                                                                         class="fas fa-pencil-alt"></i></button>
                                                             @endcan
-                                                            @can('delete lead')
+                                                            @can('delete accounting')
                                                                 <button class="btn btn-sm btn-danger btn-delete"
                                                                     data-id="{{ $i->id }}"
                                                                     data-name="{{ $i->name }}"><i
@@ -212,7 +213,7 @@
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(data) {
-                        console.log(data);
+                        
                         var data = data.data;
                         $("#name").val(data.name);
                         $("#urdu_name").val(data.urdu_name);
@@ -244,6 +245,7 @@
             });
         });
     </script>
+    <script src="{{ asset('js/modern-account-directory.js') }}"></script>
 @endsection
 
 @section('modal')
@@ -310,7 +312,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title">Edit User</h4>
+                    <h4 class="modal-title">Edit Party Account</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -417,7 +419,7 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h4 class="modal-title">Clear Data</h4>
+                    <h4 class="modal-title">Delete Party Account</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -432,7 +434,7 @@
                 </div>
                 <div class="modal-footer justify-content-between">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-danger">Save</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
                 </div>
                 </form>
             </div>
@@ -441,3 +443,4 @@
         <!-- /.modal-dialog -->
     </div>
 @endsection
+
