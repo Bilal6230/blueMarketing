@@ -3,17 +3,17 @@
 
 @push('style')
 <style>
-.bm-projects{--voucher-accent:#2563eb;--fvd-accent:#2563eb;--fvd-pop-accent:#2563eb;padding:15px 16px 24px;color:#263b56;font-size:12px}
+.bm-projects{--voucher-accent:#2563eb;--fvd-accent:#2563eb;--fvd-pop-accent:#2563eb;padding:15px 16px 10px;color:#263b56;font-size:12px;min-height:calc(100vh - 123px);display:flex;flex-direction:column}
 .bm-projects *{box-sizing:border-box}
 .bm-projects .project-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
 .bm-projects .project-heading h2{font-size:19px;font-weight:750;color:#173a75;margin:0}
 .bm-projects .project-heading small{font-size:11px;color:#7889a0}
-.bm-projects .project-card{background:#fff;border:1px solid #dae4f2;border-top:3px solid #2563eb;border-radius:11px;overflow:hidden;box-shadow:0 3px 13px #122b460a}
+.bm-projects .project-card{background:#fff;border:1px solid #dae4f2;border-top:3px solid #2563eb;border-radius:11px;overflow:hidden;box-shadow:0 3px 13px #122b460a;flex:1 1 auto;min-height:350px;display:flex;flex-direction:column}
 .bm-projects .project-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px;border-bottom:1px solid #e8eef6}
 .bm-projects .project-control{height:34px;border:1px solid #d5e0ec;border-radius:7px;background:#fff;color:#304860;font-size:12px;padding:6px 10px;min-width:90px}
 .bm-projects .project-control:focus{border-color:#3b82f6;outline:0;box-shadow:0 0 0 2px #3b82f622}
 .bm-projects .project-search{flex:1 1 280px;min-width:190px}
-.bm-projects .project-table-wrap{width:100%;overflow-x:auto;min-height:195px}
+.bm-projects .project-table-wrap{width:100%;overflow:auto;min-height:0;flex:1 1 auto}
 .bm-projects .project-table{width:100%;margin:0;font-size:12px;white-space:nowrap}
 .bm-projects .project-table thead th{background:#f0f5fc;color:#294366;font-weight:750;font-size:11px;padding:11px 12px;border-bottom:2px solid #2563eb}
 .bm-projects .project-table tbody td{padding:11px 12px!important;border-top:1px solid #eaf0f7;vertical-align:middle;height:48px!important}
@@ -23,11 +23,17 @@
 .bm-projects .project-code{background:#edf4fe;color:#3469a9;border-radius:5px;padding:4px 7px;display:inline-block}
 .bm-projects .project-status{display:inline-flex;align-items:center;border-radius:14px;font-size:11px;padding:4px 9px;background:#e8f8ef;color:#16754a;font-weight:700}
 .bm-projects .project-status.inactive{background:#f3f4f6;color:#69788b}
-.bm-projects .project-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid #e7edf6;min-height:46px}
+.bm-projects .project-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid #e7edf6;min-height:46px;flex:0 0 auto;margin-top:auto}
 .bm-projects .project-pages{display:flex;gap:4px;align-items:center}
 .bm-projects .project-pages .dv-page-btn{border:1px solid #adcaf0;background:white;color:#2563eb;border-radius:5px;min-width:30px;height:30px;font-size:11px}
 .bm-projects .project-pages .dv-page-btn.active{background:#2563eb;color:white}
 .bm-projects .project-pages .dv-page-btn:disabled{opacity:.45}
+.bm-projects .project-table th .project-col-trigger{float:right;border:0;background:transparent;color:#607b9e;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:11px}
+.bm-projects .project-table th .project-col-trigger:hover,.bm-projects .project-table th .project-col-trigger.project-col-active{background:#dfedff;color:#155fc3}
+.bm-projects .project-footer-controls{display:flex;align-items:center;gap:8px}
+.bm-projects .project-footer-controls select{height:29px;padding:3px 7px;font-size:11px;border:1px solid #d5e0ec;border-radius:5px;background:white}
+.bm-projects .project-footer-controls button{font-size:11px}
+@media(max-width:767px){.bm-projects{min-height:calc(100vh - 110px)}.bm-projects .project-table-wrap{overflow-x:auto}}
 .bm-projects .project-skeleton{height:12px;display:block;max-width:100%;border-radius:5px;background:linear-gradient(90deg,#edf2f8 25%,#f9fbfe 50%,#edf2f8 75%);background-size:200% 100%;animation:bmProjectShimmer 1.4s ease infinite}
 .bm-projects .project-skeleton.long{width:140px}.bm-projects .project-skeleton.mid{width:90px}.bm-projects .project-skeleton.short{width:38px}
 @keyframes bmProjectShimmer{to{background-position-x:-200%}}
@@ -58,22 +64,12 @@
     </div>
   </div>
   <div class="project-card">
-    <div class="project-toolbar">
-      <input class="project-control project-search" id="projectSearch" type="search" placeholder="Search project name, code, address or location..." aria-label="Search projects">
-      <select class="project-control" id="projectStatusFilter" aria-label="Filter status">
-        <option value="">All statuses</option><option value="1">Active</option><option value="0">Inactive</option>
-      </select>
-      <select class="project-control" id="projectPageSize" aria-label="Rows per page">
-        <option>10</option><option selected>25</option><option>50</option><option>100</option>
-      </select>
-      <button class="btn btn-outline-secondary btn-sm" type="button" id="projectReset">Reset</button>
-      <span class="text-muted ml-auto" id="projectResultCount"></span>
-    </div>
     <div class="project-table-wrap">
       <table class="table table-hover project-table" id="projectsTable">
         <thead><tr>
-          <th>#</th><th>Project</th><th>Code</th><th>Address / Location</th>
-          <th>Project Dates</th><th>Corner / Facing</th><th>Status</th><th>Created</th>
+          @foreach (['id'=>'#','project'=>'Project','project_code'=>'Code','address'=>'Address / Location','opening_date'=>'Project Dates','corner_charge_percent'=>'Corner / Facing','is_active'=>'Status','created_at'=>'Created'] as $field => $label)
+            <th><span>{{ $label }}</span><button type="button" class="project-col-trigger" data-field="{{ $field }}" aria-label="Sort or filter {{ $label }}" aria-expanded="false" aria-haspopup="dialog"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
+          @endforeach
           @can('update project')<th>Actions</th>@endcan
         </tr></thead>
         <tbody id="projectRows" aria-busy="true">
@@ -94,7 +90,11 @@
       </table>
     </div>
     <div class="project-foot">
-      <small class="text-muted" id="projectSummary"></small>
+      <div class="project-footer-controls">
+        <small class="text-muted" id="projectSummary"></small>
+        <select id="projectPageSize" aria-label="Rows per page"><option>10</option><option selected>25</option><option>50</option><option>100</option></select>
+        <button class="btn btn-outline-secondary btn-sm" type="button" id="projectReset">Reset filters</button>
+      </div>
       <div class="project-pages" id="projectPages"></div>
     </div>
   </div>
@@ -148,17 +148,30 @@ $(function(){
   'use strict';
   var projects=@json($projectRows),canEdit=@json(auth()->user()->can('update project'));
   var currentPage=1,sortKey='id',sortDescending=false,editing=null;
+  var columnSearch={},dateRanges={},statusSelection='';
   function field(value){return value===null||value===undefined?'':String(value);}
   function presentDate(value){return field(value).slice(0,10)||'—';}
+  var columns=['id','project','project_code','address','opening_date','corner_charge_percent','is_active','created_at'];
+  function columnValue(p,key){
+    if(key==='address')return field(p.address)+' '+field(p.location);
+    if(key==='opening_date')return field(p.opening_date)+' '+field(p.closing_date);
+    if(key==='corner_charge_percent')return Number(p.corner_charge_percent||0).toFixed(2)+' / '+Number(p.facing_charge_percent||0).toFixed(2);
+    if(key==='is_active')return Number(p.is_active)===1?'Active':'Inactive';
+    return field(p[key]);
+  }
   function activeRows(){
-    var q=$.trim($('#projectSearch').val()).toLowerCase(),status=$('#projectStatusFilter').val();
     return projects.filter(function(p){
-      if(status!==''&&String(p.is_active)!==status)return false;
-      return !q||[p.project,p.project_code,p.address,p.location].join(' ').toLowerCase().indexOf(q)>=0;
+      if(statusSelection && columnValue(p,'is_active')!==statusSelection)return false;
+      if(!Object.keys(columnSearch).every(function(k){return columnValue(p,k).toLowerCase().indexOf(columnSearch[k].toLowerCase())>=0;}))return false;
+      return Object.keys(dateRanges).every(function(k){
+        var from=dateRanges[k].from,to=dateRanges[k].to,value=field(p[k]).slice(0,10);
+        return (!from&&!to)||(value!==''&&(!from||value>=from)&&(!to||value<=to));
+      });
     }).sort(function(a,b){
       var x=a[sortKey],y=b[sortKey],result;
-      if(sortKey==='id')result=Number(x)-Number(y);
-      else result=field(x).localeCompare(field(y),undefined,{numeric:true,sensitivity:'base'});
+      if(['id','corner_charge_percent','is_active'].indexOf(sortKey)>=0)result=Number(x)-Number(y);
+      else result=columnValue(a,sortKey).localeCompare(columnValue(b,sortKey),undefined,{numeric:true,sensitivity:'base'});
+      if(result===0)result=Number(a.id)-Number(b.id);
       return sortDescending?-result:result;
     });
   }
@@ -188,19 +201,77 @@ $(function(){
     });
     if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
     $body.attr('aria-busy','false');
-    $('#projectResultCount').text(list.length+' records');
+    updateColumnButtons();
     $('#projectSummary').text('Showing '+(list.length?start+1:0)+'–'+Math.min(start+size,list.length)+' of '+list.length+' projects');
     if($.blueVoucherPagination){
       $.blueVoucherPagination.render({container:'#projectPages',summary:'#projectSummary',total:list.length,length:size,start:start,buttonClass:'dv-page-btn',onPage:function(next){currentPage=Math.floor(next/size)+1;render();}});
     }
   }
-  $('#projectSearch').on('input',function(){currentPage=1;render();});
-  $('#projectStatusFilter,#projectPageSize').on('change',function(){currentPage=1;render();});
-  $('#projectReset').on('click',function(){$('#projectSearch,#projectStatusFilter').val('');$('#projectPageSize').val('25');currentPage=1;sortKey='id';sortDescending=false;render();});
-  $('#projectsTable thead th').not(':last-child').css('cursor','pointer').on('click',function(){
-    var index=$(this).index(),keys=['id','project','project_code','address','opening_date','corner_charge_percent','is_active','created_at'];
-    var next=keys[index];if(!next)return;
-    sortDescending=sortKey===next?!sortDescending:false;sortKey=next;currentPage=1;render();
+  // Shared CR/DR popover: sorting and filtering live in each column heading.
+  var filterWidget=$.financeVoucherComponents.createFilter({kind:'heading',accent:'#2563eb'});
+  var $filterPopup=filterWidget.$popup,activeColumn=null,activeButton=null;
+  function closeColumnFilter(){
+    filterWidget.close();
+    if(activeButton)activeButton.attr('aria-expanded','false');
+    activeColumn=null;activeButton=null;
+  }
+  function updateColumnButtons(){
+    $('#projectsTable .project-col-trigger').each(function(){
+      var key=$(this).data('field');
+      var dates=dateRanges[key]||{};
+      var active=!!columnSearch[key]||!!(dates.from||dates.to)||(key==='is_active'&&!!statusSelection);
+      $(this).toggleClass('project-col-active',active||sortKey===key)
+        .attr('aria-sort',sortKey===key?(sortDescending?'descending':'ascending'):'none');
+    });
+  }
+  function applyColumnChange(){currentPage=1;render();}
+  $('#projectsTable').on('click','.project-col-trigger',function(event){
+    event.preventDefault();event.stopPropagation();
+    var $button=$(this),key=$button.data('field');
+    if(activeColumn===key){closeColumnFilter();return;}
+    closeColumnFilter();activeColumn=key;activeButton=$button;
+    $button.attr('aria-expanded','true');
+    filterWidget.setTitle($.trim($button.closest('th').find('span').first().text()));
+    if(key==='is_active'){
+      var $control=filterWidget.$control.empty();
+      var $select=$('<select>',{'class':'form-control form-control-sm','aria-label':'Filter status'})
+        .append($('<option>',{value:'',text:'All statuses'}),$('<option>',{value:'Active',text:'Active'}),$('<option>',{value:'Inactive',text:'Inactive'}))
+        .val(statusSelection);
+      $select.on('change',function(){statusSelection=$(this).val();applyColumnChange();});
+      $control.append($select);
+    }else if(key==='opening_date'||key==='created_at'){
+      filterWidget.dates(dateRanges[key]||{from:'',to:''},function(part,value){
+        if(!dateRanges[key])dateRanges[key]={from:'',to:''};
+        dateRanges[key][part]=value;applyColumnChange();
+      });
+    }else{
+      filterWidget.search(columnSearch[key]||'',function(value){
+        if(value)columnSearch[key]=value;else delete columnSearch[key];
+        applyColumnChange();
+      },'Search '+$.trim($button.closest('th').text())+'...');
+    }
+    filterWidget.position($button);
+    filterWidget.$control.find('input,select').first().trigger('focus');
+  });
+  $filterPopup.find('.bm-col-asc,.bm-col-desc').on('click',function(){
+    if(activeColumn===null)return;
+    sortKey=activeColumn;sortDescending=$(this).hasClass('bm-col-desc');
+    closeColumnFilter();applyColumnChange();
+  });
+  $filterPopup.find('.bm-col-clear').on('click',function(){
+    if(activeColumn===null)return;
+    delete columnSearch[activeColumn];delete dateRanges[activeColumn];
+    if(activeColumn==='is_active')statusSelection='';
+    if(sortKey===activeColumn){sortKey='id';sortDescending=false;}
+    closeColumnFilter();applyColumnChange();
+  });
+  $(document).on('click.projectFilters',function(event){
+    if(!$(event.target).closest($filterPopup).length&&!$(event.target).closest('.project-col-trigger').length)closeColumnFilter();
+  }).on('keydown.projectFilters',function(event){if(event.key==='Escape')closeColumnFilter();});
+  $('#projectPageSize').on('change',function(){currentPage=1;render();});
+  $('#projectReset').on('click',function(){
+    columnSearch={};dateRanges={};statusSelection='';currentPage=1;sortKey='id';sortDescending=false;
+    $('#projectPageSize').val('25');closeColumnFilter();render();
   });
   function inform(message,error){
     if(window.toastr){error?toastr.error(message):toastr.success(message);}
