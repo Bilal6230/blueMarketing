@@ -803,6 +803,87 @@ class BookingEditPageTest extends TestCase
     }
 
     /** One balanced, detail-linked original sale for amendment integration tests. */
+    public function test_missing_original_sv_rejects_price_amendment_and_rolls_back(): void
+    {
+        $booking = $this->createBooking();
+        DB::table('booking_details')->insert([
+            'booking_id' => $booking->id, 'installment_details' => 'Due',
+            'amount' => 100000, 'due_date' => '2026-10-01',
+        ]);
+        $before = $this->snapshot($this->protectedTables());
+        $old = $booking->fresh()->getAttributes();
+
+        try {
+            app(\App\Services\Booking\BookingAmendmentService::class)->update(
+                $booking->id, $this->projectId,
+                $this->updatePayload($booking, ['plot_rate' => '600000',
+                    'reason' => 'Missing SV rejection', 'expected_paid_to_date' => '0.00']),
+                false, true, $this->user->id
+            );
+            $this->fail('Missing original Sales Voucher was accepted');
+        } catch (\DomainException $exception) {
+            $this->assertSame('BOOKING_SV_SOURCE_MISSING', $exception->getMessage());
+        }
+        $this->assertSame($old, $booking->fresh()->getAttributes());
+        $this->assertSame($before, $this->snapshot($this->protectedTables()));
+        $this->assertSame(0, DB::table('booking_edit_audits')->count());
+    }
+
+    public function test_duplicate_original_sv_rejects_date_change_and_rolls_back(): void
+    {
+        $booking = $this->createBooking();
+        $this->seedOriginalSale($booking);
+        DB::table('journal_vouchers')->insert([
+            'project_id' => $this->projectId, 'type' => 'SV',
+            'reference' => 'BOOKING-'.$booking->id,
+            'date' => '2026-09-08',
+            'total_debit' => $booking->total_price,
+            'total_credit' => $booking->total_price,
+        ]);
+        $before = $this->snapshot($this->protectedTables());
+        $old = $booking->fresh()->getAttributes();
+
+        try {
+            app(\App\Services\Booking\BookingAmendmentService::class)->update(
+                $booking->id, $this->projectId,
+                $this->updatePayload($booking, ['booking_date' => '2026-09-20']),
+                true, false, $this->user->id
+            );
+            $this->fail('Ambiguous Sales Voucher source was accepted');
+        } catch (\DomainException $exception) {
+            $this->assertSame('BOOKING_SV_SOURCE_AMBIGUOUS', $exception->getMessage());
+        }
+        $this->assertSame($old, $booking->fresh()->getAttributes());
+        $this->assertSame($before, $this->snapshot($this->protectedTables()));
+        $this->assertSame(0, DB::table('booking_edit_audits')->count());
+    }
+
+    public function test_mismatched_original_sv_detail_rejects_price_amendment_and_rolls_back(): void
+    {
+        $booking = $this->createBooking();
+        $this->seedOriginalSale($booking);
+        $voucherId = DB::table('journal_vouchers')->where('reference', 'BOOKING-'.$booking->id)->value('id');
+        DB::table('journal_voucher_details')->where('journal_voucher_id', $voucherId)
+            ->where('debit', '>', 0)->update(['debit' => '100.00']);
+        $before = $this->snapshot($this->protectedTables());
+        $old = $booking->fresh()->getAttributes();
+
+        try {
+            app(\App\Services\Booking\BookingAmendmentService::class)->update(
+                $booking->id, $this->projectId,
+                $this->updatePayload($booking, ['plot_rate' => '600000',
+                    'reason' => 'Mismatched SV rejection', 'expected_paid_to_date' => '0.00']),
+                false, true, $this->user->id
+            );
+            $this->fail('Mismatched SV detail was accepted');
+        } catch (\DomainException $exception) {
+            $this->assertSame('BOOKING_SV_DETAIL_MISMATCH', $exception->getMessage());
+        }
+        $this->assertSame($old, $booking->fresh()->getAttributes());
+        $this->assertSame($before, $this->snapshot($this->protectedTables()));
+        $this->assertSame(0, DB::table('booking_edit_audits')->count());
+    }
+
     private function seedOriginalSale(Booking $booking): void
     {
         $total = (string) $booking->total_price;
