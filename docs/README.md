@@ -1,3 +1,20 @@
+# 2026-11-25 — M06 API audit 3/3 PASS; read-only retention and index diagnostics batch
+
+**Owner-verified:** `ActivityAuditAuthenticatedApiTest` **3 PASS / 16 assertions**. Earlier M06 contract suite **19 PASS / 216 assertions**, background audit suite 5 PASS / 15 assertions, real MySQL rollback/commit 2 PASS / 10 assertions, SQLite transaction suite 8 PASS / 25 assertions, strict MySQL trigger health 129/129 and owner-confirmed browser tests PASS. Accepted gates should not be repeated unless their underlying implementation changes.
+
+**New implementation:** Extended the existing read-only `activity-audit:health` command, without new tables or migrations. It now counts activity events and impact rows older than 90 days **for planning purposes only**, never deleting or archiving evidence. On MySQL, it inspects `information_schema.STATISTICS` and validates the six index leading-column sequences needed for actor/route/date audit lookups, row impact correlation, source record lookup and request-token linking. It checks real metadata rather than assuming migration filenames imply indexes were installed. `--strict` fails if required indexes are absent, while non-strict warns; output includes `Missing audit query indexes: N`. Added a focused source-contract unit test to catch loss of these checks or introduction of automatic deletes. No controller changes, live business writes, schema updates or retention policy implementation.
+
+**Owner new gate (no migrations):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=Milestone06ActivityAuditContractTest
+php artisan activity-audit:health --strict
+```
+Expected 20 contract tests and strict health PASS with `Missing audit query indexes: 0`. **Not yet owner-verified.** If index issues appear, investigate first; do not run automatic migrations/DDL. Retention must be decided explicitly before any deletion or archival action. Real mobile CRM lead-write through production controller and onboarding specific actor-attributed background jobs still pending. M06 stays IN PROGRESS; Labour CP remains ON HOLD.
+
+---
+
 # 2026-11-25 — M06 authenticated API test fixture timestamps repair (owner re-test pending)
 
 **Owner verification:** `Milestone06ActivityAuditContractTest` **19 PASS / 216 assertions**. `ActivityAuditAuthenticatedApiTest` had **1 PASS / 2 FAIL**: unauthorized API mutation correctly rejected, but two authenticated cases failed during setup because the temporary SQLite `users` fixture lacked `created_at` and `updated_at` columns automatically written by the actual `App\\Models\\User` Eloquent model. This is a **test-only schema fixture error**, not evidence that application MySQL users schema is incorrect.
