@@ -34,6 +34,7 @@ class BookingEditPageTest extends TestCase
         app('url')->forceRootUrl('http://localhost');
 
         $this->createSchema();
+        DB::table('head_accountings')->insert(['id' => 6, 'name' => 'Brokers', 'is_active' => 1]);
         DB::table('settings')->insert([
             ['key' => 'app_name', 'value' => 'Blue Marketing'],
             ['key' => 'app_favicon', 'value' => 'favicon.png'],
