@@ -1,3 +1,22 @@
+# 2026-11-25 — MILESTONE 06 ACTIVITY AUDIT: ACCEPTED / CLOSED
+
+**Final owner sign-off:** `Milestone06CloseoutScopeTest` **4 PASS / 29 assertions**. All four release invariants passed: authenticated admin/mobile/finance HTTP middleware scope, no mandatory/automatic cron or background auditing, read-only retention diagnostics without automatic deletion, and presence of CRM/transaction rollback regression coverage.
+
+**Previously owner-verified M06 acceptance (do not re-run without a related change):**
+- `ActivityAuditAuthenticatedApiTest`: **4 PASS / 29 assertions**, including the real `MobileCrmController::store` action, actor attribution and lead+assignment creation in isolated test SQLite.
+- `Milestone06ActivityAuditContractTest`: **20 PASS / 232 assertions**.
+- `ActivityAuditTransactionBoundaryTest`: **8 PASS / 25 assertions**.
+- `ActivityAuditMysqlTriggerRollbackTest`: **2 PASS / 10 assertions** on existing local MySQL, including committed/rolled-back trigger impacts.
+- `BackgroundActivityAuditTest`: **5 PASS / 15 assertions** for the opt-in utility, **not required for M06 release**.
+- `activity-audit:health --strict`: **PASS**, 129/129 applicable triggers; 0 missing/invalid/skipped/nontransactional, 0 missing audit query indexes, and 0 orphan/stale impacts.
+- All requested M06 browser tests: **owner-confirmed PASS**.
+
+**Release scope decision:** Milestone 06 covers **authenticated user-driven HTTP mutations** (admin, mobile and finance) with actor/route/transaction-linked audit evidence. `BackgroundActivityAudit` remains an optional unactivated utility; no cron or queue integration is required, scheduled or enabled. Retention output is observation-only; **no automated deletion or archival**. Any new background scope or retention policy is a separate future decision. No further M06 tests, migrations, UI changes or implementation are required to mark the agreed local milestone accepted.
+
+**Status:** M06 **CLOSED / ACCEPTED (local owner acceptance)** on 2026-11-25. This records local tests and browser approval, **not a production-deployment or independent live-server verification claim**. M03 Labour CP remains ON HOLD.
+
+---
+
 # 2026-11-25 — M06 scope finalized: authenticated user actions only; close-out regression pending
 
 **Owner-verified acceptance:** `ActivityAuditAuthenticatedApiTest` **4 PASS / 29 assertions**, including real `MobileCrmController::store` using in-memory SQLite, actor identity, lead assignment and row/SQL impacts. `Milestone06ActivityAuditContractTest` **20 PASS / 232 assertions**; `ActivityAuditTransactionBoundaryTest` 8 PASS / 25 assertions; `BackgroundActivityAuditTest` 5 PASS / 15 assertions (utility only, not required); real MySQL trigger rollback/commit 2 PASS / 10 assertions; strict MySQL audit health PASS with 129/129 triggers, 0 missing/invalid/nontransactional/skipped, 0 missing query indexes and 0 stale/orphan impacts. Owner confirmed all requested browser tests PASS.
