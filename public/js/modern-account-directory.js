@@ -107,6 +107,7 @@ $(function(){
    $body.empty();
    if(!shown.length)$body.append($('<tr>').append($('<td>',{colspan:columns,'class':'text-center text-muted py-4',text:'No matching accounts found'})));
    else $.each(shown,function(_,row){$body.append(row);});
+   if(exportControls)exportControls.refresh();
    if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
    $summary.text('Showing '+(total?start+1:0)+'–'+Math.min(total,start+pageSize)+' of '+total+' records');
    if($.blueVoucherPagination)$.blueVoucherPagination.render({
@@ -249,6 +250,14 @@ $(function(){
    });
  }
  $(document).on('bm:account-refresh',function(){reloadRows();});
+ var exportControls=$.blueModernDirectoryTools&&$.blueModernDirectoryTools.mount({
+   card:$card,table:$table,title:kind==='head'?'Main Accounts':kind==='subhead'?'Party Accounts':kind==='joint'?'Joint Accounts':'Accountants List',
+   getRows:function(){
+     return visibleRows().map(function(row){
+       return $(row).children('td').map(function(){return $.trim($(this).text()).replace(/\\s+/g,' ');}).get();
+     });
+   }
+ });
  prepareRows();
  $root.find('.bm-account-loading').remove();
  $table.css('visibility','visible');
