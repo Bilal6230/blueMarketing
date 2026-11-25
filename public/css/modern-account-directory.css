@@ -47,3 +47,14 @@
 .bm-modern-accounts .bm-account-creation-form label{display:block}
 .bm-modern-accounts .bm-account-creation-form .row{flex:initial!important}
 @media(max-width:767px){.bm-modern-accounts{padding:10px 8px!important;min-height:calc(100vh - 160px)!important}.bm-modern-accounts .bm-account-table-wrap{overflow:auto!important}}
+
+/* Legacy edit/delete modals live in the layout-level modal section, outside the page wrapper. */
+.bm-account-finance-modal .modal-dialog{max-width:710px;width:calc(100% - 32px);margin:24px auto}
+.bm-account-finance-modal .modal-content{border:1px solid #c5d3e5;border-radius:12px;overflow:hidden;box-shadow:0 20px 55px #1a325030}
+.bm-account-finance-modal .modal-header{background:#f5f9ff;border-bottom:1px solid #cbd8e8;padding:14px 18px}
+.bm-account-finance-modal .modal-title{font-size:16px;font-weight:750;color:#193d73}
+.bm-account-finance-modal .modal-body{padding:17px 19px}
+.bm-account-finance-modal .modal-footer{border-top:1px solid #d0ddec;padding:12px 18px;background:#fff}
+.bm-account-finance-modal label{font-size:13px;font-weight:650;color:#344d6c}
+.bm-account-finance-modal .form-control{font-size:13px;border-color:#c5d3e5;border-radius:7px}
+.bm-account-finance-modal .btn{font-size:12px}
