@@ -85,13 +85,29 @@ function mount(options){
   if($wrap.length)$toolbar.insertBefore($wrap);else $card.prepend($toolbar);
   return {refresh:applyVisibility};
 }
+/* Show loading placeholders only in table body cells, leaving toolbar, headings
+   and pagination interactive and stationary. No document-level overlay. */
 function skeleton(selector){
-  var $wrap=$(selector).first();
-  if(!$wrap.length)return function(){};
-  var $overlay=$('<div>',{'class':'bm-modern-fetch-skeleton','aria-live':'polite','aria-label':'Loading updated records'})
-    .append($('<span>'),$('<span>'),$('<span>'),$('<span>'));
-  $wrap.addClass('bm-modern-fetching').append($overlay);
-  return function(){$overlay.remove();$wrap.removeClass('bm-modern-fetching');};
+  var $wrap=$(selector).first(),$table=$wrap.find('table').first(),$body=$table.find('tbody').first();
+  if(!$body.length)return function(){};
+  var $old=$body.children().detach(),columns=$table.find('thead tr').last().children('th').length;
+  columns=Math.max(1,columns);
+  for(var r=0;r<6;r++){
+    var $row=$('<tr>',{'class':'bm-cell-skeleton-row','aria-hidden':'true'});
+    for(var i=0;i<columns;i++){
+      $row.append($('<td>').append($('<span>',{'class':'bm-cell-skeleton'})));
+    }
+    $body.append($row);
+  }
+  $body.attr('aria-busy','true');
+  var finished=false;
+  return function(){
+    if(finished)return;
+    finished=true;
+    $body.children('.bm-cell-skeleton-row').remove();
+    if(!$body.children().length)$body.append($old);
+    $body.attr('aria-busy','false');
+  };
 }
 $.blueModernDirectoryTools={mount:mount,skeleton:skeleton};
 })(jQuery);
