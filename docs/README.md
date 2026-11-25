@@ -1,3 +1,26 @@
+# 2026-11-25 — Milestone 06 batch 3: owner-accepted viewport UI; audit signal quality and module coverage (local verification pending)
+
+**Owner acceptance:** Owner screenshot confirms Activity Audit now matches the CR/DR compact green table design with real shared header filters, numbered footer pagination and full viewport-height card; owner explicitly reports terminal tests PASS. Existing `journal.voucher.update` in the screenshot records linked `journal_voucher_details`, `journal_vouchers`, `ledger_source_attributions`, `ledgers` table operations and separate cash-revision approval tables; this is real evidence of multi-table auditing, not proof of exact row changes for tables without triggers.
+
+**New implemented batch:** The original request recorder logged `get_account` account-picker POSTs with status 200 even though no business write occurred. Recorder now persists only requests with observed business SQL/model writes or committed token-correlated trigger rows; pure read-only AJAX POST/PUT etc are not added. SQL collector ignores session/cache infrastructure writes. This is *not* filtering by route name or HTTP method alone.
+
+**Broader exact-row audit:** Additive migration `2026_11_25_133000_expand_activity_audit_row_triggers.php` installs MySQL/MariaDB transaction-atomic row triggers (insert/update/delete) on existing ID-keyed `users`, `roles`, `permissions`, `leads`, `bookings`, `booking_details`, `employee_tasks` and daily-voucher approval/snapshot tables when they exist. Triggers only capture allowlisted record identity/status/amount/date/assignment fields, **never** password, contact data, narration, bank instruments, tokens or other free-text fields. Missing tables and composite-key pivots are intentionally not faked. Correlation uses existing `activity_audit_impacts` table, not a new audit table. Data-changing workflows are untouched; no new frontend code.
+
+**Acceptance/limitations:** M06 IN PROGRESS. Audit records created prior to migration remain unchanged. Read-only POST filtering applies only to future requests. DB triggers prove transactional row changes when present, while `sql_statement` records reflect statements observed, not confirmed changed row IDs/commits. API/background jobs and composite pivot changes remain partial. A response 200 alone does not establish a successful business action. No claim of all modules audited yet. M03 Labour CP stays ON HOLD; M01/M02/M04/M05 remain owner accepted.
+
+**Owner test gate (configured local DB only; trigger privileges required):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan migrate --path=database/migrations/2026_11_25_133000_expand_activity_audit_row_triggers.php
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+**Focused browser gate:** Open `http://localhost:8001/admin/activity-audit`; trigger account picker `get_account` without saving and refresh: total should not increase. Change a disposable test user's active status in Users, refresh Activity Audit, open View; `users` row and changed `status_id` (if present) should be recorded; field content restricted to allowlist. Test a disposable Lead/Booking metadata edit similarly. Do not repeat already-passed full-height/table/filter tests.
+
+---
+
 # 2026-11-25 — M06 Activity Audit exact CR/DR listing parity fix (owner test pending)
 
 Owner compared screenshots of CR Voucher Directory and Activity Audit and rejected the previous superficial filter icons. The previous Activity Audit implemented independent blue popover, only Previous/Next pagination and no CR/DR-style Show Entries/Quick Search.
