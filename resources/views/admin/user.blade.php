@@ -30,19 +30,7 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="card bm-account-card">
-                            @canany(['create user', 'read user'])
-                                <div class="card-header bm-user-card-actions">
-                                    <h3 class="card-title">
-                                        <a href="{{ route('employee-definitions.index') }}" class="btn btn-sm btn-outline-primary mr-1"><i class="fas fa-user-cog"></i> Employee Setup</a>
-                                        @can('create user')
-                                            <a href="#" class="btn btn-sm btn-success" data-toggle="modal"
-                                                data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i
-                                                    class="fas fa-plus"></i> Add</a>
-                                        @endcan
-                                    </h3>
-                                </div>
-                            @endcan
-                            <!-- /.card-header -->
+                            
                             <div class="bm-modern-export-toolbar bm-export-placeholder" aria-label="Table export toolbar loading">
   <button type="button" class="bm-modern-export-btn" disabled>Copy</button>
   <button type="button" class="bm-modern-export-btn" disabled>CSV</button>
@@ -50,6 +38,19 @@
   <button type="button" class="bm-modern-export-btn" disabled>PDF</button>
   <button type="button" class="bm-modern-export-btn" disabled>Print</button>
   <button type="button" class="bm-modern-export-btn bm-modern-col-toggle" disabled>Column Visibility</button>
+@canany(['create user', 'read user'])
+                                <div class="bm-user-toolbar-actions">
+                                    <div class="bm-toolbar-action-buttons">
+                                        <a href="{{ route('employee-definitions.index') }}" class="btn btn-sm btn-outline-primary mr-1"><i class="fas fa-user-cog"></i> Employee Setup</a>
+                                        @can('create user')
+                                            <a href="#" class="btn btn-sm btn-success" data-toggle="modal"
+                                                data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i
+                                                    class="fas fa-plus"></i> Add</a>
+                                        @endcan
+                                    </div>
+                                </div>
+                            @endcan
+                            
 </div>
     <div class="card-body table-responsive bm-account-table-wrap">
                                 <table id="bmAccountDirectory" data-initial-skeleton="true" class="table table-bordered bm-account-table bm-pending-directory">
