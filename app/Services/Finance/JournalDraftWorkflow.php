@@ -45,7 +45,15 @@ final class JournalDraftWorkflow
                     })->exists())) {
                 throw new \DomainException('V2_JV_DRAFT_IMMUTABLE');
             }
+            // Drafts have no posted source/ledger links. Preserve unchanged
+            // detail IDs, update edited rows in place, add only new rows and
+            // soft-delete removed rows. Posted vouchers use the immutable
+            // JournalApprovedVoucherEditor instead.
+            $current = DB::table('journal_voucher_details')
+                ->where('journal_voucher_id', $sourceId)->whereNull('deleted_at')
+                ->lockForUpdate()->get()->keyBy('id');
             $prepared = [];
+            $submittedIds = [];
             $debit = $credit = 0;
             foreach ($lines as $line) {
                 if (!is_array($line) || !isset($line['account_id'], $line['debit'], $line['credit'])
@@ -57,10 +65,16 @@ final class JournalDraftWorkflow
                         ->where('head.is_active', 1)->where('sub.is_active', 1)->exists()) {
                     throw new \DomainException('V2_JV_DRAFT_INVALID_ACCOUNT');
                 }
+                $detailId = (int)($line['detail_id'] ?? 0);
+                if ($detailId < 0 || ($detailId > 0
+                    && (isset($submittedIds[$detailId]) || !$current->has($detailId)))) {
+                    throw new \DomainException('JV_DRAFT_DETAIL_NOT_OWNED_OR_DUPLICATE');
+                }
+                if ($detailId) $submittedIds[$detailId] = true;
                 $amounts = [];
                 foreach (['debit', 'credit'] as $field) {
                     $raw = (string) $line[$field];
-                    if (!preg_match('/^(0|[1-9][0-9]{0,9})(?:\.([0-9]{1,2}))?$/D', $raw, $m)) {
+                    if (!preg_match('/^(0|[1-9][0-9]{0,9})(?:\\.([0-9]{1,2}))?$/D', $raw, $m)) {
                         throw new \DomainException('V2_JV_DRAFT_MONEY_INVALID');
                     }
                     $amounts[$field] = ((int) $m[1] * 100)
@@ -72,6 +86,7 @@ final class JournalDraftWorkflow
                 $debit += $amounts['debit'];
                 $credit += $amounts['credit'];
                 $prepared[] = [
+                    'detail_id' => $detailId,
                     'journal_voucher_id' => $sourceId,
                     'account_id' => $line['account_id'],
                     'debit' => $this->money($amounts['debit']),
@@ -82,10 +97,36 @@ final class JournalDraftWorkflow
             if ($debit < 1 || $debit !== $credit) {
                 throw new \DomainException('V2_JV_DRAFT_NOT_BALANCED');
             }
-            DB::table('journal_voucher_details')
-                ->where('journal_voucher_id', $sourceId)->whereNull('deleted_at')
-                ->update(['deleted_at' => now()]);
-            DB::table('journal_voucher_details')->insert($prepared);
+            foreach ($current as $detailId => $old) {
+                if (isset($submittedIds[$detailId])) continue;
+                DB::table('journal_voucher_details')->where('id', $detailId)
+                    ->where('journal_voucher_id', $sourceId)->whereNull('deleted_at')
+                    ->update(['deleted_at' => now(), 'updated_at' => now()]);
+            }
+            foreach ($prepared as $line) {
+                $detailId = $line['detail_id'];
+                unset($line['detail_id']);
+                if (!$detailId) {
+                    DB::table('journal_voucher_details')->insert($line + [
+                        'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                    continue;
+                }
+                $old = $current[$detailId];
+                if ((int)$old->account_id === (int)$line['account_id']
+                    && (string)$old->debit === (string)$line['debit']
+                    && (string)$old->credit === (string)$line['credit']
+                    && (string)($old->description ?? '') === (string)($line['description'] ?? '')) {
+                    continue;
+                }
+                DB::table('journal_voucher_details')->where('id', $detailId)
+                    ->where('journal_voucher_id', $sourceId)->whereNull('deleted_at')
+                    ->update([
+                        'account_id' => $line['account_id'], 'debit' => $line['debit'],
+                        'credit' => $line['credit'], 'description' => $line['description'],
+                        'updated_at' => now(),
+                    ]);
+            }
             DB::table('journal_vouchers')->where('id', $sourceId)->update([
                 'date' => $date, 'total_debit' => $this->money($debit),
                 'total_credit' => $this->money($credit),
