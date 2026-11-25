@@ -119,7 +119,8 @@
                                 && $selectedSiteId
                                 && $attendance->site_id != $selectedSiteId;
 
-                            $isDisabled = $isDateDisabled || $isSiteDisabled;
+                            $isDisabled = $isDateDisabled || $isSiteDisabled
+                                || !(auth()->user()?->can('create attendance') ?? false);
                         @endphp
 
                         <div class="cell {{ $isDisabled ? 'disabled' : '' }}"
