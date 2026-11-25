@@ -50,10 +50,10 @@ final class ProjectDirectoryModernizationContractTest extends TestCase
     {
         $view = $this->source('resources/views/admin/projects/index.blade.php');
         self::assertStringContainsString('.bm-projects .project-table thead th{', $view);
-        self::assertStringContainsString('border-right:1px solid #d9e4f0!important', $view);
-        self::assertStringContainsString('border-right:1px solid #e2eaf4!important', $view);
+        self::assertStringContainsString('border-right:1.5px solid #b6c7da!important', $view);
+        self::assertStringContainsString('border-right:1.5px solid #c5d2e2!important', $view);
         self::assertStringContainsString('.bm-projects .project-table thead th:last-child,.bm-projects .project-table tbody td:last-child', $view);
-        self::assertStringContainsString('border-top:1px solid #eaf0f7!important', $view);
+        self::assertStringContainsString('border-top:1.5px solid #c5d2e2!important', $view);
     }
 
     public function test_project_form_uses_ajax_validation_and_preserves_charge_date_rule(): void
