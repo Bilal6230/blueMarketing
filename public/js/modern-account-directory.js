@@ -199,7 +199,7 @@ $(function(){
    return $.ajax({url:window.location.pathname+window.location.search,type:'GET',dataType:'html',
      headers:{Accept:'text/html','X-Requested-With':'XMLHttpRequest'}}).done(function(html){
      var $html=$('<div>').append($.parseHTML(html,document,false));
-     var $fresh=$html.find('#bmAccountDirectory tbody tr');
+     var $fresh=$html.find('#bmAccountDirectory tbody tr').not('.bm-cell-skeleton-row');
      if(!$fresh.length && $html.find('#bmAccountDirectory').length===0){
        notify('Unable to refresh the table. Please try again.',true);return;
      }
@@ -323,7 +323,7 @@ $(function(){
  prepareRows();
  $body.children('.bm-cell-skeleton-row').remove();
  $root.find('.bm-account-loading').remove();
- $table.css('visibility','visible');
+ $table.removeClass('bm-pending-directory').css('visibility','visible');
  render();
 });
 })(jQuery);
