@@ -610,20 +610,20 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
 
     Route::controller(App\Http\Controllers\BookingController::class)->group(function () {
         Route::post('booking/cancel/{id}', 'cancel')->middleware(['permission:read plot'])->name('booking.cancel');
-        Route::get('booking/plot', 'index')->middleware(['permission:read plot'])->name('booking.plot.index');
-        Route::get('booking/plot/sale', 'sale')->middleware(['permission:read plot'])->name('booking.plot.sale');
-        Route::get('booking/{id}/edit', 'editBooking')->middleware(['permission:update plot|update booking price'])->name('booking.edit');
-        Route::put('booking/{id}', 'updateBooking')->middleware(['permission:update plot|update booking price'])->name('booking.update');
-        Route::get('booking/plot/file-transfer/{id}', 'fileTransfer')->middleware(['permission:read plot'])->name('booking.plot.file-transfer');
-        Route::post('booking/plot/sale', 'store')->middleware(['permission:create plot'])->name('bookings.store');
-        Route::post('booking/plot/transfer', 'update')->middleware(['permission:create plot'])->name('bookings.transfer');
-        Route::post('charge-type-store', 'chargeTypeStore')->middleware(['permission:create plot'])->name('charge-type.store');
+        Route::get('booking/plot', 'index')->middleware(['permission:read booking'])->name('booking.plot.index');
+        Route::get('booking/plot/sale', 'sale')->middleware(['permission:read booking'])->name('booking.plot.sale');
+        Route::get('booking/{id}/edit', 'editBooking')->middleware(['permission:update booking'])->name('booking.edit');
+        Route::put('booking/{id}', 'updateBooking')->middleware(['permission:update booking'])->name('booking.update');
+        Route::get('booking/plot/file-transfer/{id}', 'fileTransfer')->middleware(['permission:read booking'])->name('booking.plot.file-transfer');
+        Route::post('booking/plot/sale', 'store')->middleware(['permission:create booking'])->name('bookings.store');
+        Route::post('booking/plot/transfer', 'update')->middleware(['permission:update booking'])->name('bookings.transfer');
+        Route::post('charge-type-store', 'chargeTypeStore')->middleware(['permission:create booking'])->name('charge-type.store');
 
         Route::get('booking/price/update/{id}', 'legacyPriceRedirect')->middleware(['permission:update booking price'])->name('booking.price.update');
 
 
-        Route::get('booking/plot/schedule/{id}', 'scheduleForm')->middleware(['permission:read plot'])->name('booking.schedule.form');
-        Route::post('booking/plot/schedule/store', 'storePaymentSchedule')->middleware(['permission:create plot'])->name('payment_schedule.store');
+        Route::get('booking/plot/schedule/{id}', 'scheduleForm')->middleware(['permission:read booking'])->name('booking.schedule.form');
+        Route::post('booking/plot/schedule/store', 'storePaymentSchedule')->middleware(['permission:update booking'])->name('payment_schedule.store');
         Route::get('booking/plot/voucher/', 'cash_in')->middleware(['permission:read slip'])->name('payment_schedule.cash');
         Route::any('booking/plot/voucher/update/{id}', 'updateCashIn')->middleware(['permission:read slip'])->name('payment_schedule.cash.update');
         Route::get('booking/plot/voucher/print/{id}', 'printCashIn')->name('booking.customer.print');
@@ -645,11 +645,11 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::post('/get-plot-customer', 'getPlotCustomer')->middleware(['permission:read plot'])->name('get-plot-customer');
 
         Route::post('booking/plot/voucher/', 'deposit')->middleware(['booking.deposit.action'])->name('booking.customer.deposit');
-        Route::delete('booking/plot/destroy', 'destroy')->name('booking.customer.destroy');
-        Route::post('booking/plot/show', 'fatch_voucher')->name('booking.voucher.show');
-        Route::post('booking/plot/approve', 'approve')->name('booking.customer.approve');
+        Route::delete('booking/plot/destroy', 'destroy')->middleware('permission:delete booking')->name('booking.customer.destroy');
+        Route::post('booking/plot/show', 'fatch_voucher')->middleware('permission:read booking')->name('booking.voucher.show');
+        Route::post('booking/plot/approve', 'approve')->middleware('permission:update booking')->name('booking.customer.approve');
 
-        Route::get('booking/project/recovery_list', 'recovery_list')->middleware(['permission:read plot'])->name('booking.plot.recovery_list');
+        Route::get('booking/project/recovery_list', 'recovery_list')->middleware(['permission:read booking'])->name('booking.plot.recovery_list');
 
         Route::delete('booking/destroy/{id}', 'destroy_booking')->middleware(['permission:delete booking'])->name('booking.destroy');
         Route::get('booking/plot/destroy_list', 'destroy_list')->middleware(['permission:delete booking'])->name('booking.destroy_list');
