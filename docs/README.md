@@ -1,3 +1,26 @@
+# 2026-11-25 — Project/Sectors typography + stripes; Area List modernization (OWNER GATE PENDING)
+
+**Owner request:** Increase font slightly on both already-modernized Project and Sectors lists; preserve the legacy Area List's alternating shaded rows across all three; modernize `/admin/area` to the accepted directory standard.
+
+**Implemented and pushed:**
+- `resources/views/admin/projects/index.blade.php`, `resources/views/admin/zone/index.blade.php`: both now use **14px table data / 13px header labels**, alternating white/light-grey table rows with matching blue hover; existing column-header CR/DR popup filters, vertical/horizontal cell borders, full-height card, bottom pagination and independent Edit/Delete permissions remain.
+- `resources/views/admin/area/index.blade.php`: replaced old DataTables/export toolbar with the same modern **full-height**, vertically bordered, **14px/13px striped** BlueMarketing list with heading filters (ID/text, Area Name/text, Status/select, Created/date-range), shared CR/DR popover Sort/Filter/Clear, initial skeleton, bottom pagination, modern + menu, AJAX Add/Edit/Delete confirmation modals and inline errors/toasts. No top filter toolbar.
+- `app/Http/Controllers/AreaController.php`: read-only JSON refresh and validated AJAX create/update/delete; existing PUT/DELETE routes have no bound model ID, so resolve validated posted ID; preserve original `create_by` on edits, properly ignore own name on unique validation, avoid `DB::rollback()` without a transaction. Delete is permission-gated and uses locked row plus the existing fail-closed `SafeMasterRecordDeletion` guard expanded to `areas/area_id`, protecting linked business records. Previous legacy Delete modal pointed incorrectly to `user.destroy`; no such route is exposed now.
+- `tests/Unit/AreaDirectoryModernizationContractTest.php`: three focused source contracts including Area controls and font/stripe parity on other two pages. New tests have **not yet been executed locally**.
+- `AGENTS.md`: permanent directory style standard now explicitly includes **14px data, 13px headings, striped rows**, cell borders, column-heading filters, footer-height card, modern modals/action menu.
+- **No migrations, new tables, unrelated page changes, test-data deletions or production acceptance claimed**. M03 Labour CP remains ON HOLD. Older Project, Sector, master-deletion contract tests are owner PASS; these scoped visual changes do not require repeating them unless the new test identifies a regression.
+
+**Owner focused gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan view:cache
+php artisan test --filter=AreaDirectoryModernizationContractTest
+```
+Target **3 tests PASS**, pending owner verification. Browser: hard-refresh `/admin/project` and `/admin/zone` only for **font and row striping**; then test `/admin/area` column-heading filters, alternating rows, table borders, card height, bottom pagination, Add/Edit modal and confirmation Cancel. Perform actual area create/update/delete **only on disposable local records**; linked area delete must return error without removing data. The separate Project/Sector Delete browser acceptance remains pending. Labour CP ON HOLD.
+
+---
+
 # 2026-11-25 — Project / Sector modernization contract tests OWNER PASS
 
 **Owner-confirmed terminal results after pull to `6da60d37`:** `ProjectDirectoryModernizationContractTest` **4 PASS / 67 assertions**; `SectorDirectoryModernizationContractTest` **2 PASS / 43 assertions**. Previously verified `SafeMasterDeletionContractTest` **2 PASS / 36 assertions** and `php artisan view:cache` **PASS**. No repeat of these accepted checks is required without relevant source changes.
