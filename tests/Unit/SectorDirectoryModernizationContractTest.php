@@ -58,7 +58,7 @@ final class SectorDirectoryModernizationContractTest extends TestCase
         self::assertStringContainsString('public function index(Request $request)', $controller);
         self::assertStringContainsString('Zone::query()->findOrFail', $controller);
         self::assertStringContainsString('Rule::unique', $controller);
-        self::assertStringContainsString("'data' => $rows", $controller);
+        self::assertStringContainsString('\'data\' => $rows', $controller);
         self::assertStringContainsString('Sector deletion is not available.', $controller);
         self::assertStringNotContainsString('DB::rollback()', $controller);
         self::assertStringNotContainsString('->delete()', $controller);
