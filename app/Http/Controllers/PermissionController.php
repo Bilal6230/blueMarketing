@@ -25,19 +25,23 @@ class PermissionController extends Controller
             'guard_name'    => ['required'],
         ]);
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            return $request->expectsJson()
+                ? response()->json(['message' => 'Please correct the form fields.', 'errors' => $validator->errors()], 422)
+                : back()->withErrors($validator)->withInput();
         }
         try {
             $permission = Permission::create([
                 'name'          => $request->name,
                 'guard_name'    => $request->guard_name,
             ]);
-            Alert::success('Pemberitahuan', 'Data <b>' . $permission->name . '</b> berhasil dibuat')->toToast()->toHtml();
+            if (!$request->expectsJson()) Alert::success('Notification', 'Permission created.')->toToast();
         } catch (\Throwable $th) {
-            Alert::error('Pemberitahuan', 'Data <b>' . $permission->name . '</b> gagal dibuat : ' . $th->getMessage())->toToast()->toHtml();
+            if ($request->expectsJson()) return response()->json(['message' => 'Unable to create permission.'], 422);
+            Alert::error('Notification', 'Unable to create permission.')->toToast();
         }
-        return back();
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => 'Permission created.'])
+            : back();
     }
 
     public function show(Request $request)
@@ -56,8 +60,9 @@ class PermissionController extends Controller
             'guard_name'    => ['required'],
         ]);
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            return $request->expectsJson()
+                ? response()->json(['message' => 'Please correct the form fields.', 'errors' => $validator->errors()], 422)
+                : back()->withErrors($validator)->withInput();
         }
         try {
             $permission = Permission::find($request->id);
@@ -65,11 +70,14 @@ class PermissionController extends Controller
                 'name'          => $request->name,
                 'guard_name'    => $request->guard_name,
             ]);
-            Alert::success('Pemberitahuan', 'Data <b>' . $permission->name . '</b> berhasil disimpan')->toToast()->toHtml();
+            if (!$request->expectsJson()) Alert::success('Notification', 'Permission updated.')->toToast();
         } catch (\Throwable $th) {
-            Alert::error('Pemberitahuan', 'Data <b>' . $permission->name . '</b> gagal disimpan : ' . $th->getMessage())->toToast()->toHtml();
+            if ($request->expectsJson()) return response()->json(['message' => 'Unable to update permission.'], 422);
+            Alert::error('Notification', 'Unable to update permission.')->toToast();
         }
-        return back();
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => 'Permission updated.'])
+            : back();
     }
 
     public function destroy(Request $request)
@@ -77,21 +85,27 @@ class PermissionController extends Controller
         try {
             $permission = Permission::find($request->id);
             $permission->delete();
-            Alert::success('Pemberitahuan', 'Data <b>' . $permission->name . '</b> berhasil dihapus')->toToast()->toHtml();
+            if (!$request->expectsJson()) Alert::success('Notification', 'Permission deleted.')->toToast();
         } catch (\Throwable $th) {
-            Alert::error('Pemberitahuan', 'Data <b>' . $permission->name . '</b> gagal dihapus : ' . $th->getMessage())->toToast()->toHtml();
+            if ($request->expectsJson()) return response()->json(['message' => 'Unable to delete permission.'], 422);
+            Alert::error('Notification', 'Unable to delete permission.')->toToast();
         }
-        return back();
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => 'Permission deleted.'])
+            : back();
     }
     public function reloadPermission()
     {
         try {
             $this->initModules();
-            Alert::success('Pemberitahuan', 'Permisiion berhasil diperbarui')->toToast()->toHtml();
+            if (!$request->expectsJson()) Alert::success('Notification', 'Permissions refreshed.')->toToast();
         } catch (\Throwable $th) {
-            Alert::error('Pemberitahuan', 'Permission gagal diperbarui : ' . $th->getMessage())->toToast()->toHtml();
+            if ($request->expectsJson()) return response()->json(['message' => 'Permission reload failed.'], 422);
+            Alert::error('Notification', 'Permission reload failed.')->toToast();
         }
-        return back();
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => 'Permissions refreshed.'])
+            : back();
     }
 
     private function initModules()
