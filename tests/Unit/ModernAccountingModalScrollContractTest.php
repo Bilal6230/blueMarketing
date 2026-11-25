@@ -21,10 +21,12 @@ final class ModernAccountingModalScrollContractTest extends TestCase
 
         self::assertStringContainsString("addClass('bm-account-directory-page')", $js);
         self::assertStringContainsString('body.bm-account-directory-page{overflow:hidden!important}', $css);
-        self::assertStringContainsString('height:calc(100dvh - 171px)!important', $css);
-        self::assertStringContainsString('max-height:calc(100dvh - 171px)!important', $css);
+        self::assertStringContainsString('height:var(--bm-account-available-height,calc(100dvh - 225px))!important', $css);
+        self::assertStringContainsString('max-height:var(--bm-account-available-height,calc(100dvh - 225px))!important', $css);
         self::assertStringContainsString('body.bm-account-directory-page .bm-account-card>.bm-account-table-wrap', $css);
-        self::assertStringContainsString('overflow-y:auto!important', $css);
+        self::assertStringContainsString('overflow-y:scroll!important', $css);
+        self::assertStringContainsString('flex:1 1 0%!important;height:0!important', $css);
+        self::assertStringNotContainsString('height:100%!important;min-height:0!important', $css);
         self::assertStringContainsString('body.bm-account-directory-page .bm-account-footer{flex-shrink:0!important}', $css);
         self::assertStringContainsString('.bm-modern-accounts .bm-account-table thead th{position:sticky', $css);
         self::assertStringNotContainsString('.bm-modern-accounts .content .row{flex:1 1 auto', $css);
