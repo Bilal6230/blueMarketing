@@ -17,6 +17,7 @@ final class SafeMasterRecordDeletion
         if (!in_array([$masterTable, $referenceColumn], [
             ['projects', 'project_id'],
             ['zones', 'zone_id'],
+            ['areas', 'area_id'],
         ], true)) {
             throw new RuntimeException('Unsupported master deletion target.');
         }
@@ -30,9 +31,11 @@ final class SafeMasterRecordDeletion
         $database = $connection->getDatabaseName();
         // Include historical tables that never declared a foreign key.
         // Names come exclusively from INFORMATION_SCHEMA (not user input).
-        $columns = $masterTable === 'projects'
-            ? [$referenceColumn, 'town_id']
-            : [$referenceColumn, 'sector_id'];
+        $columns = match ($masterTable) {
+            'projects' => [$referenceColumn, 'town_id'],
+            'zones' => [$referenceColumn, 'sector_id'],
+            'areas' => [$referenceColumn],
+        };
         $placeholders = implode(', ', array_fill(0, count($columns), '?'));
         $references = $connection->select(
             'SELECT TABLE_NAME AS table_name, COLUMN_NAME AS column_name
