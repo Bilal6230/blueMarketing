@@ -3,136 +3,151 @@
 namespace App\Http\Controllers;
 
 use App\Models\Area;
+use App\Support\SafeMasterRecordDeletion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Role;
-
 
 class AreaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $x['title']     = 'Area List';
-        $x['data']      = Area::get();
-        $x['role']      = Role::get();
-        return view('admin.area.index', $x);
+        $rows = Area::query()->orderBy('id')->get()->map(fn (Area $area): array => [
+            'id' => (int) $area->id,
+            'name' => (string) $area->name,
+            'is_active' => (int) $area->is_active,
+            'created_at' => optional($area->created_at)->format('Y-m-d H:i:s'),
+        ])->values()->all();
+
+        if ($request->wantsJson()) {
+            return response()->json(['status' => 'success', 'data' => $rows]);
+        }
+
+        return view('admin.area.index', ['title' => 'Area List', 'areaRows' => $rows]);
     }
 
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'      => ['required', 'string', 'max:255' ,'unique:areas'],
-
+            'name' => ['required', 'string', 'max:255', Rule::unique('areas', 'name')],
+            'is_active' => ['required', 'boolean'],
         ]);
+
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Please correct the area fields.', 'errors' => $validator->errors()], 422);
+            }
+            return back()->withErrors($validator)->withInput();
         }
 
         try {
-            $data = Area::create([
-                'name'          => $request->name,
-                'is_active'     => $request->is_active,
-                'create_by'     =>Auth::user()->id
-
+            $validated = $validator->validated();
+            $area = Area::create([
+                'name' => $validated['name'],
+                'is_active' => $validated['is_active'],
+                'create_by' => Auth::id(),
             ]);
-            Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
-        } catch (\Throwable $th) {
-            DB::rollback();
-            Alert::error('Notification', 'Data <b>' .  $th->getMessage())->toToast()->toHtml();
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'success', 'message' => 'Area created successfully.', 'id' => $area->id], 201);
+            }
+            Alert::success('Notification', 'Area saved successfully.')->toToast();
+        } catch (\Throwable $exception) {
+            report($exception);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Area could not be created. Please try again.'], 500);
+            }
+            Alert::error('Notification', 'Area could not be created.')->toToast();
         }
+
         return back();
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Models\Area  $area
-     * @return \Illuminate\Http\Response
-     */
     public function show(Request $request)
     {
-        $data_list = Area::where(['id' => $request->id])->first();
-
+        $validated = $request->validate(['id' => ['required', 'integer', 'min:1']]);
+        $area = Area::query()->findOrFail((int) $validated['id']);
 
         return response()->json([
-            'status'    => Response::HTTP_OK,
-            'message'   => 'Data Area by id',
-            'data'      => $data_list
-        ], Response::HTTP_OK);
+            'status' => Response::HTTP_OK,
+            'message' => 'Area loaded.',
+            'data' => $area,
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Models\Area  $area
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Area $area)
+    public function update(Request $request)
     {
-        //
-    }
+        // Existing PUT /admin/area route has no {area} parameter.
+        $id = (int) $request->validate(['id' => ['required', 'integer', 'min:1']])['id'];
+        $area = Area::query()->findOrFail($id);
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Area  $area
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, Area $area)
-    {
-        if ($request->name != $request->old_name) {
-            $rules['name'] = ['required', 'string', 'max:255', 'unique:areas'];
-            $validator = Validator::make($request->all(), $rules);
-        } else {
-            $rules['name'] = ['required', 'string', 'max:255'];
-            $validator = Validator::make($request->all(), $rules);
-        }
-
-        $validator = Validator::make($request->all(), $rules);
-
-
+        $validator = Validator::make($request->all(), [
+            'name' => ['required', 'string', 'max:255', Rule::unique('areas', 'name')->ignore($area->id)],
+            'is_active' => ['required', 'boolean'],
+        ]);
 
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Please correct the area fields.', 'errors' => $validator->errors()], 422);
+            }
+            return back()->withErrors($validator)->withInput();
         }
-        $data = [
-            'name'          => $request->name,
-            'is_active'     => $request->is_active,
-            'create_by'     =>Auth::user()->id
-        ];
-
 
         try {
-            $project = Area::find($request->id);
-            $project->update($data);
-            Alert::success('Notification', 'Data <b>' . $project->name . '</b> saved successfully')->toToast()->toHtml();
-        } catch (\Throwable $th) {
-            DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $project->name . '</b> failed to save : ' . $th->getMessage())->toToast()->toHtml();
+            $area->update([
+                'name' => $validator->validated()['name'],
+                'is_active' => $validator->validated()['is_active'],
+                // A later edit must not overwrite the original creator.
+            ]);
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'success', 'message' => 'Area updated successfully.', 'id' => $area->id]);
+            }
+            Alert::success('Notification', 'Area updated successfully.')->toToast();
+        } catch (\Throwable $exception) {
+            report($exception);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Area could not be updated. Please try again.'], 500);
+            }
+            Alert::error('Notification', 'Area could not be updated.')->toToast();
         }
+
         return back();
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Models\Area  $area
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy(Area $area)
+    public function destroy(Request $request)
     {
-        //
+        $id = (int) $request->validate(['id' => ['required', 'integer', 'min:1']])['id'];
+
+        try {
+            DB::transaction(function () use ($id): void {
+                $area = Area::query()->whereKey($id)->lockForUpdate()->firstOrFail();
+                SafeMasterRecordDeletion::assertUnreferenced('areas', $id, 'area_id');
+                $area->delete();
+            });
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            throw $exception;
+        } catch (\RuntimeException $exception) {
+            $message = 'Area cannot be deleted: '.$exception->getMessage();
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 409);
+            }
+            return back()->withErrors(['area' => $message]);
+        } catch (\Throwable $exception) {
+            report($exception);
+            $message = 'Area cannot be deleted because related records or database constraints prevent it.';
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 409);
+            }
+            return back()->withErrors(['area' => $message]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['status' => 'success', 'message' => 'Unlinked area deleted successfully.']);
+        }
+
+        return redirect()->route('area.index')->with('success', 'Area deleted.');
     }
 }
