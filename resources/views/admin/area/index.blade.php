@@ -59,6 +59,14 @@
     </div>
   </div>
   <div class="area-card">
+    <div class="bm-modern-export-toolbar bm-export-placeholder" aria-label="Table export toolbar loading">
+  <button type="button" class="bm-modern-export-btn" disabled>Copy</button>
+  <button type="button" class="bm-modern-export-btn" disabled>CSV</button>
+  <button type="button" class="bm-modern-export-btn" disabled>Excel</button>
+  <button type="button" class="bm-modern-export-btn" disabled>PDF</button>
+  <button type="button" class="bm-modern-export-btn" disabled>Print</button>
+  <button type="button" class="bm-modern-export-btn bm-modern-col-toggle" disabled>Column Visibility</button>
+</div>
     <div class="area-table-wrap">
       <table class="table table-hover area-table" id="areasTable">
         <thead><tr>
