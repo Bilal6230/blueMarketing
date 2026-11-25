@@ -117,7 +117,7 @@ final class ModernAccountingDirectoryContractTest extends TestCase
         self::assertStringContainsString("abort(409, 'Main account deletion", $controller);
         self::assertStringContainsString("abort(409, 'Party account deletion", $controller);
         self::assertStringContainsString('if ($request->expectsJson())', $controller);
-        self::assertStringContainsString("'errors' => $validator->errors()", $controller);
+        self::assertStringContainsString('\'errors\' => $validator->errors()', $controller);
         self::assertStringContainsString('Joint account mapping saved successfully.', $controller);
     }
 
