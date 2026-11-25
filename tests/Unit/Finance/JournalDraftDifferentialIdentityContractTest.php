@@ -17,17 +17,17 @@ final class JournalDraftDifferentialIdentityContractTest extends TestCase
     {
         $code = $this->source('app/Services/Finance/JournalDraftWorkflow.php');
         self::assertStringContainsString('DB::transaction(function () use ($projectId, $sourceId, $date, $lines)', $code);
-        self::assertStringContainsString("->where('journal_voucher_id', \$sourceId)->whereNull('deleted_at')", \$code);
+        self::assertStringContainsString("->where('journal_voucher_id', \$sourceId)->whereNull('deleted_at')", $code);
         self::assertStringContainsString('->lockForUpdate()->get()->keyBy(', $code);
-        self::assertStringContainsString("isset(\$submittedIds[\$detailId]) || !\$current->has(\$detailId)", \$code);
+        self::assertStringContainsString("isset(\$submittedIds[\$detailId]) || !\$current->has(\$detailId)", $code);
         self::assertStringContainsString('JV_DRAFT_DETAIL_NOT_OWNED_OR_DUPLICATE', $code);
-        self::assertStringContainsString("if (isset(\$submittedIds[\$detailId])) continue;", \$code);
+        self::assertStringContainsString("if (isset(\$submittedIds[\$detailId])) continue;", $code);
         self::assertStringContainsString("->update(['deleted_at' => now(), 'updated_at' => now()]);", $code);
-        self::assertStringContainsString("if (!\$detailId) {", \$code);
-        self::assertStringContainsString("DB::table('journal_voucher_details')->insert(\$line + [", \$code);
-        self::assertStringContainsString("if ((int)\$old->account_id === (int)\$line['account_id']", \$code);
-        self::assertStringContainsString("->where('journal_voucher_id', \$sourceId)->whereNull('deleted_at')", \$code);
-        self::assertStringNotContainsString("->where('journal_voucher_id', \$sourceId)->whereNull('deleted_at')\n                ->update(['deleted_at' => now()]);", \$code);
+        self::assertStringContainsString("if (!\$detailId) {", $code);
+        self::assertStringContainsString("DB::table('journal_voucher_details')->insert(\$line + [", $code);
+        self::assertStringContainsString("if ((int)\$old->account_id === (int)\$line['account_id']", $code);
+        self::assertStringContainsString("->where('journal_voucher_id', \$sourceId)->whereNull('deleted_at')", $code);
+        self::assertStringNotContainsString("->where('journal_voucher_id', \$sourceId)->whereNull('deleted_at')\n                ->update(['deleted_at' => now()]);", $code);
         self::assertStringContainsString('V2_JV_DRAFT_IMMUTABLE', $code);
     }
 
@@ -39,7 +39,7 @@ final class JournalDraftDifferentialIdentityContractTest extends TestCase
             'finance_journal_line_sources',
             'journal_voucher_detail_id',
             "where('line.is_active',1)",
-            "where('id',$posted[$id][0]->id)",
+            "where('id',\$posted[\$id][0]->id)",
             "where('id',\$legacy[\$id][0]->id)",
             'insertGetId(',
         ] as $needle) {
