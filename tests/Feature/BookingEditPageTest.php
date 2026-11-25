@@ -931,9 +931,15 @@ class BookingEditPageTest extends TestCase
             $table->string('name');
             $table->string('unit')->nullable();
         });
+        Schema::create('head_accountings', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->nullable();
+            $table->boolean('is_active')->default(true);
+        });
         Schema::create('subhead_accountings', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->boolean('is_active')->default(true);
         });
         Schema::create('project_head_subheads', function (Blueprint $table) {
             $table->id();
@@ -1014,7 +1020,7 @@ class BookingEditPageTest extends TestCase
             $table->unsignedBigInteger('role_id');
         });
 
-        Schema::create('journal_vouchers', function(Blueprint $t){$t->id();$t->string('voucher_number')->nullable();$t->string('type')->nullable();$t->string('reference')->nullable();$t->integer('project_id')->nullable();$t->decimal('total_debit',15,2)->default(0);$t->decimal('total_credit',15,2)->default(0);$t->string('status')->nullable();$t->timestamps();$t->softDeletes();});
+        Schema::create('journal_vouchers', function(Blueprint $t){$t->id();$t->date('date')->nullable();$t->string('voucher_number')->nullable();$t->string('type')->nullable();$t->string('reference')->nullable();$t->integer('project_id')->nullable();$t->decimal('total_debit',15,2)->default(0);$t->decimal('total_credit',15,2)->default(0);$t->string('status')->nullable();$t->timestamps();$t->softDeletes();});
         Schema::create('journal_voucher_details', function(Blueprint $t){$t->id();$t->integer('journal_voucher_id')->nullable();$t->integer('account_id')->nullable();$t->decimal('debit',15,2)->default(0);$t->decimal('credit',15,2)->default(0);$t->string('description')->nullable();$t->timestamps();$t->softDeletes();});
         Schema::create('customer_ledger', function(Blueprint $t){
             $t->id();
@@ -1033,7 +1039,7 @@ class BookingEditPageTest extends TestCase
             $t->date('bank_post_at')->nullable();
             $t->timestamps();
         });
-        Schema::create('ledgers', function(Blueprint $t){$t->id();$t->string('type')->nullable();$t->integer('type_id')->nullable();$t->integer('project_head_subheads_id')->nullable();$t->integer('customer_ledger_id')->nullable();$t->string('reference')->nullable();$t->decimal('amount_in',15,2)->default(0);$t->decimal('amount_out',15,2)->default(0);$t->string('detail')->nullable();});
+        Schema::create('ledgers', function(Blueprint $t){$t->id();$t->date('date')->nullable();$t->boolean('is_active')->default(true);$t->integer('journal_voucher_detail_id')->nullable();$t->timestamps();$t->string('type')->nullable();$t->integer('type_id')->nullable();$t->integer('project_head_subheads_id')->nullable();$t->integer('customer_ledger_id')->nullable();$t->string('reference')->nullable();$t->decimal('amount_in',15,2)->default(0);$t->decimal('amount_out',15,2)->default(0);$t->string('detail')->nullable();});
         Schema::create('booking_details', function(Blueprint $t){$t->id();$t->integer('booking_id')->nullable();$t->string('installment_details')->nullable();$t->decimal('amount',12,2)->nullable();$t->date('due_date')->nullable();$t->timestamps();$t->softDeletes();});
         Schema::create('booking_vouchers', function(Blueprint $t){
             $t->id();
