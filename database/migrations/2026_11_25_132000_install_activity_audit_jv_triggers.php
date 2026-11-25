@@ -15,6 +15,11 @@ return new class extends Migration {
         'journal_voucher_details',
         'ledgers',
         'customer_ledger',
+        'finance_posting_batches',
+        'finance_posting_lines',
+        'finance_posting_source_claims',
+        'finance_posting_journal_sources',
+        'finance_journal_line_sources',
     ];
 
     private const FIELDS = [
@@ -25,6 +30,8 @@ return new class extends Migration {
         'date', 'booking_date', 'deleted_at', 'total_debit', 'total_credit',
         'debit', 'credit', 'amount_in', 'amount_out', 'total_price',
         'created_by', 'updated_by', 'create_by', 'update_by',
+        'posting_batch_id', 'posting_line_id', 'project_head_subhead_id',
+        'source_kind', 'source_id', 'source_type', 'reversal_of_batch_id',
     ];
 
     public function up(): void
