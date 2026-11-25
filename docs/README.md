@@ -1,3 +1,22 @@
+# 2026-11-25 — M06 strict audit health fully PASS; transaction rollback integration batch (owner execution pending)
+
+**Owner terminal verification:** Composite-key migration `2026_11_25_135000_audit_composite_primary_key_tables.php` completed; `Milestone06ActivityAuditContractTest` **12 PASS / 146 assertions**. `activity-audit:health --strict` reports 6 events, 34 impact rows, 0 orphaned snapshots, 0 missing parents, **129/129 expected triggers installed**, 0 missing triggers and **0 skipped tables**. Seven tables now use their real declared primary keys, with no surrogate IDs or business table/schema changes. These are user-verified results; do not repeat this accepted gate.
+
+**Next implementation (unverified):** Fixed a request-level accuracy gap where `DB::listen` and Eloquent callbacks could accumulate SQL/model evidence before a transaction's rollback and then report it following a caught exception returning HTTP 200. `ActivityAuditCapture` now listens to `TransactionBeginning`, `TransactionCommitted` and `TransactionRolledBack`, saving a per-transaction evidence snapshot and restoring it upon rollback. Previously committed operations remain in scope if a later independent transaction rolls back. This is separate from the existing MySQL audit-row triggers, whose records are atomic within the business transaction. Introduced `tests/Feature/ActivityAuditTransactionBoundaryTest.php` using an **isolated in-memory SQLite database** and the actual `RecordActivityAudit` middleware for three cases: committed insert recorded, caught transaction rollback not logged as a successful write, and committed write before later rollback retained. Added targeted unit contract assertion.
+
+**New local gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan test --filter=ActivityAuditTransactionBoundaryTest
+php artisan test --filter=Milestone06ActivityAuditContractTest
+php artisan activity-audit:health --strict
+```
+No new migration, destructive command, or browser UI change. This integration test's SQLite coverage verifies request-level evidence handling, **not** real MySQL trigger rollback correctness; the live MySQL transaction-trigger path and mobile API end-to-end behavior require separate acceptance. Keep finance posting and Labour CP unchanged. M06 remains IN PROGRESS; future work includes background job/CLI actor identity, evidence retention, performance, and final integration signoff.
+
+---
+
 # 2026-11-25 — Milestone 06: owner strict audit-health PASS; composite primary-key row capture (new verification pending)
 
 **Owner-verified M06 gate:** `Milestone06ActivityAuditContractTest` **11/11 PASS, 123 assertions**. `activity-audit:health` and `activity-audit:health --strict` both PASS on local MySQL: 6 activity events, 34 impact entries, **0 old unlinked snapshots**, **0 broken parent references**, **108/108 applicable installed triggers**, **0 missing**. Seven source/link tables were marked `SKIPPED (no id column)`; this was deliberately safe, not a migration failure.
