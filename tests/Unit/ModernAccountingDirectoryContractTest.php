@@ -24,7 +24,7 @@ final class ModernAccountingDirectoryContractTest extends TestCase
             self::assertStringContainsString('bm-modern-accounts', $source);
             self::assertStringContainsString('data-account-kind="'.$kind.'"', $source);
             self::assertStringContainsString('bm-account-card', $source);
-            self::assertStringContainsString('bm-account-loading', $source);
+            self::assertStringContainsString('bm-cell-skeleton-row', $source);
             self::assertStringContainsString('id="bmAccountDirectory"', $source);
             self::assertStringContainsString('modern-account-directory.css', $source);
             self::assertStringContainsString('modern-account-directory.js', $source);
@@ -57,7 +57,7 @@ final class ModernAccountingDirectoryContractTest extends TestCase
             '$.blueActionMenu.enhance',
             'bm-account-col',
             'bm-account-create-modal',
-            'bm-account-loading',
+            'bm-cell-skeleton-row',
             'Filter status',
             'aria-expanded',
             'widget.dates(',
