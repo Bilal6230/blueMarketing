@@ -307,6 +307,9 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringContainsString('test_authenticated_mobile_style_api_write_records_real_actor_and_impact', $source);
         $this->assertStringContainsString('test_unauthenticated_api_mutation_is_denied_without_write_or_audit', $source);
         $this->assertStringContainsString('test_authenticated_api_read_only_post_creates_no_false_activity', $source);
+        $this->assertStringContainsString('test_real_mobile_crm_store_controller_audits_new_lead_and_actor', $source);
+        $this->assertStringContainsString("[MobileCrmController::class, 'store']", $source);
+        $this->assertStringContainsString("'table_name', 'leads'", $source);
         $this->assertStringContainsString('\'actor_id\' => (int) $request->user()->getAuthIdentifier()', $source);
         $this->assertStringContainsString("Route::post('leads', [MobileCrmController::class, 'store'])", $routes);
         $this->assertStringNotContainsString("Schema::connection('mysql')->create", $source);
