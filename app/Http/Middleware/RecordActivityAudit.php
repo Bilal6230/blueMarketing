@@ -65,83 +65,83 @@ final class RecordActivityAudit
         }
 
         try {
-        $actor = $request->user();
-        $method = strtoupper($request->method());
-        $route = $request->route();
-        $routeName = $route ? $route->getName() : null;
-        if (!$actor || !in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
-            || !$route || str_starts_with((string) $routeName, 'activity-audit.')) {
-            return $response;
-        }
+            $actor = $request->user();
+            $method = strtoupper($request->method());
+            $route = $request->route();
+            $routeName = $route ? $route->getName() : null;
+            if (!$actor || !in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
+                || !$route || str_starts_with((string) $routeName, 'activity-audit.')) {
+                return $response;
+            }
 
-        // A 4xx/5xx HTTP response is not proof that a database transaction
-        // rolled back. If a write committed before a validation/error response,
-        // preserve its actual response status and the observed changes.
-        // Write-free failed requests still produce no activity record.
-        // An audit schema migration is required before recording can begin.
-        try {
-            if (!Schema::hasTable('activity_audits')) {
-                return $response;
-            }
-            // POST is commonly used for read-only AJAX lookups in this ERP.
-            // Only persist an activity when a business write was observed,
-            // or transaction-backed trigger rows are waiting for correlation.
-            $hasCapturedRows = $captureToken && Schema::hasTable('activity_audit_impacts')
-                && DB::table('activity_audit_impacts')
-                    ->where('request_token', $captureToken)
-                    ->whereNull('activity_audit_id')->exists();
-            if (!$hasCapturedRows && (!$capture || !$capture->hasObservedWrites())) {
-                return $response;
-            }
-            DB::transaction(function () use ($actor, $method, $routeName, $request, $response, $capture, $captureToken): void {
-            $auditId = DB::table('activity_audits')->insertGetId([
-                'actor_id' => (int) $actor->getAuthIdentifier(),
-                'action' => $method,
-                'route_name' => $routeName ? mb_substr((string) $routeName, 0, 160) : null,
-                'request_path' => mb_substr($request->path(), 0, 255),
-                'response_status' => $response->getStatusCode(),
-                'ip_address' => $request->ip(),
-                'request_id' => mb_substr((string) $request->header('X-Request-ID', ''), 0, 40) ?: null,
-                'created_at' => now(),
-            ]);
-            if ($capture && Schema::hasTable('activity_audit_impacts')) {
-                $capturedTables = [];
-                if ($captureToken) {
-                    // The trigger rows already committed (or disappeared
-                    // with the rolled-back source transaction).
-                    $capturedTables = DB::table('activity_audit_impacts')
-                        ->where('request_token', $captureToken)
-                        ->whereNull('activity_audit_id')
-                        ->distinct()->pluck('table_name')->all();
-                    DB::table('activity_audit_impacts')
-                        ->where('request_token', $captureToken)
-                        ->whereNull('activity_audit_id')
-                        ->update(['activity_audit_id' => $auditId, 'request_token' => null]);
+            // A 4xx/5xx HTTP response is not proof that a database transaction
+            // rolled back. If a write committed before a validation/error response,
+            // preserve its actual response status and the observed changes.
+            // Write-free failed requests still produce no activity record.
+            // An audit schema migration is required before recording can begin.
+            try {
+                if (!Schema::hasTable('activity_audits')) {
+                    return $response;
                 }
-                $impacts = array_values(array_filter($capture->impacts(), function (array $impact) use ($capturedTables): bool {
-                    return $impact['capture_type'] !== 'eloquent_row' ||
-                        !in_array($impact['table_name'], $capturedTables, true);
-                }));
-                foreach (array_chunk($impacts, 75) as $items) {
-                    DB::table('activity_audit_impacts')->insert(array_map(
-                        fn (array $impact): array => $impact + [
-                            'activity_audit_id' => $auditId,
-                            'created_at' => now(),
-                        ], $items
-                    ));
+                // POST is commonly used for read-only AJAX lookups in this ERP.
+                // Only persist an activity when a business write was observed,
+                // or transaction-backed trigger rows are waiting for correlation.
+                $hasCapturedRows = $captureToken && Schema::hasTable('activity_audit_impacts')
+                    && DB::table('activity_audit_impacts')
+                        ->where('request_token', $captureToken)
+                        ->whereNull('activity_audit_id')->exists();
+                if (!$hasCapturedRows && (!$capture || !$capture->hasObservedWrites())) {
+                    return $response;
                 }
+                DB::transaction(function () use ($actor, $method, $routeName, $request, $response, $capture, $captureToken): void {
+                $auditId = DB::table('activity_audits')->insertGetId([
+                    'actor_id' => (int) $actor->getAuthIdentifier(),
+                    'action' => $method,
+                    'route_name' => $routeName ? mb_substr((string) $routeName, 0, 160) : null,
+                    'request_path' => mb_substr($request->path(), 0, 255),
+                    'response_status' => $response->getStatusCode(),
+                    'ip_address' => $request->ip(),
+                    'request_id' => mb_substr((string) $request->header('X-Request-ID', ''), 0, 40) ?: null,
+                    'created_at' => now(),
+                ]);
+                if ($capture && Schema::hasTable('activity_audit_impacts')) {
+                    $capturedTables = [];
+                    if ($captureToken) {
+                        // The trigger rows already committed (or disappeared
+                        // with the rolled-back source transaction).
+                        $capturedTables = DB::table('activity_audit_impacts')
+                            ->where('request_token', $captureToken)
+                            ->whereNull('activity_audit_id')
+                            ->distinct()->pluck('table_name')->all();
+                        DB::table('activity_audit_impacts')
+                            ->where('request_token', $captureToken)
+                            ->whereNull('activity_audit_id')
+                            ->update(['activity_audit_id' => $auditId, 'request_token' => null]);
+                    }
+                    $impacts = array_values(array_filter($capture->impacts(), function (array $impact) use ($capturedTables): bool {
+                        return $impact['capture_type'] !== 'eloquent_row' ||
+                            !in_array($impact['table_name'], $capturedTables, true);
+                    }));
+                    foreach (array_chunk($impacts, 75) as $items) {
+                        DB::table('activity_audit_impacts')->insert(array_map(
+                            fn (array $impact): array => $impact + [
+                                'activity_audit_id' => $auditId,
+                                'created_at' => now(),
+                            ], $items
+                        ));
+                    }
+                }
+                });
+            } catch (\Throwable $exception) {
+                // Audit storage failures must not replay a successfully committed
+                // financial transaction, but must be visible to operators.
+                Log::error('Activity audit could not be written', [
+                    'exception' => get_class($exception),
+                    'route' => $routeName,
+                    'actor_id' => (int) $actor->getAuthIdentifier(),
+                ]);
             }
-            });
-        } catch (\Throwable $exception) {
-            // Audit storage failures must not replay a successfully committed
-            // financial transaction, but must be visible to operators.
-            Log::error('Activity audit could not be written', [
-                'exception' => get_class($exception),
-                'route' => $routeName,
-                'actor_id' => (int) $actor->getAuthIdentifier(),
-            ]);
-        }
-        return $response;
+            return $response;
         } finally {
             if ($pendingException !== null) {
                 throw $pendingException;
