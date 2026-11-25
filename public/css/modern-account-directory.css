@@ -1,0 +1,49 @@
+/* Shared Main / Party / Joint Account directory visual contract. No finance posting changes. */
+.bm-modern-accounts{--fvd-accent:#2563eb;--fvd-pop-accent:#2563eb;--voucher-accent:#2563eb;min-height:calc(100vh - 174px)!important;display:flex!important;flex-direction:column!important;padding:14px 16px 10px!important;color:#253c56}
+.bm-modern-accounts .content-header{flex:0 0 auto;padding:0!important;margin:0 0 12px!important}
+.bm-modern-accounts .content-header h1{font-size:19px!important;font-weight:750;color:#173a75}
+.bm-modern-accounts .content{flex:1 1 auto!important;min-height:0;display:flex;flex-direction:column}
+.bm-modern-accounts .content>.container-fluid{flex:1 1 auto!important;min-height:0;display:flex;flex-direction:column}
+.bm-modern-accounts .content .row{flex:1 1 auto;min-height:0}
+.bm-modern-accounts .content .row>.col-12{display:flex;flex-direction:column;min-height:0}
+.bm-modern-accounts .bm-account-card{border:1px solid #c4d2e3!important;border-top:3px solid #2563eb!important;border-radius:10px!important;box-shadow:0 3px 13px #122b460a!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;flex:1 1 auto!important;min-height:360px!important;margin-bottom:0!important}
+.bm-modern-accounts .bm-account-create-source{display:none!important}
+.bm-modern-accounts .bm-account-table-wrap{flex:1 1 auto!important;min-height:0!important;overflow:auto!important;padding:0!important}
+.bm-modern-accounts .bm-account-table{width:100%!important;border-collapse:separate!important;border-spacing:0!important;margin:0!important;background:white!important;font-size:14px!important;white-space:nowrap}
+.bm-modern-accounts .bm-account-table thead th{font-size:13px!important;font-weight:750!important;background:#eaf2fa!important;color:#253f60!important;border-right:1.5px solid #aebfd3!important;border-bottom:2px solid #2563eb!important;padding:10px 12px!important;vertical-align:middle}
+.bm-modern-accounts .bm-account-table tbody td{font-size:14px!important;border-top:1.5px solid #becfe0!important;border-right:1.5px solid #becfe0!important;padding:10px 12px!important;vertical-align:middle!important;height:47px!important}
+.bm-modern-accounts .bm-account-table thead th:last-child,.bm-modern-accounts .bm-account-table tbody td:last-child{border-right:0!important}
+.bm-modern-accounts .bm-account-table tbody tr:nth-child(even){background:#edf2f8!important}
+.bm-modern-accounts .bm-account-table tbody tr:nth-child(odd){background:#fff!important}
+.bm-modern-accounts .bm-account-table tbody tr:hover{background:#deedff!important}
+.bm-modern-accounts .bm-account-table thead button.bm-account-col{float:right;background:transparent;border:0;border-radius:5px;color:#4e6a8b;padding:3px 7px;cursor:pointer}
+.bm-modern-accounts .bm-account-table thead button.bm-account-col:hover,.bm-modern-accounts .bm-account-table thead button.bm-account-col.is-filtered{background:#d6e8fc;color:#185fc1}
+.bm-modern-accounts .bm-account-table td.blue-actions-cell{text-align:center;min-width:88px}
+.bm-modern-accounts .bm-account-pages{display:flex;align-items:center;gap:5px}
+.bm-modern-accounts .bm-account-pages .dv-page-btn{height:30px;min-width:30px;border:1px solid #b4cbe5;border-radius:5px;background:white;color:#2563eb;font-size:12px}
+.bm-modern-accounts .bm-account-pages .dv-page-btn.active{background:#2563eb;color:white}
+.bm-modern-accounts .bm-account-pages .dv-page-btn:disabled{opacity:.45}
+.bm-modern-accounts .bm-account-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px;min-height:47px;padding:8px 12px;border-top:1.5px solid #becfe0!important;background:#fff!important;margin-top:auto}
+.bm-modern-accounts .bm-account-footer-left{display:flex;align-items:center;gap:9px}
+.bm-modern-accounts .bm-account-footer select{height:30px;border:1px solid #becfe0;border-radius:5px;padding:3px 6px;font-size:12px}
+.bm-modern-accounts .bm-account-footer .btn{font-size:12px}
+.bm-modern-accounts .bm-account-loading{padding:17px 12px;display:flex;flex-direction:column;gap:29px}
+.bm-modern-accounts .bm-account-loading span{display:block;height:14px;width:65%;border-radius:5px;background:linear-gradient(90deg,#e6edf6 25%,#f5f9ff 50%,#e6edf6 75%);background-size:200% 100%;animation:bmAccountLoading 1.4s ease infinite}
+@keyframes bmAccountLoading{to{background-position-x:-200%}}
+@media(prefers-reduced-motion:reduce){.bm-modern-accounts .bm-account-loading span{animation:none}}
+.bm-modern-accounts .bm-account-new{font-size:12px!important}
+.bm-modern-accounts .bm-account-create-modal .modal-dialog{max-width:840px;width:calc(100% - 32px);margin:24px auto}
+.bm-modern-accounts .bm-account-create-modal .modal-content,.bm-modern-accounts .modal-content{border-radius:11px;overflow:hidden;border:1px solid #d9e4f0;box-shadow:0 20px 55px #1a325025}
+.bm-modern-accounts .bm-account-create-modal .modal-header,.bm-modern-accounts .modal-header{background:#f5f9ff;border-bottom:1px solid #dae4f1;padding:14px 18px}
+.bm-modern-accounts .bm-account-create-modal .modal-body,.bm-modern-accounts .modal-body{padding:16px 18px}
+.bm-modern-accounts .bm-account-create-modal .form-control,.bm-modern-accounts .modal .form-control{font-size:13px;border-color:#c9d7e8;border-radius:6px}
+.bm-modern-accounts .bm-account-create-modal label,.bm-modern-accounts .modal label{font-size:13px;font-weight:650}
+.bm-modern-accounts .bm-account-create-modal .modal-footer,.bm-modern-accounts .modal-footer{background:white;border-top:1px solid #dce6f1;padding:12px 18px}
+.bm-modern-accounts .bm-account-creation-form{padding:0!important}
+.bm-modern-accounts .bm-account-creation-form .modal-footer{justify-content:flex-end!important}
+.bm-modern-accounts .bm-account-creation-form>.row{display:flex!important;flex:initial!important}
+.bm-modern-accounts .bm-account-creation-form .input-group{display:block}
+.bm-modern-accounts .bm-account-creation-form .input-group>.input-group{width:100%}
+.bm-modern-accounts .bm-account-creation-form label{display:block}
+.bm-modern-accounts .bm-account-creation-form .row{flex:initial!important}
+@media(max-width:767px){.bm-modern-accounts{padding:10px 8px!important;min-height:calc(100vh - 160px)!important}.bm-modern-accounts .bm-account-table-wrap{overflow:auto!important}}
