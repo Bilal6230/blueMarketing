@@ -243,6 +243,11 @@ class Milestone06ActivityAuditContractTest extends TestCase
     {
         $probe = $this->source('tests/Feature/ActivityAuditMysqlTriggerRollbackTest.php');
         $this->assertStringContainsString("'127.0.0.1', 'localhost', '::1'", $probe);
+        $this->assertStringContainsString("base_path('.env')", $probe);
+        $this->assertStringContainsString('Dotenv::parse(', $probe);
+        $this->assertStringContainsString("config()->set('database.connections.'.self::CONNECTION", $probe);
+        $this->assertStringContainsString("'url' => null", $probe);
+        $this->assertStringContainsString("DB::purge(self::CONNECTION)", $probe);
         $this->assertStringContainsString("'bm_audit_users_au'", $probe);
         $this->assertStringContainsString('->update([\'status_id\' => $this->originalStatus])', $probe);
         $this->assertStringContainsString('test_mysql_existing_trigger_discards_audit_snapshot_after_rollback', $probe);
