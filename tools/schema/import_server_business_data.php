@@ -58,6 +58,40 @@ function columns(string $database, string $table): array {
          WHERE TABLE_SCHEMA=? AND TABLE_NAME=? ORDER BY ORDINAL_POSITION", [$database,$table]
     ));
 }
+function dateColumns(string $db, string $table): array {
+    $result=[];
+    foreach (info("SELECT COLUMN_NAME AS col_name, DATA_TYPE AS date_type,
+        IS_NULLABLE AS nullable FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=? AND TABLE_NAME=? AND DATA_TYPE IN ('date','datetime','timestamp')",
+        [$db,$table]) as $row) {
+        $result[(string)$row->col_name]=[
+            'type'=>(string)$row->date_type,
+            'nullable'=>strtoupper((string)$row->nullable)==='YES'
+        ];
+    }
+    return $result;
+}
+function copyExpressions(string $table, array $cols): array {
+    $dates=dateColumns(TARGET_DB,$table);
+    $parts=[];
+    foreach ($cols as $col) {
+        $q=identifier($col);
+        if (!isset($dates[$col])) {
+            $parts[]=$q;
+            continue;
+        }
+        // Legacy MySQL/MariaDB dumps permit zero dates; MySQL 8 strict
+        // refuses their insertion. Preserve valid dates exactly, map
+        // nullable invalid dates to NULL and nonnullable to a stable
+        // documented pre-epoch sentinel rather than inventing today's date.
+        $meta=$dates[$col];
+        $fallback=$meta['nullable']?'NULL':(
+            $meta['type']==='date'?"'1000-01-01'":"'2000-01-01 00:00:00'"
+        );
+        $parts[]="CASE WHEN CAST($q AS CHAR) LIKE '0000-00-00%' THEN $fallback ELSE $q END";
+    }
+    return $parts;
+}
 function countRows(string $database, string $table): int {
     return (int) DB::table($database.'.'.$table)->count();
 }
@@ -222,8 +256,9 @@ try {
         $db->statement('SET SESSION foreign_key_checks = 0');
         foreach ($copyPlan as $table=>$plan) {
             $columns=implode(',',array_map('identifier',$plan['columns']));
+            $values=implode(',',copyExpressions($table,$plan['columns']));
             $sql='INSERT INTO '.qualified(TARGET_DB,$table).' ('.$columns.')
-                SELECT '.$columns.' FROM '.qualified(SOURCE_DB,$table);
+                SELECT '.$values.' FROM '.qualified(SOURCE_DB,$table);
             $written=$db->affectingStatement($sql);
             if ($written!==$plan['rows']) failImport("$table copied $written rows, expected ".$plan['rows']);
             echo "COPIED $table: $written\n";
