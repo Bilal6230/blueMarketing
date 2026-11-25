@@ -1,3 +1,22 @@
+# 2026-11-25 — M06 20/20 contract gate owner PASS; real CRM controller audit test added
+
+**Owner-verified:** `Milestone06ActivityAuditContractTest` **20 PASS / 229 assertions**; read-only strict audit-health PASS with 129/129 valid triggers, 0 missing audit indexes, 0 orphan impacts and 0 older-than-90-days events/impacts. Owner previously accepted browser UI, 3/3 Sanctum API middleware tests, 5/5 background audit tests, 8/8 transaction-boundary tests, and 2/2 real local MySQL rollback/commit tests. These gates should not be unnecessarily rerun.
+
+**New verification code:** `tests/Feature/ActivityAuditAuthenticatedApiTest.php` now adds a **fourth case** that invokes the real `MobileCrmController::store` action behind the exact same Sanctum auth + Activity Audit middleware chain using an isolated in-memory SQLite fixture. It creates a test-only project and actor, mocks only the actor's authorization/role checks, sends a legitimate CRM lead creation payload and checks actual `leads` and `lead_user` records, creator ID and corresponding `activity_audits` / `activity_audit_impacts` row. No actual local MySQL CRM data, database migration, or persistent tables touched. This tests the actual business controller, not a mocked handler; the permission decision itself is isolated and is already covered separately by authorization gates. New structural assertions guard the case. This test change is **not yet locally verified**.
+
+**Owner new gate only:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ActivityAuditAuthenticatedApiTest
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+Expected **4 API feature tests** and **20 contract tests** (with additional assertions). Any new failure should be fixed in code without touching live/persistent business data. No schema or browser changes.
+
+**Remaining M06:** selection/integration of any real background jobs with proven initiating user ID (generic opt-in runner already accepted), explicit non-destructive retention policy decision, and final regression/close-out. Labour CP stays ON HOLD.
+
+---
+
 # 2026-11-25 — M06 retention/index health PASS; assertion quote repair pending local test
 
 **Owner verification:** `activity-audit:health --strict` **PASS** on existing MySQL DB. Missing audit query indexes **0**; expected triggers **129**, missing **0**, invalid definitions **0**, nontransactional engines **0**, skipped tables **0**, old unlinked snapshots **0**, missing-parent references **0**; older-than-90-days event/impact counts both **0**. This health gate is accepted and does not need to be rerun. `Milestone06ActivityAuditContractTest`: **19 PASS, 1 FAIL (218 assertions)** solely because a test expectation for `'SEQ_IN_INDEX'` included literal backslashes (`"\\'SEQ_IN_INDEX\\'"`). Actual code contains normal single quotes. Changed the expectation to `"'SEQ_IN_INDEX'"`. No application logic, migration, audit evidence or database changes.
