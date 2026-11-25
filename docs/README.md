@@ -1,3 +1,26 @@
+# 2026-11-25 — Project & Sector Delete actions restored with dependency safety (OWNER VERIFICATION PENDING)
+
+Owner noticed **Delete disappeared** from both modern `/admin/project` and `/admin/zone` listings. Historical Delete buttons used the wrong `user.destroy` route, while both master controllers had nonfunctional Delete stubs; previous modernization hid these actions instead of replacing them. Owner requires normal permission-scoped actions.
+
+**Implementation delivered:**
+- Both listings now include **Edit and Delete inside the existing shared modern `+` action menu**. Delete is visible only under its independent `delete project` / `delete sector` role permission; Edit remains independent. Confirmation modals name the selected record, use jQuery AJAX, show server-side errors in the modal/toast and refresh the current directory without full page reload after successful deletion.
+- `ProjectController::destroy(Request $request)` and `ZoneController::destroy(Request $request)` now validate an actual posted positive ID (routes have no model-bound `{project}`/`{zone}` segment), lock that master row inside a transaction and call `App\Support\SafeMasterRecordDeletion::assertUnreferenced`. Only then is the **single unreferenced master row** deleted. Referentially linked rows remain untouched.
+- The guard examines the current configured MySQL `information_schema.COLUMNS` for historical `project_id`/`town_id` or `zone_id`/`sector_id` references and `information_schema.KEY_COLUMN_USAGE` for explicitly declared foreign keys with alternate column names. Every discovered table is checked for actual referencing records; if any is linked, deletion fails **409** with a clear message. Unknown database drivers, missing metadata/verification, unexpected DB failures and unrecognized target tables fail closed, without cascade or detaching relationships. SQL/driver exception details are not displayed to users. No DB schema change or migration.
+- Focused tests updated: `ProjectDirectoryModernizationContractTest`, `SectorDirectoryModernizationContractTest` now expect permission-gated Delete; new `SafeMasterDeletionContractTest` guards no cross-user deletion, parent row locks, dependency check and safe UI. **Tests not yet owner run.** No existing data deleted by this implementation task.
+
+**Owner local gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan view:cache
+php artisan test --filter=ProjectDirectoryModernizationContractTest
+php artisan test --filter=SectorDirectoryModernizationContractTest
+php artisan test --filter=SafeMasterDeletionContractTest
+```
+**Targeted browser:** Open Project/Sector list with a role having Delete access; open each row's `+` menu and confirm Edit + Delete display. Cancel confirmation without a write. Try deleting a **known linked disposable test record** and verify 409 with record still present, then delete a genuinely unlinked disposable Sector to verify success/list refresh. Avoid deleting the six working Projects or any populated Sector. If required, a genuinely unlinked Project can be tested only in a disposable local database. No other milestone tests should be rerun. M03 Labour CP remains ON HOLD.
+
+---
+
 # 2026-11-25 — Sectors List modernization delivered (owner verification pending)
 
 **Owner requested:** Modernize \`/admin/zone\` Sectors List using the **approved latest Project List / CR-DR directory standard** without repeating old generic top search or short-height table.
