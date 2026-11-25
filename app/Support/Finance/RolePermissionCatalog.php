@@ -51,6 +51,7 @@ final class RolePermissionCatalog
         if (in_array($name,['read employee task','create employee task','update employee task','delete employee task'],true)) {
             return 'employee-tasks';
         }
+        if ($name === 'read activity audit') return 'activity-audit';
         if ($name === 'filemanager') return 'filemanager';
         if ($name === 'send sms') return 'sms';
         // Exact historical names from the owner's actual permission audit:
@@ -99,6 +100,7 @@ final class RolePermissionCatalog
             'stock-entries' => 'Stock · Entries',
             'stock-billing' => 'Stock · Billing',
             'employee-tasks' => 'Employee Tasks',
+            'activity-audit' => 'Activity Audit',
             'filemanager' => 'File Manager',
             'sms' => 'SMS',
             'expence' => 'Expenses',
