@@ -58,3 +58,6 @@
 .bm-account-finance-modal label{font-size:13px;font-weight:650;color:#344d6c}
 .bm-account-finance-modal .form-control{font-size:13px;border-color:#c5d3e5;border-radius:7px}
 .bm-account-finance-modal .btn{font-size:12px}
+
+.bm-modern-accounts .bm-account-status{display:inline-flex;padding:4px 10px;border-radius:14px;background:#e2f6eb;color:#157345;font-size:12px;font-weight:700}
+.bm-modern-accounts .bm-account-status.inactive{background:#e9edf3;color:#536579}
