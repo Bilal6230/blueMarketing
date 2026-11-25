@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Middleware\RecordActivityAudit;
 use App\Models\User;
+use App\Http\Controllers\Api\V1\Mobile\MobileCrmController;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,33 @@ final class ActivityAuditAuthenticatedApiTest extends TestCase
             $table->string('name');
             $table->string('email')->nullable();
             $table->string('password')->nullable();
+            $table->unsignedInteger('project_id')->nullable();
             $table->timestamps();
+        });
+        // Only in-memory fixtures for the real MobileCrmController::store path.
+        Schema::create('projects', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->string('project');
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+        });
+        Schema::create('leads', function (Blueprint $table): void {
+            $table->increments('id');
+            $table->unsignedInteger('project_id');
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->string('phone_number')->unique();
+            $table->string('mobile_number')->nullable()->unique();
+            $table->string('nic_number')->nullable();
+            $table->timestamp('follow_up')->nullable();
+            $table->integer('follow_status')->nullable();
+            $table->integer('is_active')->nullable();
+            $table->unsignedInteger('create_by')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('lead_user', function (Blueprint $table): void {
+            $table->unsignedInteger('lead_id');
+            $table->unsignedInteger('user_id');
         });
         Schema::create('activity_audits', function (Blueprint $table): void {
             $table->increments('id');
@@ -76,6 +103,10 @@ final class ActivityAuditAuthenticatedApiTest extends TestCase
             })->name('mobile.audit.contract.probe');
 
         Route::middleware(['api', 'auth:sanctum', RecordActivityAudit::class])
+            ->post('/api/v1/mobile/crm/actual-controller-probe', [MobileCrmController::class, 'store'])
+            ->name('mobile.crm.actual-controller.probe');
+
+        Route::middleware(['api', 'auth:sanctum', RecordActivityAudit::class])
             ->post('/api/v1/mobile/audit-read-probe', function () {
                 return response()->json(['status' => true]);
             })->name('mobile.audit.read.probe');
@@ -103,6 +134,45 @@ final class ActivityAuditAuthenticatedApiTest extends TestCase
             ->where('activity_audit_id', $event->id)
             ->where('table_name', 'audit_mobile_fixture')
             ->where('capture_type', 'sql_statement')->count());
+    }
+
+    public function test_real_mobile_crm_store_controller_audits_new_lead_and_actor(): void
+    {
+        DB::table('projects')->insert(['id' => 3, 'project' => 'Local API fixture', 'is_active' => 1]);
+        $stored = User::query()->create([
+            'name' => 'CRM Test Employee',
+            'email' => 'real-crm-audit@example.test',
+            'password' => 'unused-hash',
+            'project_id' => 3,
+        ]);
+        // Permission checks are isolated: the real API controller, Eloquent
+        // writes and middleware still execute end-to-end.
+        $actor = \\Mockery::mock(User::class)->makePartial();
+        $actor->setRawAttributes($stored->getAttributes(), true);
+        $actor->exists = true;
+        $actor->shouldReceive('can')->with('create lead')->andReturn(true);
+        $actor->shouldReceive('hasRole')->with('superadmin')->andReturn(false);
+        Sanctum::actingAs($actor);
+
+        $this->postJson('/api/v1/mobile/crm/actual-controller-probe', [
+            'project_id' => 3,
+            'first_name' => 'CRM',
+            'last_name' => 'Audit',
+            'phone_number' => '03000000001',
+        ])->assertOk()->assertJsonPath('status', true);
+
+        $this->assertSame(1, DB::table('leads')->count());
+        $this->assertSame(1, DB::table('lead_user')->count());
+        $lead = DB::table('leads')->first();
+        $this->assertSame((int) $stored->id, (int) $lead->create_by);
+        $event = DB::table('activity_audits')->first();
+        $this->assertNotNull($event);
+        $this->assertSame((int) $stored->id, (int) $event->actor_id);
+        $this->assertSame('mobile.crm.actual-controller.probe', $event->route_name);
+        $this->assertSame('POST', $event->action);
+        $this->assertSame(1, DB::table('activity_audit_impacts')
+            ->where('activity_audit_id', $event->id)
+            ->where('table_name', 'leads')->count());
     }
 
     public function test_unauthenticated_api_mutation_is_denied_without_write_or_audit(): void
