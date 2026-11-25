@@ -263,6 +263,18 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringNotContainsString('DROP TRIGGER', $probe);
     }
 
+    public function test_exception_path_records_committed_writes_without_swallowing_original_error(): void
+    {
+        $middleware = $this->source('app/Http/Middleware/RecordActivityAudit.php');
+        $integration = $this->source('tests/Feature/ActivityAuditTransactionBoundaryTest.php');
+        $this->assertStringContainsString('$pendingException = $exception;', $middleware);
+        $this->assertStringContainsString("new Response('', 500)", $middleware);
+        $this->assertStringContainsString('throw $pendingException;', $middleware);
+        $this->assertStringContainsString('test_thrown_exception_after_committed_write_is_rethrown_and_audited', $integration);
+        $this->assertStringContainsString('test_thrown_exception_without_writes_is_rethrown_without_audit', $integration);
+        $this->assertStringContainsString('test_thrown_exception_after_rolled_back_write_is_not_audited', $integration);
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
