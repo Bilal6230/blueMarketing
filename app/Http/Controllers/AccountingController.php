@@ -362,6 +362,10 @@ class AccountingController extends Controller
 
     public function head_destroy(Request $request)
     {
+        // No account-definition deletion lifecycle exists. In particular, these
+        // master IDs may back historical finance postings and account mappings.
+        // Return a truthful failure rather than silently treating a no-op as a delete.
+        abort(409, 'Main account deletion is unavailable because account history must be preserved.');
     }
 
 
@@ -490,6 +494,10 @@ class AccountingController extends Controller
 
     public function subhead_destroy(Request $request)
     {
+        // No account-definition deletion lifecycle exists. In particular, these
+        // master IDs may back historical finance postings and account mappings.
+        // Return a truthful failure rather than silently treating a no-op as a delete.
+        abort(409, 'Party account deletion is unavailable because account history must be preserved.');
     }
 
     public function account_groups_index(Request $request)
