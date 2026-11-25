@@ -1,0 +1,74 @@
+<?php
+
+namespace Tests\Unit;
+
+use PHPUnit\Framework\TestCase;
+
+final class ModernDirectoryAjaxLifecycleContractTest extends TestCase
+{
+    private function source(string $path): string
+    {
+        $text = file_get_contents(dirname(__DIR__, 2).'/'.$path);
+        self::assertIsString($text, $path);
+        return $text;
+    }
+
+    public function test_user_and_permission_writes_return_json_with_validation_errors(): void
+    {
+        foreach ([
+            'app/Http/Controllers/UserController.php',
+            'app/Http/Controllers/PermissionController.php',
+        ] as $file) {
+            $controller = $this->source($file);
+            self::assertStringContainsString('$request->expectsJson()', $controller);
+            self::assertStringContainsString("'errors' => \$validator->errors()", $controller);
+        }
+        $permission = $this->source('app/Http/Controllers/PermissionController.php');
+        self::assertStringContainsString('public function reloadPermission(Request $request)', $permission);
+        self::assertStringContainsString("'Permissions refreshed.'", $permission);
+    }
+
+    public function test_modern_users_and_permissions_intercept_forms_and_reload_without_navigation(): void
+    {
+        $js = $this->source('public/js/modern-account-directory.js');
+        foreach ([
+            "kind==='user'||kind==='permission'",
+            "'#modal-tambah form,#modal-edit form,#modal-delete form'",
+            "event.preventDefault()",
+            'new FormData(this)',
+            'processData:false,contentType:false',
+            "'X-Requested-With':'XMLHttpRequest'",
+            'reloadRows()',
+            "kind==='permission'",
+            "'click.bmDirectoryReload'",
+            'bm-account-refresh-loading',
+            'bm-account-is-refreshing',
+        ] as $needle) {
+            self::assertStringContainsString($needle, $js);
+        }
+        foreach (['resources/views/admin/user.blade.php', 'resources/views/admin/permission.blade.php'] as $path) {
+            $view = $this->source($path);
+            self::assertStringContainsString('modern-account-directory.js', $view);
+        }
+    }
+
+    public function test_other_modern_directories_keep_ajax_and_show_refetch_skeleton(): void
+    {
+        foreach ([
+            ['resources/views/admin/projects/index.blade.php', 'project'],
+            ['resources/views/admin/zone/index.blade.php', 'sector'],
+            ['resources/views/admin/area/index.blade.php', 'area'],
+        ] as [$path, $kind]) {
+            $view = $this->source($path);
+            self::assertStringContainsString("event.preventDefault()", $view);
+            self::assertStringContainsString("$.blueModernDirectoryTools.skeleton('.".$kind."-table-wrap')", $view);
+            self::assertStringContainsString('stopSkeleton()', $view);
+        }
+        $joint = $this->source('resources/views/admin/finance/accounting/category_index.blade.php');
+        self::assertStringContainsString("$(document).trigger('bm:account-refresh')", $joint);
+        $accounting = $this->source('public/js/modern-account-directory.js');
+        self::assertStringContainsString("if(kind==='head'||kind==='subhead')", $accounting);
+        $accountant = $this->source('resources/views/admin/finance/accountant/index.blade.php');
+        self::assertStringContainsString('ensureLedgerDataTable()', $accountant);
+    }
+}
