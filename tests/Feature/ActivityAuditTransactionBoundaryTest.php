@@ -59,7 +59,7 @@ final class ActivityAuditTransactionBoundaryTest extends TestCase
         });
     }
 
-    private function perform(callable $write): void
+    private function perform(callable $write, int $responseStatus = 200): void
     {
         $request = Request::create('/admin/audit-fixture', 'POST');
         $request->setUserResolver(fn () => new GenericUser(['id' => 17]));
@@ -67,10 +67,35 @@ final class ActivityAuditTransactionBoundaryTest extends TestCase
         }));
         $request->route()->name('audit.fixture.write');
 
-        (new RecordActivityAudit())->handle($request, function () use ($write): Response {
+        (new RecordActivityAudit())->handle($request, function () use ($write, $responseStatus): Response {
             $write();
-            return new Response('OK', 200);
+            return new Response('Result', $responseStatus);
         });
+    }
+
+    public function test_error_response_after_committed_write_retains_actual_status_and_impact(): void
+    {
+        $this->perform(function (): void {
+            DB::transaction(function (): void {
+                DB::table('audit_fixture_records')->insert(['status' => 'committed-before-422']);
+            });
+        }, 422);
+
+        $this->assertSame(1, DB::table('audit_fixture_records')->count());
+        $this->assertSame(422, (int) DB::table('activity_audits')->value('response_status'));
+        $this->assertSame(1, DB::table('activity_audit_impacts')
+            ->where('table_name', 'audit_fixture_records')->count());
+    }
+
+    public function test_error_response_without_business_write_is_not_logged(): void
+    {
+        $this->perform(function (): void {
+            // Authentication/validation failures without writes should not
+            // create false activity or impact rows.
+        }, 422);
+
+        $this->assertSame(0, DB::table('activity_audits')->count());
+        $this->assertSame(0, DB::table('activity_audit_impacts')->count());
     }
 
     public function test_committed_query_builder_write_is_recorded(): void
