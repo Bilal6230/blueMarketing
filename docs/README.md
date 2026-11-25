@@ -1,3 +1,17 @@
+# 2026-11-25 — Project modernization contract assertion repair
+
+**Owner verification:** \`php artisan view:cache\` PASS. \`ProjectDirectoryModernizationContractTest\`: **2 PASS / 1 FAIL (35 assertions)**; failed case \`project_index_provides_authorized_read_only_json_refresh\`. Root cause is test-source comparison only: PHP double-quoted string interpolated \`$rows\` to empty before comparison, despite controller containing the correct \`'data' => $rows\` expression. Repaired both the JSON-response and \`'projectRows' => $rows\` checks using PHP single-quoted strings with escaped delimiters. **No application, database, migration, project records, permissions or UI changes** in this repair.
+
+**Only pending terminal gate:**
+\`\`\`powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ProjectDirectoryModernizationContractTest
+\`\`\`
+Target **3 PASS**; not yet owner verified. \`view:cache\` already PASS and does not need repeating. Focused Project List browser acceptance remains pending. M03 Labour CP ON HOLD.
+
+---
+
 # 2026-11-25 — Project List modern UI delivered (OWNER VERIFICATION PENDING)
 
 **Owner request:** Modernize only the legacy \`/admin/project\` Project List, one page at a time. User screenshot showed old DataTables export toolbar, legacy table/striped styles and direct Edit/Delete buttons. Labour Payment CP remains explicitly ON HOLD.
