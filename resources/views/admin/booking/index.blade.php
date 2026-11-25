@@ -75,6 +75,7 @@
 
                                                 <td>
                                                     {{ Setting::getPlotTypeShort($i->plot_type) }} -
+                                                    @can('view booking report')
                                                     <form action="{{ route('booking.customer.report.display') }}" method="POST"
                                                         style="display: inline;">
                                                         @csrf
@@ -87,6 +88,9 @@
                                                             {{ $i->plot->name }}
                                                         </button>
                                                     </form>
+                                                    @else
+                                                        {{ $i->plot->name }}
+                                                    @endcan
                                                 </td>
 
                                                 <td>{{ $i->customer->first_name . ' ' . $i->customer->last_name . ' ' . $i->customer->relate . ' ' . $i->customer->father_name }}
