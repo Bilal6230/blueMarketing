@@ -41,8 +41,8 @@
                             </div>
                             @endcan
                             <!-- /.card-header -->
-                            <div class="card-body table-responsive bm-account-table-wrap"><div class="bm-account-loading" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-                                <table id="bmAccountDirectory" class="table table-bordered bm-account-table" style="visibility:hidden">
+                            <div class="card-body table-responsive bm-account-table-wrap">
+                                <table id="bmAccountDirectory" data-initial-skeleton="true" class="table table-bordered bm-account-table bm-pending-directory">
                                     <thead>
                                         <tr>
                                             <th>#</th>
@@ -55,6 +55,15 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        @for ($skeletonIndex = 0; $skeletonIndex < 6; $skeletonIndex++)
+                                            <tr class="bm-cell-skeleton-row" aria-hidden="true">
+                                                <td><span class="bm-cell-skeleton"></span></td>
+                                                <td><span class="bm-cell-skeleton"></span></td>
+                                                <td><span class="bm-cell-skeleton"></span></td>
+                                                <td><span class="bm-cell-skeleton"></span></td>
+                                                @canany(['update permission', 'delete permission'])<td><span class="bm-cell-skeleton"></span></td>@endcanany
+                                            </tr>
+                                        @endfor
                                         @foreach ($data as $i)
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
