@@ -72,6 +72,16 @@ final class RecordActivityAudit
             if (!Schema::hasTable('activity_audits')) {
                 return $response;
             }
+            // POST is commonly used for read-only AJAX lookups in this ERP.
+            // Only persist an activity when a business write was observed,
+            // or transaction-backed trigger rows are waiting for correlation.
+            $hasCapturedRows = $captureToken && Schema::hasTable('activity_audit_impacts')
+                && DB::table('activity_audit_impacts')
+                    ->where('request_token', $captureToken)
+                    ->whereNull('activity_audit_id')->exists();
+            if (!$hasCapturedRows && (!$capture || !$capture->hasObservedWrites())) {
+                return $response;
+            }
             DB::transaction(function () use ($actor, $method, $routeName, $request, $response, $capture, $captureToken): void {
             $auditId = DB::table('activity_audits')->insertGetId([
                 'actor_id' => (int) $actor->getAuthIdentifier(),
