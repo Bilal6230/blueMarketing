@@ -1,3 +1,24 @@
+# 2026-11-25 — M06 terminal/browser owner PASS; explicit background mutation auditing implementation (local verification pending)
+
+**Owner acceptance:** `ActivityAuditTransactionBoundaryTest` 8 PASS / 25 assertions, `Milestone06ActivityAuditContractTest` 17 PASS / 195 assertions; owner additionally reports all requested M06 browser tests PASS. Previously accepted `ActivityAuditMysqlTriggerRollbackTest` 2 PASS / 10 assertions and strict audit-health 129/129 installed valid InnoDB triggers with no missing/skipped tables. Do not repeat accepted tests or browser gates.
+
+**New implementation:** `app/Support/Audit/BackgroundActivityAudit.php` adds an *opt-in* service for manually selected queue jobs, workers and Artisan operations, requiring explicit authenticated initiating **user ID** and a short allowlisted source identifier. It verifies the user exists and requires ownership of the outer database transaction; failed jobs rollback transaction and database trigger impacts together. For success, it logs `action=JOB`, `route_name=background:<source>`, and correlated allowlisted SQL/Eloquent/transactional-trigger impacts to **existing** `activity_audits` and `activity_audit_impacts` tables. Read-only work creates no audit event; unknown actors and already-open outer transactions fail closed. The original job exception is never swallowed or retried by the recorder. Audit persistence errors are logged without rerunning a committed business mutation. It clears the MySQL session token in `finally`. **No automatic attribution of anonymous cron jobs and no globally enabled write hooks.** Existing jobs must explicitly opt in only once an initiating actor is known; no job was silently changed. No new database/table/migration and no changes to finance posting, roles, permissions, or Labour CP.
+
+**New regression:** `tests/Feature/BackgroundActivityAuditTest.php` covers five isolated SQLite scenarios: explicit actor attribution after commit, complete rollback with exception, read-only no-op, rejected unknown actor, and refused nesting in existing transactions. `Milestone06ActivityAuditContractTest.php` adds a source-level guard for the opt-in runner.
+
+**Owner local verification:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=BackgroundActivityAuditTest
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+Target 5 new integration tests and 18 contract tests; **not yet owner-verified**. No migration or browser UI testing for this batch.
+
+**Still pending M06:** a real authenticated mobile API mutation with actor visible in the audit view (owner browser acceptance was reported generically, but not explicitly as this route); explicit selection/onboarding of specific asynchronous jobs when initiating user identity can be proven; audit retention/performance policy, no delete-by-default, and full regression sign-off. Labour CP remains ON HOLD. M06 remains IN PROGRESS.
+
+---
+
 # 2026-11-25 — M06 real MySQL rollback owner PASS; exception-after-commit audit fix (new local gate pending)
 
 **Owner-verified acceptance:** Existing local MySQL trigger `ActivityAuditMysqlTriggerRollbackTest` **2 PASS, 10 assertions**, showing rollback removes its trigger impact and commit retains its trigger impact until the test's token-scoped cleanup. `Milestone06ActivityAuditContractTest` **16 PASS, 189 assertions**. Earlier strict health also PASS: 129/129 installed, 0 invalid, 0 nontransactional engines, 0 missing, 0 skipped. No new database/table/trigger was required. These passed gates should not be re-requested.
