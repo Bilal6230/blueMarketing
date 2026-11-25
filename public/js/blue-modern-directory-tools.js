@@ -85,5 +85,13 @@ function mount(options){
   if($wrap.length)$toolbar.insertBefore($wrap);else $card.prepend($toolbar);
   return {refresh:applyVisibility};
 }
-$.blueModernDirectoryTools={mount:mount};
+function skeleton(selector){
+  var $wrap=$(selector).first();
+  if(!$wrap.length)return function(){};
+  var $overlay=$('<div>',{'class':'bm-modern-fetch-skeleton','aria-live':'polite','aria-label':'Loading updated records'})
+    .append($('<span>'),$('<span>'),$('<span>'),$('<span>'));
+  $wrap.addClass('bm-modern-fetching').append($overlay);
+  return function(){$overlay.remove();$wrap.removeClass('bm-modern-fetching');};
+}
+$.blueModernDirectoryTools={mount:mount,skeleton:skeleton};
 })(jQuery);
