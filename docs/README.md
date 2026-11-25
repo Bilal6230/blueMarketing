@@ -1,3 +1,21 @@
+# 2026-11-25 — M06 Activity Audit exact CR/DR listing parity fix (owner test pending)
+
+Owner compared screenshots of CR Voucher Directory and Activity Audit and rejected the previous superficial filter icons. The previous Activity Audit implemented independent blue popover, only Previous/Next pagination and no CR/DR-style Show Entries/Quick Search.
+
+**Real implementation:** Activity Audit now reuses the **actual** `<x-finance.voucher-column-filters />` component, `$.blueVoucherColumnFilters.init`, `$.blueVoucherPagination.render` and `$.blueTableSkeleton.show` used by the CR/DR directory, instead of its homegrown popup/pager. It has a green-toned compact voucher-style heading/table, column caret filters with sort ascending/descending, date-range controls, checkbox options (method and status), column search (actor/route/affected table/IP), global quick Search, Show 10/25/50/100, and bottom numbered pagination plus matching record summary. Existing View Details modal and permission checks remain. Backend ActivityAuditController now accepts the shared voucher query and returns `data`, `recordsTotal`, `recordsFiltered` with safe sortable column allowlist and per-column filter processing. Single read-only Activity Audit page; no extra top filter form.
+
+**Verification after pull (no new migrations in this UI fix):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+Browser: `http://localhost:8001/admin/activity-audit`; date column caret must show same Sort A/Z and From/To sections as CR. Check action/status checkbox menu, route search, Search, Show Entries and numbered bottom pagination on data. Click View and verify existing detailed impact modal still opens. **Do not claim PASS until owner runs this.** M06 remains in progress; M03 Labour CP still ON HOLD.
+
+---
+
 # 2026-11-25 — M06 batch 2: activity register modernization + transactional JV row audit (LOCAL VERIFICATION PENDING)
 
 Owner screenshot confirms `http://localhost:8001/admin/activity-audit` successfully opens with a real user-status POST logged. Owner requested global compact CR/DR-style UI, **filters in column headings rather than a top form**, AJAX table skeleton and View action showing the actual changes and which linked DB records/tables were touched (JV affects multiple tables).
