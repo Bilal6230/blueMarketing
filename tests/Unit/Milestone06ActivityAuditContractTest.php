@@ -275,6 +275,29 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringContainsString('test_thrown_exception_after_rolled_back_write_is_not_audited', $integration);
     }
 
+    public function test_background_audit_requires_explicit_existing_actor_and_atomic_write(): void
+    {
+        $runner = $this->source('app/Support/Audit/BackgroundActivityAudit.php');
+        $integration = $this->source('tests/Feature/BackgroundActivityAuditTest.php');
+        $this->assertStringContainsString("DB::table('users')->where('id', $actorId)->exists()", $runner);
+        $this->assertStringContainsString("DB::transactionLevel() !== 0", $runner);
+        $this->assertStringContainsString("'action' => 'JOB'", $runner);
+        $this->assertStringContainsString("SET @activity_audit_token = ?", $runner);
+        $this->assertStringContainsString("SET @activity_audit_token = NULL", $runner);
+        $this->assertStringContainsString("DB::transaction(", $runner);
+        $this->assertStringContainsString("where('request_token', $token)", $runner);
+        $this->assertStringNotContainsString('Schema::create(', $runner);
+        foreach ([
+            'test_committed_background_write_is_attributed_to_explicit_user',
+            'test_failed_background_transaction_does_not_create_audit_or_business_row',
+            'test_read_only_background_job_does_not_pollute_audit_history',
+            'test_unknown_actor_is_rejected_without_running_work',
+            'test_nested_outer_transaction_is_rejected_without_running_work',
+        ] as $test) {
+            $this->assertStringContainsString($test, $integration);
+        }
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
