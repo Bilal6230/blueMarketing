@@ -1,3 +1,25 @@
+# 2026-11-25 — Accounting directories card-only scroll + New/Edit modal layout repair (owner gate pending)
+
+**Owner screenshots:** Main Account and Party Account listings scrolled the entire browser page instead of scrolling within the card; New Main and New Party modals displayed tiny/collapsed text fields and selects. Owner also requested Edit modal consistency. This is a visual-layout regression from the generic `.bm-modern-accounts .content .row{flex:1 1 auto}` rule which inadvertently stretched **nested form grids**.
+
+**Fix delivered:**
+- `public/css/modern-account-directory.css`: constrained the accounting page to its viewport space, with an overflow-hidden directory shell, internal `.bm-account-table-wrap` `overflow-y:auto`, sticky table headings and bottom pagination always at the card footer. `public/js/modern-account-directory.js` adds a page-only body class to suppress whole-page scroll. The rule applies to all **Main, Party and Joint Account** directories, not other modules.
+- Scoped flex `.row` sizing to direct layout rows (never modal form rows). New Account modal fields now occupy their proper Bootstrap grid columns with full-size 38px inputs/selects, correct label widths, optional input-group prefixes, responsive single-column mobile layout, and modal-body scrolling on shorter screens. Existing original form inputs, routes, AJAX handling and validations are kept.
+- Main and Party **Edit** modal forms receive matching widths, field alignment, spacing, scrollable modal bodies and consistent button/footer chrome; corrected Main Edit label to **Main Account Name**. Joint mapping Edit modal now uses the same style and correct **Edit Joint Account Mapping** title. Also corrected invalid nested Main/Party Delete form markup so the submit button is inside its actual form.
+- Added `tests/Unit/ModernAccountingModalScrollContractTest.php`: four focused tests for card-only scroll and footer, modal grid, status reason/financial field preservation and valid Delete form nesting. `AGENTS.md` records permanent card-scroll and modal-width rules for all future listing modernizations.
+- **No migrations, schema or finance posting/ledger logic changes.** M03 Labour CP remains ON HOLD. New code and tests are pushed; PHP suite and browser verification are **NOT yet owner executed**. JavaScript parse and source checks passed during authoring.
+
+**Owner focused gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan view:cache
+php artisan test --filter=ModernAccountingModalScrollContractTest
+```
+Browser: Ctrl+F5 Main Account and Party Account; scrolling long lists should move rows inside the card while application header and card footer/pagination stay still. New Main/Party modal inputs should fill the correct columns (including Type, Status, CNIC/Phone). Test Edit of a disposable local definition, confirming Account Name and the **Status change reason** field are readable and not forced to microscopic widths. Check Joint Account Edit modal appearance and table scroll too. Test Cancel; no need to modify historical finance accounts or rerun old milestone suites. If the previously repaired `ModernAccountingDirectoryContractTest` has not yet been owner-confirmed PASS, it remains a separate pending gate, not presumed accepted.
+
+---
+
 # 2026-11-25 — Accounting directory finishing details
 
 Main Account and Party Account now additionally display **Status** (Active/Inactive badges with header dropdown choices) and **Created** (header date-range filter) to match modern master directory conventions. `public/js/modern-account-directory.js` has been syntax-checked using a JavaScript parser; shared CSS and all three Blade views passed targeted static presence checks. **These are source-level checks, not a substitute for the local PHP/Blade and browser gates noted below.** No new migration, table or business-data change. Main/Party Delete still fail closed by design; Joint mapping Delete remains guarded and enabled. Labour CP remains ON HOLD.
