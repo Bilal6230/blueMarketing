@@ -43,7 +43,7 @@ class UserController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+            return $request->expectsJson() ? response()->json(['message' => 'Please correct the form fields.', 'errors' => $validator->errors()], 422) : back()->withErrors($validator)->withInput();
         }
 
         DB::beginTransaction();
@@ -72,11 +72,11 @@ class UserController extends Controller
             DB::commit();
 
             // Redirect with success message
-            return redirect()->route('users.index')->with('success', 'User created successfully!');
+            return $request->expectsJson() ? response()->json(['success' => true, 'message' => 'User created successfully.']) : redirect()->route('users.index')->with('success', 'User created successfully!');
         } catch (\Throwable $th) {
             DB::rollback();
             //Log::error('User creation failed: ' . $th->getMessage(), ['trace' => $th->getTraceAsString()]);
-            return back()->with('error', 'Failed to create user: ' . $th->getMessage());
+            return $request->expectsJson() ? response()->json(['message' => 'Unable to create user.'], 422) : back()->with('error', 'Unable to create user.');
         }
     }
 
@@ -123,8 +123,7 @@ class UserController extends Controller
         $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
-            return back()->withErrors($validator)
-                ->withInput();
+            return $request->expectsJson() ? response()->json(['message' => 'Please correct the form fields.', 'errors' => $validator->errors()], 422) : back()->withErrors($validator)->withInput();
         }
 
         $data = [
@@ -164,13 +163,14 @@ class UserController extends Controller
             $user->syncRoles($request->role);
 
             DB::commit();
-            Alert::success('Notification', 'Data <b>' . $user->name . '</b> berhasil disimpan')->toToast()->toHtml();
+            if (!$request->expectsJson()) Alert::success('Notification', 'User updated.')->toToast();
         } catch (\Throwable $th) {
             DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $user->name . '</b> gagal disimpan : ' . $th->getMessage())->toToast()->toHtml();
+            if ($request->expectsJson()) return response()->json(['message' => 'Unable to update user.'], 422);
+            Alert::error('Notification', 'Unable to update user.')->toToast();
         }
 
-        return back();
+        return $request->expectsJson() ? response()->json(['success' => true, 'message' => 'User updated.']) : back();
     }
 
 
@@ -179,10 +179,11 @@ class UserController extends Controller
         try {
             $user = User::find($request->id);
             $user->delete();
-            Alert::success('Notification', 'Data <b>' . $user->name . '</b> berhasil dihapus')->toToast()->toHtml();
+            if (!$request->expectsJson()) Alert::success('Notification', 'User deleted.')->toToast();
         } catch (\Throwable $th) {
-            Alert::error('Notification', 'Data <b>' . $user->name . '</b> gagal dihapus : ' . $th->getMessage())->toToast()->toHtml();
+            if ($request->expectsJson()) return response()->json(['message' => 'Unable to delete user.'], 422);
+            Alert::error('Notification', 'Unable to delete user.')->toToast();
         }
-        return back();
+        return $request->expectsJson() ? response()->json(['success' => true, 'message' => 'User deleted.']) : back();
     }
 }
