@@ -254,7 +254,7 @@ $(function(){
    card:$card,table:$table,title:kind==='head'?'Main Accounts':kind==='subhead'?'Party Accounts':kind==='joint'?'Joint Accounts':'Accountants List',
    getRows:function(){
      return visibleRows().map(function(row){
-       return $(row).children('td').map(function(){return $.trim($(this).text()).replace(/\\s+/g,' ');}).get();
+       return $(row).children('td').map(function(){return $.trim($(this).text()).replace(/\s+/g,' ');}).get();
      });
    }
  });
