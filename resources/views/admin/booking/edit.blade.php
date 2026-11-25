@@ -3,7 +3,7 @@
 @section('content')
     @php
         $customerName = trim(($booking->customer->first_name ?? '') . ' ' . ($booking->customer->last_name ?? ''));
-        $canUpdateBroker = auth()->user()?->can('update plot') ?? false;
+        $canUpdateBroker = auth()->user()?->can('update booking') ?? false;
         $canUpdatePricing = auth()->user()?->can('update booking price') ?? false;
         $pricingAllowed = (bool) ($pricingLifecycle['pricing_edit_allowed'] ?? false) && !$paymentAttributionRequired;
         $pricingEnabled = $canUpdatePricing && $pricingAllowed;
