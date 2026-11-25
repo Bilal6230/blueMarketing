@@ -612,8 +612,8 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::post('booking/cancel/{id}', 'cancel')->middleware(['permission:read plot'])->name('booking.cancel');
         Route::get('booking/plot', 'index')->middleware(['permission:read booking'])->name('booking.plot.index');
         Route::get('booking/plot/sale', 'sale')->middleware(['permission:read booking'])->name('booking.plot.sale');
-        Route::get('booking/{id}/edit', 'editBooking')->middleware(['permission:update booking'])->name('booking.edit');
-        Route::put('booking/{id}', 'updateBooking')->middleware(['permission:update booking'])->name('booking.update');
+        Route::get('booking/{id}/edit', 'editBooking')->middleware(['permission:update booking|update booking price'])->name('booking.edit');
+        Route::put('booking/{id}', 'updateBooking')->middleware(['permission:update booking|update booking price'])->name('booking.update');
         Route::get('booking/plot/file-transfer/{id}', 'fileTransfer')->middleware(['permission:read booking'])->name('booking.plot.file-transfer');
         Route::post('booking/plot/sale', 'store')->middleware(['permission:create booking'])->name('bookings.store');
         Route::post('booking/plot/transfer', 'update')->middleware(['permission:update booking'])->name('bookings.transfer');
@@ -647,7 +647,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::post('booking/plot/voucher/', 'deposit')->middleware(['booking.deposit.action'])->name('booking.customer.deposit');
         Route::delete('booking/plot/destroy', 'destroy')->middleware('permission:finance ppr delete')->name('booking.customer.destroy');
         Route::post('booking/plot/show', 'fatch_voucher')->middleware('permission:read booking')->name('booking.voucher.show');
-        Route::post('booking/plot/approve', 'approve')->middleware('permission:update booking')->name('booking.customer.approve');
+        Route::post('booking/plot/approve', 'approve')->middleware('permission:finance ppr approve')->name('booking.customer.approve');
 
         Route::get('booking/project/recovery_list', 'recovery_list')->middleware(['permission:read booking'])->name('booking.plot.recovery_list');
 
