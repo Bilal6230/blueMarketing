@@ -287,9 +287,9 @@ $(function(){
       dataType:'json',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
       .done(function(response){
         $('#areaDeleteModal').modal('hide');inform(response.message||'Area deleted.');
-        $.ajax({url:@json(route('area.index')),dataType:'json',headers:{Accept:'application/json'}})
+        (function(){var stopSkeleton=$.blueModernDirectoryTools.skeleton('.area-table-wrap');return $.ajax({url:@json(route('area.index')),dataType:'json',headers:{Accept:'application/json'}})
           .done(function(reply){areas=reply.data||[];render();})
-          .fail(function(){inform('Deleted, but area list could not refresh.',true);});
+          .fail(function(){inform('Deleted, but area list could not refresh.',true);}).always(function(){stopSkeleton();});}());
       }).fail(function(xhr){
         var message=(xhr.responseJSON||{}).message||'Area could not be deleted.';
         $('#areaDeleteError').text(message);inform(message,true);
@@ -307,9 +307,9 @@ $(function(){
       headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
     .done(function(response){
       $('#areaEditor').modal('hide');inform(response.message||'Area saved.');
-      $.ajax({url:@json(route('area.index')),dataType:'json',headers:{Accept:'application/json'}})
+      (function(){var stopSkeleton=$.blueModernDirectoryTools.skeleton('.area-table-wrap');return $.ajax({url:@json(route('area.index')),dataType:'json',headers:{Accept:'application/json'}})
         .done(function(reply){areas=reply.data||[];render();})
-        .fail(function(){inform('Area saved, but list refresh failed. Reload the page.',true);});
+        .fail(function(){inform('Area saved, but list refresh failed. Reload the page.',true);}).always(function(){stopSkeleton();});}());
     }).fail(function(xhr){
       var body=xhr.responseJSON||{},errors=body.errors||{};
       $.each(errors,function(key,messages){$('#areaForm').find('[data-error="'+key+'"]').text(messages[0]||'Invalid value');});
