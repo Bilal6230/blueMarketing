@@ -365,9 +365,30 @@ class ProjectController extends Controller
      * @param  \App\Models\Project  $project
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Project $project)
+    public function destroy(Request $request)
     {
-        //
+        $id = (int) $request->validate(['id' => ['required', 'integer', 'min:1']])['id'];
+
+        try {
+            DB::transaction(function () use ($id): void {
+                $project = Project::query()->whereKey($id)->lockForUpdate()->firstOrFail();
+                \App\Support\SafeMasterRecordDeletion::assertUnreferenced('projects', $id, 'project_id');
+                $project->delete();
+            });
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Project cannot be deleted: '. $exception->getMessage()], 409);
+            }
+            return back()->withErrors(['project' => 'Project cannot be deleted: '.$exception->getMessage()]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['status' => 'success', 'message' => 'Unlinked project deleted successfully.']);
+        }
+
+        return redirect()->route('project.index')->with('success', 'Project deleted.');
     }
 
     public function add_zone()
