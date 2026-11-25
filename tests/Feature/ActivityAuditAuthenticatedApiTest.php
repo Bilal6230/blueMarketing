@@ -51,6 +51,16 @@ final class ActivityAuditAuthenticatedApiTest extends TestCase
             $table->string('phone_number')->unique();
             $table->string('mobile_number')->nullable()->unique();
             $table->string('nic_number')->nullable();
+            // The real CRM controller explicitly inserts these nullable
+            // attributes even when the API payload omits their values.
+            $table->string('gender')->nullable();
+            $table->unsignedInteger('area_id')->nullable();
+            $table->integer('type')->nullable();
+            $table->string('business')->nullable();
+            $table->string('designation')->nullable();
+            $table->unsignedInteger('zone_id')->nullable();
+            $table->text('home_address')->nullable();
+            $table->text('office_address')->nullable();
             $table->timestamp('follow_up')->nullable();
             $table->integer('follow_status')->nullable();
             $table->integer('is_active')->nullable();
