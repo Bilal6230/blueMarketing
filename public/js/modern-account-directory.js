@@ -40,9 +40,23 @@ $(function(){
    $root.append($modal);
    $form.find('button[type=submit]').addClass('btn-sm');
    $newButton.on('click',function(){$modal.modal({backdrop:'static',keyboard:false,show:true});});
+   $modal.on('shown.bs.modal',function(){
+     if(!$.fn.select2)return;
+     $form.find('select.select2').each(function(){
+       var $select=$(this);
+       if($select.hasClass('select2-hidden-accessible'))$select.select2('destroy');
+       $select.select2({dropdownParent:$modal,width:'100%'});
+     });
+   });
    var $place=$header.find('.row').first();
-   if($place.length){$place.append($('<div>',{'class':'col-sm-auto ml-auto text-right'}).append($newButton));}
-   else $header.append($newButton);
+   if($place.length){
+     var $target=$place.children('[class*="col-sm-"]').last();
+     if($target.length){
+       $target.addClass('d-flex justify-content-end align-items-center');
+       $target.find('ol.breadcrumb').remove();
+       $target.append($newButton);
+     }else $place.append($newButton);
+   }else $header.append($newButton);
  }
  // Purely decorative wrapping: preserve original delegated click handlers,
  // modal flow and financial route targets. No action authorization is inferred.
