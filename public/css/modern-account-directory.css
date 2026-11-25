@@ -256,3 +256,13 @@ body.bm-account-directory-page .content-wrapper.bm-modern-accounts{
     padding-bottom:38px!important;
   }
 }
+
+
+/* AJAX refresh skeleton overlays only table content; footer, page and modals stay put. */
+.bm-modern-accounts .bm-account-table-wrap{position:relative}
+.bm-modern-accounts .bm-account-table-wrap.bm-account-is-refreshing .bm-account-table{opacity:.2;pointer-events:none}
+.bm-modern-accounts .bm-account-refresh-loading{
+ position:absolute!important;z-index:4;inset:0;min-height:100%;
+ background:linear-gradient(180deg,#ffffffea,#f7faffed);
+ padding:23px 15px!important;pointer-events:none;
+}
