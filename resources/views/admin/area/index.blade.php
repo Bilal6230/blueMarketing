@@ -198,6 +198,7 @@ $(function(){
     });
     if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
     $body.attr('aria-busy','false');
+    if(exportControls)exportControls.refresh();
     updateHeadings();
     $('#areaSummary').text('Showing '+(matches.length?start+1:0)+'–'+Math.min(start+size,matches.length)+' of '+matches.length+' areas');
     if($.blueVoucherPagination)$.blueVoucherPagination.render({container:'#areaPages',summary:'#areaSummary',total:matches.length,length:size,start:start,buttonClass:'dv-page-btn',onPage:function(next){currentPage=Math.floor(next/size)+1;render();}});
@@ -315,6 +316,10 @@ $(function(){
       $('#areaFormErrors').text(body.message||'Unable to save area.');
       inform(body.message||'Unable to save area.',true);
     }).always(function(){$save.prop('disabled',false).html('<i class="fas fa-check mr-1"></i> Save Area');});
+  });
+  var exportControls=$.blueModernDirectoryTools.mount({
+    card:'.area-card',table:'#areasTable',title:'Areas List',
+    getRows:function(){return visibleRows().map(function(s){return [s.id,s.name,columnValue(s,'is_active'),s.created_at||'—'];});}
   });
   render();
 });
