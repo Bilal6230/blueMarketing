@@ -1,3 +1,22 @@
+# 2026-11-25 — M06 MySQL rollback probe: fix PHPUnit missing connection configuration
+
+**Owner result:** `Milestone06ActivityAuditContractTest` **16 PASS / 186 assertions**. Real MySQL rollback probe **2 SKIPPED / 0 assertions** with reason `Laravel MySQL driver configuration is missing`. The prior strict MySQL Audit Health verification remained fully PASS (129/129 valid triggers). Skipped tests are not accepted as rollback evidence.
+
+**Root cause:** `phpunit.xml` forces SQLite and the PHPUnit bootstrapped test configuration can omit `database.connections.mysql` entirely, even though the normal app has a valid local MySQL connection. Reading local `.env` was successful; the extra assumption that the MySQL config entry must exist was wrong.
+
+**Implemented fix:** `ActivityAuditMysqlTriggerRollbackTest` now assembles its **own named MySQL connection** directly from existing local `.env` (host, port, configured database, username, password, socket), and supplies standard Laravel charset/collation/prefix/strict/options defaults. It does not read or mutate the global default SQLite connection and requires an existing loopback local database, installed users trigger, users/status_id column, and impact table. Same-value status UPDATE is used for rollback/commit; only token-scoped unlinked test impact is deleted on teardown. No new DB, table, migration or trigger. Contract test extended for explicit connection setup. The new change has not been executed locally yet.
+
+**Next owner command:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ActivityAuditMysqlTriggerRollbackTest
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+Expected: 2 MySQL integration tests PASS (not skipped), 16 contract tests PASS. If connection errors occur, paste the exact error. Avoid rerunning previously accepted health/UI tests. M06 IN PROGRESS; mobile API end-to-end, background/CLI writes and retention/performance remain pending.
+
+---
+
 # 2026-11-25 — M06 fix: MySQL trigger integration test skipped due PHPUnit SQLite override
 
 **Owner verified:** `Milestone06ActivityAuditContractTest` 16 tests PASS, 181 assertions. `activity-audit:health --strict` PASS: existing MySQL DB has 129 applicable triggers, 0 missing, 0 invalid definitions, 0 nontransactional engines, 0 skipped tables and 0 stale/unlinked audit snapshots. `ActivityAuditMysqlTriggerRollbackTest` had **2 SKIPPED / 0 assertions**, *not* PASS.
