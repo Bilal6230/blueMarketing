@@ -247,6 +247,9 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringContainsString('Dotenv::parse(', $probe);
         $this->assertStringContainsString("config()->set('database.connections.'.self::CONNECTION", $probe);
         $this->assertStringContainsString("'url' => null", $probe);
+        $this->assertStringContainsString("'driver' => 'mysql'", $probe);
+        $this->assertStringContainsString("'charset' => 'utf8mb4'", $probe);
+        $this->assertStringNotContainsString('Laravel MySQL driver configuration is missing.', $probe);
         $this->assertStringContainsString("DB::purge(self::CONNECTION)", $probe);
         $this->assertStringContainsString("'bm_audit_users_au'", $probe);
         $this->assertStringContainsString('->update([\'status_id\' => $this->originalStatus])', $probe);
