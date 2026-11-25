@@ -102,4 +102,16 @@ final class ModernAccountingModalScrollContractTest extends TestCase
         self::assertStringContainsString('Main account deletion is unavailable', $controller);
         self::assertStringContainsString('Party account deletion is unavailable', $controller);
     }
+    public function test_area_header_remains_sticky_and_accounting_footer_matches_area_baseline(): void
+    {
+        $area = $this->source('resources/views/admin/area/index.blade.php');
+        $css = $this->source('public/css/modern-account-directory.css');
+
+        self::assertStringContainsString('.bm-areas .area-table thead th{position:sticky;top:0;z-index:3', $area);
+        self::assertStringContainsString('height:calc(100dvh - 123px)!important', $css);
+        self::assertStringContainsString('padding-bottom:38px!important', $css);
+        self::assertStringContainsString('body.bm-account-directory-page .bm-modern-accounts .bm-account-card>.bm-account-table-wrap', $css);
+        self::assertStringContainsString('body.bm-account-directory-page .bm-modern-accounts .bm-account-footer', $css);
+    }
+
 }
