@@ -27,13 +27,31 @@ class ProjectController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        $x['title']     = 'Project List';
-        $x['data']      = Project::get();
-        $x['role']      = Role::get();
-        //dd($x['data']);
-        return view('admin.projects.index', $x);
+        $projects = Project::query()->orderBy('id')->get();
+        $rows = $projects->map(fn (Project $project): array => [
+            'id' => (int) $project->id,
+            'project' => (string) $project->project,
+            'project_code' => (string) ($project->project_code ?: 'Legacy'),
+            'address' => (string) ($project->address ?? ''),
+            'location' => (string) ($project->location ?? ''),
+            'opening_date' => $project->opening_date?->format('Y-m-d'),
+            'closing_date' => $project->closing_date?->format('Y-m-d'),
+            'corner_charge_percent' => (float) $project->corner_charge_percent,
+            'facing_charge_percent' => (float) $project->facing_charge_percent,
+            'is_active' => (int) $project->is_active,
+            'created_at' => optional($project->created_at)->format('Y-m-d H:i:s'),
+        ])->values()->all();
+
+        if ($request->wantsJson()) {
+            return response()->json(['status' => 'success', 'data' => $rows]);
+        }
+
+        return view('admin.projects.index', [
+            'title' => 'Project List',
+            'projectRows' => $rows,
+        ]);
     }
 
     private function requireProjectSetupSchema(): void
@@ -61,6 +79,9 @@ class ProjectController extends Controller
         ]);
 
         if ($validator->fails()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Please correct the highlighted project fields.', 'errors' => $validator->errors()], 422);
+            }
             return back()->withErrors($validator)->withInput();
         }
 
@@ -120,8 +141,15 @@ class ProjectController extends Controller
                 return $project;
             });
 
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'success', 'message' => 'Project created successfully.', 'id' => $data->id], 201);
+            }
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> saved successfully.')->toToast()->toHtml();
         } catch (\Throwable $th) {
+            if ($request->expectsJson()) {
+                report($th);
+                return response()->json(['message' => 'Project could not be created. Check the required system accounts and try again.'], 422);
+            }
             Alert::error('Notification', 'Data <b>' .  $th->getMessage() . '</b>')->toToast()->toHtml();
         }
 
@@ -190,8 +218,13 @@ class ProjectController extends Controller
 
 
 
-    public function update(Request $request, Project $project)
+    public function update(Request $request)
     {
+        // This route is PUT /admin/project without a {project} URL segment.
+        // Resolve the actual row from the submitted ID; implicit binding here
+        // used to hand an empty model to the financial charge revision flow.
+        $id = $request->validate(['id' => ['required', 'integer', 'min:1']])['id'];
+        $project = Project::query()->findOrFail((int) $id);
         $this->requireProjectSetupSchema();
         $rules = [
             'address' => ['required', 'string', 'max:255'],
@@ -222,6 +255,10 @@ class ProjectController extends Controller
         $chargeChanged = (float) $project->corner_charge_percent !== (float) $validated['corner_charge_percent']
             || (float) $project->facing_charge_percent !== (float) $validated['facing_charge_percent'];
         if ($chargeChanged && empty($validated['charge_effective_from'])) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Select when the new charges take effect.',
+                    'errors' => ['charge_effective_from' => ['Select when the new charges take effect.']]], 422);
+            }
             return back()->withErrors(['charge_effective_from' => 'Select when the new charges take effect.'])->withInput();
         }
 
@@ -301,10 +338,17 @@ class ProjectController extends Controller
                     ]);
                 }
             });
-            Alert::success('Notification', 'Data <b>' . $project->name . '</b> saved successfully')->toToast()->toHtml();
+            if ($request->expectsJson()) {
+                return response()->json(['status' => 'success', 'message' => 'Project updated successfully.', 'id' => $project->id]);
+            }
+            Alert::success('Notification', 'Data <b>' . $project->project . '</b> saved successfully')->toToast()->toHtml();
         } catch (\Illuminate\Validation\ValidationException $th) {
             throw $th;
         } catch (\Throwable $th) {
+            if ($request->expectsJson()) {
+                report($th);
+                return response()->json(['message' => 'Project update failed. Please review the project settings and try again.'], 422);
+            }
             Alert::error('Notification', 'Data <b>' . $project->project . '</b> failed to save : ' . $th->getMessage())->toToast()->toHtml();
         }
 
