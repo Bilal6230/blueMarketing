@@ -1,0 +1,25 @@
+/* Permission directory adopts the shared modern list layout. */
+.bm-permission-directory .content-header h1{font-size:19px!important;font-weight:750;color:#173a75}
+.bm-permission-directory .bm-account-card{border:1px solid #c4d2e3!important;border-top:3px solid #2563eb!important}
+.bm-permission-directory .bm-account-table tbody td{height:48px!important}
+.bm-permission-directory .bm-account-table thead th{position:sticky;top:0;z-index:3}
+.bm-permission-directory .bm-account-table tbody td:last-child{text-align:center;min-width:90px}
+.bm-permission-directory .bm-modern-export-toolbar .bm-modern-column-menu{order:0!important;margin-left:3px!important}
+.bm-permission-directory .bm-modern-export-toolbar .bm-permission-toolbar-actions{
+  float:none!important;display:flex!important;align-items:center;justify-content:flex-end;
+  margin:0 0 0 auto!important;order:20!important;gap:7px;flex-wrap:wrap;
+}
+.bm-permission-directory .bm-permission-toolbar-actions .btn{font-size:12px!important;font-weight:650!important;border-radius:6px!important;padding:7px 12px!important}
+.bm-permission-modal .modal-dialog{max-width:620px!important;width:calc(100% - 32px)!important;margin:1.75rem auto!important}
+.bm-permission-modal#modal-delete .modal-dialog{max-width:480px!important}
+.bm-permission-modal .modal-content{border:1px solid #bacce1;border-top:3px solid #2563eb;border-radius:12px;overflow:hidden;box-shadow:0 19px 50px #18395830}
+.bm-permission-modal .modal-header{background:#f4f8ff;border-bottom:1px solid #cad9eb;padding:15px 20px}
+.bm-permission-modal .modal-title{font-size:18px;font-weight:750;color:#193d73}
+.bm-permission-modal .modal-body{padding:19px 20px;max-height:calc(100dvh - 185px);overflow-y:auto}
+.bm-permission-modal .modal-footer{padding:12px 20px;border-top:1px solid #d4e1ef;display:flex;justify-content:flex-end!important;gap:9px;background:#fff}
+.bm-permission-modal .input-group{display:flex;width:100%;flex-wrap:wrap;min-width:0;margin-bottom:15px}
+.bm-permission-modal .input-group>label{display:block;width:100%;flex:0 0 100%;font-size:14px;font-weight:650;color:#344d6c;margin-bottom:6px}
+.bm-permission-modal .input-group>.input-group{width:100%;flex:1 1 100%;min-width:0;margin-bottom:0}
+.bm-permission-modal .form-control{width:100%!important;min-width:0!important;flex:1 1 auto!important;height:40px!important;border:1px solid #bdcee2;border-radius:7px;font-size:14px}
+.bm-permission-modal .btn{padding:8px 17px;font-size:13px;border-radius:6px}
+@media(max-width:575px){.bm-permission-directory .bm-modern-export-toolbar .bm-permission-toolbar-actions{width:100%;margin-left:0!important;justify-content:flex-end}.bm-permission-modal .modal-dialog{width:calc(100% - 16px)!important}}
