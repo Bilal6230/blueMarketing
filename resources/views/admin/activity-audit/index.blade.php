@@ -2,168 +2,150 @@
 @section('title', 'Activity Audit')
 @push('style')
 <style>
-.bm-audit{--audit-blue:#2269d4;padding:14px 16px 24px;font-size:12px;color:#2c3e54}
-.bm-audit .audit-title{font-size:19px;font-weight:750;color:#183e78;margin:0}
-.bm-audit .audit-panel{border:1px solid #dce6f2;border-top:3px solid var(--audit-blue);border-radius:11px;background:#fff;box-shadow:0 3px 14px #17365b0b;overflow:hidden}
-.bm-audit .audit-panel-header{padding:12px 15px;border-bottom:1px solid #e7edf5;display:flex;justify-content:space-between;align-items:center;gap:12px}
-.bm-audit .audit-table{width:100%;margin:0;font-size:12px;table-layout:auto}
-.bm-audit .audit-table th{background:#f0f5fc;color:#304a6b;font-size:11px;padding:10px 9px;border-bottom:2px solid #c5d9f4;white-space:nowrap}
-.bm-audit .audit-table td{padding:10px 9px;vertical-align:middle;border-bottom:1px solid #edf1f7}
-.bm-audit .audit-table tbody tr:hover{background:#f8fbff}
-.bm-audit .audit-column-filter{border:0;background:transparent;color:#7b90ac;padding:3px 5px;margin-left:5px;border-radius:4px}
-.bm-audit .audit-column-filter:hover,.bm-audit .audit-column-filter.active{color:#1766c7;background:#e0edff}
-.bm-audit .audit-view{border:1px solid #bbd3f5;background:#eff6ff;color:#165db6;font-size:11px;font-weight:650;padding:5px 10px;border-radius:5px}
-.bm-audit .audit-footer{min-height:45px;padding:9px 14px;border-top:1px solid #e3ebf6;display:flex;justify-content:space-between;align-items:center}
-.bm-audit .audit-footer button{border:1px solid #bcd4f4;background:#fff;border-radius:5px;color:#2166c4;font-size:11px;padding:5px 12px}
-.bm-audit .audit-footer button:disabled{opacity:.45}
-.bm-audit .audit-pop{display:none;position:fixed;z-index:1080;background:white;border:1px solid #cfddf1;border-top:3px solid var(--audit-blue);box-shadow:0 12px 34px #0a214333;border-radius:9px;padding:12px;width:260px}
-.bm-audit .audit-pop label{font-weight:700;color:#3c5879}
-.bm-audit .audit-impact{border:1px solid #e0e9f6;border-radius:8px;margin-bottom:10px;padding:11px;background:#fbfdff}
-.bm-audit .audit-diff{width:100%;font-size:11px}
-.bm-audit .audit-diff th,.bm-audit .audit-diff td{padding:6px;border:1px solid #e4ecf6;word-break:break-word}
-.bm-audit .audit-diff th{background:#edf4ff}
-.bm-audit .audit-sql-note{color:#7b5f25;background:#fff9e8;border:1px solid #f0e4b6;border-radius:6px;padding:10px;margin:8px 0}
-.bm-audit .bm-skeleton-row td{height:40px}.bm-audit .bm-skeleton-bar{display:block;height:12px;border-radius:5px;background:linear-gradient(90deg,#e9eef7 15%,#d8e3f1 45%,#e9eef7 75%);background-size:220% 100%;animation:auditShimmer 1.4s ease-in-out infinite}
-@keyframes auditShimmer{to{background-position:-220% 0}}
-@media(prefers-reduced-motion:reduce){.bm-audit .bm-skeleton-bar{animation:none}}
+.activity-audit-page{--dv-accent:#167d42;--dv-pale:#eaf8ef;background:#ecf7f0;min-height:calc(100vh - 100px);padding:10px 9px 18px;font-size:12px}
+.activity-audit-page .audit-heading{border-bottom:2px solid var(--dv-accent);background:#e9f8ef;border-radius:9px;padding:15px 13px;margin-bottom:11px;display:flex;align-items:center;justify-content:space-between}
+.activity-audit-page .audit-heading h2{font-size:16px;font-weight:750;color:var(--dv-accent);margin:0 0 4px}
+.activity-audit-page .audit-heading small{color:#59796b}
+.activity-audit-page .audit-register{border:1px solid #d8e5dd;border-top:3px solid var(--dv-accent);background:#fff;border-radius:10px;box-shadow:0 2px 13px #193a2910;overflow:hidden}
+.activity-audit-page .dv-table-tools{padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.activity-audit-page .dv-table-tools label{display:flex;align-items:center;gap:6px;margin:0;font-size:11px;font-weight:600}
+.activity-audit-page .dv-table-tools select{width:66px}
+.activity-audit-page .dv-table-tools input{width:195px}
+.activity-audit-page .dv-table-tools .form-control{height:29px;font-size:11px}
+.activity-audit-page .audit-table-wrap{max-height:610px;overflow:auto;position:relative}
+.activity-audit-page table.audit-table{font-size:11px;width:100%;margin:0;white-space:nowrap}
+.activity-audit-page .audit-table thead th{position:sticky;top:0;background:#e8f7ee;color:#27394b;border:1px solid #d8e4de;border-bottom:2px solid var(--dv-accent);padding:7px;vertical-align:middle;font-weight:750;z-index:1}
+.activity-audit-page .audit-table td{border:1px solid #e0e8e3;padding:7px;vertical-align:middle;height:42px}
+.activity-audit-page .audit-table tbody tr:nth-child(even){background:#f6fbf8}
+.activity-audit-page .audit-table tbody tr:hover{background:#eaf7ee}
+.activity-audit-page .dv-excel-trigger{float:right;background:transparent;border:1px solid transparent;color:var(--dv-accent);border-radius:4px;min-width:22px;height:22px}
+.activity-audit-page .dv-excel-trigger:hover,.activity-audit-page .dv-excel-trigger[aria-expanded=true],.activity-audit-page .dv-excel-trigger.dv-has-filter{border-color:var(--dv-accent);background:white}
+.activity-audit-page .dv-pagination-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 12px;flex-wrap:wrap;border-top:1px solid #dbe9de}
+.activity-audit-page #dv-pages{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.activity-audit-page .dv-page-btn{border:1px solid var(--dv-accent);color:var(--dv-accent);background:white;border-radius:5px;min-width:30px;height:29px;font-size:11px}
+.activity-audit-page .dv-page-btn.active{background:var(--dv-accent);color:white}
+.activity-audit-page .dv-page-btn:disabled{opacity:.4}
+.activity-audit-page .dv-page-ellipsis{color:#76867b}
+.activity-audit-page .audit-view{background:white;border:1px solid #a7d5b8;color:var(--dv-accent);border-radius:6px;min-width:56px;padding:5px 8px;font-weight:700}
+.activity-audit-page .audit-view:hover{background:#e4f5eb}
+.activity-audit-page .audit-diff{width:100%;font-size:11px}
+.activity-audit-page .audit-diff th,.activity-audit-page .audit-diff td{border:1px solid #d9e8de;padding:6px;word-break:break-word;white-space:normal}
+.activity-audit-page .audit-diff th{background:#eaf8ef}
+.activity-audit-page .audit-impact{border:1px solid #dce8e1;border-radius:7px;padding:10px;margin:8px 0}
+.activity-audit-page .audit-sql-note{padding:9px;background:#fff9e8;border:1px solid #f0e2b1;border-radius:6px}
+.dv-excel-popover{position:fixed;z-index:1100;width:288px;max-width:calc(100vw - 20px);background:#fff;border:1px solid #c9d3de;border-radius:8px;box-shadow:0 14px 38px #0d223838;padding:10px;color:#273549;font-size:12px}
+.dv-excel-popover.d-none{display:none!important}
+.dv-excel-popover .dv-excel-title{font-weight:700;font-size:12px;margin-bottom:7px}
+.dv-excel-popover .dv-excel-sort{width:100%;display:block;border:0;background:white;text-align:left;padding:8px;border-radius:4px;color:#273549}
+.dv-excel-popover .dv-excel-sort:hover{background:#eef6f1}
+.dv-excel-popover .dv-excel-divider{border-top:1px solid #e1e7ed;margin:8px 0}
+.dv-excel-popover .dv-excel-values{height:190px;overflow:auto;border:1px solid #dde4ec;border-radius:5px;margin-top:7px;padding:5px}
+.dv-excel-popover .dv-excel-choice{display:flex;gap:7px;align-items:center;margin:0;padding:5px 3px}
+.dv-excel-popover .dv-excel-choice input{flex:0 0 auto}
+.dv-excel-popover .dv-excel-footer{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
+.dv-excel-popover .dv-excel-date-label{display:block;font-size:11px;font-weight:600;margin:8px 0 4px}
+.dv-excel-popover.dv-date-mode #dv-excel-values,.dv-excel-popover.dv-date-mode #dv-excel-search-area{display:none}
+.dv-excel-popover.dv-date-mode #dv-excel-dates{display:block!important}
+.dv-excel-popover.dv-checkbox-mode #dv-excel-dates,.dv-excel-popover.dv-search-mode #dv-excel-dates{display:none!important}
+.dv-excel-popover.dv-search-mode #dv-excel-values{display:none}
+.dv-excel-popover.dv-date-mode #dv-excel-apply,.dv-excel-popover.dv-date-mode #dv-excel-cancel,.dv-excel-popover.dv-search-mode #dv-excel-apply,.dv-excel-popover.dv-search-mode #dv-excel-cancel{display:none}
+.dv-excel-popover .btn-primary{background:#167d42;border-color:#167d42}
+.activity-audit-page .bm-skeleton-row td{height:42px}
+.activity-audit-page .bm-skeleton-bar{height:12px;display:block;border-radius:5px;background:#e0e9e4}
+@media(max-width:700px){.activity-audit-page .dv-table-tools input{width:140px}}
 </style>
 @endpush
 
 @section('content')
-<div class="content-wrapper bm-audit">
- <div class="d-flex align-items-center justify-content-between mb-3">
-  <div><h2 class="audit-title">Activity Audit</h2><small class="text-muted">User actions, linked database operations and available field-level changes</small></div>
+<div class="content-wrapper bm-ui bm-voucher-directory daily-voucher-page activity-audit-page" id="audit-page">
+ <div class="audit-heading">
+  <div><h2>Activity Audit</h2><small>Authenticated activity · Related database impact</small></div>
   <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
  </div>
- <div class="audit-panel">
-  <div class="audit-panel-header">
-   <div><strong>Activity History</strong><small class="text-muted ml-2" id="audit-count">{{ $events->total() }} records</small></div>
-   <button type="button" id="audit-reset" class="btn btn-outline-secondary btn-sm"><i class="fas fa-undo mr-1"></i> Reset Filters</button>
+ <div class="audit-register">
+  <div class="dv-table-tools bm-records-toolbar">
+   <label for="dv-page-length">Show <select class="form-control form-control-sm" id="dv-page-length"><option>10</option><option selected>25</option><option>50</option><option>100</option></select> entries</label>
+   <label for="dv-table-search">Search: <input type="search" id="dv-table-search" class="form-control form-control-sm" placeholder="Search activities" autocomplete="off"></label>
   </div>
-  <div class="table-responsive">
-   <table class="audit-table">
-    <thead><tr>
-     <th>ID</th>
-     <th>When <button class="audit-column-filter" type="button" data-filter="date" title="Filter date"><i class="fas fa-filter"></i></button></th>
-     <th>Actor <button class="audit-column-filter" type="button" data-filter="actor_id" title="Filter actor ID"><i class="fas fa-filter"></i></button></th>
-     <th>Action <button class="audit-column-filter" type="button" data-filter="method" title="Filter action"><i class="fas fa-filter"></i></button></th>
-     <th>Route <button class="audit-column-filter" type="button" data-filter="route" title="Filter route"><i class="fas fa-filter"></i></button></th>
-     <th>Table <button class="audit-column-filter" type="button" data-filter="table" title="Filter affected table"><i class="fas fa-filter"></i></button></th>
-     <th>Status <button class="audit-column-filter" type="button" data-filter="status" title="Filter status"><i class="fas fa-filter"></i></button></th>
-     <th>IP</th><th>Action</th>
-    </tr></thead>
-    <tbody id="audit-rows">
-     @forelse($events as $event)
-      <tr><td>{{ $event->id }}</td><td class="text-nowrap">{{ $event->created_at }}</td>
-       <td>{{ $event->actor_name ?? 'Former user' }} (#{{ $event->actor_id }})</td>
-       <td>{{ $event->action }}</td><td>{{ $event->route_name ?? '—' }}</td>
-       <td><small class="text-muted">{{ $event->affected_tables ?? "—" }}</small></td>
-       <td>{{ $event->response_status }}</td><td>{{ $event->ip_address ?? '—' }}</td>
-       <td><button type="button" class="audit-view" data-id="{{ $event->id }}"><i class="far fa-eye mr-1"></i> View</button></td></tr>
-     @empty
-      <tr><td colspan="9" class="text-center text-muted py-4">No activity records found.</td></tr>
-     @endforelse
-    </tbody>
+  <div class="audit-table-wrap" id="dv-table-wrap">
+   <table class="table bm-table table-sm table-hover audit-table">
+    <thead><tr><th>#</th>
+    @foreach(['date'=>'Date / Time','actor_id'=>'Actor','method'=>'Action','route'=>'Route','table'=>'Affected Tables','status'=>'Status','ip'=>'IP'] as $field=>$label)
+    <th class="dv-filter-heading" data-field="{{ $field }}"><span>{{ $label }}</span>
+     <button type="button" class="dv-excel-trigger" data-column="{{ $field }}" title="Sort and filter {{ $label }}" aria-label="Sort and filter {{ $label }}" aria-expanded="false" aria-haspopup="dialog"><i class="fas fa-caret-down"></i></button>
+    </th>
+    @endforeach
+    <th>Actions</th></tr></thead>
+    <tbody id="dv-rows"></tbody>
    </table>
   </div>
-  <div class="audit-footer">
-   <span class="text-muted" id="audit-page-count">Page {{ $events->currentPage() }} of {{ $events->lastPage() }}</span>
-   <div><button type="button" id="audit-prev" @disabled($events->onFirstPage())>Previous</button> <button type="button" id="audit-next" @disabled(!$events->hasMorePages())>Next</button></div>
+  <div class="dv-pagination-footer">
+   <span id="dv-record-summary" class="dv-total-records">Loading records...</span>
+   <nav id="dv-pages" aria-label="Activity pagination"></nav>
   </div>
  </div>
- <div id="audit-filter-pop" class="audit-pop">
-  <div class="font-weight-bold mb-2" id="audit-pop-title">Column filter</div>
-  <div id="audit-pop-body"></div>
-  <div class="d-flex justify-content-end mt-3">
-   <button type="button" class="btn btn-light btn-sm mr-2" id="audit-filter-clear">Clear</button>
-   <button type="button" class="btn btn-primary btn-sm" id="audit-filter-apply">Apply</button>
-  </div>
- </div>
+ <x-finance.voucher-column-filters />
  <div class="modal fade" id="audit-detail-modal" tabindex="-1" role="dialog" aria-labelledby="audit-detail-title" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-   <div class="modal-content" style="border-radius:13px;overflow:hidden">
-    <div class="modal-header bg-light"><div><h5 id="audit-detail-title" class="modal-title">Activity Details</h5><small id="audit-detail-subtitle" class="text-muted"></small></div><button type="button" class="close" data-dismiss="modal">&times;</button></div>
-    <div class="modal-body" id="audit-detail-body" style="max-height:65vh;overflow-y:auto"></div>
-    <div class="modal-footer"><button class="btn btn-outline-secondary btn-sm" type="button" data-dismiss="modal">Close</button></div>
-   </div>
-  </div>
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document"><div class="modal-content">
+   <div class="modal-header"><div><h5 class="modal-title" id="audit-detail-title">Activity Details</h5><small id="audit-detail-subtitle" class="text-muted"></small></div>
+    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span>&times;</span></button></div>
+   <div class="modal-body" id="audit-detail-body" style="max-height:65vh;overflow-y:auto"></div>
+   <div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button></div>
+  </div></div>
  </div>
 </div>
 @endsection
-
 @push('script')
 <script>
 $(function(){
- const indexUrl=@json(route('activity-audit.index'));
- const detailBase=@json(url('/admin/activity-audit'));
- const filters={}, $body=$('#audit-rows');
- let page=1,lastPage={{ $events->lastPage() }},xhr=null,activeField=null;
- function cell(value){return $('<td>').text(value==null||value===''?'—':String(value));}
+ const indexUrl=@json(route('activity-audit.index')),detailBase=@json(url('/admin/activity-audit'));
+ const $body=$('#dv-rows');
+ let start=0,length=25,filtered=0,total=0,sortColumn='date',sortDirection='desc',xhr=null,timer=null,seq=0;
+ const voucherColumns=$.blueVoucherColumnFilters.init({
+  initialOptions:@json($initialFilterOptions),formSelector:'#audit-unused-form',
+  quickSearchSelector:'#dv-table-search',triggerSelector:'.dv-excel-trigger',
+  tableWrapSelector:'#dv-table-wrap',
+  searchOnly:['actor_id','route','table','ip'],checkboxes:['method','status'],
+  choicesFor:function(field,fallback){return (@json($initialFilterOptions))[field]||fallback;},
+  getStart:()=>start,getLength:()=>length,getSortColumn:()=>sortColumn,
+  getSortDirection:()=>sortDirection,
+  onSort:(field,direction)=>{sortColumn=field;sortDirection=direction;},
+  onChange:()=>{start=0;load();}
+ });
+ function cell(value){return $('<td>').text(value===null||value===undefined||value===''?'—':String(value));}
+ function pagination(){
+  $.blueVoucherPagination.render({container:'#dv-pages',summary:'#dv-record-summary',
+   total:filtered,allTotal:total,start:start,length:length,buttonClass:'dv-page-btn',
+   onPage:function(next){start=next;load();$('#dv-table-wrap').scrollTop(0);}
+  });
+ }
  function load(){
-  if(xhr)xhr.abort();
-  if($.blueTableSkeleton)$.blueTableSkeleton.show($body,{rows:8,columns:9});
-  xhr=$.ajax({url:indexUrl,method:'GET',data:$.extend({page:page},filters),dataType:'json',
-    headers:{Accept:'application/json'}}).done(function(data){
-    $body.empty();lastPage=data.last_page;page=data.current_page;
-    $('#audit-count').text(data.total+' records');
-    $('#audit-page-count').text('Page '+page+' of '+lastPage);
-    $('#audit-prev').prop('disabled',page<=1);$('#audit-next').prop('disabled',page>=lastPage);
-    if(!data.rows.length){$body.append($('<tr>').append($('<td>',{colspan:9,'class':'text-center text-muted py-4',text:'No matching activity records.'})));return;}
-    $.each(data.rows,function(_,row){
+  const current=++seq;if(xhr)xhr.abort();
+  $.blueTableSkeleton.show($body,{rows:10,columns:9,tone:'neutral'});
+  $('#dv-record-summary').text('Loading records...');$('#dv-pages').empty();
+  xhr=$.ajax({url:indexUrl,method:'GET',data:voucherColumns.queryParams(),
+   dataType:'json',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
+   .done(function(result){
+    if(current!==seq)return;
+    filtered=Number(result.recordsFiltered||0);total=Number(result.recordsTotal||0);
+    $body.empty();
+    $.each(result.data||[],function(_,row){
      const $tr=$('<tr>');
      $tr.append(cell(row.id),cell(row.created_at),cell((row.actor_name||'Former user')+' (#'+row.actor_id+')'),
-       cell(row.action),cell(row.route_name),cell(row.affected_tables),cell(row.response_status),cell(row.ip_address));
+      cell(row.action),cell(row.route_name),cell(row.affected_tables),cell(row.response_status),cell(row.ip_address));
      $tr.append($('<td>').append($('<button>',{type:'button','class':'audit-view','data-id':row.id})
-       .append($('<i>',{'class':'far fa-eye mr-1'})).append(' View')));
+      .append($('<i>',{'class':'fas fa-eye mr-1'})).append(' View')));
      $body.append($tr);
     });
-  }).fail(function(response,status){
-    if(status==='abort')return;
-    $body.empty().append($('<tr>').append($('<td>',{colspan:9,'class':'text-center text-danger py-4',text:'Unable to load activity history.'})));
-  }).always(function(){if($.blueTableSkeleton)$.blueTableSkeleton.clear($body);});
+    if(!filtered)$body.append($('<tr>').append($('<td>',{colspan:9,'class':'text-center text-muted py-4',text:'No matching activity records.'})));
+    pagination();
+   }).fail(function(response,status){
+    if(status==='abort'||current!==seq)return;
+    $body.empty().append($('<tr>').append($('<td>',{colspan:9,'class':'text-center text-danger py-4',text:'Could not load activity records. Check filters and retry.'})));
+   }).always(function(){if(current===seq)$.blueTableSkeleton.clear($body);});
  }
- $('#audit-prev').on('click',function(){if(page>1){page--;load();}});
- $('#audit-next').on('click',function(){if(page<lastPage){page++;load();}});
- $('#audit-reset').on('click',function(){Object.keys(filters).forEach(key=>delete filters[key]);page=1;$('.audit-column-filter').removeClass('active');$('#audit-filter-pop').hide();load();});
- $('.audit-column-filter').on('click',function(e){
-  e.stopPropagation();activeField=$(this).data('filter');
-  const $pop=$('#audit-filter-pop'),$box=$('#audit-pop-body').empty();
-  $('#audit-pop-title').text('Filter '+$(this).closest('th').text().trim());
-  if(activeField==='date'){
-   $box.append($('<label>').text('From'),$('<input>',{type:'date','class':'form-control form-control-sm mb-2',id:'audit-from'}).val(filters.from||''),
-    $('<label>').text('To'),$('<input>',{type:'date','class':'form-control form-control-sm',id:'audit-to'}).val(filters.to||''));
-  }else if(activeField==='method'){
-   const $select=$('<select>',{'class':'form-control form-control-sm',id:'audit-filter-value'});
-   $.each(['','POST','PUT','PATCH','DELETE'],function(_,v){$select.append($('<option>',{value:v,text:v||'All actions'}));});
-   $box.append($select.val(filters.method||''));
-  }else{
-   $box.append($('<input>',{type:activeField==='actor_id'||activeField==='status'?'number':'text',
-    'class':'form-control form-control-sm',id:'audit-filter-value',placeholder:'Filter by '+activeField}).val(filters[activeField]||''));
-  }
-  const pos=$(this).offset();
-  $pop.css({top:Math.min($(window).height()-290,Math.max(8,pos.top-$(window).scrollTop()+25)),
-   left:Math.max(8,Math.min($(window).width()-270,pos.left-$(window).scrollLeft()))}).show();
- });
- $('#audit-filter-apply').on('click',function(){
-  if(activeField==='date'){
-   const from=$('#audit-from').val(),to=$('#audit-to').val();
-   if(from&&to&&from>to){$('#audit-to').addClass('is-invalid');return;}
-   if(from)filters.from=from;else delete filters.from;
-   if(to)filters.to=to;else delete filters.to;
-  }else{
-   const value=$('#audit-filter-value').val();
-   if(value)filters[activeField]=value;else delete filters[activeField];
-  }
-  $('.audit-column-filter[data-filter="'+activeField+'"]').toggleClass('active',
-   activeField==='date'?!!(filters.from||filters.to):!!filters[activeField]);
-  $('#audit-filter-pop').hide();page=1;load();
- });
- $('#audit-filter-clear').on('click',function(){
-  if(activeField==='date'){delete filters.from;delete filters.to;}else delete filters[activeField];
-  $('.audit-column-filter[data-filter="'+activeField+'"]').removeClass('active');
-  $('#audit-filter-pop').hide();page=1;load();
- });
- $(document).on('click',function(e){if(!$(e.target).closest('#audit-filter-pop,.audit-column-filter').length)$('#audit-filter-pop').hide();});
+ $('#dv-page-length').on('change',function(){length=Number($(this).val())||25;start=0;load();});
+ $('#dv-table-search').on('input',function(){clearTimeout(timer);timer=setTimeout(function(){start=0;load();},300);});
  function renderDiff($target,before,after){
   const names=[...new Set([...Object.keys(before||{}),...Object.keys(after||{})])].filter(key=>JSON.stringify((before||{})[key])!==JSON.stringify((after||{})[key]));
   if(!names.length){$target.append($('<div>',{'class':'text-muted',text:'Record identity captured; no allowlisted field values available.'}));return;}
@@ -172,7 +154,7 @@ $(function(){
   $.each(names,function(_,key){$tbody.append($('<tr>').append(cell(key),cell((before||{})[key]),cell((after||{})[key])));});
   $target.append($table.append($tbody));
  }
- $body.on('click','.audit-view',function(){
+ $('#audit-rows').on('click','.audit-view',function(){
   const id=$(this).data('id'),$modal=$('#audit-detail-modal'),$target=$('#audit-detail-body');
   $('#audit-detail-title').text('Activity #'+id);$('#audit-detail-subtitle').text('');
   $target.empty().append($('<div>',{'class':'text-center text-muted p-4',text:'Loading activity details...'}));
@@ -198,6 +180,7 @@ $(function(){
    $.each(sql,function(_,item){$target.append($('<div>',{'class':'audit-impact',text:item.table_name+' · '+item.operation+' · '+item.statement_count+' statement(s) observed'}));});
   }).fail(function(){$target.empty().append($('<p>',{'class':'text-danger',text:'Unable to load activity details.'}));});
  });
+ load();
 });
 </script>
 @endpush
