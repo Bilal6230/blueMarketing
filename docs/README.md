@@ -1,3 +1,24 @@
+# 2026-11-25 — M06 rollback integration verified (16 tests / 162 assertions); error-response audit accuracy fix pending local tests
+
+**Owner verification:** The newly added `ActivityAuditTransactionBoundaryTest` passed **3 tests / 9 assertions**; `Milestone06ActivityAuditContractTest` passed **13 tests / 153 assertions**. On MySQL `activity-audit:health --strict` PASS: 129/129 triggers installed, 0 missing, 0 skipped, 0 orphan trigger snapshots and 0 impacts missing their parent. Existing full-height CR/DR-style audit UI has already been accepted. Do not repeat accepted browser or earlier migration gates.
+
+**New implemented reliability batch:** Corrected `RecordActivityAudit` guard that dropped **all HTTP 4xx/5xx responses**, even when a transaction had already committed a real business write and the controller returned a validation/error status afterwards. Middleware now records any *observed write evidence* alongside the **actual** response status; write-free failed requests remain unlogged. No change to authorization, response handling, finance posting, database schema or Labour CP. Added two isolated SQLite integration scenarios: (1) actual committed insert followed by HTTP 422 retains audit event/impact with status 422; (2) HTTP 422 without a write creates no audit. Existing three commit/rollback scenarios still run. Unit contract now protects these conditions.
+
+**Owner local gate (no migrations):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan test --filter=ActivityAuditTransactionBoundaryTest
+php artisan test --filter=Milestone06ActivityAuditContractTest
+php artisan activity-audit:health --strict
+```
+Expected **5 feature tests**, **14 unit contract tests**, and strict health PASS. This new batch has not been run on the owner's machine yet; do not claim acceptance until results received.
+
+**Limitations:** A thrown exception that never yields an HTTP response still needs a separate exception-lifecycle capture strategy. Direct background/CLI writes lack authenticated actor context. True MySQL trigger rollback integration and authenticated mobile-app data-write acceptance are separate remaining gates. No new data retention policy has been activated. Milestone 06 remains IN PROGRESS.
+
+---
+
 # 2026-11-25 — M06 strict audit health fully PASS; transaction rollback integration batch (owner execution pending)
 
 **Owner terminal verification:** Composite-key migration `2026_11_25_135000_audit_composite_primary_key_tables.php` completed; `Milestone06ActivityAuditContractTest` **12 PASS / 146 assertions**. `activity-audit:health --strict` reports 6 events, 34 impact rows, 0 orphaned snapshots, 0 missing parents, **129/129 expected triggers installed**, 0 missing triggers and **0 skipped tables**. Seven tables now use their real declared primary keys, with no surrogate IDs or business table/schema changes. These are user-verified results; do not repeat this accepted gate.
