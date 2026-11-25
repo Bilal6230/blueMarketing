@@ -73,6 +73,60 @@ final class ActivityAuditTransactionBoundaryTest extends TestCase
         });
     }
 
+    public function test_thrown_exception_after_committed_write_is_rethrown_and_audited(): void
+    {
+        try {
+            $this->perform(function (): void {
+                DB::transaction(function (): void {
+                    DB::table('audit_fixture_records')->insert(['status' => 'committed-before-exception']);
+                });
+                throw new \RuntimeException('Original controller exception');
+            });
+            $this->fail('Middleware must rethrow the original exception.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Original controller exception', $exception->getMessage());
+        }
+
+        $this->assertSame(1, DB::table('audit_fixture_records')->count());
+        $this->assertSame(500, (int) DB::table('activity_audits')->value('response_status'));
+        $this->assertSame(1, DB::table('activity_audit_impacts')
+            ->where('table_name', 'audit_fixture_records')->count());
+    }
+
+    public function test_thrown_exception_without_writes_is_rethrown_without_audit(): void
+    {
+        try {
+            $this->perform(function (): void {
+                throw new \RuntimeException('Read-only failure');
+            });
+            $this->fail('Middleware must rethrow read-only exceptions.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Read-only failure', $exception->getMessage());
+        }
+
+        $this->assertSame(0, DB::table('activity_audits')->count());
+        $this->assertSame(0, DB::table('activity_audit_impacts')->count());
+    }
+
+    public function test_thrown_exception_after_rolled_back_write_is_not_audited(): void
+    {
+        try {
+            $this->perform(function (): void {
+                DB::transaction(function (): void {
+                    DB::table('audit_fixture_records')->insert(['status' => 'uncommitted']);
+                    throw new \RuntimeException('Rolled back controller exception');
+                });
+            });
+            $this->fail('Middleware must rethrow rollback exception.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Rolled back controller exception', $exception->getMessage());
+        }
+
+        $this->assertSame(0, DB::table('audit_fixture_records')->count());
+        $this->assertSame(0, DB::table('activity_audits')->count());
+        $this->assertSame(0, DB::table('activity_audit_impacts')->count());
+    }
+
     public function test_error_response_after_committed_write_retains_actual_status_and_impact(): void
     {
         $this->perform(function (): void {
