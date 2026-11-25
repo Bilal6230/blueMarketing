@@ -34,7 +34,7 @@ final class ActivityAuditController extends Controller
         $base = DB::table('activity_audits as a')
             ->leftJoin('users as u', 'u.id', '=', 'a.actor_id')
             ->select('a.*', 'u.name as actor_name')
-            ->selectRaw('(SELECT GROUP_CONCAT(DISTINCT i.table_name ORDER BY i.table_name SEPARATOR ', ') FROM activity_audit_impacts i WHERE i.activity_audit_id = a.id) AS affected_tables');
+            ->selectRaw("(SELECT GROUP_CONCAT(DISTINCT i.table_name ORDER BY i.table_name SEPARATOR ', ') FROM activity_audit_impacts i WHERE i.activity_audit_id = a.id) AS affected_tables");
 
         // Avoid raw user SQL; every sortable field has a fixed mapping.
         $fieldMap = [
