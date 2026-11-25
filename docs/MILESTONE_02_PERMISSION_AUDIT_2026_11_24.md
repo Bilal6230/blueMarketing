@@ -1,3 +1,60 @@
+# 2026-11-25 — M02 Role Permission discovery + module integration batch (NEW OWNER GATE PENDING)
+
+Owner confirmed **3 browser acceptance scenarios PASS**: CR View OFF / DR View ON; Employee Tasks View OFF; Users Read ON / Update OFF. Earlier Stock no-permission and exact Stock action browser test PASS; latest permission suites **Milestone02PermissionEnforcementContractTest 5/150**, **Milestone02StrictModuleAuthorizationContractTest 5/67**, **RoleManagementModernizationTest 8/485** PASS, total **18/702 assertions**. These are accepted results on prior source. Do NOT request repetition except where this new batch changes the tested area.
+
+## Investigation: missing vs already existing rights
+
+| Area | Existing actual rights / mechanisms | New / adjusted implementation | Admin navigation |
+|---|---|---|---|
+| Booking / Plot Sales | Existing `delete booking`, `update booking price`, `view booking report`; business form incorrectly relied on `read/create/update plot` | Add **`read booking`, `create booking`, `update booking`** (and ensure `delete booking`) via one migration, change Booking listing/create/metadata/edit/transfer/schedule/cancel/recovery routes, metadata edit UI and sidebar to exact Booking rights. **Pricing remains independently controlled by `update booking price`**. Use one-time mapping of existing Plot role grants to new Booking rights, then independent revocation works. Existing Plot Master and Inventory View remain separate. | **Bookings / Plot Sales** tab |
+| Leads / CRM | `read/create/update/delete lead`, `lead search`, `lead details`, `lead report`, `lead pendings`, approval `assign lead` (not reliably seeded / misclassified as Other) | Ensure **`assign lead`** exists via idempotent migration; only if it was missing, preserve legacy approval authority by granting it to admin/superadmin roles that already have `update lead`. Role catalog maps `assign lead` into the Leads tab. Existing Lead approval methods enforce this role ability once registered. | **Leads / CRM** tab |
+| Labour Master | `read/create/update/delete labour`; Sites currently use `create labour` | No unnecessary duplicate Labour CRUD permissions. Existing route guards already cover master, Sites and rates; hide Add/Edit Labour/Site form/actions from read-only users. Do not modify Labour CP voucher/payment lifecycle (M03 hold). | **Labour Master** tab |
+| Labour Attendance | `read attendance`, `create attendance` already exist; former attendance routes incorrectly accepted **`read labour` or `create labour`** as bypass | Remove OR fallback; Attendance GET/report requires **`read attendance`**, POST mark requires **`create attendance`**. One-time migration maps old Labour Read/Create role grants to Attendance counterparts before strict revocation. Attendance tab and board hide/disable without correct right; controller avoids loading attendance worker records for unauthorized viewers. | **Attendance** tab |
+| Accounting categories | Existing `read/create/update/delete accounting` | Fix category Create/Update routes that incorrectly used **Read** permission. Now Create requires `create accounting`, Update requires `update accounting`. | Accounting tab |
+| Stock | 16 exact Stock abilities across Items/Parties/Entries/Billing | Previous browser PASS; unchanged in this batch. | 4 distinct Stock tabs |
+| Employee Tasks | Read/Create/Update/Delete implemented and previous browser View OFF PASS | No new task permissions. | Employee Tasks tab |
+| Other core modules | User/Role/Permission/Settings/Project/Plot/Sector/Area already have CRUD; Finance 21 granular families | No indiscriminate permission multiplication. Source-level route gaps corrected in previous M02 batch. Broader per-record and AJAX parity still needs acceptance; not every route is claimed exhaustively verified. | Individual tabs |
+
+**Clean Role editor:** Re-labeled tabs to **Bookings / Plot Sales**, **Leads / CRM**, **Labour Master**, **Attendance**. Obsolete generic `stock module` and `labour module` toggles are classified as historical and hidden (actual Spatie names/role grants retained). Role updates explicitly retain preexisting hidden grants, preventing accidental revocation. This is UI cleanup, not destructive DB cleanup.
+
+**Financial correctness guard:** The legacy `booking.customer.destroy`, `booking.voucher.show` and `booking.customer.approve` are *customer-ledger voucher routes*, NOT Booking CRUD routes. Existing global `finance.action` resolves their persisted source type and exact `delete/details/approve/reject` rights dynamically; do NOT replace it with static Booking or PPR authorization. Booking price amendment still uses the separate `update booking price` scope; metadata changes now use `update booking`, not broad Plot Update. PPR and Labour CP changes do not occur in this batch.
+
+## New code / regression
+
+- Additive idempotent **permission-only** migrations (NO schema tables):
+  - `database/migrations/2026_11_25_110000_register_booking_permissions.php`
+  - `database/migrations/2026_11_25_111000_align_labour_attendance_role_grants.php`
+  - `database/migrations/2026_11_25_112000_register_lead_assignment_permission.php`
+- Updated `BookingEditPageTest` expected metadata permission scope, `Milestone02PermissionEnforcementContractTest` independent attendance routes, and new `Milestone02BookingLabourPermissionsContractTest` for actual mappings and UI/backend alignment.
+- Tests **not yet run on owner's local application**; treat this batch as code-delivered, NOT accepted.
+- Owner-run targeted gate:
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan migrate --path=database/migrations/2026_11_25_110000_register_booking_permissions.php
+php artisan migrate --path=database/migrations/2026_11_25_111000_align_labour_attendance_role_grants.php
+php artisan migrate --path=database/migrations/2026_11_25_112000_register_lead_assignment_permission.php
+php artisan optimize:clear
+php artisan permission:cache-reset
+php artisan view:cache
+php artisan test --filter=Milestone02BookingLabourPermissionsContractTest
+php artisan test --filter=Milestone02PermissionEnforcementContractTest
+php artisan test --filter=RoleManagementModernizationTest
+php artisan test --filter=BookingEditPageTest
+```
+
+**Focused browser after terminal PASS** using a disposable non-superadmin user with **one** target role:
+1. Roles → Search `booking`, `lead`, `labour`, `attendance`; separate module tabs and appropriate actions available. Save/Reopen and refresh the user session.
+2. **Booking Read ON, Create/Update/Delete OFF**: Plot Sales listing visible, New Booking/Edit/Delete absent; direct Create/Update/Delete requests deny. Toggle Booking Read OFF: Plot Sales sidebar hides even if Plot Master Read is ON; direct Booking listing 403. Grant `update booking price` separately only when needed.
+3. **CRM Lead Read ON, Update OFF**: listing accessible, Edit controls hidden, direct Update blocked. `assign lead` is a separate permission for approvals.
+4. **Labour Read ON, Create/Update OFF**: Labour listing visible but Add/Edit Labour/Site actions hidden. **Attendance Read OFF** (even while Labour Read ON): Attendance tab hidden and attendance week/report URL 403; Attendance Read ON: read-only board available; Attendance Create OFF: marking disabled and direct POST 403.
+5. **Accounting Read ON, Create/Update OFF**: category listing accessible, direct category Store/Update denies.
+6. Do NOT browser-test Labour CP; remains expressly ON HOLD.
+
+**M02 status:** substantial source integration delivered; permission role UX, selected route matrix and browser acceptance pending. M01/M04/M05 CLOSED, M03 Labour CP ON HOLD, M06 Activity Audit LAST. Do not claim all application permission combinations fully proven until role-browser acceptance.
+
+---
+
 # 2026-11-24 — Strict permission integration audit / owner Stock bypass reproduction (CURRENT)
 
 Owner screenshot: role **Data Operator** has **0/4** permissions in Stock Items/Parties/Entries/Billing tabs yet a logged-in user can open Stock, see every tab and execute actions. **Confirmed root cause from source**: `StockAbility::allows()` treated generic `read slip`, `add slip`, `delete slip` as implicit grants to every Stock workspace, and treated plain `admin` as universal Stock rights. Separately `StockController::authorizeStockDocumentAction` accepted `direct-update` and `<action> stock`, while item import update accepted `edit stock`. These were direct bypass paths, and previous compatibility tests incorrectly expected the unsafe fallback. **This is a real authorization defect, not merely a sidebar display issue.**
