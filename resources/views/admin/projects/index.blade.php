@@ -72,7 +72,7 @@
           @foreach (['id'=>'#','project'=>'Project','project_code'=>'Code','address'=>'Address / Location','opening_date'=>'Project Dates','corner_charge_percent'=>'Corner / Facing','is_active'=>'Status','created_at'=>'Created'] as $field => $label)
             <th><span>{{ $label }}</span><button type="button" class="project-col-trigger" data-field="{{ $field }}" aria-label="Sort or filter {{ $label }}" aria-expanded="false" aria-haspopup="dialog"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
           @endforeach
-          @can('update project')<th>Actions</th>@endcan
+          @canany(['update project','delete project'])<th>Actions</th>@endcanany
         </tr></thead>
         <tbody id="projectRows" aria-busy="true">
           @for ($i=0;$i<5;$i++)
@@ -85,7 +85,7 @@
             <td><span class="project-skeleton mid"></span></td>
             <td><span class="project-skeleton short"></span></td>
             <td><span class="project-skeleton mid"></span></td>
-            @can('update project')<td><span class="project-skeleton short"></span></td>@endcan
+            @canany(['update project','delete project'])<td><span class="project-skeleton short"></span></td>@endcanany
           </tr>
           @endfor
         </tbody>
@@ -142,13 +142,24 @@
     </form>
   </div></div>
 </div>
+<div class="modal fade bm-project-editor" id="projectDeleteModal" tabindex="-1" role="dialog" aria-labelledby="projectDeleteTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:470px" role="document"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="projectDeleteTitle">Delete Project?</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+    <div class="modal-body">
+      <p>Delete <strong id="projectDeleteName"></strong>?</p>
+      <p class="text-muted mb-0">Only a project without linked business records can be deleted. Linked projects are protected.</p>
+      <div class="project-field-error mt-2" id="projectDeleteError" role="alert"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button><button type="button" class="btn btn-danger btn-sm" id="projectDeleteConfirm">Delete Project</button></div>
+  </div></div>
+</div>
 @endsection
 
 @section('js')
 <script>
 $(function(){
   'use strict';
-  var projects=@json($projectRows),canEdit=@json(auth()->user()->can('update project'));
+  var projects=@json($projectRows),canEdit=@json(auth()->user()->can('update project')),canDelete=@json(auth()->user()->can('delete project'));
   var currentPage=1,sortKey='id',sortDescending=false,editing=null;
   var columnSearch={},dateRanges={},statusSelection='';
   function field(value){return value===null||value===undefined?'':String(value);}
@@ -183,7 +194,7 @@ $(function(){
     var start=(currentPage-1)*size,items=list.slice(start,start+size),$body=$('#projectRows').empty();
     if($.blueActionMenu)$.blueActionMenu.close();
     if(!items.length){
-      $body.append($('<tr>').append($('<td>',{colspan:canEdit?9:8,'class':'text-center text-muted py-4',text:'No matching projects found'})));
+      $body.append($('<tr>').append($('<td>',{colspan:(canEdit||canDelete)?9:8,'class':'text-center text-muted py-4',text:'No matching projects found'})));
     }
     $.each(items,function(_,p){
       var $row=$('<tr>');
@@ -198,7 +209,12 @@ $(function(){
       $('<td>',{text:Number(p.corner_charge_percent||0).toFixed(2)+'% / '+Number(p.facing_charge_percent||0).toFixed(2)+'%'}).appendTo($row);
       $('<td>').append($('<span>',{'class':'project-status'+(Number(p.is_active)===1?'':' inactive'),text:Number(p.is_active)===1?'Active':'Inactive'})).appendTo($row);
       $('<td>',{'class':'text-muted',text:field(p.created_at)||'—'}).appendTo($row);
-      if(canEdit)$row.append($('<td>',{'class':'blue-actions-cell'}).append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm btn-edit','data-id':p.id,'data-blue-action-label':'Edit project',text:'Edit'})));
+      if(canEdit||canDelete){
+        var $action=$('<td>',{'class':'blue-actions-cell'});
+        if(canEdit)$action.append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm btn-edit','data-id':p.id,'data-blue-action-label':'Edit project',text:'Edit'}));
+        if(canDelete)$action.append($('<button>',{type:'button','class':'btn btn-outline-danger btn-sm btn-delete','data-id':p.id,'data-blue-action-label':'Delete project',text:'Delete'}));
+        $row.append($action);
+      }
       $body.append($row);
     });
     if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
@@ -312,6 +328,33 @@ $(function(){
   $('#projectRows').on('click','.btn-edit',function(){
     var id=Number($(this).data('id')),project=projects.find(function(p){return p.id===id;});
     if(project)openEditor(project);
+  });
+  var pendingDeleteId=null;
+  $('#projectRows').on('click','.btn-delete',function(){
+    pendingDeleteId=Number($(this).data('id'));
+    var project=projects.find(function(item){return item.id===pendingDeleteId;});
+    if(!project)return;
+    $('#projectDeleteName').text(project.project);
+    $('#projectDeleteError').text('');
+    $('#projectDeleteModal').modal({backdrop:'static',keyboard:false,show:true});
+  });
+  $('#projectDeleteConfirm').on('click',function(){
+    if(!pendingDeleteId)return;
+    var $button=$(this).prop('disabled',true);
+    $('#projectDeleteError').text('');
+    $.ajax({url:@json(route('project.destroy')),type:'POST',
+      data:{_token:@json(csrf_token()),_method:'DELETE',id:pendingDeleteId},
+      dataType:'json',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
+      .done(function(response){
+        $('#projectDeleteModal').modal('hide');
+        inform(response.message||'Project deleted.');
+        $.ajax({url:@json(route('project.index')),dataType:'json',headers:{Accept:'application/json'}})
+          .done(function(reply){projects=reply.data||[];render();})
+          .fail(function(){inform('Deleted, but the list could not refresh.',true);});
+      }).fail(function(xhr){
+        var message=(xhr.responseJSON||{}).message||'Project could not be deleted.';
+        $('#projectDeleteError').text(message);inform(message,true);
+      }).always(function(){$button.prop('disabled',false);});
   });
   $('#projectForm').on('submit',function(event){
     event.preventDefault();
