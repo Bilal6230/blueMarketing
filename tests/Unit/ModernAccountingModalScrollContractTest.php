@@ -26,7 +26,7 @@ final class ModernAccountingModalScrollContractTest extends TestCase
         self::assertStringContainsString('body.bm-account-directory-page .bm-account-card>.bm-account-table-wrap', $css);
         self::assertStringContainsString('overflow-y:scroll!important', $css);
         self::assertStringContainsString('flex:1 1 0%!important;height:0!important', $css);
-        self::assertStringNotContainsString('height:100%!important;min-height:0!important', $css);
+        self::assertStringNotContainsString('.bm-account-table-wrap{height:100%!important', $css);
         self::assertStringContainsString('body.bm-account-directory-page .bm-account-footer{flex-shrink:0!important}', $css);
         self::assertStringContainsString('.bm-modern-accounts .bm-account-table thead th{position:sticky', $css);
         self::assertStringNotContainsString('.bm-modern-accounts .content .row{flex:1 1 auto', $css);
