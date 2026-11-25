@@ -1,11 +1,11 @@
 /* Shared Main / Party / Joint Account directory visual contract. No finance posting changes. */
-.bm-modern-accounts{--fvd-accent:#2563eb;--fvd-pop-accent:#2563eb;--voucher-accent:#2563eb;min-height:calc(100vh - 174px)!important;display:flex!important;flex-direction:column!important;padding:14px 16px 10px!important;color:#253c56}
+.bm-modern-accounts{--fvd-accent:#2563eb;--fvd-pop-accent:#2563eb;--voucher-accent:#2563eb;height:calc(100dvh - 171px)!important;max-height:calc(100dvh - 171px)!important;min-height:0!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;padding:14px 16px 10px!important;color:#253c56}
 .bm-modern-accounts .content-header{flex:0 0 auto;padding:0!important;margin:0 0 12px!important}
 .bm-modern-accounts .content-header h1{font-size:19px!important;font-weight:750;color:#173a75}
 .bm-modern-accounts .content{flex:1 1 auto!important;min-height:0;display:flex;flex-direction:column}
 .bm-modern-accounts .content>.container-fluid{flex:1 1 auto!important;min-height:0;display:flex;flex-direction:column}
-.bm-modern-accounts .content .row{flex:1 1 auto;min-height:0}
-.bm-modern-accounts .content .row>.col-12{display:flex;flex-direction:column;min-height:0}
+.bm-modern-accounts>.content>.container-fluid>.row{flex:1 1 auto;min-height:0}
+.bm-modern-accounts>.content>.container-fluid>.row>.col-12{display:flex;flex-direction:column;min-height:0}
 .bm-modern-accounts .bm-account-card{border:1px solid #c4d2e3!important;border-top:3px solid #2563eb!important;border-radius:10px!important;box-shadow:0 3px 13px #122b460a!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;flex:1 1 auto!important;min-height:360px!important;margin-bottom:0!important}
 .bm-modern-accounts .bm-account-create-source{display:none!important}
 .bm-modern-accounts .bm-account-table-wrap{flex:1 1 auto!important;min-height:0!important;overflow:auto!important;padding:0!important}
@@ -39,14 +39,20 @@
 .bm-modern-accounts .bm-account-create-modal .form-control,.bm-modern-accounts .modal .form-control{font-size:13px;border-color:#c9d7e8;border-radius:6px}
 .bm-modern-accounts .bm-account-create-modal label,.bm-modern-accounts .modal label{font-size:13px;font-weight:650}
 .bm-modern-accounts .bm-account-create-modal .modal-footer,.bm-modern-accounts .modal-footer{background:white;border-top:1px solid #dce6f1;padding:12px 18px}
-.bm-modern-accounts .bm-account-creation-form{padding:0!important}
+.bm-modern-accounts .bm-account-creation-form{padding:0!important;min-width:0;width:100%}
 .bm-modern-accounts .bm-account-creation-form .modal-footer{justify-content:flex-end!important}
-.bm-modern-accounts .bm-account-creation-form>.row{display:flex!important;flex:initial!important}
-.bm-modern-accounts .bm-account-creation-form .input-group{display:block}
-.bm-modern-accounts .bm-account-creation-form .input-group>.input-group{width:100%}
-.bm-modern-accounts .bm-account-creation-form label{display:block}
-.bm-modern-accounts .bm-account-creation-form .row{flex:initial!important}
-@media(max-width:767px){.bm-modern-accounts{padding:10px 8px!important;min-height:calc(100vh - 160px)!important}.bm-modern-accounts .bm-account-table-wrap{overflow:auto!important}}
+.bm-modern-accounts .bm-account-creation-form form{width:100%;padding:16px 20px 0}
+.bm-modern-accounts .bm-account-creation-form form>.row{display:flex!important;flex:0 0 auto!important;width:100%;margin:0!important;gap:0;align-items:start}
+.bm-modern-accounts .bm-account-creation-form .input-group{display:flex;width:100%;flex-wrap:wrap}
+.bm-modern-accounts .bm-account-creation-form .input-group>.input-group{display:flex;width:100%;flex:0 0 100%;min-width:0}
+.bm-modern-accounts .bm-account-creation-form label{display:block;flex:0 0 100%;margin-bottom:6px}
+.bm-modern-accounts .bm-account-creation-form .row{flex:0 0 auto!important;min-height:0!important}
+.bm-modern-accounts .bm-account-creation-form .row>[class*=col-]{min-width:0;flex-shrink:0;margin-bottom:15px}
+.bm-modern-accounts .bm-account-creation-form input.form-control,.bm-modern-accounts .bm-account-creation-form select.form-control{display:block;min-width:0;width:100%!important;height:38px!important;flex:1 1 auto!important}
+.bm-modern-accounts .bm-account-creation-form .input-group-prepend+.form-control{width:1%!important;flex:1 1 0%!important}
+.bm-modern-accounts .bm-account-creation-form .input-group-prepend{display:flex}
+.bm-modern-accounts .bm-account-creation-form form>.mt-3{padding:0 4px 14px}
+@media(max-width:767px){.bm-modern-accounts{padding:10px 8px!important;height:calc(100dvh - 145px)!important;max-height:calc(100dvh - 145px)!important}.bm-modern-accounts .bm-account-table-wrap{overflow:auto!important}}
 
 /* Legacy edit/delete modals live in the layout-level modal section, outside the page wrapper. */
 .bm-account-finance-modal .modal-dialog{max-width:710px;width:calc(100% - 32px);margin:24px auto}
@@ -61,3 +67,20 @@
 
 .bm-modern-accounts .bm-account-status{display:inline-flex;padding:4px 10px;border-radius:14px;background:#e2f6eb;color:#157345;font-size:12px;font-weight:700}
 .bm-modern-accounts .bm-account-status.inactive{background:#e9edf3;color:#536579}
+
+/* Keep long lists inside the card: footer and pager never scroll out of view. */
+.bm-modern-accounts>.content{overflow:hidden!important}
+.bm-modern-accounts>.content>.container-fluid{overflow:hidden!important}
+.bm-modern-accounts .bm-account-card{max-height:100%!important;min-height:0!important}
+.bm-modern-accounts .bm-account-table-wrap{overscroll-behavior:contain;scrollbar-gutter:stable}
+.bm-modern-accounts .bm-account-table thead th{position:sticky;top:0;z-index:2}
+.bm-modern-accounts .bm-account-create-modal .modal-dialog{max-width:780px!important;width:calc(100% - 28px)!important;margin:1.75rem auto!important}
+.bm-modern-accounts .bm-account-create-modal .modal-body{padding:0!important;max-height:calc(100dvh - 175px);overflow-y:auto}
+.bm-modern-accounts .bm-account-create-modal .modal-footer{padding:12px 20px!important}
+.bm-account-finance-modal .modal-body{max-height:calc(100dvh - 205px);overflow-y:auto}
+.bm-account-finance-modal .input-group{display:flex;width:100%;flex-wrap:wrap}
+.bm-account-finance-modal .input-group label{flex:0 0 100%;margin-bottom:6px}
+.bm-account-finance-modal .input-group>.input-group{display:flex;flex:0 0 100%;width:100%}
+.bm-account-finance-modal .input-group .form-control{min-width:0;width:100%;flex:1 1 0%}
+.bm-account-finance-modal .input-group-prepend+.form-control{width:1%;flex:1 1 0%}
+.bm-account-finance-modal .row>[class*=col-]{margin-bottom:12px;min-width:0}
