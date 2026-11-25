@@ -46,6 +46,16 @@ final class ProjectDirectoryModernizationContractTest extends TestCase
         self::assertStringNotContainsString('console.log(', $view);
     }
 
+    public function test_project_table_has_visible_column_separators_without_changing_other_pages(): void
+    {
+        $view = $this->source('resources/views/admin/projects/index.blade.php');
+        self::assertStringContainsString('.bm-projects .project-table thead th{', $view);
+        self::assertStringContainsString('border-right:1px solid #d9e4f0!important', $view);
+        self::assertStringContainsString('border-right:1px solid #e2eaf4!important', $view);
+        self::assertStringContainsString('.bm-projects .project-table thead th:last-child,.bm-projects .project-table tbody td:last-child', $view);
+        self::assertStringContainsString('border-top:1px solid #eaf0f7!important', $view);
+    }
+
     public function test_project_form_uses_ajax_validation_and_preserves_charge_date_rule(): void
     {
         $view = $this->source('resources/views/admin/projects/index.blade.php');
