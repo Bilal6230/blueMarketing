@@ -1,0 +1,169 @@
+/* Main Account, Party Account and Joint Account: jQuery-only shared directory.
+   Existing server-side financial forms, status audit and mapping handlers remain
+   the source of truth. This script handles presentation and safe client filtering. */
+(function($){
+'use strict';
+if(!$)return;
+$(function(){
+ var $root=$('.bm-modern-accounts[data-account-kind]'),$table=$root.find('#bmAccountDirectory');
+ if(!$root.length||!$table.length)return;
+ var kind=$root.attr('data-account-kind'),$card=$table.closest('.bm-account-card'),
+     $body=$table.find('tbody'),$header=$root.find('.content-header').first();
+ var columns=$table.find('thead th').length,rows=$body.children('tr').detach().toArray();
+ var currentPage=1,pageSize=25,sortColumn=0,sortDescending=false,filters={},dateRanges={};
+ var $newButton=$('<button>',{'class':'btn btn-primary btn-sm bm-account-new',type:'button'})
+    .append($('<i>',{'class':'fas fa-plus mr-1'})).append($('<span>',{text:' New '+(kind==='head'?'Main Account':kind==='subhead'?'Party Account':'Joint Account')}));
+ var $footer=$('<div>',{'class':'bm-account-footer'}),
+     $summary=$('<small>',{'class':'text-muted'}),
+     $size=$('<select>',{'aria-label':'Rows per page'}),
+     $reset=$('<button>',{'class':'btn btn-outline-secondary btn-sm',type:'button',text:'Reset filters'}),
+     $pages=$('<div>',{'class':'bm-account-pages'});
+ $.each([10,25,50,100],function(_,v){$size.append($('<option>',{value:v,text:v,selected:v===25}));});
+ $footer.append($('<div>',{'class':'bm-account-footer-left'}).append($summary,$size,$reset),$pages);
+ $card.append($footer);
+ var $createSource=$root.find('.bm-account-create-source').first();
+ if($createSource.length&&$createSource.find('form').length){
+   var $form=$createSource.find('form').first(),$modal=$('<div>',{
+     'class':'modal fade bm-account-create-modal',id:'bmAccountCreateModal',
+     tabindex:-1,role:'dialog','aria-hidden':'true'
+   });
+   var title=kind==='head'?'New Main Account':kind==='subhead'?'New Party Account':'New Joint Account';
+   var $content=$('<div>',{'class':'modal-content'}),
+       $dialog=$('<div>',{'class':'modal-dialog modal-dialog-centered',role:'document'});
+   $content.append($('<div>',{'class':'modal-header'})
+      .append($('<h5>',{'class':'modal-title',text:title}))
+      .append($('<button>',{type:'button','class':'close','data-dismiss':'modal','aria-label':'Close'})
+        .append($('<span>',{'aria-hidden':'true',text:'×'}))));
+   var $modalBody=$('<div>',{'class':'modal-body bm-account-creation-form'});
+   $form.appendTo($modalBody);
+   $content.append($modalBody);$dialog.append($content);$modal.append($dialog);
+   $root.append($modal);
+   $form.find('button[type=submit]').addClass('btn-sm');
+   $newButton.on('click',function(){$modal.modal({backdrop:'static',keyboard:false,show:true});});
+   var $place=$header.find('.row').first();
+   if($place.length){$place.append($('<div>',{'class':'col-sm-auto ml-auto text-right'}).append($newButton));}
+   else $header.append($newButton);
+ }
+ // Purely decorative wrapping: preserve original delegated click handlers,
+ // modal flow and financial route targets. No action authorization is inferred.
+ $table.find('tbody tr').addBack().each(function(){});
+ $(rows).each(function(){
+   var $row=$(this),$cell=$row.children('td').last();
+   if(!$cell.find('.btn-edit,.btn-delete,.editBtn,.deleteBtn').length)return;
+   var $actions=$cell.find('.btn-edit,.btn-delete,.editBtn,.deleteBtn');
+   $cell.addClass('blue-actions-cell');
+   $actions.each(function(){
+     var $button=$(this);
+     $button.attr('type','button');
+     $button.attr('data-blue-action-label',
+       $button.hasClass('btn-delete')||$button.hasClass('deleteBtn')?'Delete':'Edit');
+     $button.appendTo($cell);
+   });
+   $cell.children('.btn-group').remove();
+ });
+ function cellValue(row,col){return $.trim($(row).children('td').eq(col).text()).replace(/\s+/g,' ');}
+ function visibleRows(){
+   var list=rows.filter(function(row){
+     return Object.keys(filters).every(function(key){
+       return cellValue(row,Number(key)).toLowerCase().indexOf(filters[key].toLowerCase())>=0;
+     })&&Object.keys(dateRanges).every(function(key){
+       var range=dateRanges[key],value=cellValue(row,Number(key)).slice(0,10);
+       return (!range.from&&!range.to)||(value!==''&&(!range.from||value>=range.from)&&(!range.to||value<=range.to));
+     });
+   });
+   list.sort(function(a,b){
+     var x=cellValue(a,sortColumn),y=cellValue(b,sortColumn);
+     var nx=Number(x),ny=Number(y);
+     var cmp=x!==''&&y!==''&&!isNaN(nx)&&!isNaN(ny)?nx-ny:x.localeCompare(y,undefined,{numeric:true,sensitivity:'base'});
+     if(cmp===0)cmp=Number($(a).find('td').first().text())-Number($(b).find('td').first().text());
+     return sortDescending?-cmp:cmp;
+   });
+   return list;
+ }
+ var widget=$.financeVoucherComponents&&$.financeVoucherComponents.createFilter
+   ?$.financeVoucherComponents.createFilter({kind:'heading',accent:'#2563eb'}):null;
+ var activeColumn=null,$activeButton=null;
+ function closeFilter(){
+   if(widget)widget.close();
+   if($activeButton)$activeButton.attr('aria-expanded','false');
+   activeColumn=null;$activeButton=null;
+ }
+ function updateButtons(){
+   $table.find('.bm-account-col').each(function(){
+     var n=Number($(this).data('col')),range=dateRanges[n]||{};
+     $(this).toggleClass('is-filtered',!!filters[n]||!!(range.from||range.to)||sortColumn===n)
+       .attr('aria-sort',sortColumn===n?(sortDescending?'descending':'ascending'):'none');
+   });
+ }
+ function render(){
+   var matches=visibleRows(),total=matches.length;
+   pageSize=Math.max(1,Number($size.val())||25);
+   currentPage=Math.max(1,Math.min(currentPage,Math.max(1,Math.ceil(total/pageSize))));
+   var start=(currentPage-1)*pageSize,shown=matches.slice(start,start+pageSize);
+   if($.blueActionMenu)$.blueActionMenu.close();
+   $body.empty();
+   if(!shown.length)$body.append($('<tr>').append($('<td>',{colspan:columns,'class':'text-center text-muted py-4',text:'No matching accounts found'})));
+   else $.each(shown,function(_,row){$body.append(row);});
+   if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
+   $summary.text('Showing '+(total?start+1:0)+'–'+Math.min(total,start+pageSize)+' of '+total+' records');
+   if($.blueVoucherPagination)$.blueVoucherPagination.render({
+      container:$pages,summary:$summary,total:total,length:pageSize,start:start,
+      buttonClass:'dv-page-btn',
+      onPage:function(next){currentPage=Math.floor(next/pageSize)+1;render();}
+   });
+   updateButtons();
+ }
+ $table.find('thead th').each(function(index){
+   if(index===columns-1&&/action/i.test($(this).text()))return;
+   var $th=$(this),name=$.trim($th.text());
+   $th.append($('<button>',{type:'button','class':'bm-account-col','data-col':index,
+     'aria-label':'Sort or filter '+name,'aria-expanded':'false','aria-haspopup':'dialog'})
+     .append($('<i>',{'class':'fas fa-caret-down','aria-hidden':'true'})));
+ });
+ $table.on('click','.bm-account-col',function(event){
+   event.preventDefault();event.stopPropagation();
+   var $btn=$(this),col=Number($btn.data('col'));
+   if(activeColumn===col){closeFilter();return;}
+   closeFilter();activeColumn=col;$activeButton=$btn;
+   $btn.attr('aria-expanded','true');
+   if(!widget)return;
+   var label=$.trim($btn.closest('th').text());
+   widget.setTitle(label);
+   if(/date|created/i.test(label)){
+     widget.dates(dateRanges[col]||{from:'',to:''},function(which,value){
+       if(!dateRanges[col])dateRanges[col]={from:'',to:''};
+       dateRanges[col][which]=value;currentPage=1;render();
+     });
+   }else{
+     widget.search(filters[col]||'',function(value){
+       if(value)filters[col]=value;else delete filters[col];
+       currentPage=1;render();
+     },'Search '+label+'...');
+   }
+   widget.position($btn);widget.$control.find('input,select').first().trigger('focus');
+ });
+ if(widget){
+   widget.$popup.find('.bm-col-asc,.bm-col-desc').on('click',function(){
+     if(activeColumn===null)return;
+     sortColumn=activeColumn;sortDescending=$(this).hasClass('bm-col-desc');
+     closeFilter();currentPage=1;render();
+   });
+   widget.$popup.find('.bm-col-clear').on('click',function(){
+     if(activeColumn===null)return;
+     delete filters[activeColumn];delete dateRanges[activeColumn];
+     if(sortColumn===activeColumn){sortColumn=0;sortDescending=false;}
+     closeFilter();currentPage=1;render();
+   });
+   $(document).on('click.bmAccountingColumns',function(event){
+     if(!$(event.target).closest(widget.$popup).length&&!$(event.target).closest('.bm-account-col').length)closeFilter();
+   }).on('keydown.bmAccountingColumns',function(event){if(event.key==='Escape')closeFilter();});
+ }
+ $size.on('change',function(){currentPage=1;render();});
+ $reset.on('click',function(){
+   filters={};dateRanges={};sortColumn=0;sortDescending=false;currentPage=1;$size.val('25');closeFilter();render();
+ });
+ $root.find('.bm-account-loading').remove();
+ $table.css('visibility','visible');
+ render();
+});
+})(jQuery);
