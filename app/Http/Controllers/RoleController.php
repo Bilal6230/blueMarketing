@@ -87,9 +87,9 @@ class RoleController extends Controller
             ]);
         }
         $selected = array_values(array_unique($data['permissions'] ?? []));
-        if (array_filter($selected, fn($name)=>RolePermissionCatalog::isLegacyVoucher($name))) {
+        if (array_filter($selected, fn($name)=>RolePermissionCatalog::isLegacyVoucher($name) || RolePermissionCatalog::isUnusedModuleToggle($name))) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'permissions'=>'Legacy voucher permissions cannot be added through the modern role editor.',
+                'permissions'=>'Legacy or nonfunctional module permissions cannot be added through the modern role editor.',
             ]);
         }
         $available = Permission::where('guard_name',$guard)->whereIn('name',$selected)
@@ -106,7 +106,7 @@ class RoleController extends Controller
         if ($role) {
             $hidden = $role->permissions->filter(function ($permission): bool {
                 $name = (string)$permission->name;
-                if (RolePermissionCatalog::isLegacyVoucher($name)) return true;
+                if (RolePermissionCatalog::isLegacyVoucher($name) || RolePermissionCatalog::isUnusedModuleToggle($name)) return true;
                 if (!RolePermissionCatalog::isFinanceAction($name)) return false;
                 foreach (\App\Support\Finance\FinanceActionPermission::MODULES as $module) {
                     $prefix = 'finance '.$module.' ';
