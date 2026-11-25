@@ -312,8 +312,7 @@
                             success: function(r) {
                                 Swal.fire(r.status === 'success' ? 'Deleted' : 'Error',
                                     r.message, r.status);
-                                if (r.status === 'success') setTimeout(() => location
-                                    .reload(), 1000);
+                                if (r.status === 'success') $(document).trigger('bm:account-refresh');
                             },
                             error: function() {
                                 Swal.fire('Error', 'Server error', 'error');
