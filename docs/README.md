@@ -1,3 +1,25 @@
+# 2026-11-25 — Project List modern UI delivered (OWNER VERIFICATION PENDING)
+
+**Owner request:** Modernize only the legacy \`/admin/project\` Project List, one page at a time. User screenshot showed old DataTables export toolbar, legacy table/striped styles and direct Edit/Delete buttons. Labour Payment CP remains explicitly ON HOLD.
+
+**Implementation:**
+- \`resources/views/admin/projects/index.blade.php\`: replaced legacy DataTables page with the same compact BlueMarketing voucher-directory visual grammar used by Role/Finance: blue-accent card, small heading, quick search, independent active/inactive and rows-per-page filters, column sort, summary and shared \`$.blueVoucherPagination\`, first-paint skeleton, blue badges, and shared \`$.blueActionMenu.enhance\` on per-row Edit.
+- Replaced legacy add/edit modal UI with a responsive modern form, jQuery AJAX + FormData (optional logo), inline validation, toast notifications, submit loading state, and same-table JSON refresh without page reload. Existing project setup fields, permission-scoped Create/Edit, project code, location, opening/closing dates, corner/facing percent and effective-dated charge revision are preserved.
+- **Safety:** Removed the old Project listing's Delete button because its modal erroneously submitted to \`user.destroy\`, while \`ProjectController::destroy()\` is empty. Do not expose an inoperative/destructive project Delete action until an explicit safe project lifecycle and approval is designed. No actual project delete implemented.
+- \`app/Http/Controllers/ProjectController.php\`: added read-permission-protected JSON list response for same-page reload and AJAX success/validation responses. Fixed actual Project Edit resolution: existing \`PUT /admin/project\` route has no \`{project}\` segment, so the prior \`Project $project\` signature was not an actual bound entity. Explicitly validate request ID and \`findOrFail\`; **retain existing row lock, revision history and accounting safety**.
+- \`tests/Unit/ProjectDirectoryModernizationContractTest.php\`: three narrowly targeted source contract cases covering first paint, shared components, AJAX form and charge revision safety, exact CRUD rights and disabled unsafe deletion. New tests **not yet owner-executed**.
+- **No migrations, tables, background jobs, project data updates, actual Delete implementation or changes to other pages.** Previous M01/M02/M04/M05/M06 acceptance remains closed; M03 Labour CP ON HOLD.
+
+**Owner focused verification (only newly changed Project page):**
+\`\`\`powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan view:cache
+php artisan test --filter=ProjectDirectoryModernizationContractTest
+\`\`\`
+**Browser:** Hard-refresh \`/admin/project\`: skeleton -> modern table and action '+'; Search/status filter/page size and pagination work; Edit opens populated modal and **save unchanged** refreshes list via AJAX; verify editing address/status with disposable local project. Test changed corner/facing rate only on disposable local project with legitimate effective date; do not alter real accounting rates for UI smoke. New Project Create requires existing system account mappings, so do not create on live data. Inspect a validation failure (required project name/address) -> inline/toast not full page. No need to rerun previous milestone browser tests.
+
+---
 # 2026-11-25 — Role list first-paint legacy action flicker FIX (browser gate pending)
 
 **Owner screenshots** of `/admin/role` show server-rendered legacy **Edit / Archive** buttons before jQuery initialization, which later rewrites the table and `$.blueActionMenu.enhance` converts them into the correct modern action button. This was a first-paint SSR→jQuery visual flash, **not a permission backend failure**.
