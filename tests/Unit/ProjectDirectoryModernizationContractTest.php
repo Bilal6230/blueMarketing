@@ -22,7 +22,7 @@ final class ProjectDirectoryModernizationContractTest extends TestCase
             'bm-voucher-directory bm-projects',
             'project-col-trigger', 'data-field="{{ $field }}"',
             '$.financeVoucherComponents.createFilter', 'filterWidget.dates(',
-            'filterWidget.search(', "filterWidget.$control", 'projectPageSize',
+            'filterWidget.search(', 'filterWidget.$control', 'projectPageSize',
             'projectPages', 'project-skeleton', 'project-card', 'flex:1 1 auto',
             'min-height:calc(100vh - 175px)',
             '<tbody id="projectRows" aria-busy="true">',
@@ -91,7 +91,7 @@ final class ProjectDirectoryModernizationContractTest extends TestCase
         }
         self::assertStringContainsString('public function destroy(Request $request)', $controller);
         self::assertStringContainsString("route('project.destroy')", $this->source('resources/views/admin/projects/index.blade.php'));
-        self::assertStringContainsString("SafeMasterRecordDeletion::assertUnreferenced('projects', $id, 'project_id')", $controller);
+        self::assertStringContainsString('SafeMasterRecordDeletion::assertUnreferenced(\'projects\', $id, \'project_id\')', $controller);
         self::assertStringContainsString('projectDeleteModal', $this->source('resources/views/admin/projects/index.blade.php'));
         self::assertStringContainsString("can('delete project')", $this->source('resources/views/admin/projects/index.blade.php'));
     }
