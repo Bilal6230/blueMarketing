@@ -168,7 +168,7 @@
                         $("#phone_number").val(data.phone_number);
                         $("#department").val(data.department);
                         $("#address").val(data.address);
-                        $("#project_id").val(data.project_id);
+                        $("#project_id").val(data.project_id == null ? '' : String(data.project_id)).trigger('change');
                         $("#status_id").change().val(data.status_id);
 
                         $("#id").val(data.id);
