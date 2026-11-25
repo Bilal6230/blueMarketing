@@ -109,6 +109,26 @@ class Milestone06ActivityAuditContractTest extends TestCase
         }
     }
 
+    public function test_mobile_and_finance_api_mutations_are_audited_after_sanctum_authentication(): void
+    {
+        $routes = $this->source('routes/api.php');
+        $this->assertStringContainsString(
+            "Route::middleware(['auth:sanctum', \\App\\Http\\Middleware\\RecordActivityAudit::class])->group",
+            $routes
+        );
+        $this->assertStringContainsString(
+            "Route::middleware(['auth:sanctum', 'throttle:30,1', \\App\\Http\\Middleware\\RecordActivityAudit::class])",
+            $routes
+        );
+        $this->assertStringContainsString("Route::post('leads', [MobileCrmController::class, 'store'])", $routes);
+        $this->assertStringContainsString("Route::post('entries/in', [MobileStockController::class, 'storeIn'])", $routes);
+        $this->assertStringContainsString("Route::post('postings', [\u0024controller, 'post'])", $routes);
+        $this->assertStringNotContainsString(
+            "Route::middleware([\\App\\Http\\Middleware\\RecordActivityAudit::class, 'auth:sanctum'])",
+            $routes
+        );
+    }
+
     public function test_stock_plot_bank_and_labour_row_audit_uses_atomic_allowlisted_triggers(): void
     {
         $source = $this->source('database/migrations/2026_11_25_134000_expand_activity_audit_stock_plot_bank_sources.php');
