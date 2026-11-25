@@ -1,3 +1,24 @@
+# 2026-11-25 — Milestone 06 STARTED: centralized Activity Audit (batch 1, owner test pending)
+
+**Owner verification:** Milestone 02 completed **72/72 targeted terminal tests** (58 Booking Edit + 6 Booking/Labour + 8 Roles) and **11/11 browser permission checks PASS**. M01/M02/M04/M05 accepted; M03 Labour CP remains explicitly ON HOLD. Owner authorized starting M06.
+
+**Implemented M06 first working batch:** One append-only `activity_audits` table (single migration `2026_11_25_130000_create_activity_audits.php`, not three speculative tables), automatic recording of authenticated successful admin POST/PUT/PATCH/DELETE responses, actor ID, method, named route, path **without query string**, status, timestamp, IP and optional request ID. No request body, passwords, attachments, old/new financial values or secrets captured. Existing Finance and Labour workflows untouched. New permission `read activity audit` is granted to existing web admin/superadmin roles only, and can be revoked in Roles. Read-only, paginated, filterable `/admin/activity-audit` page lives under permission-controlled Administration sidebar. Regression contract `Milestone06ActivityAuditContractTest` added.
+
+**Current scope limitation:** This request-level audit tracks successful authenticated admin web mutations, not semantic before/after diffs, background jobs, rejected attempts, or mobile/API changes. Capture currently writes after HTTP response generation and logs persistence errors to server logs to avoid replaying committed financial transactions. M06 remains IN PROGRESS; later integration should add typed entity audit events and durable transaction-aware outbox where necessary before claiming full application-wide coverage.
+
+**Owner local gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan migrate --path=database/migrations/2026_11_25_130000_create_activity_audits.php
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+**Browser check after green:** Admin → Administration → Activity Audit (`/admin/activity-audit`); submit any disposable user/role change, reload audit page, verify actor/action/route/time. Revoke `read activity audit` in a disposable limited test role and confirm link hidden/direct URL 403. Audit rows are read-only and no delete button exists.
+
+---
+
 # 2026-11-25 — Milestone 02 new independent Booking/Attendance permissions and discoverable Lead/Labour roles
 
 **Owner accepted latest existing browser checks:** CR View OFF/DR View ON **PASS**, Employee Tasks View OFF **PASS**, Users Read ON/Update OFF **PASS**, earlier Stock strict permissions browser **PASS**. Owner terminal **5/150 + 5/67 + 8/485** = **18 PASS / 702 assertions** on preceding permission integration. **This new batch has NOT yet been owner-run.**
