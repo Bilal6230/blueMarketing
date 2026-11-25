@@ -27,7 +27,7 @@ final class ModernAccountantDirectoryContractTest extends TestCase
             'bm-account-table-wrap',
             'bm-account-table',
             'id="bmAccountDirectory"',
-            'bm-account-loading',
+            'bm-cell-skeleton-row',
             'modern-account-directory.js',
             'viewLedgersBtn',
         ] as $needle) {
