@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Event;
 /**
  * Request-scoped capture. SQL statements indicate only possible table impact:
  * queries cannot prove which rows changed, especially after transaction rollback.
- * Eloquent events supply verified model identities and field-level values.
+ * Eloquent events supply model identities and allowlisted field-level values,
+ * but unlike DB-trigger snapshots they do not independently prove commit.
  */
 final class ActivityAuditCapture
 {
