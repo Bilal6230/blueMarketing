@@ -62,6 +62,9 @@ final class RolePermissionCatalog
             'plot voucher report'=>'plot',
             'print voucher'=>'voucher',
             'view inventory'=>'inventory',
+            'assign lead'=>'lead',
+            'stock module'=>'stock',
+            'labour module'=>'labour',
         ];
         if (isset($historical[$name])) return $historical[$name];
         // Some real legacy permissions contain a multi-word resource, e.g.
@@ -102,7 +105,10 @@ final class RolePermissionCatalog
             'plot' => 'Plots',
             'area' => 'Areas',
             'sector' => 'Sectors',
-            'lead' => 'Leads',
+            'lead' => 'Leads / CRM',
+            'booking' => 'Bookings / Plot Sales',
+            'labour' => 'Labour Master',
+            'attendance' => 'Attendance',
             'payroll' => 'Payroll',
             'report' => 'Reports',
             'module' => 'Modules',
