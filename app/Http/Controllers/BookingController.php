@@ -210,7 +210,7 @@ class BookingController extends Controller
             $this->validateImmutableBookingFields($request, $booking);
             $result = $service->update(
                 (int) $id, $projectId, $request->all(),
-                Auth::user()->can('update plot'), Auth::user()->can('update booking price'), Auth::id()
+                Auth::user()->can('update booking'), Auth::user()->can('update booking price'), Auth::id()
             );
         } catch (DomainException $exception) {
             // A generic error masked the exact accounting guard rejecting
