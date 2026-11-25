@@ -204,7 +204,7 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringContainsString('TransactionBeginning::class', $capture);
         $this->assertStringContainsString('TransactionCommitted::class', $capture);
         $this->assertStringContainsString('TransactionRolledBack::class', $capture);
-        $this->assertStringContainsString("array_pop($this->transactionSnapshots)", $capture);
+        $this->assertStringContainsString('array_pop($this->transactionSnapshots)', $capture);
         $this->assertStringContainsString("test_committed_query_builder_write_is_recorded", $integration);
         $this->assertStringContainsString("test_caught_transaction_rollback_does_not_create_false_audit", $integration);
         $this->assertStringContainsString("test_committed_write_before_a_later_rollback_is_preserved", $integration);
