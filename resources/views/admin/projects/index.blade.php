@@ -16,8 +16,8 @@
 .bm-projects .project-table-wrap{width:100%;overflow:auto;min-height:0;flex:1 1 auto}
 .bm-projects .project-table{width:100%;margin:0;font-size:14px;white-space:nowrap}
 .bm-projects .project-table{border-collapse:separate!important;border-spacing:0!important}
-.bm-projects .project-table thead th{background:#f0f5fc;color:#294366;font-weight:750;font-size:13px;padding:11px 12px;border-bottom:2px solid #2563eb!important;border-right:1px solid #d9e4f0!important}
-.bm-projects .project-table tbody td{padding:11px 12px!important;border-top:1px solid #eaf0f7!important;border-right:1px solid #e2eaf4!important;vertical-align:middle;height:48px!important}
+.bm-projects .project-table thead th{background:#f0f5fc;color:#294366;font-weight:750;font-size:13px;padding:11px 12px;border-bottom:2px solid #2563eb!important;border-right:1.5px solid #b6c7da!important}
+.bm-projects .project-table tbody td{padding:11px 12px!important;border-top:1.5px solid #c5d2e2!important;border-right:1.5px solid #c5d2e2!important;vertical-align:middle;height:48px!important}
 .bm-projects .project-table thead th:last-child,.bm-projects .project-table tbody td:last-child{border-right:0!important}
 .bm-projects .project-table tbody tr:nth-child(even){background:#f1f5fa!important}
 .bm-projects .project-table tbody tr:nth-child(odd){background:#ffffff!important}
