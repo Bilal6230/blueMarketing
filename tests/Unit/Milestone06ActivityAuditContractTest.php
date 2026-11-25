@@ -109,6 +109,28 @@ class Milestone06ActivityAuditContractTest extends TestCase
         }
     }
 
+    public function test_stock_plot_bank_and_labour_row_audit_uses_atomic_allowlisted_triggers(): void
+    {
+        $source = $this->source('database/migrations/2026_11_25_134000_expand_activity_audit_stock_plot_bank_sources.php');
+        foreach ([
+            'stock_entries', 'stock_entry_lines', 'stock_bills', 'stock_bill_lines',
+            'stock_movements', 'finance_plot_receipts', 'finance_plot_purchases',
+            'finance_bank_transfer_sources', 'finance_bank_voucher_allocations',
+            'labour_ledgers',
+        ] as $table) {
+            $this->assertStringContainsString("'".$table."'", $source);
+        }
+        $this->assertStringContainsString("'db_trigger_row'", $source);
+        $this->assertStringContainsString('@activity_audit_token', $source);
+        $this->assertStringContainsString('JSON_OBJECT(', $source);
+        $this->assertStringContainsString("!in_array('id',", $source);
+        foreach (["'password'", "'email'", "'phone_number'", "'t_number'",
+            "'description'", "'check_history'", "'reference'"] as $sensitive) {
+            $this->assertStringNotContainsString($sensitive, $source);
+        }
+        $this->assertStringNotContainsString('Schema::dropIfExists', $source);
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
