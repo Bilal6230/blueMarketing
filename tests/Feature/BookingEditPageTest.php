@@ -139,16 +139,16 @@ class BookingEditPageTest extends TestCase
         $this->actingAs($this->user);
 
         $this->expectException(UnauthorizedException::class);
-        app(PermissionMiddleware::class)->handle($request, fn () => response('opened'), 'update plot');
+        app(PermissionMiddleware::class)->handle($request, fn () => response('opened'), 'update booking');
     }
 
-    public function test_edit_route_is_get_only_and_requires_update_plot_permission(): void
+    public function test_edit_route_is_get_only_and_requires_update_booking_permission(): void
     {
         $route = app('router')->getRoutes()->getByName('booking.edit');
 
         $this->assertNotNull($route);
         $this->assertSame(['GET', 'HEAD'], $route->methods());
-        $this->assertContains('permission:update plot|update booking price', $route->gatherMiddleware());
+        $this->assertContains('permission:update booking|update booking price', $route->gatherMiddleware());
     }
 
     public function test_update_route_is_put_only_and_requires_update_plot_permission(): void
@@ -157,7 +157,7 @@ class BookingEditPageTest extends TestCase
 
         $this->assertNotNull($route);
         $this->assertSame(['PUT'], $route->methods());
-        $this->assertContains('permission:update plot|update booking price', $route->gatherMiddleware());
+        $this->assertContains('permission:update booking|update booking price', $route->gatherMiddleware());
     }
 
     public function test_old_pricing_mutation_route_is_removed(): void
@@ -189,25 +189,25 @@ class BookingEditPageTest extends TestCase
     {
         $booking = $this->createBooking();
         $pricing = Permission::create(['name' => 'update booking price', 'guard_name' => 'web']);
-        $broker = Permission::create(['name' => 'update plot', 'guard_name' => 'web']);
+        $broker = Permission::create(['name' => 'update booking', 'guard_name' => 'web']);
 
         $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
             ->get(route('booking.edit', ['id' => $booking->id], false))->assertForbidden();
 
         $this->user->givePermissionTo($broker);
         $request = Request::create(route('booking.edit', ['id' => $booking->id], false), 'GET');
-        $this->assertSame('opened', app(PermissionMiddleware::class)->handle($request, fn () => 'opened', 'update plot|update booking price'));
+        $this->assertSame('opened', app(PermissionMiddleware::class)->handle($request, fn () => 'opened', 'update booking|update booking price'));
         $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
             ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking, ['plot_rate' => '550000', 'reason' => 'Test']))->assertSessionHasErrors('booking');
 
         $this->user->revokePermissionTo($broker);
         $this->user->givePermissionTo($pricing);
-        $this->assertSame('opened', app(PermissionMiddleware::class)->handle($request, fn () => 'opened', 'update plot|update booking price'));
+        $this->assertSame('opened', app(PermissionMiddleware::class)->handle($request, fn () => 'opened', 'update booking|update booking price'));
         $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
             ->put(route('booking.update', ['id' => $booking->id], false), $this->updatePayload($booking))->assertSessionHasNoErrors();
 
         $this->user->givePermissionTo($broker);
-        $this->assertSame('opened', app(PermissionMiddleware::class)->handle($request, fn () => 'opened', 'update plot|update booking price'));
+        $this->assertSame('opened', app(PermissionMiddleware::class)->handle($request, fn () => 'opened', 'update booking|update booking price'));
     }
 
     public function test_price_only_form_submits_current_metadata_and_can_save_pricing(): void
@@ -275,7 +275,7 @@ class BookingEditPageTest extends TestCase
     {
         $booking = $this->createBooking(['status' => 'inactive']);
         $pricing = Permission::create(['name' => 'update booking price', 'guard_name' => 'web']);
-        $broker = Permission::create(['name' => 'update plot', 'guard_name' => 'web']);
+        $broker = Permission::create(['name' => 'update booking', 'guard_name' => 'web']);
 
         $this->user->givePermissionTo($pricing);
         $priceOnly = $this->actingAs($this->user)->withCookie('selected_action', (string) $this->projectId)
@@ -863,7 +863,7 @@ class BookingEditPageTest extends TestCase
 
     private function authorizeUpdate(): void
     {
-        $permission = Permission::create(['name' => 'update plot', 'guard_name' => 'web']);
+        $permission = Permission::create(['name' => 'update booking', 'guard_name' => 'web']);
         $this->user->givePermissionTo($permission);
     }
 
