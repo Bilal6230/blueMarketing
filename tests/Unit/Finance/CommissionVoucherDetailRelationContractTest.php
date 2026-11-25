@@ -34,10 +34,17 @@ final class CommissionVoucherDetailRelationContractTest extends TestCase
         self::assertNotFalse($end);
         $update=substr($source,$start,$end-$start);
         $guard=strpos($update,'VoucherUnchangedUpdateDetector::class');
-        $archive=strpos($update,"->update(['deleted_at' => now()");
+        // Draft edits preserve existing detail/ledger IDs. Only a removed
+        // detail is soft-deleted; the no-op guard must run before this path.
+        $archive=strpos($update,"->whereNull('deleted_at')->update(['deleted_at'=>now(),'updated_at'=>now()])");
+        $linkedDraftUpdate=strpos($update,"->where('commision_voucher_id',\$sourceId)->whereNull('deleted_at')");
         self::assertNotFalse($guard);
         self::assertNotFalse($archive);
+        self::assertNotFalse($linkedDraftUpdate);
         self::assertLessThan($archive,$guard);
+        self::assertStringContainsString("if (isset(\$submittedIds[(int)\$detail->id])) continue;", $update);
+        self::assertStringContainsString("->where('commision_voucher_detail_id',\$detailId)->where('is_active',0)", $update);
+        self::assertStringContainsString("->update(\$values);", $update);
         self::assertStringContainsString("->where('commision_voucher_id', \$sourceId)->whereNull('deleted_at')",$update);
         self::assertStringContainsString("array_key_exists('reference',\$metadata)",$update);
         self::assertStringContainsString("array_key_exists('description',\$metadata)",$update);
