@@ -1,7 +1,8 @@
 @extends('admin.layouts.master')
+@push('style')<link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}">@endpush
 
 @section('content')
-    <div class="content-wrapper">
+    <div class="content-wrapper bm-modern-accounts" data-account-kind="joint">
         <div class="content-header">
             <div class="container-fluid">
                 <div class="row mb-2">
@@ -20,10 +21,10 @@
 
         <section class="content">
             <div class="container-fluid">
-                <div class="card">
+                <div class="card bm-account-card">
 
                     {{-- Create Form --}}
-                    <div class="card-header">
+                    <div class="card-header bm-account-create-source">
                         <form action="{{ route('accounting.category_store') }}" method="POST">
                             @csrf
                             <div class="row">
@@ -60,8 +61,8 @@
                     </div>
 
                     {{-- Data Table --}}
-                    <div class="card-body table-responsive">
-                        <table id="categoryTable" class="table table-bordered table-striped">
+                    <div class="card-body table-responsive bm-account-table-wrap"><div class="bm-account-loading" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                        <table id="bmAccountDirectory" class="table table-bordered bm-account-table" style="visibility:hidden">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -77,12 +78,12 @@
                                         <td>{{ $map->head_name ?? 'N/A' }}</td>
                                         <td>{{ $map->subhead_name ?? 'N/A' }}</td>
                                         <td>
-                                            <button type="button" class="btn btn-warning btn-sm editBtn"
+                                            <button type="button" class="btn btn-warning btn-sm editBtn" data-blue-action-label="Edit mapping"
                                                 data-id="{{ $map->id }}">
                                                 <i class="fas fa-edit"></i>
                                             </button>
 
-                                            <button type="button" class="btn btn-danger btn-sm deleteBtn"
+                                            <button type="button" class="btn btn-danger btn-sm deleteBtn" data-blue-action-label="Delete mapping"
                                                 data-id="{{ $map->id }}">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -367,12 +368,9 @@
                 });
             });
 
-            $('#categoryTable').DataTable({
-                responsive: true,
-                autoWidth: false,
-                pageLength: 10
-            });
+            // Unified table pagination and heading filters are managed by modern-account-directory.js.
 
         });
     </script>
+    <script src="{{ asset('js/modern-account-directory.js') }}"></script>
 @endsection
