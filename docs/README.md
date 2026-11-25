@@ -1,3 +1,18 @@
+# 2026-11-25 — M06 authenticated API test fixture timestamps repair (owner re-test pending)
+
+**Owner verification:** `Milestone06ActivityAuditContractTest` **19 PASS / 216 assertions**. `ActivityAuditAuthenticatedApiTest` had **1 PASS / 2 FAIL**: unauthorized API mutation correctly rejected, but two authenticated cases failed during setup because the temporary SQLite `users` fixture lacked `created_at` and `updated_at` columns automatically written by the actual `App\\Models\\User` Eloquent model. This is a **test-only schema fixture error**, not evidence that application MySQL users schema is incorrect.
+
+**Fix pushed:** Added `$table->timestamps()` to the in-memory SQLite user fixture. No application model, API route, permission, MySQL table, migration, or persistent database changes. Existing 19 contract tests already PASS; only the failed API feature suite requires repeat:
+
+```powershell
+cd C:\\laragon\\www\\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ActivityAuditAuthenticatedApiTest
+```
+Expected **3 PASS** (pending owner's local execution). If a new failure is exposed after timestamp insert succeeds, fix precisely that failure. Existing background, finance, browser and MySQL rollback acceptance remain complete; do not retest them. M06 stays IN PROGRESS.
+
+---
+
 # 2026-11-25 — M06 background batch accepted; Sanctum API audit middleware integration gate added (pending local execution)
 
 **Owner-verified:** `Milestone06ActivityAuditContractTest` **18 PASS / 208 assertions**; `BackgroundActivityAuditTest` **5 PASS / 15 assertions**; earlier `ActivityAuditTransactionBoundaryTest` 8 PASS / 25 assertions, real MySQL rollback/commit 2 PASS / 10 assertions, strict audit-health 129/129 valid installed triggers, and owner confirms browser tests PASS. These established checks do not need repeated regression unless new code changes affect them.
