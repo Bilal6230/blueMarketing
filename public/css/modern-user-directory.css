@@ -59,3 +59,55 @@
 /* Keep Column Visibility adjacent to Print; only employee actions float right. */
 .bm-user-directory .bm-modern-export-toolbar .bm-modern-column-menu{order:0!important;margin-left:3px!important}
 .bm-user-directory .bm-modern-export-toolbar .bm-user-toolbar-actions{order:20!important;margin-left:auto!important}
+
+
+/* Modern accessible status switch: scoped to User directory only. */
+.bm-user-directory .bm-account-table label.switch{
+  position:relative!important;display:inline-block!important;
+  width:46px!important;height:26px!important;
+  margin:0!important;vertical-align:middle!important;
+  cursor:pointer;
+}
+.bm-user-directory .bm-account-table label.switch input.status-toggle{
+  position:absolute!important;opacity:0!important;width:100%!important;
+  height:100%!important;inset:0!important;margin:0!important;z-index:2;
+  cursor:pointer;
+}
+.bm-user-directory .bm-account-table label.switch .slider{
+  position:absolute!important;inset:0!important;width:100%!important;
+  height:100%!important;border-radius:999px!important;
+  background:#ef4444!important;border:1px solid #dc2626!important;
+  box-shadow:inset 0 1px 2px #0f172a16,0 0 0 2px #ef444411!important;
+  transition:background-color .22s ease,border-color .22s ease,box-shadow .22s ease!important;
+  pointer-events:none;
+}
+.bm-user-directory .bm-account-table label.switch .slider:before{
+  content:""!important;position:absolute!important;
+  width:20px!important;height:20px!important;left:2px!important;
+  top:2px!important;border-radius:50%!important;
+  background:white!important;box-shadow:0 2px 6px #0f172a38!important;
+  transform:translateX(0)!important;transition:transform .22s ease!important;
+}
+.bm-user-directory .bm-account-table label.switch input.status-toggle:checked+.slider{
+  background:#22c55e!important;border-color:#16a34a!important;
+  box-shadow:inset 0 1px 2px #0f172a18,0 0 0 2px #22c55e20!important;
+}
+.bm-user-directory .bm-account-table label.switch input.status-toggle:checked+.slider:before{
+  transform:translateX(20px)!important;
+}
+.bm-user-directory .bm-account-table label.switch input.status-toggle:focus-visible+.slider{
+  outline:3px solid #2563eb!important;outline-offset:3px!important;
+}
+.bm-user-directory .bm-account-table label.switch.status-loading .slider,
+.bm-user-directory .bm-account-table label.switch input.status-toggle:disabled+.slider{
+  opacity:.6!important;cursor:wait!important;
+}
+.bm-user-directory .bm-account-table label.switch input.status-toggle:disabled{
+  cursor:wait!important;
+}
+@media(prefers-reduced-motion:reduce){
+  .bm-user-directory .bm-account-table label.switch .slider,
+  .bm-user-directory .bm-account-table label.switch .slider:before{
+    transition:none!important;
+  }
+}
