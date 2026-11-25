@@ -29,3 +29,29 @@
 .bm-user-modal input[type=file].form-control{height:auto!important;min-height:40px;padding:7px}
 .bm-user-modal .btn{font-size:13px;padding:8px 16px;border-radius:6px}
 @media(max-width:767px){.bm-user-modal .modal-dialog{width:calc(100% - 16px)!important;margin:8px auto!important}.bm-user-modal .modal-body{padding:12px;max-height:calc(100dvh - 150px)}}
+
+
+/* User actions belong on the right of the export toolbar, not on a second row. */
+.bm-user-directory .bm-modern-export-toolbar .bm-user-toolbar-actions{
+  float:none!important;
+  margin:0 0 0 auto!important;
+  display:flex!important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.bm-user-directory .bm-modern-export-toolbar .bm-user-toolbar-actions .btn{
+  border-radius:6px;
+  font-size:12px!important;
+  font-weight:650;
+  padding:7px 12px!important;
+  white-space:nowrap;
+}
+@media(max-width:575px){
+  .bm-user-directory .bm-modern-export-toolbar .bm-user-toolbar-actions{
+    width:100%;
+    justify-content:flex-end;
+    margin-left:0!important;
+  }
+}
