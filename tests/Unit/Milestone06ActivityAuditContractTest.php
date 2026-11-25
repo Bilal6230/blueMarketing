@@ -11,45 +11,68 @@ class Milestone06ActivityAuditContractTest extends TestCase
         return file_get_contents(dirname(__DIR__, 2).'/'.$path);
     }
 
-    public function test_admin_web_routes_record_mutations_and_audit_view_requires_specific_permission(): void
+    public function test_admin_routes_require_read_audit_permission_for_both_listing_and_details(): void
     {
         $routes = $this->source('routes/web.php');
         $this->assertStringContainsString('RecordActivityAudit::class', $routes);
         $this->assertStringContainsString("Route::get('activity-audit'", $routes);
-        $this->assertStringContainsString('permission:read activity audit', $routes);
+        $this->assertStringContainsString("Route::get('activity-audit/{audit}'", $routes);
+        $this->assertSame(2, substr_count($routes, "permission:read activity audit"));
     }
 
-    public function test_recorder_never_persists_sensitive_request_bodies_or_query_parameters(): void
+    public function test_recorder_never_captures_request_bodies_or_query_strings(): void
     {
-        $source = $this->source('app/Http/Middleware/RecordActivityAudit.php');
+        $middleware = $this->source('app/Http/Middleware/RecordActivityAudit.php');
+        $capture = $this->source('app/Support/Audit/ActivityAuditCapture.php');
         foreach (['POST', 'PUT', 'PATCH', 'DELETE'] as $verb) {
-            $this->assertStringContainsString("'".$verb."'", $source);
+            $this->assertStringContainsString("'".$verb."'", $middleware);
         }
-        $this->assertStringContainsString("DB::table('activity_audits')->insert", $source);
-        $this->assertStringContainsString('$request->path()', $source);
-        $this->assertStringNotContainsString('$request->all()', $source);
-        $this->assertStringNotContainsString('$request->input()', $source);
-        $this->assertStringNotContainsString('$request->fullUrl()', $source);
-        $this->assertStringContainsString('Log::error', $source);
+        $this->assertStringContainsString("DB::table('activity_audits')->insertGetId", $middleware);
+        $this->assertStringContainsString("DB::table('activity_audit_impacts')->insert", $middleware);
+        $this->assertStringContainsString('$request->path()', $middleware);
+        $this->assertStringNotContainsString('$request->all()', $middleware);
+        $this->assertStringNotContainsString('$request->input()', $middleware);
+        $this->assertStringNotContainsString('$request->fullUrl()', $middleware);
+        $this->assertStringNotContainsString('$query->bindings', $capture);
+        $this->assertStringNotContainsString('$query->sql,', $capture);
+        $this->assertStringContainsString('Log::error', $middleware);
     }
 
-    public function test_audit_storage_has_actor_route_and_time_indexes_and_is_not_dropped_on_rollback(): void
+    public function test_migrations_keep_audit_evidence_and_index_lookup_paths(): void
     {
         $migration = $this->source('database/migrations/2026_11_25_130000_create_activity_audits.php');
+        $detail = $this->source('database/migrations/2026_11_25_131000_add_activity_audit_impacts.php');
         $this->assertStringContainsString("Schema::create('activity_audits'", $migration);
-        $this->assertStringContainsString("['actor_id', 'created_at']", $migration);
-        $this->assertStringContainsString("['route_name', 'created_at']", $migration);
         $this->assertStringContainsString("Permission::findOrCreate('read activity audit', 'web')", $migration);
-        $this->assertStringNotContainsString("Schema::dropIfExists('activity_audits')", $migration);
+        $this->assertStringContainsString("Schema::create('activity_audit_impacts'", $detail);
+        $this->assertStringContainsString("['activity_audit_id', 'table_name']", $detail);
+        $this->assertStringContainsString("['table_name', 'record_id']", $detail);
+        $this->assertStringNotContainsString('Schema::dropIfExists', $migration.$detail);
     }
 
-    public function test_read_only_history_page_has_filters_and_pagination_without_delete_actions(): void
+    public function test_model_row_differences_are_separate_from_sql_table_observations(): void
     {
-        $source = $this->source('resources/views/admin/activity-audit/index.blade.php');
-        $this->assertStringContainsString('$events->links()', $source);
-        $this->assertStringContainsString('name="actor_id"', $source);
-        $this->assertStringContainsString('name="method"', $source);
-        $this->assertStringNotContainsString('method="POST"', $source);
-        $this->assertStringNotContainsString('method="DELETE"', $source);
+        $capture = $this->source('app/Support/Audit/ActivityAuditCapture.php');
+        $this->assertStringContainsString("'eloquent_row'", $capture);
+        $this->assertStringContainsString("'sql_statement'", $capture);
+        $this->assertStringContainsString('getRawOriginal()', $capture);
+        $this->assertStringContainsString('getChanges()', $capture);
+        $this->assertStringContainsString('self::VISIBLE', $capture);
+        $this->assertStringNotContainsString('getBindings()', $capture);
+    }
+
+    public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
+    {
+        $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
+        $controller = $this->source('app/Http/Controllers/ActivityAuditController.php');
+        $this->assertStringContainsString('audit-column-filter', $blade);
+        $this->assertStringContainsString('$.blueTableSkeleton.show', $blade);
+        $this->assertStringContainsString('audit-detail-modal', $blade);
+        $this->assertStringContainsString('audit-view', $blade);
+        $this->assertStringContainsString('sql_statement', $blade);
+        $this->assertStringContainsString("->paginate(25)", $controller);
+        $this->assertStringContainsString("DB::table('activity_audit_impacts')", $controller);
+        $this->assertStringNotContainsString('method="POST"', $blade);
+        $this->assertStringNotContainsString('method="DELETE"', $blade);
     }
 }
