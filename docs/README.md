@@ -1,3 +1,20 @@
+# 2026-11-25 — Accounting card scroll CLIPPING FIX (owner browser gate pending)
+
+**New owner screenshots:** Area directory already has working **internal card scrollbar + visible footer pager**, while Main Account directory previously clipped table rows at the viewport's bottom and hid the card pagination altogether. The previous attempted fix locked document scrolling but left `height:100%!important` on the internal `.bm-account-table-wrap`, making that flex child consume the card's entire height instead of leaving space for the pager. A hard-coded `calc(100dvh - 171px)` shell also extended below the app's footer area.
+
+**Fix delivered (Main, Party, Joint Account only):** `public/css/modern-account-directory.css` now allocates footer-safe directory height (`calc(100dvh - 225px)` fallback) and **distributes available card space**: `.bm-account-table-wrap` gets `flex:1 1 0%`, `height:0`, `min-height:0` and `overflow-y:scroll` with stable scrollbar gutter; card is a shrinkable flex child and bottom pager is fixed as a non-shrinking card footer. The table header remains sticky. No rows are omitted; rows beyond the viewport are reachable by **scrolling inside the table**. The overall page remains stationary. Updated `ModernAccountingModalScrollContractTest` and `ModernAccountingDirectoryContractTest` assertions to enforce the corrected layout and reject the former 100%-height overflow. **No finance business logic, modal fields, DB schema or data changed.**
+
+**Focused owner gate (new source changes not yet owner verified):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ModernAccountingModalScrollContractTest
+php artisan test --filter=ModernAccountingDirectoryContractTest
+```
+Browser: Ctrl+F5 Main, Party, Joint Accounts; the **vertical scrollbar must be visible at the right edge of the card's table**, scrolling to later rows while **both the column headers and bottom pagination stay visible**, with application header/footer stationary (Area page is the visual reference). No finance edits needed. Do not claim this browser test PASS until owner confirms it. Labour CP remains ON HOLD.
+
+---
+
 # 2026-11-25 — Accounting directories card-only scroll + New/Edit modal layout repair (owner gate pending)
 
 **Owner screenshots:** Main Account and Party Account listings scrolled the entire browser page instead of scrolling within the card; New Main and New Party modals displayed tiny/collapsed text fields and selects. Owner also requested Edit modal consistency. This is a visual-layout regression from the generic `.bm-modern-accounts .content .row{flex:1 1 auto}` rule which inadvertently stretched **nested form grids**.
