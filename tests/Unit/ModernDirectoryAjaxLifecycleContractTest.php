@@ -103,6 +103,7 @@ final class ModernDirectoryAjaxLifecycleContractTest extends TestCase
             self::assertStringContainsString('bm-pending-directory', $view);
             self::assertStringContainsString('bm-cell-skeleton-row', $view);
             self::assertStringContainsString('bm-modern-export-toolbar bm-export-placeholder', $view);
+            self::assertStringContainsString('bm-account-footer-placeholder', $view);
             self::assertStringNotContainsString('style="visibility:hidden"', $view);
         }
         foreach ([
