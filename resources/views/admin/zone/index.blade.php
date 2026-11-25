@@ -196,6 +196,7 @@ $(function(){
     });
     if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
     $body.attr('aria-busy','false');
+    if(exportControls)exportControls.refresh();
     updateHeadings();
     $('#sectorSummary').text('Showing '+(matches.length?start+1:0)+'–'+Math.min(start+size,matches.length)+' of '+matches.length+' sectors');
     if($.blueVoucherPagination)$.blueVoucherPagination.render({container:'#sectorPages',summary:'#sectorSummary',total:matches.length,length:size,start:start,buttonClass:'dv-page-btn',onPage:function(next){currentPage=Math.floor(next/size)+1;render();}});
@@ -313,6 +314,10 @@ $(function(){
       $('#sectorFormErrors').text(body.message||'Unable to save sector.');
       inform(body.message||'Unable to save sector.',true);
     }).always(function(){$save.prop('disabled',false).html('<i class="fas fa-check mr-1"></i> Save Sector');});
+  });
+  var exportControls=$.blueModernDirectoryTools.mount({
+    card:'.sector-card',table:'#sectorsTable',title:'Sectors List',
+    getRows:function(){return visibleRows().map(function(s){return [s.id,s.zone_name,columnValue(s,'is_active'),s.created_at||'—'];});}
   });
   render();
 });
