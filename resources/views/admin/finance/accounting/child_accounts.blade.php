@@ -128,7 +128,15 @@
                                 </div>
                             @endcan
                             <!-- /.card-header -->
-                            <div class="card-body table-responsive bm-account-table-wrap">
+                            <div class="bm-modern-export-toolbar bm-export-placeholder" aria-label="Table export toolbar loading">
+  <button type="button" class="bm-modern-export-btn" disabled>Copy</button>
+  <button type="button" class="bm-modern-export-btn" disabled>CSV</button>
+  <button type="button" class="bm-modern-export-btn" disabled>Excel</button>
+  <button type="button" class="bm-modern-export-btn" disabled>PDF</button>
+  <button type="button" class="bm-modern-export-btn" disabled>Print</button>
+  <button type="button" class="bm-modern-export-btn bm-modern-col-toggle" disabled>Column Visibility</button>
+</div>
+    <div class="card-body table-responsive bm-account-table-wrap">
                                 <table id="bmAccountDirectory" data-initial-skeleton="true" class="table table-bordered bm-account-table bm-pending-directory">
                                     <thead>
                                         <tr>
