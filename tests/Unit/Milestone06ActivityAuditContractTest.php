@@ -279,13 +279,13 @@ class Milestone06ActivityAuditContractTest extends TestCase
     {
         $runner = $this->source('app/Support/Audit/BackgroundActivityAudit.php');
         $integration = $this->source('tests/Feature/BackgroundActivityAuditTest.php');
-        $this->assertStringContainsString("DB::table('users')->where('id', $actorId)->exists()", $runner);
+        $this->assertStringContainsString('DB::table(\'users\')->where(\'id\', $actorId)->exists()', $runner);
         $this->assertStringContainsString("DB::transactionLevel() !== 0", $runner);
         $this->assertStringContainsString("'action' => 'JOB'", $runner);
         $this->assertStringContainsString("SET @activity_audit_token = ?", $runner);
         $this->assertStringContainsString("SET @activity_audit_token = NULL", $runner);
         $this->assertStringContainsString("DB::transaction(", $runner);
-        $this->assertStringContainsString("where('request_token', $token)", $runner);
+        $this->assertStringContainsString('where(\'request_token\', $token)', $runner);
         $this->assertStringNotContainsString('Schema::create(', $runner);
         foreach ([
             'test_committed_background_write_is_attributed_to_explicit_user',
