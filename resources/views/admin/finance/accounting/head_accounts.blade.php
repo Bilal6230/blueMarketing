@@ -102,6 +102,8 @@
                                             <th>#</th>
                                             <th>Name</th>
                                             <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Created</th>
                                             @canany(['update accounting','delete accounting'])
                                                 <th>Action</th>
                                             @endcanany
@@ -117,6 +119,8 @@
                                                 <td>
                                                     {{ getHead($i->acct_type) }}
                                                 </td>
+                                                <td><span class="bm-account-status {{ (int) $i->is_active === 1 ? '' : 'inactive' }}">{{ (int) $i->is_active === 1 ? 'Active' : 'Inactive' }}</span></td>
+                                                <td>{{ optional($i->created_at)->format('Y-m-d H:i:s') }}</td>
                                                 @canany(['update accounting','delete accounting'])
                                                     <td>
                                                         <div class="btn-group">
