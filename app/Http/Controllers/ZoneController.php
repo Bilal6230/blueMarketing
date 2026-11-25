@@ -117,10 +117,29 @@ class ZoneController extends Controller
         return back();
     }
 
-    public function destroy(Zone $zone)
+    public function destroy(Request $request)
     {
-        // Historical screen sent "delete sector" to user.destroy, even though
-        // sector deletion has no implemented lifecycle. Fail closed.
-        abort(409, 'Sector deletion is not available.');
+        $id = (int) $request->validate(['id' => ['required', 'integer', 'min:1']])['id'];
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($id): void {
+                $sector = Zone::query()->whereKey($id)->lockForUpdate()->firstOrFail();
+                \App\Support\SafeMasterRecordDeletion::assertUnreferenced('zones', $id, 'zone_id');
+                $sector->delete();
+            });
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Sector cannot be deleted: '.$exception->getMessage()], 409);
+            }
+            return back()->withErrors(['sector' => 'Sector cannot be deleted: '.$exception->getMessage()]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['status' => 'success', 'message' => 'Unlinked sector deleted successfully.']);
+        }
+
+        return redirect()->route('project.zone.index')->with('success', 'Sector deleted.');
     }
 }
