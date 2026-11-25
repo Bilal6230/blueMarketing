@@ -1,3 +1,17 @@
+# 2026-11-25 — M06 background audit 5/5 PASS; contract string interpolation fixed
+
+**Owner test results:** `BackgroundActivityAuditTest` **5 PASS / 15 assertions**. `Milestone06ActivityAuditContractTest` had **17 PASS, 1 FAIL (196 assertions)**. The only failed assertion was source comparison incorrectly written as PHP double-quoted string containing `$actorId`, which PHP interpolated into an empty string. Same method also had `$token` in a double-quoted assertion, so both expectations were converted to literal single-quoted PHP strings. No application/finance/audit runner change, no migration, no new table. Owner follow-up gate is contract-only.
+
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+
+Expected 18 PASS; unverified until owner runs. Background integration 5/5 PASS is already accepted; do not rerun. M06 remains IN PROGRESS for actual job opt-in integration, authenticated mobile API acceptance, retention/performance.
+
+---
+
 # 2026-11-25 — M06 terminal/browser owner PASS; explicit background mutation auditing implementation (local verification pending)
 
 **Owner acceptance:** `ActivityAuditTransactionBoundaryTest` 8 PASS / 25 assertions, `Milestone06ActivityAuditContractTest` 17 PASS / 195 assertions; owner additionally reports all requested M06 browser tests PASS. Previously accepted `ActivityAuditMysqlTriggerRollbackTest` 2 PASS / 10 assertions and strict audit-health 129/129 installed valid InnoDB triggers with no missing/skipped tables. Do not repeat accepted tests or browser gates.
