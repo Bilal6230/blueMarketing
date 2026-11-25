@@ -4,9 +4,9 @@
         <td>{{ $site->site_name }}</td>
         <td>{{ $site->site_address }}</td>
         <td>{{ ($site->is_active ?? true) ? 'Active' : 'Inactive' }}</td>
-        <td><button class="icon-btn editSiteBtn"
+        <td>@can('create labour')<button class="icon-btn editSiteBtn"
                 title="Edit Site" data-id="{{ $site->id }}"
-                siteData="{{ json_encode($site) }}"><i class="fa fa-edit"></i></button>
+                siteData="{{ json_encode($site) }}"><i class="fa fa-edit"></i></button>@endcan
         </td>
     </tr>
 @endforeach
