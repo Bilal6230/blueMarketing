@@ -1360,7 +1360,9 @@
         </div>
     </div>
 
+    @endcan
     <!-- Edit Site Modal -->
+    @can('create labour')
     <div class="modal" id="editSiteModal" aria-hidden="true">
         <div class="panel">
             <div class="hd"><b>Edit Site</b><button class=" btn ghost" id="editSiteBtnCloseModal">✕</button></div>
@@ -1424,6 +1426,7 @@
         </div>
     </div>
 
+    @endcan
     {{-- In-memory attendance records stored as JSON in DOM for demo. Initially empty (seeded below by JS). --}}
     <script type="application/json" id="initial-attendance">[]</script>
 @endsection
