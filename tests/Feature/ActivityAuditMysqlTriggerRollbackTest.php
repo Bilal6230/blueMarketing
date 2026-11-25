@@ -2,147 +2,144 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Opt-in MySQL trigger commit/rollback tests on a SEPARATE EMPTY test schema.
- *
- * Set AUDIT_MYSQL_TEST_DATABASE to an existing, empty MySQL test database.
- * This test NEVER creates or alters tables in the application's configured
- * database and refuses a database with existing tables. All fixture objects
- * are removed in tearDown; there is no permanent new table or migration.
+ * Verify the EXISTING users UPDATE trigger in the EXISTING local MySQL schema.
+ * No database/table/trigger is created. Business row values remain unchanged.
+ * All committed probe impacts are deleted by their unique request token.
  */
 final class ActivityAuditMysqlTriggerRollbackTest extends TestCase
 {
-    private const CONNECTION = 'activity_audit_mysql_probe';
-    private const RECORDS = 'audit_mysql_probe_records';
-    private const IMPACTS = 'activity_audit_impacts';
-    private const TRIGGER = 'bm_audit_probe_ai';
-
-    private bool $createdFixture = false;
+    private const CONNECTION = 'mysql';
+    private ?string $token = null;
+    private ?int $userId = null;
+    private $originalStatus = null;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $database = trim((string) getenv('AUDIT_MYSQL_TEST_DATABASE'));
-        if ($database === '') {
-            $this->markTestSkipped('Set AUDIT_MYSQL_TEST_DATABASE to a separate EMPTY MySQL test database.');
+        $config = config('database.connections.'.self::CONNECTION);
+        if (!is_array($config) || ($config['driver'] ?? null) !== 'mysql') {
+            $this->markTestSkipped('Requires a configured local MySQL connection.');
         }
 
-        $source = config('database.connections.mysql');
-        if (!is_array($source) || ($source['driver'] ?? null) !== 'mysql') {
-            $this->markTestSkipped('This integration test requires the configured mysql connection.');
+        // This probe must never run over a remote/live database connection.
+        $host = strtolower(trim((string) ($config['host'] ?? '')));
+        if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
+            $this->markTestSkipped('MySQL trigger probe is restricted to a local database host.');
         }
 
-        if (strcasecmp($database, (string) ($source['database'] ?? '')) === 0) {
-            $this->fail('Refusing to run MySQL trigger test against the application database.');
+        $db = DB::connection(self::CONNECTION);
+        if ($db->getDriverName() !== 'mysql'
+            || !Schema::connection(self::CONNECTION)->hasTable('users')
+            || !Schema::connection(self::CONNECTION)->hasTable('activity_audit_impacts')
+            || !Schema::connection(self::CONNECTION)->hasColumn('users', 'status_id')) {
+            $this->markTestSkipped('Existing users/status_id and Activity Audit tables are required.');
         }
 
-        config()->set('database.connections.'.self::CONNECTION, array_merge($source, [
-            'database' => $database,
-        ]));
-        DB::purge(self::CONNECTION);
-        $connection = DB::connection(self::CONNECTION);
-
-        if ($connection->getDriverName() !== 'mysql') {
-            $this->markTestSkipped('Test connection must be MySQL.');
+        $trigger = $db->table('information_schema.TRIGGERS')
+            ->where('TRIGGER_SCHEMA', $db->getDatabaseName())
+            ->where('TRIGGER_NAME', 'bm_audit_users_au')
+            ->where('EVENT_OBJECT_TABLE', 'users')
+            ->where('EVENT_MANIPULATION', 'UPDATE')
+            ->where('ACTION_TIMING', 'AFTER')
+            ->first();
+        if (!$trigger) {
+            $this->markTestSkipped('Existing users AFTER UPDATE audit trigger is required.');
         }
 
-        $existingTables = (int) $connection->table('information_schema.TABLES')
-            ->where('TABLE_SCHEMA', $database)->count();
-
-        if ($existingTables !== 0) {
-            $this->fail('Refusing to create probe fixtures: separate test database must be EMPTY.');
+        $user = $db->table('users')->orderBy('id')->first(['id', 'status_id']);
+        if (!$user) {
+            $this->markTestSkipped('At least one existing local test user is required.');
         }
 
-        Schema::connection(self::CONNECTION)->create(self::IMPACTS, function (Blueprint $table): void {
-            $table->increments('id');
-            $table->string('request_token', 40)->nullable();
-            $table->string('table_name');
-            $table->string('operation');
-            $table->string('record_id');
-            $table->string('capture_type');
-            $table->json('before_values')->nullable();
-            $table->json('after_values')->nullable();
-        });
-        $this->createdFixture = true;
-        Schema::connection(self::CONNECTION)->create(self::RECORDS, function (Blueprint $table): void {
-            $table->increments('id');
-            $table->string('status');
-        });
-
-        $connection->unprepared("CREATE TRIGGER `".self::TRIGGER."`
-            AFTER INSERT ON `".self::RECORDS."`
-            FOR EACH ROW BEGIN
-                IF @activity_audit_token IS NOT NULL THEN
-                    INSERT INTO `".self::IMPACTS."`
-                        (request_token, table_name, operation, record_id,
-                         capture_type, before_values, after_values)
-                    VALUES (@activity_audit_token, '".self::RECORDS."', 'INSERT',
-                        CAST(NEW.id AS CHAR), 'db_trigger_row', NULL,
-                        JSON_OBJECT('id', NEW.id, 'status', NEW.status));
-                END IF;
-            END");
+        $this->userId = (int) $user->id;
+        $this->originalStatus = $user->status_id;
+        $this->token = (string) Str::uuid();
     }
 
     protected function tearDown(): void
     {
-        if ($this->createdFixture) {
+        if ($this->token !== null) {
+            $db = DB::connection(self::CONNECTION);
             try {
-                $connection = DB::connection(self::CONNECTION);
-                // Always clear session scope, even if an assertion failed.
-                if ($connection->transactionLevel() > 0) {
-                    while ($connection->transactionLevel() > 0) {
-                        $connection->rollBack();
-                    }
+                while ($db->transactionLevel() > 0) {
+                    $db->rollBack();
                 }
-                $connection->statement('SET @activity_audit_token = NULL');
-                $connection->unprepared('DROP TRIGGER IF EXISTS `'.self::TRIGGER.'`');
-                Schema::connection(self::CONNECTION)->dropIfExists(self::RECORDS);
-                Schema::connection(self::CONNECTION)->dropIfExists(self::IMPACTS);
-                DB::disconnect(self::CONNECTION);
+                // Remove ONLY committed, unattached probe evidence.
+                $db->table('activity_audit_impacts')
+                    ->where('request_token', $this->token)
+                    ->whereNull('activity_audit_id')
+                    ->where('table_name', 'users')
+                    ->where('operation', 'UPDATE')
+                    ->where('capture_type', 'db_trigger_row')
+                    ->delete();
             } finally {
-                $this->createdFixture = false;
+                // A pooled MySQL session must not leak its audit token.
+                $db->statement('SET @activity_audit_token = NULL');
             }
         }
         parent::tearDown();
     }
 
-    public function test_mysql_trigger_rollback_removes_both_business_row_and_audit_snapshot(): void
+    private function noOpUpdate(): void
     {
-        $connection = DB::connection(self::CONNECTION);
-        $connection->statement('SET @activity_audit_token = ?', ['mysql-audit-rollback-probe']);
-        $connection->beginTransaction();
-        try {
-            $connection->table(self::RECORDS)->insert(['status' => 'rolled-back']);
-            $this->assertSame(1, $connection->table(self::RECORDS)->count());
-            $this->assertSame(1, $connection->table(self::IMPACTS)->count());
-        } finally {
-            $connection->rollBack();
-        }
-
-        $this->assertSame(0, $connection->table(self::RECORDS)->count());
-        $this->assertSame(0, $connection->table(self::IMPACTS)->count());
+        DB::connection(self::CONNECTION)->table('users')
+            ->where('id', $this->userId)
+            ->update(['status_id' => $this->originalStatus]);
     }
 
-    public function test_mysql_trigger_commit_persists_matching_audit_row_and_allowlisted_snapshot(): void
+    private function probeCount(): int
     {
-        $connection = DB::connection(self::CONNECTION);
-        $connection->statement('SET @activity_audit_token = ?', ['mysql-audit-commit-probe']);
-        $connection->transaction(function () use ($connection): void {
-            $connection->table(self::RECORDS)->insert(['status' => 'committed']);
+        return DB::connection(self::CONNECTION)->table('activity_audit_impacts')
+            ->where('request_token', $this->token)
+            ->where('table_name', 'users')
+            ->where('capture_type', 'db_trigger_row')
+            ->count();
+    }
+
+    public function test_mysql_existing_trigger_discards_audit_snapshot_after_rollback(): void
+    {
+        $db = DB::connection(self::CONNECTION);
+        $db->statement('SET @activity_audit_token = ?', [$this->token]);
+
+        $db->beginTransaction();
+        try {
+            $this->noOpUpdate();
+            $this->assertSame(1, $this->probeCount());
+        } finally {
+            $db->rollBack();
+        }
+
+        $this->assertSame(0, $this->probeCount());
+        $this->assertEquals($this->originalStatus,
+            $db->table('users')->where('id', $this->userId)->value('status_id'));
+    }
+
+    public function test_mysql_existing_trigger_commits_audit_snapshot_then_cleans_probe(): void
+    {
+        $db = DB::connection(self::CONNECTION);
+        $db->statement('SET @activity_audit_token = ?', [$this->token]);
+
+        $db->transaction(function (): void {
+            $this->noOpUpdate();
         });
 
-        $row = $connection->table(self::IMPACTS)->first();
-        $this->assertSame(1, $connection->table(self::RECORDS)->count());
-        $this->assertNotNull($row);
-        $this->assertSame('mysql-audit-commit-probe', $row->request_token);
-        $this->assertSame('db_trigger_row', $row->capture_type);
-        $after = json_decode((string) $row->after_values, true);
-        $this->assertSame('committed', $after['status'] ?? null);
+        $impact = $db->table('activity_audit_impacts')
+            ->where('request_token', $this->token)->first();
+
+        $this->assertNotNull($impact);
+        $this->assertSame('users', $impact->table_name);
+        $this->assertSame('UPDATE', $impact->operation);
+        $this->assertSame('db_trigger_row', $impact->capture_type);
+        $this->assertSame((string) $this->userId, $impact->record_id);
+        $this->assertEquals($this->originalStatus,
+            $db->table('users')->where('id', $this->userId)->value('status_id'));
+        $this->assertSame(1, $this->probeCount());
     }
 }
