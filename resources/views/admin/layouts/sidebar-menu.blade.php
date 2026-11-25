@@ -65,9 +65,9 @@
 </ul></li>
 @endif
 
-@if(auth()->user()->canAny(['read user','read role','read permission']) || $canLeadApprovals || $canFinanceApprovals)
+@if(auth()->user()->canAny(['read user','read role','read permission','read activity audit']) || $canLeadApprovals || $canFinanceApprovals)
 <li class="nav-item {{ $tree(['user.*','role.*','permission.*','approvals.*'])?'menu-open':'' }}"><a href="#" class="nav-link"><i class="nav-icon fas fa-user-shield"></i><p>Administration<i class="right fas fa-angle-left"></i></p></a><ul class="nav nav-treeview">
- @can('read user')<li class="nav-item"><a href="{{ route('user.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Users</p></a></li>@endcan @can('read role')<li class="nav-item"><a href="{{ route('role.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Roles</p></a></li>@endcan @can('read permission')<li class="nav-item"><a href="{{ route('permission.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Permissions</p></a></li>@endcan
+ @can('read user')<li class="nav-item"><a href="{{ route('user.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Users</p></a></li>@endcan @can('read role')<li class="nav-item"><a href="{{ route('role.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Roles</p></a></li>@endcan @can('read permission')<li class="nav-item"><a href="{{ route('permission.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Permissions</p></a></li>@endcan @can('read activity audit')<li class="nav-item"><a href="{{ route('activity-audit.index') }}" class="nav-link {{ request()->routeIs('activity-audit.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Activity Audit</p></a></li>@endcan
  @if($canLeadApprovals)<li class="nav-item"><a href="{{ route('approvals.leads.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Lead Approvals</p></a></li>@endif @if($canFinanceApprovals)<li class="nav-item"><a href="{{ route('approvals.finance.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Finance Change Approvals</p></a></li>@endif
 </ul></li>
 @endif
