@@ -181,7 +181,9 @@ class LeadController extends Controller
             ]);
         });
 
-        return back()->with('success', 'Lead assignment request approved successfully.');
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => 'Lead assignment request approved successfully.'])
+            : back()->with('success', 'Lead assignment request approved successfully.');
     }
 
     public function rejectPendingAssignment($pendingId, Request $request)
@@ -211,7 +213,9 @@ class LeadController extends Controller
             ]);
         });
 
-        return back()->with('success', 'Lead assignment request rejected.');
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'message' => 'Lead assignment request rejected.'])
+            : back()->with('success', 'Lead assignment request rejected.');
     }
 
 
