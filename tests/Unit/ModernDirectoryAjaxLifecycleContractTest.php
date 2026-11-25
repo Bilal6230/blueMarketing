@@ -78,6 +78,48 @@ final class ModernDirectoryAjaxLifecycleContractTest extends TestCase
         }
     }
 
+    public function test_user_project_preselect_uses_resource_project_id(): void
+    {
+        $resource = $this->source('app/Http/Resources/UserResource.php');
+        $view = $this->source('resources/views/admin/user.blade.php');
+        self::assertStringContainsString("'project_id'        => \$this->project_id", $resource);
+        self::assertStringContainsString('String(data.project_id)', $view);
+        self::assertStringContainsString("trigger('change')", $view);
+    }
+
+    public function test_initial_and_refresh_skeletons_are_column_scoped_on_all_modern_pages(): void
+    {
+        $shared = $this->source('public/js/modern-account-directory.js');
+        $tools = $this->source('public/js/blue-modern-directory-tools.js');
+        foreach ([
+            'resources/views/admin/finance/accounting/head_accounts.blade.php',
+            'resources/views/admin/finance/accounting/child_accounts.blade.php',
+            'resources/views/admin/finance/accounting/category_index.blade.php',
+            'resources/views/admin/finance/accountant/index.blade.php',
+            'resources/views/admin/user.blade.php',
+            'resources/views/admin/permission.blade.php',
+        ] as $path) {
+            $view = $this->source($path);
+            self::assertStringContainsString('bm-pending-directory', $view);
+            self::assertStringContainsString('bm-cell-skeleton-row', $view);
+            self::assertStringContainsString('bm-modern-export-toolbar bm-export-placeholder', $view);
+            self::assertStringNotContainsString('style="visibility:hidden"', $view);
+        }
+        foreach ([
+            'resources/views/admin/projects/index.blade.php',
+            'resources/views/admin/zone/index.blade.php',
+            'resources/views/admin/area/index.blade.php',
+        ] as $path) {
+            $view = $this->source($path);
+            self::assertStringContainsString('bm-export-placeholder', $view);
+        }
+        self::assertStringContainsString("not('.bm-cell-skeleton-row')", $shared);
+        self::assertStringContainsString("removeClass('bm-pending-directory')", $shared);
+        self::assertStringContainsString('function skeleton(selector)', $tools);
+        self::assertStringContainsString("var $old=$body.children().detach()", $tools);
+        self::assertStringContainsString("var $row=$('<tr>',{'class':'bm-cell-skeleton-row'", $tools);
+    }
+
     public function test_other_modern_directories_keep_ajax_and_show_refetch_skeleton(): void
     {
         foreach ([
