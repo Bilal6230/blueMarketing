@@ -734,8 +734,8 @@
                     <div class="topbar">
                         <div class="title">Labour Management Module</div>
                         <div class="tabs" role="tablist" aria-label="Pages">
-                            <button class="tab" data-tab="attendance" aria-selected="true">Attendance</button>
-                            <button class="tab" data-tab="addLabour">Add Labour</button>
+                            @can('read attendance')<button class="tab" data-tab="attendance" aria-selected="false">Attendance</button>@endcan
+                            <button class="tab" data-tab="addLabour" aria-selected="true">{{ auth()->user()->can('create labour') ? 'Add Labour' : 'Labour List' }}</button>
                             <button class="tab" data-tab="sites">Site List</button>
                             <button class="tab" data-tab="siteReport">Site Voucher</button>
                             <button class="tab" data-tab="personReport">Labour Payment</button>
@@ -750,6 +750,7 @@
         <!-- Add Labour -->
         <section id="addLabour" class="page">
             <div class="grid cols-2">
+                @can('create labour')
                 <div class="card">
                     <div class="hd"><b>Add a Labour</b></div>
                     <div class="bd">
@@ -793,6 +794,7 @@
                         </form>
                     </div>
                 </div>
+                @endcan
                 <div class="card">
                     <div class="hd"><b>All Labours</b> <span class="pill"><span
                                 id="labCount">{{ $count }}</span>
@@ -824,6 +826,7 @@
         <!-- Site List -->
         <section id="sites" class="page hid">
             <div class="grid cols-2">
+                @can('create labour')
                 <div class="card">
                     <div class="hd"><b>Add Site</b></div>
                     <div class="bd">
@@ -874,6 +877,7 @@
                         </form>
                     </div>
                 </div>
+                @endcan
                 <div class="card">
                     <div class="hd"><b>Sites</b> <span class="pill"><span id="siteCount">{{ $sitecount }}</span>
                             total</span>
@@ -1081,6 +1085,7 @@
         </section>
 
         <!-- Attendance -->
+        @can('read attendance')
         <section id="attendance" class="page hid">
             <div class="card">
                 <div class="hd"><b>Attendance</b><span class="caps">mark daily hours & overtime</span></div>
@@ -1144,12 +1149,14 @@
                 </div>
             </div>
         </section>
+        @endcan
                 </div>
             </div>
         </section>
     </div>
 
     <!-- Attendance Modal -->
+    @can('create attendance')
     <div class="modal" id="attnModal" aria-hidden="true">
         <div class="panel">
             <div class="hd"><b>Mark Attendance</b><button class=" btn ghost" id="btnCloseModal">✕</button></div>
@@ -1242,7 +1249,9 @@
 
         </div>
     </div>
+    @endcan
     <!-- Edit Labour Modal -->
+    @can('update labour')
     <div class="modal" id="editLabourModal" aria-hidden="true">
         <div class="panel">
             <div class="hd"><b>Edit Labour</b><button class=" btn ghost" id="editBtnCloseModal">✕</button></div>
