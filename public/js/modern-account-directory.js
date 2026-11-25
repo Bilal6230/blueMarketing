@@ -7,6 +7,9 @@ if(!$)return;
 $(function(){
  var $root=$('.bm-modern-accounts[data-account-kind]'),$table=$root.find('#bmAccountDirectory');
  if(!$root.length||!$table.length)return;
+ // The directory owns vertical scrolling; the document never grows with rows.
+ $('body').addClass('bm-account-directory-page');
+
  var kind=$root.attr('data-account-kind'),$card=$table.closest('.bm-account-card'),
      $body=$table.find('tbody'),$header=$root.find('.content-header').first();
  var columns=$table.find('thead th').length,rows=$body.children('tr').detach().toArray();
