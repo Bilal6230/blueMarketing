@@ -1,3 +1,25 @@
+# 2026-11-25 — Milestone 06: owner strict audit-health PASS; composite primary-key row capture (new verification pending)
+
+**Owner-verified M06 gate:** `Milestone06ActivityAuditContractTest` **11/11 PASS, 123 assertions**. `activity-audit:health` and `activity-audit:health --strict` both PASS on local MySQL: 6 activity events, 34 impact entries, **0 old unlinked snapshots**, **0 broken parent references**, **108/108 applicable installed triggers**, **0 missing**. Seven source/link tables were marked `SKIPPED (no id column)`; this was deliberately safe, not a migration failure.
+
+**New implementation:** Additive migration `2026_11_25_135000_audit_composite_primary_key_tables.php` checks the 7 known finance/stock link and balance tables. It creates **transactional row triggers only if a declared MySQL PRIMARY KEY exists and every primary key component is on a restricted non-secret field allowlist**. For qualifying tables, `record_id` is a stable `pk:` SHA-256 of the composite key tuple, and the allowlisted primary-key fields plus non-sensitive numeric/status columns appear in before/after snapshots. No surrogate ID, business-table schema change, user-defined primary key, accounting writer change or invented identity is introduced. No verified primary key => table remains skipped and observed SQL is shown without claiming exact affected rows. Existing evidence and triggers remain untouched. Health command now distinguishes eligible composite primary keys from genuinely skipped source tables and expects their three triggers in strict checks.
+
+**New owner verification (local DB only):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan migrate --path=database/migrations/2026_11_25_135000_audit_composite_primary_key_tables.php
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone06ActivityAuditContractTest
+php artisan activity-audit:health --strict
+```
+Check the strict output's `COMPOSITE PRIMARY KEY`, `SKIPPED`, `Expected applicable triggers` and `Missing applicable triggers` lines. If one of the seven tables has no safe declared primary key, it **must remain skipped**; do not add an ID column or silently relax field restrictions. No new browser/UI test is needed for this migration. New migration has NOT been run on the owner's database, so new coverage is **implementation complete, owner verification pending**.
+
+**Remaining milestone:** Sanctioned mobile/finance API end-to-end change test, real rollback/commit integration gate, deferred/background writer design, retention/performance and final signoff. Labour CP still ON HOLD, M06 still IN PROGRESS. Earlier accepted browser/UI and terminal gates should not be repeated unnecessarily.
+
+---
+
 # 2026-11-25 — M06 API contract PASS (10/111); non-destructive integrity and trigger-coverage command added
 
 **Owner confirmed:** `Milestone06ActivityAuditContractTest` PASS **10 tests / 111 assertions** after connecting audit middleware to existing Sanctum-authenticated mobile and unified finance API groups. Cache clear and Blade view compilation also passed. API real-device mutation View check has not yet been reported, so avoid claiming end-to-end mobile API acceptance.
