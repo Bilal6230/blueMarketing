@@ -316,7 +316,7 @@ class Milestone06ActivityAuditContractTest extends TestCase
     {
         $health = $this->source('app/Console/Commands/ActivityAuditHealth.php');
         $this->assertStringContainsString('information_schema.STATISTICS', $health);
-        $this->assertStringContainsString("\'SEQ_IN_INDEX\'", $health);
+        $this->assertStringContainsString("'SEQ_IN_INDEX'", $health);
         $this->assertStringContainsString('array_slice($installedColumns, 0, count($columns)) === $columns', $health);
         $this->assertStringContainsString('Missing audit query indexes:', $health);
         $this->assertStringContainsString("['actor_id', 'created_at']", $health);
