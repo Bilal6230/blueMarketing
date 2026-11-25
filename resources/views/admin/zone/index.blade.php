@@ -61,7 +61,7 @@
           @foreach (['id'=>'#','zone_name'=>'Sector Name','is_active'=>'Status','created_at'=>'Created'] as $field=>$label)
             <th><span>{{ $label }}</span><button type="button" class="sector-col-trigger" data-field="{{ $field }}" aria-label="Sort or filter {{ $label }}" aria-expanded="false" aria-haspopup="dialog"><i class="fas fa-caret-down" aria-hidden="true"></i></button></th>
           @endforeach
-          @can('update sector')<th>Actions</th>@endcan
+          @canany(['update sector','delete sector'])<th>Actions</th>@endcanany
         </tr></thead>
         <tbody id="sectorRows" aria-busy="true">
           @for ($i=0;$i<5;$i++)
@@ -70,7 +70,7 @@
             <td><span class="sector-skeleton long"></span></td>
             <td><span class="sector-skeleton mid"></span></td>
             <td><span class="sector-skeleton mid"></span></td>
-            @can('update sector')<td><span class="sector-skeleton short"></span></td>@endcan
+            @canany(['update sector','delete sector'])<td><span class="sector-skeleton short"></span></td>@endcanany
           </tr>
           @endfor
         </tbody>
@@ -118,13 +118,24 @@
     </form>
   </div></div>
 </div>
+<div class="modal fade bm-sector-editor" id="sectorDeleteModal" tabindex="-1" role="dialog" aria-labelledby="sectorDeleteTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:470px" role="document"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="sectorDeleteTitle">Delete Sector?</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+    <div class="modal-body">
+      <p>Delete <strong id="sectorDeleteName"></strong>?</p>
+      <p class="text-muted mb-0">Only an unlinked sector can be deleted. Sectors referenced by business records are protected.</p>
+      <div class="sector-field-error mt-2" id="sectorDeleteError" role="alert"></div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button><button type="button" class="btn btn-danger btn-sm" id="sectorDeleteConfirm">Delete Sector</button></div>
+  </div></div>
+</div>
 @endsection
 
 @section('js')
 <script>
 $(function(){
   'use strict';
-  var sectors=@json($sectorRows),canEdit=@json(auth()->user()->can('update sector'));
+  var sectors=@json($sectorRows),canEdit=@json(auth()->user()->can('update sector')),canDelete=@json(auth()->user()->can('delete sector'));
   var currentPage=1,sortKey='id',sortDescending=false,editing=null;
   var columnSearch={},dateRanges={},statusSelection='';
   function value(v){return v===undefined||v===null?'':String(v);}
@@ -166,14 +177,19 @@ $(function(){
     var pages=Math.max(1,Math.ceil(matches.length/size));currentPage=Math.min(currentPage,pages);
     var start=(currentPage-1)*size,shown=matches.slice(start,start+size),$body=$('#sectorRows').empty();
     if($.blueActionMenu)$.blueActionMenu.close();
-    if(!shown.length)$body.append($('<tr>').append($('<td>',{colspan:canEdit?5:4,'class':'text-center text-muted py-4',text:'No matching sectors'})));
+    if(!shown.length)$body.append($('<tr>').append($('<td>',{colspan:(canEdit||canDelete)?5:4,'class':'text-center text-muted py-4',text:'No matching sectors'})));
     $.each(shown,function(_,s){
       var $tr=$('<tr>');
       $('<td>',{text:s.id}).appendTo($tr);
       $('<td>',{'class':'sector-name',text:s.zone_name}).appendTo($tr);
       $('<td>').append($('<span>',{'class':'sector-status'+(Number(s.is_active)===1?'':' inactive'),text:columnValue(s,'is_active')})).appendTo($tr);
       $('<td>',{'class':'text-muted',text:s.created_at||'—'}).appendTo($tr);
-      if(canEdit)$tr.append($('<td>',{'class':'blue-actions-cell'}).append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm btn-edit','data-id':s.id,'data-blue-action-label':'Edit sector',text:'Edit'})));
+      if(canEdit||canDelete){
+        var $action=$('<td>',{'class':'blue-actions-cell'});
+        if(canEdit)$action.append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm btn-edit','data-id':s.id,'data-blue-action-label':'Edit sector',text:'Edit'}));
+        if(canDelete)$action.append($('<button>',{type:'button','class':'btn btn-outline-danger btn-sm btn-delete','data-id':s.id,'data-blue-action-label':'Delete sector',text:'Delete'}));
+        $tr.append($action);
+      }
       $body.append($tr);
     });
     if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
@@ -247,6 +263,32 @@ $(function(){
   $('#sectorRows').on('click','.btn-edit',function(){
     var id=Number($(this).data('id')),s=sectors.find(function(item){return item.id===id;});
     if(s)openEditor(s);
+  });
+  var pendingDeleteId=null;
+  $('#sectorRows').on('click','.btn-delete',function(){
+    pendingDeleteId=Number($(this).data('id'));
+    var sector=sectors.find(function(item){return item.id===pendingDeleteId;});
+    if(!sector)return;
+    $('#sectorDeleteName').text(sector.zone_name);
+    $('#sectorDeleteError').text('');
+    $('#sectorDeleteModal').modal({backdrop:'static',keyboard:false,show:true});
+  });
+  $('#sectorDeleteConfirm').on('click',function(){
+    if(!pendingDeleteId)return;
+    var $button=$(this).prop('disabled',true);
+    $('#sectorDeleteError').text('');
+    $.ajax({url:@json(route('project.zone.destroy')),type:'POST',
+      data:{_token:@json(csrf_token()),_method:'DELETE',id:pendingDeleteId},
+      dataType:'json',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
+      .done(function(response){
+        $('#sectorDeleteModal').modal('hide');inform(response.message||'Sector deleted.');
+        $.ajax({url:@json(route('project.zone.index')),dataType:'json',headers:{Accept:'application/json'}})
+          .done(function(reply){sectors=reply.data||[];render();})
+          .fail(function(){inform('Deleted, but sector list could not refresh.',true);});
+      }).fail(function(xhr){
+        var message=(xhr.responseJSON||{}).message||'Sector could not be deleted.';
+        $('#sectorDeleteError').text(message);inform(message,true);
+      }).always(function(){$button.prop('disabled',false);});
   });
   $('#sectorForm').on('submit',function(event){
     event.preventDefault();
