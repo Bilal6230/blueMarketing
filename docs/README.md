@@ -1,3 +1,11 @@
+# 2026-11-25 — M02 permission browser acceptance OWNER PASS
+
+Owner explicitly confirms **all final M02 browser matrices PASS**: independent Booking CRUD vs Price Update; Lead CRUD vs Assign Lead; Labour Master vs Attendance; Accounting read-only Create/Update denial; and Roles ON/OFF controlling sidebar, action buttons and direct API endpoints. These browser checks are **accepted and must not be repeated** without a relevant regression.
+
+The latest M02 Booking/Labour/Attendance/Lead permission migration + targeted terminal suite in `docs/MILESTONE_02_PERMISSION_AUDIT_2026_11_24.md` was previously recorded as pending; no corresponding terminal results are in the owner's current thread, so **M02 browser acceptance CLOSED; terminal sign-off remains unverified**. M01/M04/M05/M06 remain CLOSED; M03 Labour CP remains ON HOLD. Do not conflate accepted browser results with terminal results or add redundant browser gates.
+
+---
+
 # 2026-11-25 — MILESTONE 06 ACTIVITY AUDIT: ACCEPTED / CLOSED
 
 **Final owner sign-off:** `Milestone06CloseoutScopeTest` **4 PASS / 29 assertions**. All four release invariants passed: authenticated admin/mobile/finance HTTP middleware scope, no mandatory/automatic cron or background auditing, read-only retention diagnostics without automatic deletion, and presence of CRM/transaction rollback regression coverage.
