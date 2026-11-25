@@ -97,7 +97,7 @@ final class ActivityAuditHealth extends Command
         // silently omit the request token / audit evidence insertion.
         $installed = DB::table('information_schema.TRIGGERS')
             ->where('TRIGGER_SCHEMA', DB::getDatabaseName())
-            ->where('TRIGGER_NAME', 'like', 'bm\\_audit\\_%')
+            ->where('TRIGGER_NAME', 'like', 'bm_audit_%')
             ->get(['TRIGGER_NAME', 'EVENT_OBJECT_TABLE', 'EVENT_MANIPULATION',
                 'ACTION_TIMING', 'ACTION_STATEMENT']);
         $installedByName = $installed->keyBy('TRIGGER_NAME');
