@@ -31,10 +31,16 @@ final class SafeMasterRecordDeletion
         $database = $connection->getDatabaseName();
         // Include historical tables that never declared a foreign key.
         // Names come exclusively from INFORMATION_SCHEMA (not user input).
+        $columns = $masterTable === 'projects'
+            ? [$referenceColumn, 'town_id']
+            : [$referenceColumn, 'sector_id'];
+        $placeholders = implode(', ', array_fill(0, count($columns), '?'));
         $references = $connection->select(
-            'SELECT TABLE_NAME AS table_name FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = ? AND COLUMN_NAME = ? AND TABLE_NAME <> ?',
-            [$database, $referenceColumn, $masterTable]
+            'SELECT TABLE_NAME AS table_name, COLUMN_NAME AS column_name
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = ? AND COLUMN_NAME IN ('.$placeholders.')
+             AND TABLE_NAME <> ?',
+            array_merge([$database], $columns, [$masterTable])
         );
 
         if (count($references) === 0) {
@@ -43,10 +49,12 @@ final class SafeMasterRecordDeletion
 
         foreach ($references as $reference) {
             $table = (string) $reference->table_name;
-            if (!preg_match('/^[A-Za-z0-9_]+$/D', $table)) {
+            $column = (string) $reference->column_name;
+            if (!preg_match('/^[A-Za-z0-9_]+$/D', $table) ||
+                !preg_match('/^[A-Za-z0-9_]+$/D', $column)) {
                 throw new RuntimeException('Invalid dependency table metadata.');
             }
-            if ($connection->table($table)->where($referenceColumn, $id)->exists()) {
+            if ($connection->table($table)->where($column, $id)->exists()) {
                 throw new RuntimeException('This record is linked to '.$table.'. Remove or reassign its linked data before deleting.');
             }
         }
