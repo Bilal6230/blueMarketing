@@ -1,3 +1,13 @@
+# 2026-11-25 — Project / Sector modernization contract tests OWNER PASS
+
+**Owner-confirmed terminal results after pull to `6da60d37`:** `ProjectDirectoryModernizationContractTest` **4 PASS / 67 assertions**; `SectorDirectoryModernizationContractTest` **2 PASS / 43 assertions**. Previously verified `SafeMasterDeletionContractTest` **2 PASS / 36 assertions** and `php artisan view:cache` **PASS**. No repeat of these accepted checks is required without relevant source changes.
+
+**Remaining focused browser acceptance:** On `/admin/project` and `/admin/zone`, confirm shared modern `+` row menu shows Edit and Delete only with the corresponding permission; Delete confirmation/cancel works, AJAX failure leaves row intact, known linked record is rejected without losing any linked data, and only genuinely unlinked **disposable local test** records can be deleted and refreshed. Visual acceptance includes CR/DR-style heading filters, full-height card to footer, vertical cell borders, 13px data / 12px column headings, and bottom pagination. **This browser acceptance has not been supplied yet**; do not claim it PASS. No actual records were deleted by the verification results.
+
+**Other scope:** M03 Labour CP remains ON HOLD; previously closed milestones remain closed.
+
+---
+
 # 2026-11-25 — Project/Sector modernization contract assertion-only repair
 
 **Owner terminal:** `php artisan view:cache` PASS; `SafeMasterDeletionContractTest` **2 PASS / 36 assertions**. `ProjectDirectoryModernizationContractTest` 2 PASS, 1 FAIL and 1 warning; `SectorDirectoryModernizationContractTest` 1 PASS, 1 FAIL. Both failures came from double-quoted PHP test expectation strings interpolating `$id` to empty, not from the Delete controller implementations. Project test also emitted an undefined `$control` warning in its jQuery source assertion. All three expectations are now single-quoted with escaped interior delimiters where required. **No application code, permissions, migrations or data changed.**
