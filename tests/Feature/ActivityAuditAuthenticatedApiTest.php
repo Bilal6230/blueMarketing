@@ -180,9 +180,20 @@ final class ActivityAuditAuthenticatedApiTest extends TestCase
         $this->assertSame((int) $stored->id, (int) $event->actor_id);
         $this->assertSame('mobile.crm.actual-controller.probe', $event->route_name);
         $this->assertSame('POST', $event->action);
-        $this->assertSame(1, DB::table('activity_audit_impacts')
+        // Without MySQL row triggers, the same committed Eloquent insert
+        // has two complementary observations: identified model row + SQL
+        // statement/table impact. They must not be mistaken for duplicate
+        // business writes or collapsed into a single capture type.
+        $leadImpacts = DB::table('activity_audit_impacts')
             ->where('activity_audit_id', $event->id)
-            ->where('table_name', 'leads')->count());
+            ->where('table_name', 'leads')
+            ->get();
+        $this->assertCount(2, $leadImpacts);
+        $this->assertSame(['eloquent_row', 'sql_statement'],
+            $leadImpacts->pluck('capture_type')->sort()->values()->all());
+        $this->assertSame((string) $lead->id,
+            (string) $leadImpacts->firstWhere('capture_type', 'eloquent_row')->record_id);
+        $this->assertSame(1, (int) $leadImpacts->firstWhere('capture_type', 'sql_statement')->statement_count);
     }
 
     public function test_unauthenticated_api_mutation_is_denied_without_write_or_audit(): void
