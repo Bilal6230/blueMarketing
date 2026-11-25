@@ -14,9 +14,9 @@
 .bm-sectors .sector-table thead th{background:#f0f5fc;color:#294366;font-weight:750;font-size:13px;padding:11px 12px;border-bottom:2px solid #2563eb!important;border-right:1px solid #d9e4f0!important}
 .bm-sectors .sector-table tbody td{padding:11px 12px!important;border-top:1px solid #eaf0f7!important;border-right:1px solid #e2eaf4!important;vertical-align:middle;height:48px!important}
 .bm-sectors .sector-table thead th:last-child,.bm-sectors .sector-table tbody td:last-child{border-right:0!important}
-.bm-sectors .sector-table tbody tr:nth-child(even){background:#f1f5fa}
-.bm-sectors .sector-table tbody tr:nth-child(odd){background:#ffffff}
-.bm-sectors .sector-table tbody tr:hover{background:#e8f2ff}
+.bm-sectors .sector-table tbody tr:nth-child(even){background:#f1f5fa!important}
+.bm-sectors .sector-table tbody tr:nth-child(odd){background:#ffffff!important}
+.bm-sectors .sector-table tbody tr:hover{background:#e8f2ff!important}
 .bm-sectors .sector-name{font-weight:750;color:#1d54a0}
 .bm-sectors .sector-status{display:inline-flex;align-items:center;border-radius:14px;font-size:12px;padding:4px 9px;background:#e8f8ef;color:#16754a;font-weight:700}
 .bm-sectors .sector-status.inactive{background:#f3f4f6;color:#69788b}
