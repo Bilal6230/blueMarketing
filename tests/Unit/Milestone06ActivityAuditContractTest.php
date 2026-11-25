@@ -210,6 +210,16 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringContainsString("test_committed_write_before_a_later_rollback_is_preserved", $integration);
     }
 
+    public function test_error_response_does_not_discard_actual_committed_impact(): void
+    {
+        $source = $this->source('app/Http/Middleware/RecordActivityAudit.php');
+        $integration = $this->source('tests/Feature/ActivityAuditTransactionBoundaryTest.php');
+        $this->assertStringNotContainsString('$response->getStatusCode() >= 400', $source);
+        $this->assertStringContainsString('\'response_status\' => $response->getStatusCode()', $source);
+        $this->assertStringContainsString('test_error_response_after_committed_write_retains_actual_status_and_impact', $integration);
+        $this->assertStringContainsString('test_error_response_without_business_write_is_not_logged', $integration);
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
