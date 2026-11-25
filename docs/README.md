@@ -1,3 +1,25 @@
+# 2026-11-25 — Sectors List modernization delivered (owner verification pending)
+
+**Owner requested:** Modernize \`/admin/zone\` Sectors List using the **approved latest Project List / CR-DR directory standard** without repeating old generic top search or short-height table.
+
+**Implementation:** 
+- Replaced \`resources/views/admin/zone/index.blade.php\` legacy DataTables/export/header buttons/stripe styling with blue-accent full-height card, **13px body / 12px column heading** typography, horizontal and vertical cell borders, first-paint skeleton rows, and **only per-column heading filters** (ID/name text, Status dropdown, Created date range, all headings Sort Asc/Desc/Clear via shared \`$.financeVoucherComponents.createFilter({kind:'heading'})\`). No top search toolbar. Scrollable table area and **bottom-anchored pagination and reset** use shared \`$.blueVoucherPagination\`.
+- Modern \`+\` row action menu via \`$.blueActionMenu.enhance\` for permitted Edit only. Add/Edit modal uses jQuery AJAX, inline 422 validation + toast and list JSON refresh without full reload. Existing \`read/create/update sector\` permissions are retained.
+- \`app/Http/Controllers/ZoneController.php\` now resolves the real sector by posted ID on \`PUT /admin/zone\` (route has no \`{zone}\` segment); validates name uniqueness with own-record ignore, status, preserves original \`create_by\`, and provides safe JSON success/errors. Previous code tried invalid \`DB::rollback()\` without starting a transaction.
+- **Safety**: Removed legacy Delete button: it was pointing to \`user.destroy\` and \`ZoneController::destroy\` was a no-op. The remaining DELETE route fails closed with 409; no physical deletion, new table, schema change, permission grant or data cleanup. A real deletion workflow would require separate explicit approval.
+- Added \`tests/Unit/SectorDirectoryModernizationContractTest.php\` with 2 focused guards for approved design, exact permission routes, safe form behavior and no accidental deletion. **Not yet run on owner's local machine.** Previous Project List and milestone tests are not reopened. M03 Labour CP remains ON HOLD.
+
+**Only new local gate:**
+\`\`\`powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan view:cache
+php artisan test --filter=SectorDirectoryModernizationContractTest
+\`\`\`
+
+**Browser:** Ctrl+F5 \`/admin/zone\`; verify heading filter popup on Sector Name, Status, Created; vertical borders; card reaches footer; 13px table font; bottom pagination; plus/Edit menu; Add/Edit AJAX modal validation and save on **disposable test sector**. New code/browser not yet owner accepted. No migrations.
+
+---
 # 2026-11-25 — Project List column borders corrected (owner verification pending)
 
 Owner identified missing vertical column borders in the modern Project List table. Added **Project-only** scoped CSS in `resources/views/admin/projects/index.blade.php`: subtle right-side borders for header cells and body cells, retained horizontal row borders, and omitted outermost duplicate edge. Explicit `!important` prevents global finance/table styles from removing these separators. All CR/DR-style heading filters, full-height card and bottom pagination remain unchanged. Added targeted regression `test_project_table_has_visible_column_separators_without_changing_other_pages` to `ProjectDirectoryModernizationContractTest.php`. No business logic, data, permissions or migrations changed.
