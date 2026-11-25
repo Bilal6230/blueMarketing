@@ -21,6 +21,7 @@ final class ActivityAuditController extends Controller
         $query = DB::table('activity_audits as a')
             ->leftJoin('users as u', 'u.id', '=', 'a.actor_id')
             ->select('a.*', 'u.name as actor_name')
+            ->selectRaw('(SELECT GROUP_CONCAT(DISTINCT i.table_name) FROM activity_audit_impacts i WHERE i.activity_audit_id = a.id) AS affected_tables')
             ->when($filters['actor_id'] ?? null, fn ($q, $id) => $q->where('a.actor_id', $id))
             ->when($filters['method'] ?? null, fn ($q, $method) => $q->where('a.action', $method))
             ->when($filters['route'] ?? null, fn ($q, $route) => $q->where('a.route_name', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], $route).'%'))
