@@ -154,7 +154,7 @@ $(function(){
   $.each(names,function(_,key){$tbody.append($('<tr>').append(cell(key),cell((before||{})[key]),cell((after||{})[key])));});
   $target.append($table.append($tbody));
  }
- $('#audit-rows').on('click','.audit-view',function(){
+ $('#dv-rows').on('click','.audit-view',function(){
   const id=$(this).data('id'),$modal=$('#audit-detail-modal'),$target=$('#audit-detail-body');
   $('#audit-detail-title').text('Activity #'+id);$('#audit-detail-subtitle').text('');
   $target.empty().append($('<div>',{'class':'text-center text-muted p-4',text:'Loading activity details...'}));
