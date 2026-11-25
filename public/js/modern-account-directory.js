@@ -199,7 +199,7 @@ $(function(){
    var stopSkeleton=$.blueModernDirectoryTools.skeleton($table.closest('.bm-account-table-wrap'));
    return $.ajax({url:window.location.pathname+window.location.search,type:'GET',dataType:'html',
      headers:{Accept:'text/html','X-Requested-With':'XMLHttpRequest'}}).done(function(html){
-     var $html=$('<div>').append($.parseHTML(html,document,false));
+     var $html=$('<div>').append($.parseHTML(html,document,kind==='lead-approvals'));
      var $fresh=$html.find('#bmAccountDirectory tbody tr').not('.bm-cell-skeleton-row');
      if(!$fresh.length && $html.find('#bmAccountDirectory').length===0){
        notify('Unable to refresh the table. Please try again.',true);return;
@@ -298,7 +298,7 @@ $(function(){
  }
  $(document).on('bm:account-refresh',function(){reloadRows();});
  var exportControls=$.blueModernDirectoryTools&&$.blueModernDirectoryTools.mount({
-   card:$card,table:$table,title:kind==='head'?'Main Accounts':kind==='subhead'?'Party Accounts':kind==='joint'?'Joint Accounts':'Accountants List',
+   card:$card,table:$table,title:kind==='head'?'Main Accounts':kind==='subhead'?'Party Accounts':kind==='joint'?'Joint Accounts':kind==='lead-approvals'?'Lead Assignment Requests':kind==='permission'?'Permissions':kind==='user'?'Users':'Accountants List',
    getRows:function(){
      return visibleRows().map(function(row){
        return $(row).children('td').map(function(){return $.trim($(this).text()).replace(/\s+/g,' ');}).get();
