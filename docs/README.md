@@ -1,3 +1,22 @@
+# 2026-11-25 — M06 background batch accepted; Sanctum API audit middleware integration gate added (pending local execution)
+
+**Owner-verified:** `Milestone06ActivityAuditContractTest` **18 PASS / 208 assertions**; `BackgroundActivityAuditTest` **5 PASS / 15 assertions**; earlier `ActivityAuditTransactionBoundaryTest` 8 PASS / 25 assertions, real MySQL rollback/commit 2 PASS / 10 assertions, strict audit-health 129/129 valid installed triggers, and owner confirms browser tests PASS. These established checks do not need repeated regression unless new code changes affect them.
+
+**This batch:** Added `tests/Feature/ActivityAuditAuthenticatedApiTest.php`, an isolated SQLite/HTTP request-level integration test. It uses a test-only API handler protected by the **same `api` + `auth:sanctum` + `RecordActivityAudit` middleware pipeline** as mobile authenticated routes. Three cases: Sanctum-authenticated mutation records the actual initiating user ID and SQL table impact; anonymous mutation is rejected (401) with no business write or audit; authenticated read-only POST returns success without generating an audit record. The fake test handler is intentionally **not** a claim that real Mobile CRM lead creation/validation has passed; actual `/api/v1/mobile/crm/leads` controller write still needs a dedicated acceptance/smoke on a testing account. Unit `Milestone06ActivityAuditContractTest` adds a source-level guard for this API feature test. This is testing-only code; no main application code, local database/table/migration, finance logic, or permission grants changed.
+
+**Owner new local gate only:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ActivityAuditAuthenticatedApiTest
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+Expected 3 new API feature tests and 19 contract tests; **not yet owner-verified**.
+
+**Remaining M06:** actual mobile CRM end-to-end write with existing permission/project constraints, opt-in job integrations where initiating actor ID is proven, data-retention/performance policy without destructive default, final regression. Labour CP remains ON HOLD.
+
+---
+
 # 2026-11-25 — M06 background audit 5/5 PASS; contract string interpolation fixed
 
 **Owner test results:** `BackgroundActivityAuditTest` **5 PASS / 15 assertions**. `Milestone06ActivityAuditContractTest` had **17 PASS, 1 FAIL (196 assertions)**. The only failed assertion was source comparison incorrectly written as PHP double-quoted string containing `$actorId`, which PHP interpolated into an empty string. Same method also had `$token` in a double-quoted assertion, so both expectations were converted to literal single-quoted PHP strings. No application/finance/audit runner change, no migration, no new table. Owner follow-up gate is contract-only.
