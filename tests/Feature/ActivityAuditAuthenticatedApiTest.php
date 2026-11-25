@@ -147,7 +147,7 @@ final class ActivityAuditAuthenticatedApiTest extends TestCase
         ]);
         // Permission checks are isolated: the real API controller, Eloquent
         // writes and middleware still execute end-to-end.
-        $actor = \\Mockery::mock(User::class)->makePartial();
+        $actor = \Mockery::mock(User::class)->makePartial();
         $actor->setRawAttributes($stored->getAttributes(), true);
         $actor->exists = true;
         $actor->shouldReceive('can')->with('create lead')->andReturn(true);
