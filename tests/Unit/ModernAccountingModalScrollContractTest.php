@@ -41,7 +41,7 @@ final class ModernAccountingModalScrollContractTest extends TestCase
         self::assertStringContainsString('min-width:0!important;min-height:38px!important', $css);
         self::assertStringContainsString('.bm-modern-accounts .bm-account-create-modal .modal-body{padding:0!important;max-height:', $css);
         self::assertStringContainsString('.bm-account-finance-modal .modal-body{max-height:', $css);
-        self::assertStringContainsString("dropdownParent:$modal,width:'100%'", $js);
+        self::assertStringContainsString('dropdownParent:$modal,width:\'100%\'', $js);
         self::assertStringContainsString('.bm-account-create-modal', $js);
     }
 
