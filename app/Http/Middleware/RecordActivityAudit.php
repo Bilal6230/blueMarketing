@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use App\Support\Audit\ActivityAuditCapture;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +19,17 @@ final class RecordActivityAudit
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $response = $next($request);
+        // Capture only authenticated admin mutations; avoid listeners on reads.
+        $capture = null;
+        if ($request->user() && in_array(strtoupper($request->method()), ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            $capture = new ActivityAuditCapture();
+            $capture->start();
+        }
+        try {
+            $response = $next($request);
+        } finally {
+            if ($capture) $capture->stop();
+        }
 
         $actor = $request->user();
         $method = strtoupper($request->method());
@@ -35,7 +46,7 @@ final class RecordActivityAudit
             if (!Schema::hasTable('activity_audits')) {
                 return $response;
             }
-            DB::table('activity_audits')->insert([
+            $auditId = DB::table('activity_audits')->insertGetId([
                 'actor_id' => (int) $actor->getAuthIdentifier(),
                 'action' => $method,
                 'route_name' => $routeName ? mb_substr((string) $routeName, 0, 160) : null,
@@ -45,6 +56,16 @@ final class RecordActivityAudit
                 'request_id' => mb_substr((string) $request->header('X-Request-ID', ''), 0, 40) ?: null,
                 'created_at' => now(),
             ]);
+            if ($capture && Schema::hasTable('activity_audit_impacts')) {
+                foreach (array_chunk($capture->impacts(), 75) as $items) {
+                    DB::table('activity_audit_impacts')->insert(array_map(
+                        fn (array $impact): array => $impact + [
+                            'activity_audit_id' => $auditId,
+                            'created_at' => now(),
+                        ], $items
+                    ));
+                }
+            }
         } catch (\Throwable $exception) {
             // Audit storage failures must not replay a successfully committed
             // financial transaction, but must be visible to operators.
