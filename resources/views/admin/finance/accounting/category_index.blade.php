@@ -259,9 +259,7 @@
                                 timer: 1400,
                                 showConfirmButton: false
                             });
-                            setTimeout(function() {
-                                location.reload();
-                            }, 1500);
+                            $(document).trigger('bm:account-refresh');
                         } else if (res.status === 'warning') {
                             Swal.fire('Warning', res.message, 'warning');
                         } else {
