@@ -24,7 +24,7 @@ final class AreaDirectoryModernizationContractTest extends TestCase
             'font-size:13px',
             'nth-child(even){background:#f1f5fa!important}',
             'nth-child(odd){background:#ffffff!important}',
-            'border-right:1px solid #e2eaf4!important',
+            'border-right:1.5px solid #c5d2e2!important',
             '<tbody id="areaRows" aria-busy="true">',
             '$.financeVoucherComponents.createFilter',
             'area-col-trigger',
