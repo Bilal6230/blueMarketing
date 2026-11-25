@@ -135,9 +135,12 @@ $(function(){
    var label=$.trim($btn.closest('th').text());
    widget.setTitle(label);
    if(/status/i.test(label)){
-     var $status=$('<select>',{'class':'form-control form-control-sm','aria-label':'Filter status'})
-       .append($('<option>',{value:'',text:'All statuses'}),$('<option>',{value:'Active',text:'Active'}),$('<option>',{value:'Inactive',text:'Inactive'}))
-       .val(filters[col]||'');
+     var options=kind==='lead-approvals'
+       ?[['','All statuses'],['Pending','Pending'],['Approved','Approved'],['Rejected','Rejected']]
+       :[['','All statuses'],['Active','Active'],['Inactive','Inactive']];
+     var $status=$('<select>',{'class':'form-control form-control-sm','aria-label':'Filter status'});
+     $.each(options,function(_,entry){$status.append($('<option>',{value:entry[0],text:entry[1]}));});
+     $status.val(filters[col]||'');
      widget.$control.empty().append($status);
      $status.on('change',function(){
        if($(this).val())filters[col]=$(this).val();else delete filters[col];
