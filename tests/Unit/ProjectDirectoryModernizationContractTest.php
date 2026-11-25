@@ -24,7 +24,7 @@ final class ProjectDirectoryModernizationContractTest extends TestCase
             '$.financeVoucherComponents.createFilter', 'filterWidget.dates(',
             'filterWidget.search(', "filterWidget.$control", 'projectPageSize',
             'projectPages', 'project-skeleton', 'project-card', 'flex:1 1 auto',
-            'min-height:calc(100vh - 123px)',
+            'min-height:calc(100vh - 175px)',
             '<tbody id="projectRows" aria-busy="true">',
             '$.blueActionMenu.enhance', '$.blueVoucherPagination.render',
             "attr('aria-busy','false')",
