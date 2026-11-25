@@ -98,7 +98,7 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringContainsString('db_trigger_row', $blade);
         $this->assertStringContainsString('affected_tables', $blade);
         $this->assertStringContainsString('sql_statement', $blade);
-        $this->assertStringContainsString("->offset($start)->limit($length)->get()", $controller);
+        $this->assertStringContainsString('->offset($start)->limit($length)->get()', $controller);
         $this->assertStringContainsString("activity_audit_impacts", $controller);
         $this->assertStringContainsString("'recordsFiltered'", $controller);
         $this->assertStringNotContainsString('method="POST"', $blade);
