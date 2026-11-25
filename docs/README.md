@@ -1,3 +1,25 @@
+# 2026-11-25 — M06 API contract PASS (10/111); non-destructive integrity and trigger-coverage command added
+
+**Owner confirmed:** `Milestone06ActivityAuditContractTest` PASS **10 tests / 111 assertions** after connecting audit middleware to existing Sanctum-authenticated mobile and unified finance API groups. Cache clear and Blade view compilation also passed. API real-device mutation View check has not yet been reported, so avoid claiming end-to-end mobile API acceptance.
+
+**New working implementation:** `app/Console/Commands/ActivityAuditHealth.php` registers `php artisan activity-audit:health` (auto-discovered by the existing `app/Console/Kernel.php`) and optional `--strict`. This read-only command reports stored audit events/impacts, stale unlinked transaction-trigger snapshots, broken parent audit references, count of expected MySQL/MariaDB named audit triggers, and exact missing triggers for ID-keyed existing source tables. Missing/legacy/composite-key tables are explicitly skipped rather than invented. Missing triggers warn in normal mode, fail in `--strict`; missing audit schema or broken/orphaned rows fail. NO deletes, repairs, finance modifications, schema changes or migrations. New contract assertion ensures read-only diagnostics.
+
+**Owner terminal gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone06ActivityAuditContractTest
+php artisan activity-audit:health
+php artisan activity-audit:health --strict
+```
+**Interpretation:** Warnings for audit trigger gaps require inspecting which MySQL table/trigger is missing; do not auto-install triggers or mutate live database. Orphan snapshots can arise when a transaction commits but an HTTP request returns an error, or when correlation fails; investigate, do not delete evidence. The strict gate may fail even when the ordinary command returns 0. The health command provides *diagnostics*, not a proof that all record-level changes, scheduled jobs, failed requests or API semantics are audited. The user can check a disposable authenticated employee-app CRM mutation in Activity Audit only after an app write; no need to repeat earlier browser UI gate.
+
+**Remaining M06:** targeted database-backed rollback/commit regression tests, API end-to-end checking, scheduled/queued-job writer strategy, audit retention/performance and accurate correlation of multi-table effects. Labour CP remains ON HOLD; Milestone 06 is NOT COMPLETE.
+
+---
+
 # 2026-11-25 — M06 API audit expansion (owner terminal verified prior batch; API gate pending)
 
 **Latest owner verification:** `2026_11_25_134000_expand_activity_audit_stock_plot_bank_sources.php` migration completed successfully. `Milestone06ActivityAuditContractTest` passed **9 tests / 105 assertions**; existing browser acceptance for activity audit UI and early CRUD tracking was previously reported PASS. Do not repeat these passed checks.
