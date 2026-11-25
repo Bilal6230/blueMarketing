@@ -144,6 +144,21 @@ final class RoleManagementModernizationTest extends TestCase
         self::assertStringContainsString('data-ajax="off"',$view);
     }
 
+    public function test_roles_initial_table_uses_skeleton_until_modern_action_menu_is_ready(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $view = file_get_contents($root.'/resources/views/admin/role.blade.php');
+        self::assertIsString($view);
+        self::assertStringContainsString('<tbody id="roleRows" aria-busy="true">', $view);
+        self::assertStringContainsString('role-skeleton-row', $view);
+        self::assertStringContainsString('role-skeleton-action', $view);
+        self::assertStringContainsString("aria-busy','false'", $view);
+        self::assertStringContainsString("$.blueActionMenu.enhance", $view);
+        self::assertStringNotContainsString('@forelse ($roleRows as $role)', $view);
+        self::assertStringNotContainsString('class="btn btn-outline-primary btn-sm btn-edit" data-id=', $view);
+        self::assertStringNotContainsString('class="btn btn-outline-danger btn-sm btn-delete" data-id=', $view);
+    }
+
     public function test_backend_preserves_existing_legacy_grants_and_archives_roles(): void
     {
         $root = dirname(__DIR__,2);
