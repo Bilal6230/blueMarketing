@@ -151,6 +151,23 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringNotContainsString('Schema::dropIfExists', $source);
     }
 
+    public function test_activity_health_command_is_read_only_and_checks_db_trigger_integrity(): void
+    {
+        $source = $this->source('app/Console/Commands/ActivityAuditHealth.php');
+        $this->assertStringContainsString('activity-audit:health', $source);
+        $this->assertStringContainsString('activity_audit_impacts', $source);
+        $this->assertStringContainsString('activity_audits', $source);
+        $this->assertStringContainsString('information_schema.TRIGGERS', $source);
+        $this->assertStringContainsString('whereNull(\'activity_audit_id\')', $source);
+        $this->assertStringContainsString('whereNotExists', $source);
+        $this->assertStringContainsString('bm_audit_', $source);
+        $this->assertStringContainsString('--strict', $source);
+        $this->assertStringNotContainsString('->delete(', $source);
+        $this->assertStringNotContainsString('->truncate(', $source);
+        $this->assertStringNotContainsString('DB::statement(', $source);
+        $this->assertStringNotContainsString('DB::unprepared(', $source);
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
