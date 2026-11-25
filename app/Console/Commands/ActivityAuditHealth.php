@@ -36,6 +36,25 @@ final class ActivityAuditHealth extends Command
         'booking_vouchers', 'labour_ledgers', 'labours', 'project_bank_accounts',
     ];
 
+    // Must match the safe composite-primary-key capture eligibility rules.
+    private const COMPOSITE_TABLES = [
+        'finance_posting_source_claims', 'finance_posting_journal_sources',
+        'finance_journal_line_sources', 'stock_item_balances',
+        'stock_project_item_balances', 'stock_project_item_definitions',
+        'finance_plot_receipt_postings',
+    ];
+
+    private const COMPOSITE_SAFE_FIELDS = [
+        'project_id', 'item_id', 'stock_item_id', 'posting_batch_id',
+        'posting_line_id', 'journal_voucher_id',
+        'journal_voucher_detail_id', 'receipt_id',
+        'plot_receipt_id', 'plot_id', 'source_id', 'source_kind',
+        'source_type', 'source_line_id', 'project_head_subhead_id',
+        'stock_party_id', 'quantity', 'qty', 'balance', 'amount',
+        'amount_in', 'amount_out', 'debit', 'credit',
+        'is_active', 'status', 'updated_at', 'created_at',
+    ];
+
     public function handle(): int
     {
         $driver = DB::getDriverName();
@@ -87,8 +106,20 @@ final class ActivityAuditHealth extends Command
                 continue;
             }
             if (!Schema::hasColumn($table, 'id')) {
-                $skipped[] = $table.' (no id column)';
-                continue;
+                if (!in_array($table, self::COMPOSITE_TABLES, true)) {
+                    $skipped[] = $table.' (no id column)';
+                    continue;
+                }
+                $primary = DB::table('information_schema.KEY_COLUMN_USAGE')
+                    ->where('TABLE_SCHEMA', DB::getDatabaseName())
+                    ->where('TABLE_NAME', $table)
+                    ->where('CONSTRAINT_NAME', 'PRIMARY')
+                    ->orderBy('ORDINAL_POSITION')->pluck('COLUMN_NAME')->all();
+                if ($primary === [] || array_diff($primary, self::COMPOSITE_SAFE_FIELDS) !== []) {
+                    $skipped[] = $table.' (no safe declared primary key)';
+                    continue;
+                }
+                $this->line('COMPOSITE PRIMARY KEY '.$table.' ('.implode(', ', $primary).')');
             }
             foreach (self::TRIGGER_SUFFIXES as $suffix) {
                 $trigger = 'bm_audit_'.$table.'_'.$suffix;
