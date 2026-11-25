@@ -109,11 +109,11 @@
         {{-- Put this in your category_index blade (replace current edit modal & js) --}}
 
         {{-- Edit Modal --}}
-        <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal fade bm-account-finance-modal" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="editModalLabel">Edit Head Accounts</h5>
+                        <h5 class="modal-title" id="editModalLabel">Edit Joint Account Mapping</h5>
                         <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                     </div>
 
