@@ -1,0 +1,12 @@
+/* Shared modern export controls. Scoped to modern listing cards only. */
+.bm-modern-export-toolbar{flex:0 0 auto;min-height:43px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:7px 11px;background:#f7faff;border-bottom:1.5px solid #cad8e9;position:relative;z-index:5}
+.bm-modern-export-btn{appearance:none;border:1px solid #b8cbe1;background:#fff;color:#245281;border-radius:6px;font-size:12px;font-weight:650;line-height:1.2;min-height:29px;padding:5px 10px;cursor:pointer}
+.bm-modern-export-btn:hover,.bm-modern-export-btn:focus{background:#eaf2ff;color:#1355ac;border-color:#8db5ea}
+.bm-modern-column-menu{position:relative;order:10;margin-left:3px}
+.bm-modern-col-toggle{background:#e9f2ff}
+.bm-modern-column-options{position:absolute;top:calc(100% + 5px);left:0;z-index:40;background:#fff;border:1px solid #b8cbe1;box-shadow:0 8px 24px #14355525;border-radius:8px;padding:8px;min-width:195px;max-height:280px;overflow:auto}
+.bm-modern-column-option{display:flex;align-items:center;gap:9px;padding:5px 7px;font-size:13px;font-weight:500;color:#284664;cursor:pointer;margin:0;white-space:nowrap}
+.bm-modern-column-option:hover{background:#f1f6fe}
+.bm-modern-column-option input{margin:0}
+.bm-modern-export-toolbar+.bm-account-table-wrap,.bm-modern-export-toolbar+.project-table-wrap,.bm-modern-export-toolbar+.sector-table-wrap,.bm-modern-export-toolbar+.area-table-wrap{min-height:0;flex:1 1 0%!important}
+@media(max-width:575px){.bm-modern-export-toolbar{gap:4px;padding:6px}.bm-modern-export-btn{font-size:11px;padding:5px 7px}}
