@@ -42,8 +42,15 @@ final class RecordActivityAudit
                 }
             }
         }
+        $pendingException = null;
         try {
             $response = $next($request);
+        } catch (\Throwable $exception) {
+            // Preserve committed writes even if the controller terminates
+            // by throwing rather than returning an HTTP response. Continue
+            // auditing with status 500, then rethrow the original exception.
+            $pendingException = $exception;
+            $response = new Response('', 500);
         } finally {
             if ($capture) $capture->stop();
             if ($captureToken) {
@@ -57,6 +64,7 @@ final class RecordActivityAudit
             }
         }
 
+        try {
         $actor = $request->user();
         $method = strtoupper($request->method());
         $route = $request->route();
@@ -134,5 +142,10 @@ final class RecordActivityAudit
             ]);
         }
         return $response;
+        } finally {
+            if ($pendingException !== null) {
+                throw $pendingException;
+            }
+        }
     }
 }
