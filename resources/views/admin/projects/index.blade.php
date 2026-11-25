@@ -1,330 +1,274 @@
 @extends('admin.layouts.master')
+@section('title', 'Project List')
+
+@push('style')
+<style>
+.bm-projects{--voucher-accent:#2563eb;--fvd-accent:#2563eb;--fvd-pop-accent:#2563eb;padding:15px 16px 24px;color:#263b56;font-size:12px}
+.bm-projects *{box-sizing:border-box}
+.bm-projects .project-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
+.bm-projects .project-heading h2{font-size:19px;font-weight:750;color:#173a75;margin:0}
+.bm-projects .project-heading small{font-size:11px;color:#7889a0}
+.bm-projects .project-card{background:#fff;border:1px solid #dae4f2;border-top:3px solid #2563eb;border-radius:11px;overflow:hidden;box-shadow:0 3px 13px #122b460a}
+.bm-projects .project-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px;border-bottom:1px solid #e8eef6}
+.bm-projects .project-control{height:34px;border:1px solid #d5e0ec;border-radius:7px;background:#fff;color:#304860;font-size:12px;padding:6px 10px;min-width:90px}
+.bm-projects .project-control:focus{border-color:#3b82f6;outline:0;box-shadow:0 0 0 2px #3b82f622}
+.bm-projects .project-search{flex:1 1 280px;min-width:190px}
+.bm-projects .project-table-wrap{width:100%;overflow-x:auto;min-height:195px}
+.bm-projects .project-table{width:100%;margin:0;font-size:12px;white-space:nowrap}
+.bm-projects .project-table thead th{background:#f0f5fc;color:#294366;font-weight:750;font-size:11px;padding:11px 12px;border-bottom:2px solid #2563eb}
+.bm-projects .project-table tbody td{padding:11px 12px!important;border-top:1px solid #eaf0f7;vertical-align:middle;height:48px!important}
+.bm-projects .project-table tbody tr:hover{background:#f7faff}
+.bm-projects .project-name{font-weight:750;color:#1d54a0}
+.bm-projects .project-address{white-space:normal;min-width:165px;max-width:310px}
+.bm-projects .project-code{background:#edf4fe;color:#3469a9;border-radius:5px;padding:4px 7px;display:inline-block}
+.bm-projects .project-status{display:inline-flex;align-items:center;border-radius:14px;font-size:11px;padding:4px 9px;background:#e8f8ef;color:#16754a;font-weight:700}
+.bm-projects .project-status.inactive{background:#f3f4f6;color:#69788b}
+.bm-projects .project-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid #e7edf6;min-height:46px}
+.bm-projects .project-pages{display:flex;gap:4px;align-items:center}
+.bm-projects .project-pages .dv-page-btn{border:1px solid #adcaf0;background:white;color:#2563eb;border-radius:5px;min-width:30px;height:30px;font-size:11px}
+.bm-projects .project-pages .dv-page-btn.active{background:#2563eb;color:white}
+.bm-projects .project-pages .dv-page-btn:disabled{opacity:.45}
+.bm-projects .project-skeleton{height:12px;display:block;max-width:100%;border-radius:5px;background:linear-gradient(90deg,#edf2f8 25%,#f9fbfe 50%,#edf2f8 75%);background-size:200% 100%;animation:bmProjectShimmer 1.4s ease infinite}
+.bm-projects .project-skeleton.long{width:140px}.bm-projects .project-skeleton.mid{width:90px}.bm-projects .project-skeleton.short{width:38px}
+@keyframes bmProjectShimmer{to{background-position-x:-200%}}
+@media(prefers-reduced-motion:reduce){.bm-projects .project-skeleton{animation:none}}
+.bm-project-editor .modal-dialog{max-width:835px;width:calc(100% - 32px);margin:25px auto}
+.bm-project-editor .modal-content{border:0;border-radius:13px;overflow:hidden;box-shadow:0 22px 65px #0e203850}
+.bm-project-editor .modal-header{background:#f7faff;border-bottom:1px solid #dce7f3;padding:15px 20px}
+.bm-project-editor .modal-title{font-size:16px;font-weight:800;color:#193d73}
+.bm-project-editor .modal-body{padding:17px 20px;max-height:calc(100vh - 205px);overflow-y:auto}
+.bm-project-editor .modal-footer{background:#fff;padding:12px 20px;border-top:1px solid #e1eaf4}
+.bm-project-editor label{font-size:12px;font-weight:700;color:#344d6c;margin-bottom:5px}
+.bm-project-editor .form-control{font-size:12px;border-color:#d2deeb;border-radius:7px;min-height:36px}
+.bm-project-editor .project-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.bm-project-editor .project-span-full{grid-column:1/-1}
+.bm-project-editor .project-field-error{display:block;color:#b42318;font-size:11px;min-height:0;margin-top:3px}
+.bm-project-editor .project-note{color:#6b7e95;font-size:11px;background:#f5f8fc;border:1px solid #e4ebf4;padding:8px 10px;border-radius:7px}
+@media(max-width:650px){.bm-project-editor .project-form-grid{grid-template-columns:1fr}.bm-projects{padding:12px 8px}}
+</style>
+@endpush
+
 @section('content')
-    <div class="content-wrapper">
-        <!-- Content Header (Page header) -->
-        <div class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1 class="m-0">{{ $title }}</h1>
-                    </div><!-- /.col -->
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                            <li class="breadcrumb-item active">{{ $title }}</li>
-                        </ol>
-                    </div><!-- /.col -->
-                </div><!-- /.row -->
-            </div>
-            <!-- /.container-fluid -->
-        </div>
-        <!-- /.content-header -->
-
-        <!-- Main content -->
-        <section class="content">
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            @can('create project')
-                            <div class="card-header">
-                                <h3 class="card-title">
-                                    <a href="#" class="btn btn-sm btn-success" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i class="fas fa-plus"></i> Add</a>
-                                </h3>
-                            </div>
-                            @endcan
-                            <!-- /.card-header -->
-                            <div class="card-body table-responsive">
-                                <table id="example1" class="table table-bordered table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Name</th>
-                                            <th>Code</th>
-                                            <th>Address</th>
-                                            <th>Location</th>
-                                            <th>Dates</th>
-                                            <th>Corner / Facing %</th>
-                                            <th>Status</th>
-                                            <th>Create at</th>
-                                            @canany(['update project', 'delete project'])
-                                                <th>Action</th>
-                                            @endcanany
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($data as $i)
-                                            <tr>
-                                                <td>{{ $loop->iteration }}</td>
-                                                <td><a href="#" >{{ $i->project }}</a></td>
-                                                <td>{{ $i->project_code ?: 'Legacy' }}</td>
-                                                <td>{{ $i->address }}</td>
-                                                <td>{{ $i->location ?: '—' }}</td>
-                                                <td>{{ $i->opening_date?->format('d-M-Y') ?: '—' }} → {{ $i->closing_date?->format('d-M-Y') ?: '—' }}</td>
-                                                <td>{{ number_format((float) $i->corner_charge_percent, 2) }} / {{ number_format((float) $i->facing_charge_percent, 2) }}</td>
-                                                <td>{{ Setting::getStatus($i->is_active) }}</td>
-                                                <td>{{ $i->created_at }}</td>
-                                            @canany(['update project', 'delete project'])
-                                                    <td>
-                                                        <div class="btn-group">
-                                                            @can('update project')
-                                                                <button class="btn btn-sm btn-primary btn-edit" data-id="{{ $i->id }}"><i class="fas fa-pencil-alt"></i></button>
-                                                            @endcan
-                                                            @can('delete project')
-                                                                <button class="btn btn-sm btn-danger btn-delete" data-id="{{ $i->id }}" data-name="{{ $i->name }}"><i class="fas fa-trash"></i></button>
-                                                            @endcan
-                                                        </div>
-                                                    </td>
-                                                @endcanany
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            <!-- /.card-body -->
-                        </div>
-
-                        <!-- /.card -->
-
-
-                    </div>
-                    <!-- /.col -->
-                </div>
-                <!-- /.row -->
-            </div><!-- /.container-fluid -->
-        </section>
-        <!-- /.content -->
+<div class="content-wrapper bm-ui bm-voucher-directory bm-projects" id="projectsApp">
+  <div class="project-heading">
+    <div><h2>Projects</h2><small>Manage project details, locations and charges · All projects</small></div>
+    <div class="d-flex align-items-center" style="gap:7px">
+      @can('create project')<button class="btn btn-primary btn-sm" type="button" id="projectAdd"><i class="fas fa-plus mr-1"></i> New Project</button>@endcan
+      <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm">Dashboard</a>
     </div>
-@endsection
-
-@section('js')
-    <script>
-        $(document).ready(function() {
-            $(document).on("click", '.btn-edit', function() {
-                let id = $(this).attr("data-id");
-                $('#modal-loading').modal({backdrop: 'static', keyboard: false, show: true});
-                $.ajax({
-                    url: "{{ route('project.show') }}",
-                    type: "POST",
-                    dataType: "JSON",
-                    data: {
-                        id: id,
-                        _token: "{{ csrf_token() }}"
-                    },
-                    success: function(data) {
-                        console.log(data);
-                        var data = data.data;
-                        $("#project").val(data.project);
-                        $("#old_project").val(data.project);
-                        $("#address").val(data.address);
-                        $("#project_code").val(data.project_code || 'Assigned when saved');
-                        $("#location").val(data.location || '');
-                        $("#opening_date").val(data.opening_date ? data.opening_date.substring(0, 10) : '');
-                        $("#closing_date").val(data.closing_date ? data.closing_date.substring(0, 10) : '');
-                        $("#corner_charge_percent").val(data.corner_charge_percent || '0.00');
-                        $("#facing_charge_percent").val(data.facing_charge_percent || '0.00');
-                        $("#is_active").val(data.is_active);
-
-                        $("#id").val(data.id);
-                        $('#modal-loading').modal('hide');
-                        $('#modal-edit').modal({backdrop: 'static', keyboard: false, show: true});
-                    },
-                });
-            });
-
-            $(document).on("click", '.btn-delete', function() {
-                let id = $(this).attr("data-id");
-                let name = $(this).attr("data-name");
-                $("#did").val(id);
-                $("#delete-data").html(name);
-                $('#modal-delete').modal({backdrop: 'static', keyboard: false, show: true});
-            });
-        });
-    </script>
+  </div>
+  <div class="project-card">
+    <div class="project-toolbar">
+      <input class="project-control project-search" id="projectSearch" type="search" placeholder="Search project name, code, address or location..." aria-label="Search projects">
+      <select class="project-control" id="projectStatusFilter" aria-label="Filter status">
+        <option value="">All statuses</option><option value="1">Active</option><option value="0">Inactive</option>
+      </select>
+      <select class="project-control" id="projectPageSize" aria-label="Rows per page">
+        <option>10</option><option selected>25</option><option>50</option><option>100</option>
+      </select>
+      <button class="btn btn-outline-secondary btn-sm" type="button" id="projectReset">Reset</button>
+      <span class="text-muted ml-auto" id="projectResultCount"></span>
+    </div>
+    <div class="project-table-wrap">
+      <table class="table table-hover project-table" id="projectsTable">
+        <thead><tr>
+          <th>#</th><th>Project</th><th>Code</th><th>Address / Location</th>
+          <th>Project Dates</th><th>Corner / Facing</th><th>Status</th><th>Created</th>
+          @can('update project')<th>Actions</th>@endcan
+        </tr></thead>
+        <tbody id="projectRows" aria-busy="true">
+          @for ($i=0;$i<5;$i++)
+          <tr aria-hidden="true">
+            <td><span class="project-skeleton short"></span></td>
+            <td><span class="project-skeleton long"></span></td>
+            <td><span class="project-skeleton mid"></span></td>
+            <td><span class="project-skeleton long"></span></td>
+            <td><span class="project-skeleton mid"></span></td>
+            <td><span class="project-skeleton mid"></span></td>
+            <td><span class="project-skeleton short"></span></td>
+            <td><span class="project-skeleton mid"></span></td>
+            @can('update project')<td><span class="project-skeleton short"></span></td>@endcan
+          </tr>
+          @endfor
+        </tbody>
+      </table>
+    </div>
+    <div class="project-foot">
+      <small class="text-muted" id="projectSummary"></small>
+      <div class="project-pages" id="projectPages"></div>
+    </div>
+  </div>
+</div>
 @endsection
 
 @section('modal')
-    {{-- Modal Add --}}
-    <div class="modal fade" id="modal-tambah">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Add Project</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form action="{{ route('project.store') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <div class="input-group">
-                            <label>Name</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control @error('project') is-invalid @enderror" placeholder="Name" name="project" value="{{ old('project') }}">
-                                @error('project')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="input-group">
-                            <label>Address</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control @error('address') is-invalid @enderror" placeholder="address" name="address" value="{{ old('address') }}">
-                                @error('address')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="input-group"><label>Location / Details</label><div class="input-group"><input type="text" class="form-control" name="location" value="{{ old('location') }}" maxlength="255"></div></div>
-                        <div class="form-row">
-                            <div class="col"><label>Opening Date</label><input type="date" class="form-control" name="opening_date" value="{{ old('opening_date') }}"></div>
-                            <div class="col"><label>Closing Date</label><input type="date" class="form-control" name="closing_date" value="{{ old('closing_date') }}"></div>
-                        </div>
-                        <div class="form-row">
-                            <div class="col"><label>Corner Charge %</label><input type="number" class="form-control" name="corner_charge_percent" value="{{ old('corner_charge_percent', 0) }}" min="0" max="100" step="0.01"></div>
-                            <div class="col"><label>Facing Charge %</label><input type="number" class="form-control" name="facing_charge_percent" value="{{ old('facing_charge_percent', 0) }}" min="0" max="100" step="0.01"></div>
-                        </div>
-                        <div class="input-group">
-                            <label>Status</label>
-                            <div class="input-group">
-                                <select class="form-control" name="is_active">
-                                    <option value="1">Active</option>
-                                    <option value="0">Disable</option>
-                                </select>
-                                @error('is_active')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="input-group">
-                            <label>Logo</label>
-                            <div class="input-group">
-                                <input type="file" class="form-control-file @error('logo') is-invalid @enderror" name="logo" id="logo">
-                                @error('logo')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-                </form>
-            </div>
-            <!-- /.modal-content -->
-        </div>
-        <!-- /.modal-dialog -->
+<div class="modal fade bm-project-editor" id="projectEditor" tabindex="-1" role="dialog" aria-labelledby="projectEditorTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
+    <div class="modal-header">
+      <div><h5 class="modal-title" id="projectEditorTitle">New Project</h5><small class="text-muted">Project setup and charge settings</small></div>
+      <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
     </div>
-    {{-- Modal Update --}}
-    <div class="modal fade" id="modal-edit">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Edit Project</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form action="{{ route('project.update') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        @method("PUT")
-                        <div class="input-group">
-                            <label>Name</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control @error('project') is-invalid @enderror" placeholder="Name" name="project" id="project" value="{{ old('project') }}">
-                                @error('project')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="input-group">
-                            <label>Address</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control @error('address') is-invalid @enderror" placeholder="address" name="address" id="address" value="{{ old('address') }}">
-                                @error('address')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="input-group"><label>Project Code</label><div class="input-group"><input type="text" class="form-control" id="project_code" readonly></div></div>
-                        <div class="input-group"><label>Location / Details</label><div class="input-group"><input type="text" class="form-control" name="location" id="location" maxlength="255"></div></div>
-                        <div class="form-row">
-                            <div class="col"><label>Opening Date</label><input type="date" class="form-control" name="opening_date" id="opening_date"></div>
-                            <div class="col"><label>Closing Date</label><input type="date" class="form-control" name="closing_date" id="closing_date"></div>
-                        </div>
-                        <div class="form-row">
-                            <div class="col"><label>Corner Charge %</label><input type="number" class="form-control" name="corner_charge_percent" id="corner_charge_percent" min="0" max="100" step="0.01"></div>
-                            <div class="col"><label>Facing Charge %</label><input type="number" class="form-control" name="facing_charge_percent" id="facing_charge_percent" min="0" max="100" step="0.01"></div>
-                            <div class="col"><label>Charges Effective From</label><input type="date" class="form-control" name="charge_effective_from" value="{{ now()->toDateString() }}"></div>
-                        </div>
-
-                        <div class="input-group">
-                            <label>Status</label>
-                            <div class="input-group">
-                                <select class="form-control" name="is_active" id="is_active">
-                                    <option value="1">Active</option>
-                                    <option value="0">Disable</option>
-                                </select>
-                                @error('gender')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="input-group">
-                            <label>Logo</label>
-                            <div class="input-group">
-                                <input type="file" class="form-control-file @error('logo') is-invalid @enderror" name="logo" id="logo">
-                                @error('logo')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-
-
-
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <input type="hidden" name="id" id="id">
-                    <input type="hidden" name="old_project" id="old_project">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-                </form>
-            </div>
-            <!-- /.modal-content -->
+    <form id="projectForm" method="POST" action="{{ route('project.store') }}" enctype="multipart/form-data" data-ajax="off" novalidate>
+      @csrf
+      <input type="hidden" name="id" id="projectEditId">
+      <div class="modal-body">
+        <div class="project-form-grid">
+          <div><label for="projectName">Project Name *</label><input class="form-control" name="project" id="projectName" maxlength="255" required><span class="project-field-error" data-error="project"></span></div>
+          <div><label for="projectCode">Project Code</label><input class="form-control" id="projectCode" value="Assigned automatically" readonly></div>
+          <div class="project-span-full"><label for="projectAddress">Address *</label><input class="form-control" name="address" id="projectAddress" maxlength="255" required><span class="project-field-error" data-error="address"></span></div>
+          <div class="project-span-full"><label for="projectLocation">Location / Details</label><input class="form-control" name="location" id="projectLocation" maxlength="255"></div>
+          <div><label for="projectOpening">Opening Date</label><input class="form-control" name="opening_date" id="projectOpening" type="date"><span class="project-field-error" data-error="opening_date"></span></div>
+          <div><label for="projectClosing">Closing Date</label><input class="form-control" name="closing_date" id="projectClosing" type="date"><span class="project-field-error" data-error="closing_date"></span></div>
+          <div><label for="projectCorner">Corner Charge (%)</label><input class="form-control" type="number" name="corner_charge_percent" id="projectCorner" min="0" max="100" step="0.01" value="0"></div>
+          <div><label for="projectFacing">Facing Charge (%)</label><input class="form-control" type="number" name="facing_charge_percent" id="projectFacing" min="0" max="100" step="0.01" value="0"></div>
+          <div id="projectEffectiveField" class="project-span-full" style="display:none">
+            <label for="projectEffectiveDate">Charges Effective From *</label>
+            <input class="form-control" name="charge_effective_from" id="projectEffectiveDate" type="date">
+            <span class="project-field-error" data-error="charge_effective_from"></span>
+            <small class="text-muted">Required only when an existing project's corner/facing charges change.</small>
+          </div>
+          <div><label for="projectActive">Status *</label><select name="is_active" id="projectActive" class="form-control"><option value="1">Active</option><option value="0">Inactive</option></select></div>
+          <div><label for="projectLogo">Project Logo (optional)</label><input type="file" accept="image/*" class="form-control-file" name="logo" id="projectLogo"><span class="project-field-error" data-error="logo"></span></div>
+          <div class="project-span-full project-note"><i class="fas fa-info-circle mr-1"></i> Project codes and system accounting mappings are managed by the existing backend. Editing charges creates an effective-dated revision.</div>
         </div>
-        <!-- /.modal-dialog -->
-    </div>
-    {{-- Modal delete --}}
-    <div class="modal fade" id="modal-delete">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Clear Data</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form action="{{ route('user.destroy') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        @method('DELETE')
-                        <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
-                        <input type="hidden" name="id" id="did">
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-danger">Save</button>
-                </div>
-                </form>
-            </div>
-            <!-- /.modal-content -->
-        </div>
-        <!-- /.modal-dialog -->
-    </div>
+        <div class="project-field-error mt-2" id="projectFormErrors" role="alert" aria-live="polite"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" id="projectSave"><i class="fas fa-check mr-1"></i> Save Project</button>
+      </div>
+    </form>
+  </div></div>
+</div>
+@endsection
+
+@section('js')
+<script>
+$(function(){
+  'use strict';
+  var projects=@json($projectRows),canEdit=@json(auth()->user()->can('update project'));
+  var currentPage=1,sortKey='id',sortDescending=false,editing=null;
+  function field(value){return value===null||value===undefined?'':String(value);}
+  function presentDate(value){return field(value).slice(0,10)||'—';}
+  function activeRows(){
+    var q=$.trim($('#projectSearch').val()).toLowerCase(),status=$('#projectStatusFilter').val();
+    return projects.filter(function(p){
+      if(status!==''&&String(p.is_active)!==status)return false;
+      return !q||[p.project,p.project_code,p.address,p.location].join(' ').toLowerCase().indexOf(q)>=0;
+    }).sort(function(a,b){
+      var x=a[sortKey],y=b[sortKey],result;
+      if(sortKey==='id')result=Number(x)-Number(y);
+      else result=field(x).localeCompare(field(y),undefined,{numeric:true,sensitivity:'base'});
+      return sortDescending?-result:result;
+    });
+  }
+  function render(){
+    var list=activeRows(),size=Number($('#projectPageSize').val())||25;
+    var pages=Math.max(1,Math.ceil(list.length/size));currentPage=Math.min(currentPage,pages);
+    var start=(currentPage-1)*size,items=list.slice(start,start+size),$body=$('#projectRows').empty();
+    if($.blueActionMenu)$.blueActionMenu.close();
+    if(!items.length){
+      $body.append($('<tr>').append($('<td>',{colspan:canEdit?9:8,'class':'text-center text-muted py-4',text:'No matching projects found'})));
+    }
+    $.each(items,function(_,p){
+      var $row=$('<tr>');
+      $('<td>',{text:p.id}).appendTo($row);
+      $('<td>',{'class':'project-name',text:p.project}).appendTo($row);
+      $('<td>').append($('<span>',{'class':'project-code',text:p.project_code||'Legacy'})).appendTo($row);
+      var location=field(p.location),$addr=$('<td>',{'class':'project-address'});
+      $addr.append($('<div>',{text:p.address||'—'}));
+      if(location)$addr.append($('<small>',{'class':'text-muted',text:location}));
+      $row.append($addr);
+      $('<td>',{'class':'text-muted',text:presentDate(p.opening_date)+' → '+presentDate(p.closing_date)}).appendTo($row);
+      $('<td>',{text:Number(p.corner_charge_percent||0).toFixed(2)+'% / '+Number(p.facing_charge_percent||0).toFixed(2)+'%'}).appendTo($row);
+      $('<td>').append($('<span>',{'class':'project-status'+(Number(p.is_active)===1?'':' inactive'),text:Number(p.is_active)===1?'Active':'Inactive'})).appendTo($row);
+      $('<td>',{'class':'text-muted',text:field(p.created_at)||'—'}).appendTo($row);
+      if(canEdit)$row.append($('<td>',{'class':'blue-actions-cell'}).append($('<button>',{type:'button','class':'btn btn-outline-primary btn-sm btn-edit','data-id':p.id,'data-blue-action-label':'Edit project',text:'Edit'})));
+      $body.append($row);
+    });
+    if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
+    $body.attr('aria-busy','false');
+    $('#projectResultCount').text(list.length+' records');
+    $('#projectSummary').text('Showing '+(list.length?start+1:0)+'–'+Math.min(start+size,list.length)+' of '+list.length+' projects');
+    if($.blueVoucherPagination){
+      $.blueVoucherPagination.render({container:'#projectPages',summary:'#projectSummary',total:list.length,length:size,start:start,buttonClass:'dv-page-btn',onPage:function(next){currentPage=Math.floor(next/size)+1;render();}});
+    }
+  }
+  $('#projectSearch').on('input',function(){currentPage=1;render();});
+  $('#projectStatusFilter,#projectPageSize').on('change',function(){currentPage=1;render();});
+  $('#projectReset').on('click',function(){$('#projectSearch,#projectStatusFilter').val('');$('#projectPageSize').val('25');currentPage=1;sortKey='id';sortDescending=false;render();});
+  $('#projectsTable thead th').not(':last-child').css('cursor','pointer').on('click',function(){
+    var index=$(this).index(),keys=['id','project','project_code','address','opening_date','corner_charge_percent','is_active','created_at'];
+    var next=keys[index];if(!next)return;
+    sortDescending=sortKey===next?!sortDescending:false;sortKey=next;currentPage=1;render();
+  });
+  function inform(message,error){
+    if(window.toastr){error?toastr.error(message):toastr.success(message);}
+    else if(window.Swal)window.Swal.fire({icon:error?'error':'success',text:message});
+    else $('#projectFormErrors').text(message);
+  }
+  function chargeChanged(){
+    if(!editing)return false;
+    return Number($('#projectCorner').val()||0)!==Number(editing.corner_charge_percent||0)||
+      Number($('#projectFacing').val()||0)!==Number(editing.facing_charge_percent||0);
+  }
+  function chargeHint(){
+    $('#projectEffectiveField').toggle(!!editing && chargeChanged());
+  }
+  $('#projectCorner,#projectFacing').on('input change',chargeHint);
+  function openEditor(p){
+    editing=p||null;
+    $('#projectForm')[0].reset();
+    $('#projectFormErrors,.project-field-error').text('');
+    $('#projectEditorTitle').text(p?'Edit Project':'New Project');
+    $('#projectEditId').val(p?p.id:'');
+    $('#projectName').val(p?p.project:'');
+    $('#projectCode').val(p?p.project_code:'Assigned automatically');
+    $('#projectAddress').val(p?p.address:'');
+    $('#projectLocation').val(p?p.location:'');
+    $('#projectOpening').val(p?presentDate(p.opening_date).replace('—',''):'');
+    $('#projectClosing').val(p?presentDate(p.closing_date).replace('—',''):'');
+    $('#projectCorner').val(p?Number(p.corner_charge_percent).toFixed(2):'0');
+    $('#projectFacing').val(p?Number(p.facing_charge_percent).toFixed(2):'0');
+    $('#projectActive').val(p?String(p.is_active):'1');
+    $('#projectEffectiveDate').val('');
+    chargeHint();
+    $('#projectEditor').modal({backdrop:'static',keyboard:false,show:true});
+  }
+  $('#projectAdd').on('click',function(){openEditor(null);});
+  $('#projectRows').on('click','.btn-edit',function(){
+    var id=Number($(this).data('id')),project=projects.find(function(p){return p.id===id;});
+    if(project)openEditor(project);
+  });
+  $('#projectForm').on('submit',function(event){
+    event.preventDefault();
+    var $form=$(this),$save=$('#projectSave');
+    $('#projectFormErrors,.project-field-error').text('');
+    if(!$.trim($('#projectName').val())||!$.trim($('#projectAddress').val())){
+      $('#projectFormErrors').text('Project name and address are required.');return;
+    }
+    if(chargeChanged()&&!$('#projectEffectiveDate').val()){
+      $('#projectFormErrors').text('Select the effective date for changed charges.');return;
+    }
+    var payload=new FormData($form[0]);
+    if(editing)payload.append('_method','PUT');
+    $save.prop('disabled',true).text('Saving...');
+    $.ajax({url:editing?@json(route('project.update')):@json(route('project.store')),type:'POST',
+      data:payload,processData:false,contentType:false,dataType:'json',
+      headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
+      .done(function(response){
+        $('#projectEditor').modal('hide');inform(response.message||'Project saved.');
+        $.ajax({url:@json(route('project.index')),dataType:'json',headers:{Accept:'application/json'}})
+          .done(function(reply){projects=reply.data||[];render();})
+          .fail(function(){inform('Saved, but the list could not refresh. Reload the page.',true);});
+      }).fail(function(xhr){
+        var body=xhr.responseJSON||{},errors=body.errors||{};
+        $.each(errors,function(key,messages){$('#projectForm').find('[data-error="'+key+'"]').text(messages[0]||'Invalid value');});
+        $('#projectFormErrors').text(body.message||'Unable to save project. Please try again.');
+        inform(body.message||'Unable to save project.',true);
+      }).always(function(){$save.prop('disabled',false).html('<i class="fas fa-check mr-1"></i> Save Project');});
+  });
+  render();
+});
+</script>
 @endsection
