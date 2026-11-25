@@ -195,16 +195,20 @@ $(function(){
    else if(window.Swal)window.Swal.fire({icon:isError?'error':'success',text:message});
  }
  function reloadRows(){
-   $.ajax({url:window.location.pathname+window.location.search,type:'GET',dataType:'html',
-     headers:{Accept:'text/html'}}).done(function(html){
+   var $wrap=$table.closest('.bm-account-table-wrap'),$loading=$('<div>',{'class':'bm-account-loading bm-account-refresh-loading','aria-live':'polite'})
+     .append($('<span>'),$('<span>'),$('<span>'));
+   $wrap.addClass('bm-account-is-refreshing').append($loading);
+   return $.ajax({url:window.location.pathname+window.location.search,type:'GET',dataType:'html',
+     headers:{Accept:'text/html','X-Requested-With':'XMLHttpRequest'}}).done(function(html){
      var $html=$('<div>').append($.parseHTML(html,document,false));
      var $fresh=$html.find('#bmAccountDirectory tbody tr');
      if(!$fresh.length && $html.find('#bmAccountDirectory').length===0){
-       notify('Changes saved. Unable to refresh the table. Please reload.',true);return;
+       notify('Unable to refresh the table. Please try again.',true);return;
      }
      rows=$fresh.detach().toArray();
      prepareRows();currentPage=1;render();
-   }).fail(function(){notify('Saved, but table refresh failed. Please reload.',true);});
+   }).fail(function(){notify('Table refresh failed. Please try again.',true);})
+   .always(function(){$loading.remove();$wrap.removeClass('bm-account-is-refreshing');});
  }
  function submitAjax($form,onSuccess){
    var $submit=$form.find('[type=submit]').first();
@@ -248,6 +252,50 @@ $(function(){
      .done(function(data){notify(data.message||'Action completed.',false);$('#modal-delete').modal('hide');reloadRows();})
      .fail(function(xhr){notify((xhr.responseJSON||{}).message||'This accounting definition cannot be deleted.',true);});
    });
+ }
+ // Shared no-navigation CRUD for modern User and Permission directories.
+ if(kind==='user'||kind==='permission'){
+   var scope=kind==='user'?'user':'permission';
+   $('#modal-tambah form,#modal-edit form,#modal-delete form').on('submit.bmDirectoryAjax',function(event){
+     event.preventDefault();
+     var $form=$(this),$modal=$form.closest('.modal'),$submit=$form.find('[type=submit]').first();
+     if($submit.prop('disabled'))return;
+     var original=$submit.html(),payload=new FormData(this);
+     $form.find('.bm-account-form-error').remove();
+     $form.find('.is-invalid').removeClass('is-invalid');
+     $submit.prop('disabled',true).text('Saving...');
+     $.ajax({url:$form.attr('action'),type:'POST',data:payload,processData:false,contentType:false,
+       dataType:'json',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
+     .done(function(response){
+       if(response.success===false){notify(response.message||'Operation failed.',true);return;}
+       $modal.modal('hide');
+       if($modal.attr('id')==='modal-tambah')$form[0].reset();
+       notify(response.message||'Saved successfully.',false);
+       reloadRows();
+     }).fail(function(xhr){
+       var data=xhr.responseJSON||{},errors=data.errors||{};
+       $.each(errors,function(name,messages){
+         var $field=$form.find('[name="'+name+'"]').first();
+         $field.addClass('is-invalid').after($('<small>',{'class':'bm-account-form-error text-danger d-block',text:messages[0]||'Invalid value'}));
+       });
+       notify(data.message||'Unable to save '+scope+'. Please review the form.',true);
+     }).always(function(){$submit.prop('disabled',false).html(original);});
+   });
+   if(kind==='permission'){
+     $root.find('.bm-permission-toolbar-actions a[href]').filter(function(){
+       return /reload/i.test($(this).text());
+     }).on('click.bmDirectoryReload',function(event){
+       event.preventDefault();
+       var $button=$(this);
+       if($button.data('bm-busy'))return;
+       $button.data('bm-busy',true).addClass('disabled').attr('aria-disabled','true');
+       $.ajax({url:$button.attr('href'),type:'GET',dataType:'json',
+         headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
+       .done(function(response){notify(response.message||'Permissions refreshed.',false);reloadRows();})
+       .fail(function(xhr){notify((xhr.responseJSON||{}).message||'Unable to reload permissions.',true);})
+       .always(function(){$button.data('bm-busy',false).removeClass('disabled').removeAttr('aria-disabled');});
+     });
+   }
  }
  $(document).on('bm:account-refresh',function(){reloadRows();});
  var exportControls=$.blueModernDirectoryTools&&$.blueModernDirectoryTools.mount({
