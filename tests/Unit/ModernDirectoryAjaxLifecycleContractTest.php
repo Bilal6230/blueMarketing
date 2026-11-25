@@ -52,6 +52,32 @@ final class ModernDirectoryAjaxLifecycleContractTest extends TestCase
         }
     }
 
+    public function test_ajax_modal_forms_contain_their_submit_footers(): void
+    {
+        foreach ([
+            'resources/views/admin/user.blade.php',
+            'resources/views/admin/permission.blade.php',
+        ] as $path) {
+            $view = $this->source($path);
+            foreach (['modal-tambah', 'modal-edit', 'modal-delete'] as $id) {
+                $start = strpos($view, 'id="'.$id.'"');
+                self::assertNotFalse($start);
+                $section = substr($view, $start);
+                $form = strpos($section, '<form action=');
+                $body = strpos($section, '<div class="modal-body">');
+                $footer = strpos($section, '<div class="modal-footer');
+                $close = strpos($section, '</form>');
+                self::assertNotFalse($form);
+                self::assertNotFalse($body);
+                self::assertNotFalse($footer);
+                self::assertNotFalse($close);
+                self::assertLessThan($body, $form);
+                self::assertLessThan($footer, $body);
+                self::assertLessThan($close, $footer);
+            }
+        }
+    }
+
     public function test_other_modern_directories_keep_ajax_and_show_refetch_skeleton(): void
     {
         foreach ([
