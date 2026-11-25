@@ -18,8 +18,8 @@ class UserController extends Controller
     public function index()
     {
         $x['title']     = 'User';
-        $x['data']      = User::get();
-        $x['role']      = Role::get();
+        $x['data']      = User::query()->with('roles')->get();
+        $x['role']      = Role::query()->get();
 
         $projects = Project::get();
         $x['projects'] = $projects;
