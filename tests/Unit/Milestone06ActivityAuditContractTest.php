@@ -122,7 +122,7 @@ class Milestone06ActivityAuditContractTest extends TestCase
         );
         $this->assertStringContainsString("Route::post('leads', [MobileCrmController::class, 'store'])", $routes);
         $this->assertStringContainsString("Route::post('entries/in', [MobileStockController::class, 'storeIn'])", $routes);
-        $this->assertStringContainsString("Route::post('postings', [\u0024controller, 'post'])", $routes);
+        $this->assertStringContainsString('Route::post(\'postings\', [$controller, \'post\'])', $routes);
         $this->assertStringNotContainsString(
             "Route::middleware([\\App\\Http\\Middleware\\RecordActivityAudit::class, 'auth:sanctum'])",
             $routes
