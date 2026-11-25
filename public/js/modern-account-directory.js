@@ -23,6 +23,7 @@ $(function(){
      $pages=$('<div>',{'class':'bm-account-pages'});
  $.each([10,25,50,100],function(_,v){$size.append($('<option>',{value:v,text:v,selected:v===25}));});
  $footer.append($('<div>',{'class':'bm-account-footer-left'}).append($summary,$size,$reset),$pages);
+ $card.find('.bm-account-footer-placeholder').remove();
  $card.append($footer);
  var $createSource=$root.find('.bm-account-create-source').first();
  if($createSource.length&&$createSource.find('form').length){
