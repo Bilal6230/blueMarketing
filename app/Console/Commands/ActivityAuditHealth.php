@@ -80,6 +80,11 @@ final class ActivityAuditHealth extends Command
             })->count();
         $this->line("Activity events: {$events}");
         $this->line("Impact entries: {$rows}");
+        $this->line('Activity events older than 90 days (retention planning only): '
+            .DB::table('activity_audits')->where('created_at', '<', now()->subDays(90))->count());
+        $this->line('Impact entries older than 90 days (retention planning only): '
+            .DB::table('activity_audit_impacts')->where('created_at', '<', now()->subDays(90))->count());
+
         $this->line("Unlinked trigger snapshots older than 10 minutes: {$orphans}");
         $this->line("Impact entries referencing missing parent events: {$missingParent}");
 
@@ -154,6 +159,42 @@ final class ActivityAuditHealth extends Command
             }
         }
 
+        // Confirm the actual leading index columns needed by the audit
+        // listing, actor/history drill-down, and token correlation queries.
+        // Compare column sequences instead of index names to accept DB naming.
+        $statistics = DB::table('information_schema.STATISTICS')
+            ->where('TABLE_SCHEMA', DB::getDatabaseName())
+            ->whereIn('TABLE_NAME', ['activity_audits', 'activity_audit_impacts'])
+            ->orderBy('SEQ_IN_INDEX')
+            ->get(['TABLE_NAME', 'INDEX_NAME', 'SEQ_IN_INDEX', 'COLUMN_NAME']);
+        $indexes = [];
+        foreach ($statistics as $stat) {
+            $indexes[$stat->TABLE_NAME][$stat->INDEX_NAME][] = $stat->COLUMN_NAME;
+        }
+        $requiredIndexes = [
+            'activity_audits' => [
+                ['actor_id', 'created_at'], ['route_name', 'created_at'], ['created_at'],
+            ],
+            'activity_audit_impacts' => [
+                ['activity_audit_id', 'table_name'], ['request_token'], ['table_name', 'record_id'],
+            ],
+        ];
+        $missingIndexes = [];
+        foreach ($requiredIndexes as $table => $sequences) {
+            foreach ($sequences as $columns) {
+                $covered = false;
+                foreach ($indexes[$table] ?? [] as $installedColumns) {
+                    if (array_slice($installedColumns, 0, count($columns)) === $columns) {
+                        $covered = true;
+                        break;
+                    }
+                }
+                if (!$covered) $missingIndexes[] = $table.' ('.implode(', ', $columns).')';
+            }
+        }
+        $this->line('Missing audit query indexes: '.count($missingIndexes));
+        foreach ($missingIndexes as $index) $this->warn('INDEX '.$index);
+
         $this->line('Expected applicable triggers: '.$expectedCount);
         $this->line('Missing applicable triggers: '.count($missing));
         $this->line('Invalid trigger definitions: '.count($invalid));
@@ -164,10 +205,10 @@ final class ActivityAuditHealth extends Command
         foreach ($badEngines as $engine) $this->warn('ENGINE '.$engine.' (transactional auditing requires InnoDB)');
         foreach ($skipped as $table) $this->line('SKIPPED '.$table);
 
-        if ($issues > 0 || ($this->option('strict') && ($missing !== [] || $invalid !== [] || $badEngines !== []))) {
+        if ($issues > 0 || ($this->option('strict') && ($missing !== [] || $invalid !== [] || $badEngines !== [] || $missingIndexes !== []))) {
             return self::FAILURE;
         }
-        if ($missing !== [] || $invalid !== [] || $badEngines !== []) {
+        if ($missing !== [] || $invalid !== [] || $badEngines !== [] || $missingIndexes !== []) {
             $this->warn('Audit capture integrity is incomplete. Use --strict to fail this gate.');
         }
         $this->info('Health check completed without modifying business or audit data.');
