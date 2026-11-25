@@ -13,6 +13,7 @@
     <td class="right">PKR {{ $labour->advance ?? '' }}</td>
 
     <td class="actions">
+        @can('update labour')
         <!-- Edit Labour -->
         <button type="button"
                 class="icon-btn editLabourBtn"
@@ -32,6 +33,7 @@
             data-last-voucher="{{ $labour->last_voucher_created_at ? \Carbon\Carbon::parse($labour->last_voucher_created_at)->format('Y-m-d') : now()->format('Y-m-d') }}">
             <i class="fa fa-money-bill-wave"></i>
         </button>
+        @endcan
     </td>
 </tr>
 @endforeach
