@@ -49,7 +49,7 @@ final class ProjectDirectoryModernizationContractTest extends TestCase
         self::assertStringContainsString('X-Requested-With', $view);
         self::assertStringContainsString('Project::query()->findOrFail((int) $id)', $controller);
         self::assertStringContainsString("return response()->json(['status' => 'success', 'message' => 'Project updated successfully.'", $controller);
-        self::assertStringContainsString("'errors' => $validator->errors()", $controller);
+        self::assertStringContainsString('\'errors\' => $validator->errors()', $controller);
         self::assertStringContainsString('lockForUpdate()', $controller);
         self::assertStringContainsString('project_charge_revisions', $controller);
         self::assertStringNotContainsString('forceDelete(', $controller);
