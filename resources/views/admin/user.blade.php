@@ -230,8 +230,9 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
+                <form action="{{ route('user.store') }}" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
-                    <form action="{{ route('user.store') }}" method="POST" enctype="multipart/form-data">
+
                         @csrf
 
                         <div class="row">
@@ -420,8 +421,9 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
+                <form action="{{ route('user.update') }}" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
-                    <form action="{{ route('user.update') }}" method="POST" enctype="multipart/form-data">
+
                         @csrf
                         @method('PUT')
                         <div class="row">
@@ -627,8 +629,9 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
+                <form action="{{ route('user.destroy') }}" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
-                    <form action="{{ route('user.destroy') }}" method="POST" enctype="multipart/form-data">
+
                         @csrf
                         @method('DELETE')
                         <p class="modal-text">Are you sure you want to delete? <b id="delete-data"></b></p>
