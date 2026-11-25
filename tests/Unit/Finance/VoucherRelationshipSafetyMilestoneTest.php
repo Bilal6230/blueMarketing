@@ -53,7 +53,7 @@ final class VoucherRelationshipSafetyMilestoneTest extends TestCase
     public function test_legacy_journal_and_commission_edits_and_deletes_retire_related_ledger_rows(): void
     {
         $service=$this->source('app/Services/Finance/LinkedVoucherLedgerRetirement.php');
-        self::assertStringContainsString("in_array(\$type,['JV','CV'],true)",$service);
+        self::assertStringContainsString("in_array(\$type,['JV','SV','CV'],true)",$service);
         self::assertStringContainsString("->where('type',\$type)->where('type_id',\$voucherId)",$service);
         self::assertStringContainsString("->where('project_id',\$projectId)",$service);
         self::assertStringContainsString("'is_active'=>0",$service);
@@ -62,15 +62,17 @@ final class VoucherRelationshipSafetyMilestoneTest extends TestCase
         self::assertStringNotContainsString('->delete(', $service);
         self::assertStringNotContainsString('->forceDelete(', $service);
 
-        foreach ([
-            'app/Http/Controllers/JournalVoucherController.php'=>'JV',
-            'app/Http/Controllers/CommissionVoucherController.php'=>'CV',
-        ] as $path=>$series) {
-            $controller=$this->source($path);
-            self::assertSame(2,substr_count($controller,"->retire(\$projectId, '{$series}', (int)\$voucher->id)"));
-            self::assertStringContainsString('DB::transaction(function () use ($id, $projectId', $controller);
-            self::assertStringNotContainsString('forceDelete(', $controller);
-        }
+        $journal=$this->source('app/Http/Controllers/JournalVoucherController.php');
+        // Journal controller supports both JV and SV using the voucher's
+        // verified series instead of hard-coding JV.
+        self::assertStringContainsString("->retire(\$projectId, \$voucher->type==='SV'?'SV':'JV', (int)\$voucher->id)",$journal);
+        self::assertStringContainsString('DB::transaction(function () use ($id, $projectId',$journal);
+        self::assertStringNotContainsString('forceDelete(',$journal);
+
+        $commission=$this->source('app/Http/Controllers/CommissionVoucherController.php');
+        self::assertSame(2,substr_count($commission,"->retire(\$projectId, 'CV', (int)\$voucher->id)"));
+        self::assertStringContainsString('DB::transaction(function () use ($id, $projectId',$commission);
+        self::assertStringNotContainsString('forceDelete(',$commission);
     }
     public function test_draft_deletion_archives_the_scoped_row_without_pending_update_or_hard_delete(): void
     {
