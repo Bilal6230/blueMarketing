@@ -351,9 +351,9 @@ $(function(){
       .done(function(response){
         $('#projectDeleteModal').modal('hide');
         inform(response.message||'Project deleted.');
-        $.ajax({url:@json(route('project.index')),dataType:'json',headers:{Accept:'application/json'}})
+        (function(){var stopSkeleton=$.blueModernDirectoryTools.skeleton('.project-table-wrap');return $.ajax({url:@json(route('project.index')),dataType:'json',headers:{Accept:'application/json'}})
           .done(function(reply){projects=reply.data||[];render();})
-          .fail(function(){inform('Deleted, but the list could not refresh.',true);});
+          .fail(function(){inform('Deleted, but the list could not refresh.',true);}).always(function(){stopSkeleton();});}());
       }).fail(function(xhr){
         var message=(xhr.responseJSON||{}).message||'Project could not be deleted.';
         $('#projectDeleteError').text(message);inform(message,true);
@@ -377,9 +377,9 @@ $(function(){
       headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}})
       .done(function(response){
         $('#projectEditor').modal('hide');inform(response.message||'Project saved.');
-        $.ajax({url:@json(route('project.index')),dataType:'json',headers:{Accept:'application/json'}})
+        (function(){var stopSkeleton=$.blueModernDirectoryTools.skeleton('.project-table-wrap');return $.ajax({url:@json(route('project.index')),dataType:'json',headers:{Accept:'application/json'}})
           .done(function(reply){projects=reply.data||[];render();})
-          .fail(function(){inform('Saved, but the list could not refresh. Reload the page.',true);});
+          .fail(function(){inform('Saved, but the list could not refresh. Reload the page.',true);}).always(function(){stopSkeleton();});}());
       }).fail(function(xhr){
         var body=xhr.responseJSON||{},errors=body.errors||{};
         $.each(errors,function(key,messages){$('#projectForm').find('[data-error="'+key+'"]').text(messages[0]||'Invalid value');});
