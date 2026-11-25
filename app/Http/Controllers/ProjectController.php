@@ -248,6 +248,9 @@ class ProjectController extends Controller
         $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Please correct the highlighted project fields.', 'errors' => $validator->errors()], 422);
+            }
             return back()->withErrors($validator)->withInput();
         }
 
