@@ -94,7 +94,7 @@ class PermissionController extends Controller
             ? response()->json(['success' => true, 'message' => 'Permission deleted.'])
             : back();
     }
-    public function reloadPermission()
+    public function reloadPermission(Request $request)
     {
         try {
             $this->initModules();
