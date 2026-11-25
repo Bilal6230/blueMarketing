@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use App\Support\Audit\ActivityAuditCapture;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,14 +22,38 @@ final class RecordActivityAudit
     {
         // Capture only authenticated admin mutations; avoid listeners on reads.
         $capture = null;
+        $captureToken = null;
         if ($request->user() && in_array(strtoupper($request->method()), ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
             $capture = new ActivityAuditCapture();
             $capture->start();
+            // The same connection is used by transactional JV/ledger writes.
+            // Database triggers store verified row snapshots only under this
+            // server-generated token; the snapshots roll back with the write.
+            if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
+                try {
+                    $captureToken = (string) Str::uuid();
+                    DB::statement('SET @activity_audit_token = ?', [$captureToken]);
+                } catch (\Throwable $exception) {
+                    $captureToken = null;
+                    Log::error('Audit row capture token could not be activated', [
+                        'exception' => get_class($exception),
+                    ]);
+                }
+            }
         }
         try {
             $response = $next($request);
         } finally {
             if ($capture) $capture->stop();
+            if ($captureToken) {
+                try {
+                    DB::statement('SET @activity_audit_token = NULL');
+                } catch (\Throwable $exception) {
+                    Log::error('Audit row capture token could not be cleared', [
+                        'exception' => get_class($exception),
+                    ]);
+                }
+            }
         }
 
         $actor = $request->user();
@@ -46,6 +71,7 @@ final class RecordActivityAudit
             if (!Schema::hasTable('activity_audits')) {
                 return $response;
             }
+            DB::transaction(function () use ($actor, $method, $routeName, $request, $response, $capture, $captureToken): void {
             $auditId = DB::table('activity_audits')->insertGetId([
                 'actor_id' => (int) $actor->getAuthIdentifier(),
                 'action' => $method,
@@ -57,7 +83,24 @@ final class RecordActivityAudit
                 'created_at' => now(),
             ]);
             if ($capture && Schema::hasTable('activity_audit_impacts')) {
-                foreach (array_chunk($capture->impacts(), 75) as $items) {
+                $capturedTables = [];
+                if ($captureToken) {
+                    // The trigger rows already committed (or disappeared
+                    // with the rolled-back source transaction).
+                    $capturedTables = DB::table('activity_audit_impacts')
+                        ->where('request_token', $captureToken)
+                        ->whereNull('activity_audit_id')
+                        ->distinct()->pluck('table_name')->all();
+                    DB::table('activity_audit_impacts')
+                        ->where('request_token', $captureToken)
+                        ->whereNull('activity_audit_id')
+                        ->update(['activity_audit_id' => $auditId, 'request_token' => null]);
+                }
+                $impacts = array_values(array_filter($capture->impacts(), function (array $impact) use ($capturedTables): bool {
+                    return $impact['capture_type'] !== 'eloquent_row' ||
+                        !in_array($impact['table_name'], $capturedTables, true);
+                }));
+                foreach (array_chunk($impacts, 75) as $items) {
                     DB::table('activity_audit_impacts')->insert(array_map(
                         fn (array $impact): array => $impact + [
                             'activity_audit_id' => $auditId,
@@ -66,6 +109,7 @@ final class RecordActivityAudit
                     ));
                 }
             }
+            });
         } catch (\Throwable $exception) {
             // Audit storage failures must not replay a successfully committed
             // financial transaction, but must be visible to operators.
