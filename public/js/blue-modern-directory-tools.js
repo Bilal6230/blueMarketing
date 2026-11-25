@@ -81,6 +81,7 @@ function mount(options){
     $toolbar.append($('<button>',{type:'button','class':'bm-modern-export-btn','data-format':pair[0],text:pair[1]})
       .on('click',function(){exportNow(pair[0]);}));
   });
+  $card.find('.bm-modern-export-toolbar.bm-export-placeholder').remove();
   var $wrap=$table.closest('.bm-account-table-wrap,.project-table-wrap,.sector-table-wrap,.area-table-wrap');
   if($wrap.length)$toolbar.insertBefore($wrap);else $card.prepend($toolbar);
   return {refresh:applyVisibility};
