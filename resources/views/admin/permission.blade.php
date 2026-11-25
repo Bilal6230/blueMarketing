@@ -30,17 +30,7 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="card bm-account-card">
-                            @can('create permission')
-                            <div class="card-header bm-permission-card-actions">
-                                <h3 class="card-title">
-                                    <div class="btn-group">
-                                        <a href="#" class="btn btn-sm btn-success" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i class="fas fa-plus"></i> Add</a>
-                                        <a href="{{ route('permission.reload') }}" class="btn btn-sm btn-warning"><i class="fas fa-sync-alt"></i> Reload</a>
-                                    </div>
-                                </h3>
-                            </div>
-                            @endcan
-                            <!-- /.card-header -->
+                            
                             <div class="bm-modern-export-toolbar bm-export-placeholder" aria-label="Table export toolbar loading">
   <button type="button" class="bm-modern-export-btn" disabled>Copy</button>
   <button type="button" class="bm-modern-export-btn" disabled>CSV</button>
@@ -48,6 +38,17 @@
   <button type="button" class="bm-modern-export-btn" disabled>PDF</button>
   <button type="button" class="bm-modern-export-btn" disabled>Print</button>
   <button type="button" class="bm-modern-export-btn bm-modern-col-toggle" disabled>Column Visibility</button>
+@can('create permission')
+                            <div class="bm-permission-toolbar-actions">
+                                <div class="bm-toolbar-action-buttons">
+                                    <div class="btn-group">
+                                        <a href="#" class="btn btn-sm btn-success" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i class="fas fa-plus"></i> Add</a>
+                                        <a href="{{ route('permission.reload') }}" class="btn btn-sm btn-warning"><i class="fas fa-sync-alt"></i> Reload</a>
+                                    </div>
+                                </div>
+                            </div>
+                            @endcan
+                            
 </div>
     <div class="card-body table-responsive bm-account-table-wrap">
                                 <table id="bmAccountDirectory" data-initial-skeleton="true" class="table table-bordered bm-account-table bm-pending-directory">
