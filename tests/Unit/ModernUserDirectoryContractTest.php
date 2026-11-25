@@ -24,7 +24,7 @@ final class ModernUserDirectoryContractTest extends TestCase
             'bm-modern-accounts bm-user-directory',
             'data-account-kind="user"',
             'bm-account-card', 'bm-account-table-wrap', 'bm-account-table',
-            'id="bmAccountDirectory"', 'bm-account-loading',
+            'id="bmAccountDirectory"', 'bm-cell-skeleton-row',
             'modern-account-directory.js', 'modern-user-directory.css',
             'Employee Setup', "route('employee-definitions.index')",
             'status-toggle', 'btn-edit', 'btn-delete',
