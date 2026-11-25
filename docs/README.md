@@ -1,3 +1,26 @@
+# 2026-11-25 — Milestone 06 continued: latest browser gate PASS; Stock/Plot/Bank/Labour row-audit implementation (local tests pending)
+
+**Owner verified:** Milestone 06 batch 3 browser acceptance PASS, including no read-only AJAX `get_account` activity on new requests and the disposable user/update View workflow. Earlier full-height Activity Audit CR/DR-style table and targeted terminal tests also PASS. Do not re-request already accepted browser/UI gates.
+
+**Additional code delivered:** Existing PHPUnit `Milestone06ActivityAuditContractTest.php` contained an accidentally duplicated invalid trailing block after the class closing brace; repaired before this batch. New additive migration `2026_11_25_134000_expand_activity_audit_stock_plot_bank_sources.php` adds transaction-scoped MySQL/MariaDB row auditing (exact ID, allowlisted old/new values) to existing ID-keyed Stock (items, parties, entries/lines, billing/lines, movements, balance rows), Plot (receipts, purchases, items, linked postings), Bank (transfers, approvals, allocations, custody) and Labour source tables. Includes only existing tables with `id` columns, so missing/legacy/composite-key tables remain SQL-observation-only. Does not change finance posting logic, Labour CP workflow, or any business table structure, and never logs contact/bank instrument secrets or narration. Independent contract test added; owners must run the new migration and focused test before reporting PASS.
+
+**Current Milestone 06 limitations:** Audit captures admin web request writes; external API calls, scheduled jobs, direct SQL changes outside a correlated web request, and many other business tables are not guaranteed covered. SQL-observation entries cannot prove affected record IDs/commits; transaction triggers cover exact rows for listed tables only. Historical audit entries are not backfilled. Audit evidence failures are currently logged without rolling back already committed financial actions. Full coverage/performance/retention still requires further planning and testing.
+
+**Owner local verification:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan migrate --path=database/migrations/2026_11_25_134000_expand_activity_audit_stock_plot_bank_sources.php
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+**Focused browser only after terminal green:** Use disposable Stock Entry or Stock Bill record, make a permitted small change, open `http://localhost:8001/admin/activity-audit`, click View, confirm related source and movement tables show real transaction-backed row IDs/allowed before/after fields when changed; no password or sensitive account details. For Bank/Plot, check a disposable allowed change with already working voucher workflows; do not test Labour CP while M03 hold remains.
+
+**Milestone state:** M01, M02, M04, M05 owner accepted; M03 Labour CP ON HOLD; M06 actively in progress. Code pushed; this latest migration/test gate has NOT been locally verified yet.
+
+---
+
 # 2026-11-25 — Milestone 06 batch 3: owner-accepted viewport UI; audit signal quality and module coverage (local verification pending)
 
 **Owner acceptance:** Owner screenshot confirms Activity Audit now matches the CR/DR compact green table design with real shared header filters, numbered footer pagination and full viewport-height card; owner explicitly reports terminal tests PASS. Existing `journal.voucher.update` in the screenshot records linked `journal_voucher_details`, `journal_vouchers`, `ledger_source_attributions`, `ledgers` table operations and separate cash-revision approval tables; this is real evidence of multi-table auditing, not proof of exact row changes for tables without triggers.
