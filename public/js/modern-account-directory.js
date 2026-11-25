@@ -12,7 +12,7 @@ $(function(){
 
  var kind=$root.attr('data-account-kind'),$card=$table.closest('.bm-account-card'),
      $body=$table.find('tbody'),$header=$root.find('.content-header').first();
- var columns=$table.find('thead th').length,rows=$body.children('tr').detach().toArray();
+ var columns=$table.find('thead th').length,rows=$body.children('tr').not('.bm-cell-skeleton-row').detach().toArray();
  var currentPage=1,pageSize=25,sortColumn=0,sortDescending=false,filters={},dateRanges={};
  var $newButton=$('<button>',{'class':'btn btn-primary btn-sm bm-account-new',type:'button'})
     .append($('<i>',{'class':'fas fa-plus mr-1'})).append($('<span>',{text:' New '+(kind==='head'?'Main Account':kind==='subhead'?'Party Account':'Joint Account')}));
@@ -195,9 +195,7 @@ $(function(){
    else if(window.Swal)window.Swal.fire({icon:isError?'error':'success',text:message});
  }
  function reloadRows(){
-   var $wrap=$table.closest('.bm-account-table-wrap'),$loading=$('<div>',{'class':'bm-account-loading bm-account-refresh-loading','aria-live':'polite'})
-     .append($('<span>'),$('<span>'),$('<span>'));
-   $wrap.addClass('bm-account-is-refreshing').append($loading);
+   var stopSkeleton=$.blueModernDirectoryTools.skeleton($table.closest('.bm-account-table-wrap'));
    return $.ajax({url:window.location.pathname+window.location.search,type:'GET',dataType:'html',
      headers:{Accept:'text/html','X-Requested-With':'XMLHttpRequest'}}).done(function(html){
      var $html=$('<div>').append($.parseHTML(html,document,false));
@@ -208,7 +206,7 @@ $(function(){
      rows=$fresh.detach().toArray();
      prepareRows();currentPage=1;render();
    }).fail(function(){notify('Table refresh failed. Please try again.',true);})
-   .always(function(){$loading.remove();$wrap.removeClass('bm-account-is-refreshing');});
+   .always(function(){stopSkeleton();});
  }
  function submitAjax($form,onSuccess){
    var $submit=$form.find('[type=submit]').first();
@@ -323,6 +321,7 @@ $(function(){
    }
  }
  prepareRows();
+ $body.children('.bm-cell-skeleton-row').remove();
  $root.find('.bm-account-loading').remove();
  $table.css('visibility','visible');
  render();
