@@ -61,6 +61,24 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringNotContainsString('getBindings()', $capture);
     }
 
+    public function test_mysql_jv_trigger_records_before_and_after_values_with_request_token(): void
+    {
+        $source = $this->source('database/migrations/2026_11_25_132000_install_activity_audit_jv_triggers.php');
+        $middleware = $this->source('app/Http/Middleware/RecordActivityAudit.php');
+        $this->assertStringContainsString("'journal_vouchers'", $source);
+        $this->assertStringContainsString("'journal_voucher_details'", $source);
+        $this->assertStringContainsString("'ledgers'", $source);
+        $this->assertStringContainsString("'customer_ledger'", $source);
+        $this->assertStringContainsString("['INSERT' => 'ai', 'UPDATE' => 'au', 'DELETE' => 'ad']", $source);
+        $this->assertStringContainsString('JSON_OBJECT(', $source);
+        $this->assertStringContainsString('@activity_audit_token', $source);
+        $this->assertStringContainsString("'db_trigger_row'", $source);
+        $this->assertStringContainsString("SET @activity_audit_token = ?", $middleware);
+        $this->assertStringContainsString("SET @activity_audit_token = NULL", $middleware);
+        $this->assertStringContainsString("where('request_token', ", $middleware);
+        $this->assertStringContainsString("->whereNull('activity_audit_id')", $middleware);
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
@@ -69,6 +87,8 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringContainsString('$.blueTableSkeleton.show', $blade);
         $this->assertStringContainsString('audit-detail-modal', $blade);
         $this->assertStringContainsString('audit-view', $blade);
+        $this->assertStringContainsString('db_trigger_row', $blade);
+        $this->assertStringContainsString('affected_tables', $blade);
         $this->assertStringContainsString('sql_statement', $blade);
         $this->assertStringContainsString("->paginate(25)", $controller);
         $this->assertStringContainsString("DB::table('activity_audit_impacts')", $controller);
