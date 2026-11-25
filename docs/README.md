@@ -1,3 +1,24 @@
+# 2026-11-25 — M06 owner verified 19 tests / 171 assertions; strict audit trigger definition + transactional-engine validation added
+
+**Owner-proven prior gate:** `ActivityAuditTransactionBoundaryTest` **5/5 PASS (14 assertions)**, `Milestone06ActivityAuditContractTest` **14/14 PASS (157 assertions)**, strict MySQL health 129 expected audit triggers, 0 missing, 0 skipped, 0 orphan records or missing-parent references. That user-verified gate stands; do not repeat accepted browser checks.
+
+**New code (owner verification pending):** `activity-audit:health --strict` no longer treats trigger *names* alone as proof of correctness. It inspects `information_schema.TRIGGERS` for actual target table, operation (INSERT/UPDATE/DELETE), AFTER timing, audit request token and activity-audit-impact row insertion; detects invalid definitions separately from missing trigger names. It also checks `information_schema.TABLES` to confirm `InnoDB` engine on audit tables and every audited source table, because durable transactional rollback needs transactional storage. Non-strict mode warns; strict mode fails on incorrect definitions and nontransactional/unknown engines. A pure `TriggerDefinitionValidator` allows independent negative-case tests. `ActivityAuditTriggerDefinitionValidatorTest` adds five metadata tests; `Milestone06ActivityAuditContractTest` adds one regression contract. **Read-only diagnostics only**: no schema, trigger, business, financial or accounting changes.
+
+**Owner terminal gate, no migrations:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan optimize:clear
+php artisan test --filter=ActivityAuditTriggerDefinitionValidatorTest
+php artisan test --filter=Milestone06ActivityAuditContractTest
+php artisan activity-audit:health --strict
+```
+Expect 5 new metadata tests and 15 contract tests; strict health will add `Invalid trigger definitions` and `Nontransactional/unknown engines` counts, ideally 0. If engine/trigger validation reports a problem, investigate rather than automatically modifying data or engine.
+
+**Caveats:** Successful strict metadata validation does not itself execute a live MySQL rollback transaction; true trigger rollback integration and mobile API end-to-end still need isolated acceptance. Direct CLI/background actor identity, retention/performance, and exceptional no-response paths remain incomplete. Labour CP remains ON HOLD; M06 stays IN PROGRESS.
+
+---
+
 # 2026-11-25 — M06 rollback integration verified (16 tests / 162 assertions); error-response audit accuracy fix pending local tests
 
 **Owner verification:** The newly added `ActivityAuditTransactionBoundaryTest` passed **3 tests / 9 assertions**; `Milestone06ActivityAuditContractTest` passed **13 tests / 153 assertions**. On MySQL `activity-audit:health --strict` PASS: 129/129 triggers installed, 0 missing, 0 skipped, 0 orphan trigger snapshots and 0 impacts missing their parent. Existing full-height CR/DR-style audit UI has already been accepted. Do not repeat accepted browser or earlier migration gates.
