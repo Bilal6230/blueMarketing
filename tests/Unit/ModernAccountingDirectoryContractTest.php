@@ -58,6 +58,7 @@ final class ModernAccountingDirectoryContractTest extends TestCase
             'bm-account-col',
             'bm-account-create-modal',
             'bm-account-loading',
+            'Filter status',
             'aria-expanded',
             'widget.dates(',
             'widget.search(',
@@ -80,6 +81,9 @@ final class ModernAccountingDirectoryContractTest extends TestCase
             self::assertStringNotContainsString("@can('delete lead')", $source);
             self::assertStringContainsString('status_change_reason', $source);
             self::assertStringContainsString('bm-account-finance-modal', $source);
+            self::assertStringContainsString('<th>Status</th>', $source);
+            self::assertStringContainsString('<th>Created</th>', $source);
+            self::assertStringContainsString('bm-account-status', $source);
         }
         $head = $this->source('resources/views/admin/finance/accounting/head_accounts.blade.php');
         $party = $this->source('resources/views/admin/finance/accounting/child_accounts.blade.php');
