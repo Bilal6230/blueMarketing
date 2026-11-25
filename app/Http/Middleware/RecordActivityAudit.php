@@ -62,11 +62,14 @@ final class RecordActivityAudit
         $route = $request->route();
         $routeName = $route ? $route->getName() : null;
         if (!$actor || !in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
-            || !$route || str_starts_with((string) $routeName, 'activity-audit.')
-            || $response->getStatusCode() >= 400) {
+            || !$route || str_starts_with((string) $routeName, 'activity-audit.')) {
             return $response;
         }
 
+        // A 4xx/5xx HTTP response is not proof that a database transaction
+        // rolled back. If a write committed before a validation/error response,
+        // preserve its actual response status and the observed changes.
+        // Write-free failed requests still produce no activity record.
         // An audit schema migration is required before recording can begin.
         try {
             if (!Schema::hasTable('activity_audits')) {
