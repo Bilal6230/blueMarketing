@@ -3,7 +3,7 @@
 
 @push('style')
 <style>
-.bm-projects{--voucher-accent:#2563eb;--fvd-accent:#2563eb;--fvd-pop-accent:#2563eb;padding:15px 16px 10px;color:#263b56;font-size:12px;min-height:calc(100vh - 123px);display:flex;flex-direction:column}
+.bm-projects{--voucher-accent:#2563eb;--fvd-accent:#2563eb;--fvd-pop-accent:#2563eb;padding:15px 16px 10px;color:#263b56;font-size:12px;min-height:calc(100vh - 175px);display:flex;flex-direction:column}
 .bm-projects *{box-sizing:border-box}
 .bm-projects .project-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}
 .bm-projects .project-heading h2{font-size:19px;font-weight:750;color:#173a75;margin:0}
@@ -33,7 +33,7 @@
 .bm-projects .project-footer-controls{display:flex;align-items:center;gap:8px}
 .bm-projects .project-footer-controls select{height:29px;padding:3px 7px;font-size:11px;border:1px solid #d5e0ec;border-radius:5px;background:white}
 .bm-projects .project-footer-controls button{font-size:11px}
-@media(max-width:767px){.bm-projects{min-height:calc(100vh - 110px)}.bm-projects .project-table-wrap{overflow-x:auto}}
+@media(max-width:767px){.bm-projects{min-height:calc(100vh - 160px)}.bm-projects .project-table-wrap{overflow-x:auto}}
 .bm-projects .project-skeleton{height:12px;display:block;max-width:100%;border-radius:5px;background:linear-gradient(90deg,#edf2f8 25%,#f9fbfe 50%,#edf2f8 75%);background-size:200% 100%;animation:bmProjectShimmer 1.4s ease infinite}
 .bm-projects .project-skeleton.long{width:140px}.bm-projects .project-skeleton.mid{width:90px}.bm-projects .project-skeleton.short{width:38px}
 @keyframes bmProjectShimmer{to{background-position-x:-200%}}
