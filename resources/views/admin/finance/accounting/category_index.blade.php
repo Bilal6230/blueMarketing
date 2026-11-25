@@ -78,15 +78,18 @@
                                         <td>{{ $map->head_name ?? 'N/A' }}</td>
                                         <td>{{ $map->subhead_name ?? 'N/A' }}</td>
                                         <td>
+                                            @can('update accounting')
                                             <button type="button" class="btn btn-warning btn-sm editBtn" data-blue-action-label="Edit mapping"
                                                 data-id="{{ $map->id }}">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-
+                                            @endcan
+                                            @can('delete accounting')
                                             <button type="button" class="btn btn-danger btn-sm deleteBtn" data-blue-action-label="Delete mapping"
                                                 data-id="{{ $map->id }}">
                                                 <i class="fas fa-trash"></i>
                                             </button>
+                                            @endcan
                                         </td>
                                     </tr>
                                 @endforeach
