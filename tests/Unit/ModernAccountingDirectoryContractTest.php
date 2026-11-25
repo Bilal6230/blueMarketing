@@ -38,7 +38,7 @@ final class ModernAccountingDirectoryContractTest extends TestCase
         $js = $this->source('public/js/modern-account-directory.js');
 
         foreach ([
-            'min-height:calc(100vh - 174px)',
+            'height:var(--bm-account-available-height,calc(100dvh - 225px))',
             'font-size:14px!important',
             'font-size:13px!important',
             'border-right:1.5px solid #aebfd3!important',
