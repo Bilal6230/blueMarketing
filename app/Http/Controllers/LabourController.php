@@ -61,9 +61,11 @@ class LabourController extends Controller
             $days[] = $day->format('Y-m-d');
             $day->addDay();
         }
-        $x['attendance_labours'] = Labour::query()->whereHas('attendances', function ($query) use ($days, $selectedProjectId) {
-            $query->where('project_id', $selectedProjectId)->whereIn('date', $days)->with('site');
-        })->get();
+        $x['attendance_labours'] = auth()->user()?->can('read attendance')
+            ? Labour::query()->whereHas('attendances', function ($query) use ($days, $selectedProjectId) {
+                $query->where('project_id', $selectedProjectId)->whereIn('date', $days)->with('site');
+            })->get()
+            : collect();
 
 
         $x['headaccounts'] = $data_list;
