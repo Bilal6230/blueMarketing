@@ -1,3 +1,17 @@
+# 2026-11-25 — M06 real CRM audit: assert both non-trigger observation types (owner gate pending)
+
+**Owner results:** `Milestone06ActivityAuditContractTest` **20 PASS / 232 assertions**. `ActivityAuditAuthenticatedApiTest` **3 PASS, 1 FAIL / 26 assertions**. The real `MobileCrmController::store` request returned success, created one lead and one lead-user assignment, and its actor ID, route and action checks passed. The final assertion expected only one `leads` impact but there were **two**. On isolated SQLite (no installed MySQL triggers), `ActivityAuditCapture` records both `eloquent_row` (model identity/allowlisted values) and `sql_statement` (table-level observed write) for one lead insert. These are distinct capture evidence, not two lead rows. Updated test to require **exactly one of each**, verify the Eloquent record ID and SQL statement count. No production controller, business data, local database or migrations changed.
+
+**Only failed-suite retest:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ActivityAuditAuthenticatedApiTest
+```
+Target 4 PASS; new assertion is not yet locally verified. Do not repeat accepted contract, strict health, browser or background gates. This tests real CRM controller logic in SQLite but uses mocked permission decision; genuine permission/project browser acceptance remains separate.
+
+---
+
 # 2026-11-25 — M06 real CRM controller test: complete isolated leads fixture columns
 
 **Owner result:** `ActivityAuditAuthenticatedApiTest` **3 PASS, 1 FAIL (17 assertions)**. The failing real `MobileCrmController::store` case returned 500 because its in-memory SQLite `leads` fixture did not have the `gender` field. The controller always inserts explicit nullable values for `gender`, `area_id`, `type`, `business`, `designation`, `zone_id`, `home_address`, and `office_address` even when not provided in the POST body. All eight columns have now been added to the isolated fixture so the next run doesn't uncover the same missing-column error one field at a time. The production CRM controller and permanent MySQL schema were not changed.
