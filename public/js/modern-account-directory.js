@@ -182,6 +182,15 @@ $(function(){
  function prepareRows(){
    $(rows).each(function(){
      var $cell=$(this).children('td').last();
+     // The global speed-dial keeps each original approval button and its
+     // delegated AJAX handler; only the display changes to a compact +.
+     if(kind==='lead-approvals'){
+       $cell.addClass('blue-actions-cell');
+       $cell.children('.approve-btn').attr({'type':'button','data-blue-action-label':'Approve','data-blue-action-type':'approve'});
+       $cell.children('.reject-btn').attr({'type':'button','data-blue-action-label':'Reject','data-blue-action-type':'reject'});
+       $cell.children('.btn-view-details').attr({'type':'button','data-blue-action-label':'View Details','data-blue-action-type':'view'});
+       return;
+     }
      var $actions=$cell.find('.btn-edit,.btn-delete,.editBtn,.deleteBtn');
      if(!$actions.length)return;
      $cell.addClass('blue-actions-cell');
