@@ -168,6 +168,35 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringNotContainsString('DB::unprepared(', $source);
     }
 
+    public function test_composite_primary_key_auditing_never_invents_surrogate_ids(): void
+    {
+        $source = $this->source('database/migrations/2026_11_25_135000_audit_composite_primary_key_tables.php');
+        $health = $this->source('app/Console/Commands/ActivityAuditHealth.php');
+
+        foreach ([
+            'finance_posting_source_claims',
+            'finance_posting_journal_sources',
+            'finance_journal_line_sources',
+            'stock_item_balances',
+            'stock_project_item_balances',
+            'stock_project_item_definitions',
+            'finance_plot_receipt_postings',
+        ] as $table) {
+            $this->assertStringContainsString("'".$table."'", $source);
+            $this->assertStringContainsString("'".$table."'", $health);
+        }
+
+        $this->assertStringContainsString("where('CONSTRAINT_NAME', 'PRIMARY')", $source);
+        $this->assertStringContainsString('array_diff($primary, self::SAFE_FIELDS)', $source);
+        $this->assertStringContainsString("CONCAT('pk:', SHA2(", $source);
+        $this->assertStringContainsString("'db_trigger_row'", $source);
+        $this->assertStringContainsString('@activity_audit_token', $source);
+        $this->assertStringContainsString('COMPOSITE PRIMARY KEY', $health);
+        $this->assertStringContainsString('no safe declared primary key', $health);
+        $this->assertStringNotContainsString('Schema::table(', $source);
+        $this->assertStringNotContainsString('Schema::drop', $source);
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
