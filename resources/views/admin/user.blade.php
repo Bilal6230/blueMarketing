@@ -125,6 +125,14 @@
                                     </tbody>
                                 </table>
                             </div>
+<div class="bm-account-footer bm-account-footer-placeholder" aria-label="Table pagination loading">
+  <div class="bm-account-footer-left">
+    <small class="text-muted">Loading records...</small>
+    <select disabled aria-label="Rows per page"><option selected>25</option></select>
+    <button type="button" class="btn btn-outline-secondary btn-sm" disabled>Reset filters</button>
+  </div>
+  <div class="bm-account-pages"><button type="button" class="dv-page-btn" disabled>1</button></div>
+</div>
                             <!-- /.card-body -->
                         </div>
                         <!-- /.card -->
