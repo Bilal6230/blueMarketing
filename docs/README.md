@@ -1,3 +1,22 @@
+# 2026-11-25 — M06 real MySQL rollback owner PASS; exception-after-commit audit fix (new local gate pending)
+
+**Owner-verified acceptance:** Existing local MySQL trigger `ActivityAuditMysqlTriggerRollbackTest` **2 PASS, 10 assertions**, showing rollback removes its trigger impact and commit retains its trigger impact until the test's token-scoped cleanup. `Milestone06ActivityAuditContractTest` **16 PASS, 189 assertions**. Earlier strict health also PASS: 129/129 installed, 0 invalid, 0 nontransactional engines, 0 missing, 0 skipped. No new database/table/trigger was required. These passed gates should not be re-requested.
+
+**New implementation:** `RecordActivityAudit` previously let an uncaught controller exception bypass activity finalization entirely, even where an earlier transaction in the request had already committed. Middleware now catches that exception temporarily, finalizes audit observation using HTTP status 500, and **rethrows the identical original exception** after recording (so existing Laravel exception handling remains authoritative). If no business write was observed, the exception is still rethrown but no audit record is created. If all observed writes rolled back, no false audit record is created. It continues to clear MySQL audit session tokens and stop request listeners. Three isolated in-memory SQLite integration cases and one structural contract case were added. No business-table schema, finance posting, approval or Labour CP changes.
+
+**New local verification:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ActivityAuditTransactionBoundaryTest
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+Expected 8 feature tests and 17 contract tests. These new tests are **not yet owner-verified**, so do not claim them PASS. No migrations, new tables, MySQL probe re-run or browser UI tests required for this batch.
+
+**Remaining M06:** Authenticated mobile app write end-to-end with actor identity; background/CLI job audit attribution and controlled scope; evidence retention/performance; full regression signoff. M03 Labour CP remains ON HOLD.
+
+---
+
 # 2026-11-25 — M06 MySQL rollback probe: fix PHPUnit missing connection configuration
 
 **Owner result:** `Milestone06ActivityAuditContractTest` **16 PASS / 186 assertions**. Real MySQL rollback probe **2 SKIPPED / 0 assertions** with reason `Laravel MySQL driver configuration is missing`. The prior strict MySQL Audit Health verification remained fully PASS (129/129 valid triggers). Skipped tests are not accepted as rollback evidence.
