@@ -59,7 +59,7 @@
                                             <th>Customer</th>
                                             <th>Phone</th>
                                             <th>Sale Amount</th>
-                                            @canany(['update booking', 'update booking price', 'delete booking'])
+                                            @canany(['update booking', 'delete booking'])
                                                 <th>Action</th>
                                             @endcanany
                                         </tr>
@@ -106,7 +106,7 @@
                                                         {{ Setting::formatAmount($i->total_price) }}
                                                     @endcan
                                                 </td>
-                                                @canany(['update booking', 'update booking price', 'delete booking'])
+                                                @canany(['update booking', 'delete booking'])
                                                     <td>
                                                         <div class="btn-group">
                                                             @can('update booking')
