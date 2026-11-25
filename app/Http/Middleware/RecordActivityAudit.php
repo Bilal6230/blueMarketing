@@ -15,7 +15,8 @@ final class RecordActivityAudit
 {
     /**
      * Log authenticated mutations after the response was produced. Never log
-     * credentials, cookies, query strings, POST body, attachments or amounts.
+     * credentials, cookies, query strings, POST body or attachments.
+     * Transactional row capture allows selected accounting amounts only.
      * Finance posting and authorization remain handled by their existing code.
      */
     public function handle(Request $request, Closure $next): Response
