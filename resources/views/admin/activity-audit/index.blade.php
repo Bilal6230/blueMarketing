@@ -57,7 +57,7 @@
       <tr><td>{{ $event->id }}</td><td class="text-nowrap">{{ $event->created_at }}</td>
        <td>{{ $event->actor_name ?? 'Former user' }} (#{{ $event->actor_id }})</td>
        <td>{{ $event->action }}</td><td>{{ $event->route_name ?? '—' }}</td>
-       <td><small class="text-muted">View details</small></td>
+       <td><small class="text-muted">{{ $event->affected_tables ?? "—" }}</small></td>
        <td>{{ $event->response_status }}</td><td>{{ $event->ip_address ?? '—' }}</td>
        <td><button type="button" class="audit-view" data-id="{{ $event->id }}"><i class="far fa-eye mr-1"></i> View</button></td></tr>
      @empty
@@ -112,7 +112,7 @@ $(function(){
     $.each(data.rows,function(_,row){
      const $tr=$('<tr>');
      $tr.append(cell(row.id),cell(row.created_at),cell((row.actor_name||'Former user')+' (#'+row.actor_id+')'),
-       cell(row.action),cell(row.route_name),cell('View details'),cell(row.response_status),cell(row.ip_address));
+       cell(row.action),cell(row.route_name),cell(row.affected_tables),cell(row.response_status),cell(row.ip_address));
      $tr.append($('<td>').append($('<button>',{type:'button','class':'audit-view','data-id':row.id})
        .append($('<i>',{'class':'far fa-eye mr-1'})).append(' View')));
      $body.append($tr);
@@ -165,7 +165,7 @@ $(function(){
  });
  $(document).on('click',function(e){if(!$(e.target).closest('#audit-filter-pop,.audit-column-filter').length)$('#audit-filter-pop').hide();});
  function renderDiff($target,before,after){
-  const names=[...new Set([...Object.keys(before||{}),...Object.keys(after||{})])];
+  const names=[...new Set([...Object.keys(before||{}),...Object.keys(after||{})])].filter(key=>JSON.stringify((before||{})[key])!==JSON.stringify((after||{})[key]));
   if(!names.length){$target.append($('<div>',{'class':'text-muted',text:'Record identity captured; no allowlisted field values available.'}));return;}
   const $table=$('<table>',{'class':'audit-diff'}),$tbody=$('<tbody>');
   $table.append($('<thead>').append($('<tr>').append($('<th>').text('Field'),$('<th>').text('Before'),$('<th>').text('After'))));
@@ -181,13 +181,13 @@ $(function(){
    const a=data.event;
    $('#audit-detail-subtitle').text((a.actor_name||'Former user')+' · '+a.action+' · '+a.created_at+' · '+(a.route_name||a.request_path));
    $target.empty();
-   const rows=data.impacts.filter(i=>i.capture_type==='eloquent_row');
+   const rows=data.impacts.filter(i=>i.capture_type==='eloquent_row'||i.capture_type==='db_trigger_row');
    const sql=data.impacts.filter(i=>i.capture_type==='sql_statement');
    $target.append($('<h6>',{text:'Captured row changes ('+rows.length+')'}));
-   if(!rows.length)$target.append($('<p>',{'class':'text-muted',text:'No row-level changes captured. Query Builder writes do not automatically expose exact row values.'}));
+   if(!rows.length)$target.append($('<p>',{'class':'text-muted',text:'No row-level changes captured for this operation. Non-triggered Query Builder writes do not automatically expose exact row values.'}));
    $.each(rows,function(_,item){
     const $card=$('<div>',{'class':'audit-impact'});
-    $card.append($('<div>',{'class':'font-weight-bold mb-2',text:item.table_name+' · '+item.operation+' · Record #'+item.record_id}));
+    $card.append($('<div>',{'class':'font-weight-bold mb-2',text:item.table_name+' · '+item.operation+' · Record #'+item.record_id+(item.capture_type==='db_trigger_row'?' · Transactional row capture':' · Model event')}));
     let before=null,after=null;
     try{before=JSON.parse(item.before_values||'{}');after=JSON.parse(item.after_values||'{}');}catch(e){}
     renderDiff($card,before||{},after||{});$target.append($card);
