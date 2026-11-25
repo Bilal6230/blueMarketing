@@ -1,3 +1,21 @@
+# 2026-11-25 — M06: owner-approved same-local-DB MySQL rollback test, no extra DB/table
+
+**Owner instruction:** This development database is local testing data. Do not require a new test database or create any additional table. Replaced the previous opt-in fixture-based `ActivityAuditMysqlTriggerRollbackTest` with an in-place test of the **already-installed** `bm_audit_users_au` trigger against the configured local `mysql` connection. It refuses non-loopback database hosts. The existing lowest-ID user is updated with its **existing `status_id` value** (no actual state change). In one test the UPDATE executes inside an explicit rollback and the trigger snapshot must disappear; in another, the same-value UPDATE commits and produces a token-correlated `db_trigger_row` snapshot. After each test, only audit impacts matching its unique probe token, unattached activity_id, table name, operation and capture type are deleted; the session audit token is cleared. No database/table/trigger creation, no migration, no business row deletion, no finance posting changes. Existing `users` table and Activity Audit trigger are prerequisites. This is testing-only code and must not run against a remote DB host.
+
+**Last owner-verified gate:** ActivityAuditTriggerDefinitionValidatorTest 5 PASS / 7 assertions; Milestone06ActivityAuditContractTest 15 PASS / 170 assertions; strict health PASS: 129/129 triggers, 0 invalid definitions, 0 nontransactional engines, 0 missing, 0 skipped. Previous SQLite transaction feature tests 5 PASS / 14 assertions. New MySQL same-DB test and updated contract assertion **not yet locally verified**.
+
+**Owner verification (no migrations and no manual DB setup):**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ActivityAuditMysqlTriggerRollbackTest
+php artisan test --filter=Milestone06ActivityAuditContractTest
+php artisan activity-audit:health --strict
+```
+No `AUDIT_MYSQL_TEST_DATABASE` environment variable required. The former isolated-empty-database instructions in the earlier history below are superseded and should NOT be followed. If the tests SKIP due to a nonlocal host or missing existing trigger/user, do not call that PASS. M06 remains in progress: genuine authenticated mobile-app write and background/CLI capture still pending.
+
+---
+
 # 2026-11-25 — M06 trigger definition owner gate PASS; opt-in isolated REAL MySQL rollback integration probe (not yet run)
 
 **Owner verification:** `ActivityAuditTriggerDefinitionValidatorTest` **5/5 PASS (7 assertions)**, `Milestone06ActivityAuditContractTest` **15/15 PASS (170 assertions)**, and `activity-audit:health --strict` **PASS** on MySQL. The health output shows 6 activity events, 34 impacts, zero stale unlinked snapshots or missing-parent references, **129/129 named triggers**, **0 invalid trigger definitions**, **0 nontransactional/unknown engines**, **0 missing triggers**, and **0 skipped source tables**. This is verified source/database metadata coverage, not an actual MySQL rollback execution test.
