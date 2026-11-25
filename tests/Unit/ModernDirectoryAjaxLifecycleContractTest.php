@@ -41,8 +41,8 @@ final class ModernDirectoryAjaxLifecycleContractTest extends TestCase
             'reloadRows()',
             "kind==='permission'",
             "'click.bmDirectoryReload'",
-            'bm-account-refresh-loading',
-            'bm-account-is-refreshing',
+            'bm-cell-skeleton-row',
+            'bm-pending-directory',
         ] as $needle) {
             self::assertStringContainsString($needle, $js);
         }
