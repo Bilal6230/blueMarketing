@@ -15,6 +15,12 @@ final class RolePermissionCatalog
         'voucher approver', 'can approve',
     ];
 
+    /** Old sidebar-only toggles have no real backend guards anymore. */
+    public static function isUnusedModuleToggle(string $name): bool
+    {
+        return in_array(strtolower(trim($name)), ['stock module','labour module'], true);
+    }
+
     public static function isLegacyVoucher(string $name): bool
     {
         return in_array(strtolower(trim($name)), self::LEGACY_VOUCHER_NAMES, true);
@@ -27,7 +33,7 @@ final class RolePermissionCatalog
 
     public static function category(string $name): string
     {
-        if (self::isLegacyVoucher($name)) return 'legacy';
+        if (self::isLegacyVoucher($name) || self::isUnusedModuleToggle($name)) return 'legacy';
         if (self::isFinanceAction($name)) return 'finance';
         return 'general';
     }
