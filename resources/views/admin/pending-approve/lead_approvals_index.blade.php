@@ -1,27 +1,36 @@
 @extends('admin.layouts.master')
-
+@push('style')
+<link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}">
+<link rel="stylesheet" href="{{ asset('css/modern-lead-approvals.css') }}?v=1">
+@endpush
 @section('content')
-    <div class="content-wrapper">
-        <div class="content">
-            <div class="container-fluid mt-2">
-                <div class="card shadow-lg border-0">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">{{ $title }}</h4>
-                    </div>
-                    <div class="card-body">
-                        <table id="leadApprovalTable" class="table table-bordered table-hover">
-                            <thead class="bg-dark text-white">
-                                <tr>
-                                    <th style="background-color: black !important">Request ID</th>
-                                    <th style="background-color: black !important">Lead</th>
-                                    <th style="background-color: black !important">Current Assigned Users</th>
-                                    <th style="background-color: black !important">Requested User</th>
-                                    <th style="background-color: black !important">Submitted At</th>
-                                    <th style="background-color: black !important">Status</th>
-                                    <th style="background-color: black !important">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+<div class="content-wrapper bm-modern-accounts bm-lead-approvals" data-account-kind="lead-approvals">
+<div class="content-header"><div class="container-fluid"><div class="row mb-2">
+<div class="col-sm-8"><h1 class="m-0">{{ $title }}</h1></div>
+</div></div></div>
+<section class="content"><div class="container-fluid"><div class="row"><div class="col-12">
+<div class="card bm-account-card">
+<div class="bm-modern-export-toolbar bm-export-placeholder" aria-label="Export controls loading">
+<button type="button" class="bm-modern-export-btn" disabled>Copy</button>
+<button type="button" class="bm-modern-export-btn" disabled>CSV</button>
+<button type="button" class="bm-modern-export-btn" disabled>Excel</button>
+<button type="button" class="bm-modern-export-btn" disabled>PDF</button>
+<button type="button" class="bm-modern-export-btn" disabled>Print</button>
+<button type="button" class="bm-modern-export-btn" disabled>Column Visibility</button>
+</div>
+<div class="card-body bm-account-table-wrap">
+<table id="bmAccountDirectory" data-initial-skeleton="true" class="table table-bordered bm-account-table bm-pending-directory">
+<thead><tr>
+<th>Request ID</th><th>Lead</th><th>Current Assigned Users</th><th>Requested User</th><th>Submitted At</th><th>Status</th><th>Actions</th>
+</tr></thead>
+<tbody>
+@for($skeletonIndex=0;$skeletonIndex<6;$skeletonIndex++)
+<tr class="bm-cell-skeleton-row" aria-hidden="true">
+@for($columnIndex=0;$columnIndex<7;$columnIndex++)
+<td><span class="bm-cell-skeleton"></span></td>
+@endfor
+</tr>
+@endfor
                                 @forelse($pendingUpdates as $update)
                                     <tr>
                                         <td>{{ $update->id }}</td>
@@ -65,13 +74,12 @@
                                     </tr>
                                 @endforelse
                             </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
+</table></div>
+<div class="bm-account-footer bm-account-footer-placeholder" aria-label="Pagination loading">
+<div class="bm-account-footer-left"><small class="text-muted">Loading records...</small><select disabled aria-label="Rows per page"><option selected>25</option></select><button type="button" class="btn btn-outline-secondary btn-sm" disabled>Reset filters</button></div>
+<div class="bm-account-pages"><button type="button" class="dv-page-btn" disabled>1</button></div>
+</div>
+</div></div></div></div></section></div>
     <div class="modal fade" id="leadApprovalModal" tabindex="-1" aria-labelledby="leadApprovalModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
@@ -91,11 +99,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         $(function() {
-            $('#leadApprovalTable').DataTable({
-                responsive: true,
-                autoWidth: false
-            });
-
             const csrfToken = '{{ csrf_token() }}';
 
             function parsePayloadScript(scriptId, fallbackValue) {
@@ -155,14 +158,17 @@
                         data: {
                             _token: csrfToken
                         },
-                        success: function() {
-                            window.location.reload();
+                        dataType: 'json',
+                        headers: {Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+                        success: function(response) {
+                            if(window.toastr)toastr.success(response.message || 'Request processed successfully.');
+                            $(document).trigger('bm:account-refresh');
                         },
                         error: function(xhr) {
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
-                                text: xhr.responseJSON?.message || 'Something went wrong.'
+                                text: (xhr.responseJSON || {}).message || 'Something went wrong.'
                             });
                         }
                     });
@@ -219,4 +225,5 @@
             });
         });
     </script>
+    <script src="{{ asset('js/modern-account-directory.js') }}"></script>
 @endsection
