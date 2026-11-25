@@ -7,7 +7,7 @@
             <div class="container-fluid">
                 <div class="row mb-2">
                     <div class="col-sm-6">
-                        <h1 class="m-0">{{ $title }}</h1>
+                        <h1 class="m-0">Joint Accounts</h1>
                     </div>
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
@@ -25,6 +25,7 @@
 
                     {{-- Create Form --}}
                     <div class="card-header bm-account-create-source">
+                        @can('create accounting')
                         <form action="{{ route('accounting.category_store') }}" method="POST">
                             @csrf
                             <div class="row">
@@ -58,6 +59,7 @@
                                 <button type="submit" class="btn btn-primary">Save</button>
                             </div>
                         </form>
+                        @endcan
                     </div>
 
                     {{-- Data Table --}}
@@ -68,7 +70,7 @@
                                     <th>#</th>
                                     <th>Head Account</th>
                                     <th>Sub Head Account</th>
-                                    <th>Action</th>
+                                    @canany(['update accounting','delete accounting'])<th>Actions</th>@endcanany
                                 </tr>
                             </thead>
                             <tbody>
@@ -77,6 +79,7 @@
                                         <td>{{ $index + 1 }}</td>
                                         <td>{{ $map->head_name ?? 'N/A' }}</td>
                                         <td>{{ $map->subhead_name ?? 'N/A' }}</td>
+                                        @canany(['update accounting','delete accounting'])
                                         <td>
                                             @can('update accounting')
                                             <button type="button" class="btn btn-warning btn-sm editBtn" data-blue-action-label="Edit mapping"
@@ -91,6 +94,7 @@
                                             </button>
                                             @endcan
                                         </td>
+                                        @endcanany
                                     </tr>
                                 @endforeach
                             </tbody>
