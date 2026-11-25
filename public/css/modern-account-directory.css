@@ -266,3 +266,20 @@ body.bm-account-directory-page .content-wrapper.bm-modern-accounts{
  background:linear-gradient(180deg,#ffffffea,#f7faffed);
  padding:23px 15px!important;pointer-events:none;
 }
+
+
+/* Column-by-column placeholders on initial render and on AJAX changes.
+   Never replace/hide toolbar, table headings or pagination. */
+.bm-modern-accounts .bm-account-table.bm-pending-directory tbody tr:not(.bm-cell-skeleton-row){display:none!important}
+.bm-modern-accounts .bm-account-table .bm-cell-skeleton-row{background:#fff!important}
+.bm-modern-accounts .bm-account-table .bm-cell-skeleton-row:nth-child(even){background:#edf2f8!important}
+.bm-modern-accounts .bm-account-table .bm-cell-skeleton-row td{height:48px!important}
+.bm-modern-accounts .bm-account-table .bm-cell-skeleton{
+ display:block!important;width:72%;max-width:190px;height:13px;margin:3px 0;
+ border-radius:5px;
+ background:linear-gradient(90deg,#e6edf6 25%,#f9fcff 50%,#e6edf6 75%);
+ background-size:200% 100%;animation:bmAccountLoading 1.4s ease infinite;
+}
+.bm-modern-accounts .bm-account-table .bm-cell-skeleton-row td:first-child .bm-cell-skeleton,
+.bm-modern-accounts .bm-account-table .bm-cell-skeleton-row td:last-child .bm-cell-skeleton{width:40%;min-width:23px}
+@media(prefers-reduced-motion:reduce){.bm-modern-accounts .bm-account-table .bm-cell-skeleton{animation:none}}
