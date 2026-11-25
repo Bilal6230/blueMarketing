@@ -737,8 +737,10 @@
                             @can('read attendance')<button class="tab" data-tab="attendance" aria-selected="false">Attendance</button>@endcan
                             <button class="tab" data-tab="addLabour" aria-selected="true">{{ auth()->user()->can('create labour') ? 'Add Labour' : 'Labour List' }}</button>
                             <button class="tab" data-tab="sites">Site List</button>
+                            @can('read attendance')
                             <button class="tab" data-tab="siteReport">Site Voucher</button>
                             <button class="tab" data-tab="personReport">Labour Payment</button>
+                            @endcan
                             <a class="tab" href="{{ route('contractors.index') }}">Contractors</a>
                         </div>
                     </div>
