@@ -1,3 +1,33 @@
+# 2026-11-25 — M06 batch 2: activity register modernization + transactional JV row audit (LOCAL VERIFICATION PENDING)
+
+Owner screenshot confirms `http://localhost:8001/admin/activity-audit` successfully opens with a real user-status POST logged. Owner requested global compact CR/DR-style UI, **filters in column headings rather than a top form**, AJAX table skeleton and View action showing the actual changes and which linked DB records/tables were touched (JV affects multiple tables).
+
+**Implemented and pushed:** Modern responsive compact register, per-column filter popover (date, actor, action, route, table, status), server-side query/filter + paginated AJAX skeleton, View Details modal. New `activity_audit_impacts` table retains exact Eloquent model event row/field deltas where available, plus separately labeled per-table SQL statement observations without storing raw SQL/bindings, credentials, request bodies or free-text narration. Table list in main register and authenticated permission-protected detail endpoint. Roles has a dedicated Activity Audit tab for `read activity audit`.
+
+**For precise JV/GL rows:** On MySQL/MariaDB, an additional migration installs transaction-atomic AFTER INSERT/UPDATE/DELETE audit triggers on existing `journal_vouchers`, `journal_voucher_details`, `ledgers` and `customer_ledger`. Audit request correlation uses a server-generated session token; row snapshots are created within the business transaction so rolled-back changes do not survive. Trigger payload uses allowlisted non-secret account identity, dates, statuses, amounts and deleted/active flags. The middleware links the committed row entries to one activity event. It NEVER alters business postings or financial rules. For all other Query Builder tables, View displays **SQL observed** and not fake row IDs; ORM events are identified separately and may not prove final commit if a surrounding transaction rolled back.
+
+**New migrations (apply in order to the configured LOCAL MySQL DB):**
+1. `2026_11_25_131000_add_activity_audit_impacts.php`
+2. `2026_11_25_132000_install_activity_audit_jv_triggers.php`
+
+The trigger migration requires MySQL TRIGGER privileges; stop if it fails, do not disable financial protections or force-run on production. No destructive migration, extra business table or Labour CP change.
+
+**Owner terminal gate:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan migrate --path=database/migrations/2026_11_25_131000_add_activity_audit_impacts.php
+php artisan migrate --path=database/migrations/2026_11_25_132000_install_activity_audit_jv_triggers.php
+php artisan optimize:clear
+php artisan view:cache
+php artisan test --filter=Milestone06ActivityAuditContractTest
+```
+**New browser gate:** On local disposable JV, Create/Edit/Delete one sample voucher through existing finance UI, reload Activity Audit, filter by `journal_vouchers` heading, View event and inspect transactional row changes in `journal_vouchers`, `journal_voucher_details` and `ledgers` where that action actually wrote rows. Verify actual before/after money/date/account/active-status differences; no fabricated record counts. Before test, previous Activity Audit rows remain visible with only request metadata. Use another limited role without `read activity audit` to confirm 403 (previous permission test may be retained if already accepted).
+
+**Remaining M06:** generalize exact transactional row snapshots to other app modules/other DB write paths, authenticated API/background actions, semantic grouped voucher activity, sensitive retention/performance and end-to-end verification. This batch **not yet locally tested**; M06 is IN PROGRESS. M03 Labour CP remains ON HOLD; M01/M02/M04/M05 accepted.
+
+---
+
 # 2026-11-25 — Milestone 06 STARTED: centralized Activity Audit (batch 1, owner test pending)
 
 **Owner verification:** Milestone 02 completed **72/72 targeted terminal tests** (58 Booking Edit + 6 Booking/Labour + 8 Roles) and **11/11 browser permission checks PASS**. M01/M02/M04/M05 accepted; M03 Labour CP remains explicitly ON HOLD. Owner authorized starting M06.
