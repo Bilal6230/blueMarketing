@@ -1,3 +1,19 @@
+# 2026-11-25 — M06 real CRM controller test: complete isolated leads fixture columns
+
+**Owner result:** `ActivityAuditAuthenticatedApiTest` **3 PASS, 1 FAIL (17 assertions)**. The failing real `MobileCrmController::store` case returned 500 because its in-memory SQLite `leads` fixture did not have the `gender` field. The controller always inserts explicit nullable values for `gender`, `area_id`, `type`, `business`, `designation`, `zone_id`, `home_address`, and `office_address` even when not provided in the POST body. All eight columns have now been added to the isolated fixture so the next run doesn't uncover the same missing-column error one field at a time. The production CRM controller and permanent MySQL schema were not changed.
+
+`Milestone06ActivityAuditContractTest` **20 PASS / 232 assertions** on this owner gate; strict audit health and previously accepted tests remain PASS.
+
+**Owner gate — only failed feature suite:**
+```powershell
+cd C:\laragon\www\blueMarketing
+git -c gc.auto=0 pull --ff-only origin upgrade/laravel-framework
+php artisan test --filter=ActivityAuditAuthenticatedApiTest
+```
+Target **4 PASS**, pending owner execution. No migrations, MySQL data updates, or browser retesting required.
+
+---
+
 # 2026-11-25 — M06 20/20 contract gate owner PASS; real CRM controller audit test added
 
 **Owner-verified:** `Milestone06ActivityAuditContractTest` **20 PASS / 229 assertions**; read-only strict audit-health PASS with 129/129 valid triggers, 0 missing audit indexes, 0 orphan impacts and 0 older-than-90-days events/impacts. Owner previously accepted browser UI, 3/3 Sanctum API middleware tests, 5/5 background audit tests, 8/8 transaction-boundary tests, and 2/2 real local MySQL rollback/commit tests. These gates should not be unnecessarily rerun.
