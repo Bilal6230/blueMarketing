@@ -40,11 +40,10 @@ final class ActivityAuditMysqlTriggerRollbackTest extends TestCase
             $this->markTestSkipped('A named loopback MySQL database in local .env is required.');
         }
 
-        $config = config('database.connections.mysql');
-        if (!is_array($config)) {
-            $this->markTestSkipped('Laravel MySQL driver configuration is missing.');
-        }
-        config()->set('database.connections.'.self::CONNECTION, array_merge($config, [
+        // Some test bootstrap paths omit the MySQL connection entirely;
+        // build an isolated connection from known Laravel MySQL defaults.
+        // Never change the application's default sqlite test connection.
+        config()->set('database.connections.'.self::CONNECTION, [
             'driver' => 'mysql',
             'url' => null,
             'host' => $host,
@@ -53,7 +52,14 @@ final class ActivityAuditMysqlTriggerRollbackTest extends TestCase
             'username' => $values['DB_USERNAME'] ?? 'root',
             'password' => $values['DB_PASSWORD'] ?? '',
             'unix_socket' => $values['DB_SOCKET'] ?? '',
-        ]));
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => [],
+        ]);
         DB::purge(self::CONNECTION);
 
         $db = DB::connection(self::CONNECTION);
