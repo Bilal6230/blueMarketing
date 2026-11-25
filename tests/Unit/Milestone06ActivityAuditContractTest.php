@@ -312,6 +312,24 @@ class Milestone06ActivityAuditContractTest extends TestCase
         $this->assertStringNotContainsString("Schema::connection('mysql')->create", $source);
     }
 
+    public function test_health_reports_retention_volume_and_actual_audit_index_prefixes_read_only(): void
+    {
+        $health = $this->source('app/Console/Commands/ActivityAuditHealth.php');
+        $this->assertStringContainsString('information_schema.STATISTICS', $health);
+        $this->assertStringContainsString("\'SEQ_IN_INDEX\'", $health);
+        $this->assertStringContainsString('array_slice($installedColumns, 0, count($columns)) === $columns', $health);
+        $this->assertStringContainsString('Missing audit query indexes:', $health);
+        $this->assertStringContainsString("['actor_id', 'created_at']", $health);
+        $this->assertStringContainsString("['route_name', 'created_at']", $health);
+        $this->assertStringContainsString("['activity_audit_id', 'table_name']", $health);
+        $this->assertStringContainsString("['request_token']", $health);
+        $this->assertStringContainsString('older than 90 days (retention planning only)', $health);
+        $this->assertStringContainsString('$missingIndexes !== []', $health);
+        $this->assertStringNotContainsString('->delete(', $health);
+        $this->assertStringNotContainsString('->truncate(', $health);
+        $this->assertStringNotContainsString('DB::statement(', $health);
+    }
+
     public function test_modern_activity_history_has_column_filters_ajax_skeleton_and_view_modal(): void
     {
         $blade = $this->source('resources/views/admin/activity-audit/index.blade.php');
