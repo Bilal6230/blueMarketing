@@ -54,7 +54,7 @@ final class ModernAccountingModalScrollContractTest extends TestCase
         ] as $path) {
             $view = $this->source($path);
             self::assertStringContainsString('bm-account-finance-modal', $view);
-            self::assertStringContainsString('modal-edit', $view) || self::assertStringContainsString('editModal', $view);
+            self::assertTrue(str_contains($view, 'modal-edit') || str_contains($view, 'editModal'));
         }
         $head = $this->source('resources/views/admin/finance/accounting/head_accounts.blade.php');
         $party = $this->source('resources/views/admin/finance/accounting/child_accounts.blade.php');
