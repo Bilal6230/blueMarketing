@@ -1,7 +1,7 @@
 @extends('admin.layouts.master')
 @push('style')
 <link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}">
-<link rel="stylesheet" href="{{ asset('css/modern-user-directory.css') }}?v=1">
+<link rel="stylesheet" href="{{ asset('css/modern-user-directory.css') }}?v=2">
 @endpush
 @section('content')
     <div class="content-wrapper bm-modern-accounts bm-user-directory" data-account-kind="user">
@@ -73,7 +73,7 @@
                                                 <td>{{ $i->roles->pluck('name')->implode(', ') }}</td>
                                                 <td>
                                                     <label class="switch">
-                                                        <input type="checkbox" class="status-toggle"
+                                                        <input type="checkbox" class="status-toggle" aria-label="Change status for {{ $i->name }}"
                                                             data-id="{{ $i->id }}"
                                                             {{ $i->status_id == 1 ? 'checked' : '' }}>
                                                         <span class="slider round"></span>
