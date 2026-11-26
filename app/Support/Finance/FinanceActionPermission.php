@@ -25,6 +25,7 @@ final class FinanceActionPermission
     {
         $type = strtolower(trim($type));
         $alias = [
+            'cp'=>'dr', // CP is the historical stored series of today's DR voucher.
             'pr'=>'plot-receipt', 'pp'=>'plot-purchase', 'bd'=>'bank-deposit',
             'bw'=>'bank-withdrawal', 'br'=>'bor', 'bo'=>'bop',
             'ec'=>'extra-charge',
