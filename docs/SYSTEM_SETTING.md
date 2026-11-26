@@ -24,11 +24,11 @@
 - [x] Main Settings card fits available viewport up to the footer; tab content owns vertical scrolling, page remains fixed.
 - [x] Merge **Contact** into **Information & Contact** and remove separate Contact tab.
 - [x] Render Information + Contact fields **directly in tab card**; no configuration modal for these sections.
-- [x] AJAX FormData save with Yes/No confirmation, JSON response, validation and toast feedback; File Manager path selection stays compatible and shows the preview.
+- [x] AJAX FormData save with Yes/No Bootstrap confirmation modal, JSON response, validation and toast feedback. Application Logo, Favicon and Loading Image use compact 3-column direct drag/drop uploaders with previews, file validation and secure file storage (up to 4MB per JPG/PNG/WEBP/GIF).
 - [x] Move receipt-header toggles into **Voucher Display** table; each ON/OFF change saves via confirmation + AJAX and reverts on cancel/failure.
 - [x] Keep existing global application logo/favicon/loading-image settings in Information, without changing project branding in ERP.
 - [ ] Run `php artisan view:cache`, `php artisan test --filter=SystemSettingS1ContractTest`, and `php artisan test --filter=ProjectLogoBrandingContractTest`.
-- [ ] Browser verify: initial Information tab, change Contact field then confirm Save, cancel/reject flow, File Manager logo path and preview, voucher header Yes/No, footer visibility and card-only scrollbar.
+- [ ] Browser verify: initial Information tab, change Contact field then confirm Save, cancel/reject flow, all three image uploads by click/drag-drop and retained previews after reload, voucher header Yes/No, footer visibility and card-only scrollbar.
 - [ ] After both automated and browser tests pass, mark S1 **Fully verified**.
 
 ### S2 — Attendance Machine
