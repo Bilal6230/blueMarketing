@@ -21,7 +21,7 @@ final class PlotModernDirectoryParityContractTest extends TestCase
         $this->assertStringContainsString('data-account-kind="plot"',$plots);
         $this->assertStringContainsString('bm-plot-toolbar-actions',$plots);
         $this->assertStringContainsString('btn-add-plot',$plots);
-        $this->assertStringContainsString("route('project.plot-definitions.index')",$plots);
+        $this->assertStringNotContainsString('plot-definitions', $plots);
         $this->assertStringContainsString('bm-cell-skeleton-row',$plots);
         $this->assertStringNotContainsString('id="example1"',$plots);
         $this->assertStringNotContainsString('plot-list-card',$plots);
