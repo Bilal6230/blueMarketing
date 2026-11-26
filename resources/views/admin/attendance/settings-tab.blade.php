@@ -38,7 +38,8 @@
 </style>
 <div id="as-workspace"
     data-device-url="{{ route('attendance.device.settings',['device'=>987654321]) }}"
-    data-delete-url="{{ route('attendance.device.delete',['device'=>987654321]) }}">
+    data-delete-url="{{ route('attendance.device.delete',['device'=>987654321]) }}"
+    data-mapping-delete-url="{{ route('attendance.mapping.delete',['mapping'=>987654321]) }}">
     <div class="as-toolbar">
         <div><h4>Attendance Machine</h4><small class="text-muted">Manage devices and employee mappings for the selected project</small></div>
         <button type="button" class="btn btn-primary" id="as-new-device"><i class="fas fa-plus mr-1"></i> Add Device</button>
@@ -181,8 +182,11 @@ $(function(){
         $.each(items,function(_,item){
             $rows.append($('<tr>')
                 .append($('<td>').text(item.user_name),$('<td>').text(item.device_user_id),
-                    $('<td>').append($('<button>',{type:'button','class':'btn btn-sm btn-outline-primary as-edit-mapping'}).text('Edit')
-                        .attr('data-user-id',item.user_id).attr('data-device-user-id',item.device_user_id))));
+                    $('<td>').append(
+                        $('<button>',{type:'button','class':'btn btn-sm btn-outline-primary as-edit-mapping'}).text('Edit')
+                            .attr('data-user-id',item.user_id).attr('data-device-user-id',item.device_user_id),
+                        $('<button>',{type:'button','class':'btn btn-sm btn-outline-danger ml-1 as-delete-mapping'}).text('Delete')
+                            .attr('data-id',item.id)))));
         });
     }
     function deviceUrl(id,action){
@@ -307,6 +311,25 @@ $(function(){
         }
         if(window.Swal)Swal.fire({icon:'question',title:'Apply Employee Mapping?',showCancelButton:true,confirmButtonText:'Yes, Apply',cancelButtonText:'No'}).then(function(result){if(result.isConfirmed)send();});
         else send();
+    });
+    $workspace.on('click','.as-delete-mapping',function(){
+        var mappingId=$(this).attr('data-id'),deviceId=selectedId;
+        function remove(){
+            setBusy(true);
+            $.ajax({url:$workspace.attr('data-mapping-delete-url').replace('987654321',encodeURIComponent(mappingId)),
+                method:'POST',data:{_method:'DELETE',_token:$deviceForm.find('[name=_token]').val()},
+                headers:{Accept:'application/json'},dataType:'json'})
+                .done(function(data){
+                    if(selectedId===deviceId)populateMappings(data.device.mappings||[],selectedId);
+                    notify(data.message||'Mapping removed.',false);
+                }).fail(function(xhr){notify(errorMessage(xhr),true);})
+                .always(function(){setBusy(false);});
+        }
+        if(window.Swal)Swal.fire({icon:'warning',title:'Remove Employee Mapping?',
+            text:'This only removes the employee ID link; it does not delete attendance records.',
+            showCancelButton:true,confirmButtonText:'Yes, Remove',confirmButtonColor:'#d33'})
+            .then(function(result){if(result.isConfirmed)remove();});
+        else if(window.confirm('Remove employee mapping?'))remove();
     });
     $workspace.on('click','.as-edit-mapping',function(){
         $mapForm.find('[name=user_id]').val($(this).attr('data-user-id'));
