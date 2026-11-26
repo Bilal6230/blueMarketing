@@ -4,11 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\HoldPlot;
 use App\Models\Plot;
-use App\Models\PlotDefinition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Schema;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
@@ -27,13 +25,8 @@ class PlotController extends Controller
     public function index()
     {
         $x['title']     = 'Plots List';
-        $x['data']      = Plot::with(['categoryDefinition', 'typeDefinition', 'sizeDefinition', 'unitDefinition'])
-            ->where(['project_id' => getSelectedTown()])->get();
+        $x['data']      = Plot::where('project_id', getSelectedTown())->get();
         $x['role']      = Role::get();
-        $x['plotDefinitionsReady'] = $this->plotDefinitionsReady();
-        $x['plotDefinitions'] = $x['plotDefinitionsReady']
-            ? PlotDefinition::where('project_id', (int) getSelectedTown())->where('is_active', true)->orderBy('name')->get()->groupBy('kind')
-            : collect();
         // dd($x['data']);
         return view('admin.plots.index', $x);
     }
@@ -77,7 +70,7 @@ class PlotController extends Controller
                                     return $query->where('project_id', $selectedProjectId);
                                 }),
                             ],
-            'type'      => ['required', 'string', 'in:1,2'],
+            'type'      => ['required', 'string', Rule::in(['1','2','3'])],
             'size'      => ['required', 'numeric', 'gt:0', 'max:255'],
             'unit'      => ['required', 'string',  'max:255'],
             'amount'    => ['required', 'numeric', 'min:0'],
@@ -88,49 +81,9 @@ class PlotController extends Controller
             'is_active' => ['required', 'boolean'],
 
         ]);
-        $plotDefinitionsReady = $this->plotDefinitionsReady();
-        if ($plotDefinitionsReady) {
-            foreach (['category', 'type', 'size', 'unit'] as $kind) {
-                $field = 'plot_'.$kind.'_definition_id';
-                $hasProjectDefinitions = PlotDefinition::where('project_id', $selectedProjectId)
-                    ->where('kind', $kind)->where('is_active', true)->exists();
-                $validator->addRules([$field => [
-                    $hasProjectDefinitions ? 'required' : 'nullable', 'integer',
-                    Rule::exists('plot_definitions', 'id')->where(fn ($query) => $query
-                        ->where('project_id', $selectedProjectId)->where('kind', $kind)->where('is_active', true)),
-                ]]);
-            }
-        }
         if ($validator->fails()) {
             return back()->withErrors($validator)
                 ->withInput();
-        }
-
-        $definitionLinks = [];
-        if ($plotDefinitionsReady) {
-            foreach (['category', 'type', 'size', 'unit'] as $kind) {
-                $field = 'plot_'.$kind.'_definition_id';
-                $definitionLinks[$field] = $request->filled($field) ? (int) $request->input($field) : null;
-            }
-            if ($definitionLinks['plot_type_definition_id']) {
-                $typeDefinition = PlotDefinition::where('project_id', $selectedProjectId)->where('kind', 'type')
-                    ->findOrFail($definitionLinks['plot_type_definition_id']);
-                if ((int) $typeDefinition->legacy_value !== (int) $request->type) {
-                    return back()->withErrors(['plot_type_definition_id' => 'Selected plot type does not match the legacy Residential/Commercial type.'])->withInput();
-                }
-            }
-            if ($definitionLinks['plot_size_definition_id']) {
-                $sizeDefinition = PlotDefinition::where('project_id', $selectedProjectId)->where('kind', 'size')
-                    ->findOrFail($definitionLinks['plot_size_definition_id']);
-                if ($definitionLinks['plot_unit_definition_id'] && $definitionLinks['plot_unit_definition_id'] !== (int) $sizeDefinition->unit_definition_id) {
-                    return back()->withErrors(['plot_unit_definition_id' => 'Selected unit does not match the size definition.'])->withInput();
-                }
-                $definitionLinks['plot_unit_definition_id'] = (int) $sizeDefinition->unit_definition_id;
-                $request->merge(['size' => (string) $sizeDefinition->size_value]);
-                $unitDefinition = PlotDefinition::where('project_id', $selectedProjectId)->where('kind', 'unit')
-                    ->findOrFail($sizeDefinition->unit_definition_id);
-                $request->merge(['unit' => $unitDefinition->legacy_value ?: $unitDefinition->unit_code]);
-            }
         }
 
         try {
@@ -147,7 +100,6 @@ class PlotController extends Controller
                 'description'         => $request->description,
                 'is_active'     => $request->is_active,
                 'create_by'     => Auth::user()->id,
-                ...$definitionLinks,
             ]);
             Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
         } catch (\Throwable $th) {
@@ -224,7 +176,7 @@ class PlotController extends Controller
         // Validate the incoming request data
         $validator = Validator::make($request->all(), [
             'name'      => ['required', 'string', 'max:255', Rule::unique('plots')->where(fn ($query) => $query->where('project_id', $selectedProjectId))->ignore($request->id)],
-            'type'      => ['required', 'string', 'max:255'],
+            'type'      => ['required', 'string', Rule::in(['1','2','3'])],
             'size'      => ['required', 'numeric', 'gt:0', 'max:255'],
             'unit'      => ['required', 'string'],
             'amount'    => ['required', 'numeric', 'min:0'],
@@ -237,16 +189,6 @@ class PlotController extends Controller
             'is_active' => ['required', 'boolean'],
         ]);
 
-        $definitionLinks = [];
-        if ($this->plotDefinitionsReady()) {
-            foreach (['category', 'type', 'size', 'unit'] as $kind) {
-                $field = 'plot_'.$kind.'_definition_id';
-                $validator->addRules([$field => ['nullable', 'integer', Rule::exists('plot_definitions', 'id')->where(fn ($query) => $query
-                    ->where('project_id', $selectedProjectId)->where('kind', $kind)->where('is_active', true))]]);
-                if ($request->filled($field)) $definitionLinks[$field] = (int) $request->input($field);
-            }
-        }
-
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         }
@@ -257,26 +199,6 @@ class PlotController extends Controller
             // Handle the case where the plot doesn't exist
             Alert::error('Error', 'Plot not found!')->toToast()->toHtml();
             return back();
-        }
-
-        if (isset($definitionLinks['plot_type_definition_id'])) {
-            $typeDefinition = PlotDefinition::where('project_id', $selectedProjectId)->where('kind', 'type')
-                ->findOrFail($definitionLinks['plot_type_definition_id']);
-            if ((int) $typeDefinition->legacy_value !== (int) $request->type) {
-                return back()->withErrors(['plot_type_definition_id' => 'Selected plot type does not match the legacy Residential/Commercial type.'])->withInput();
-            }
-        }
-        if (isset($definitionLinks['plot_size_definition_id'])) {
-            $sizeDefinition = PlotDefinition::where('project_id', $selectedProjectId)->where('kind', 'size')
-                ->findOrFail($definitionLinks['plot_size_definition_id']);
-            $unitId = (int) $sizeDefinition->unit_definition_id;
-            if (isset($definitionLinks['plot_unit_definition_id']) && $definitionLinks['plot_unit_definition_id'] !== $unitId) {
-                return back()->withErrors(['plot_unit_definition_id' => 'Selected unit does not match the size definition.'])->withInput();
-            }
-            $definitionLinks['plot_unit_definition_id'] = $unitId;
-            $request->merge(['size' => (string) $sizeDefinition->size_value]);
-            $unitDefinition = PlotDefinition::where('project_id', $selectedProjectId)->where('kind', 'unit')->findOrFail($unitId);
-            $request->merge(['unit' => $unitDefinition->legacy_value ?: $unitDefinition->unit_code]);
         }
 
         try {
@@ -305,13 +227,6 @@ class PlotController extends Controller
         }
 
         return back();
-    }
-
-    private function plotDefinitionsReady(): bool
-    {
-        return Schema::hasTable('plot_definitions')
-            && collect(['plot_category_definition_id', 'plot_type_definition_id', 'plot_size_definition_id', 'plot_unit_definition_id'])
-                ->every(fn ($column) => Schema::hasColumn('plots', $column));
     }
 
     public function update_plot_number(Request $request)
