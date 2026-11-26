@@ -13,6 +13,18 @@
 #voucher-settings .s4-subtle{color:#627e97;font-size:12px}
 #voucher-settings .s4-footer{padding:10px;border-top:1px solid #becfdf;color:#5f7488;font-size:12px}
 #voucher-settings .s4-table .s4-action{min-width:95px;text-align:center}
+#voucher-settings .bm-modern-export-toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:9px;border-bottom:1px solid #becfdf;background:#fafcff}
+#voucher-settings .bm-modern-export-btn{font-size:12px;border:1px solid #b7c9dc;color:#1a518a;border-radius:5px;background:white;padding:5px 8px}
+#voucher-settings .bm-modern-column-menu{position:relative}
+#voucher-settings .bm-modern-column-options{position:absolute;top:100%;left:0;background:white;border:1px solid #aebfd0;padding:8px;z-index:20;min-width:165px}
+#voucher-settings .bm-modern-column-option{display:flex;gap:8px;align-items:center}
+#voucher-settings .bm-account-col{float:right;border:0;background:transparent;color:#587596;padding:2px 6px;cursor:pointer}
+#voucher-settings .bm-account-col.is-filtered{background:#d9eafb;border-radius:4px;color:#1661b8}
+#voucher-settings .bm-account-footer{padding:8px 10px;border-top:1px solid #bdccdd;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+#voucher-settings .bm-account-footer-left{display:flex;align-items:center;gap:8px}
+#voucher-settings .blue-actions-source{display:none!important}
+#voucher-settings .blue-actions-cell{text-align:center}
+
 #voucher-settings .s4-key{color:#6e8297;font-weight:600}
 #s4-display-modal .s4-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 #s4-display-modal label{font-weight:650}
@@ -28,13 +40,14 @@
   <div class="alert alert-warning">Voucher display settings migration is required.</div>
  @endif
  <section class="s4-directory settings-fill-card">
-  <div class="s4-scroll settings-fill-scroll">
+  <div class="bm-modern-export-toolbar bm-export-placeholder"><button class="bm-modern-export-btn" disabled>Column Visibility</button><button class="bm-modern-export-btn" disabled>Copy</button><button class="bm-modern-export-btn" disabled>CSV</button><button class="bm-modern-export-btn" disabled>Excel</button><button class="bm-modern-export-btn" disabled>PDF</button><button class="bm-modern-export-btn" disabled>Print</button></div>
+  <div class="s4-scroll settings-fill-scroll bm-account-table-wrap">
    <form id="settings-receipt-header-form" action="{{ route('setting.update') }}" method="POST" data-ajax="off">
     @csrf
     @method('PUT')
     @php($receiptHeaderSettings = \App\Models\Setting::where('type','toggle')->whereIn('key',array_map(fn($type) => $type.'_Receipt_Header',$types))->get()->keyBy('key'))
     @php($displayVoucherSeries = collect(\App\Services\Finance\ProjectVoucherDisplay::SERIES)->merge($types)->unique()->values())
-    <table class="s4-table">
+    <table class="s4-table" id="s4-directory-table">
      <thead><tr><th>Voucher Name</th><th>Current Prefix</th><th>Legacy Series</th><th>Print Header</th><th>Action</th></tr></thead>
      <tbody>
      @foreach($displayVoucherSeries as $series)
@@ -55,7 +68,7 @@
          </div>
         @else <span class="s4-subtle">Not configured</span> @endif
        </td>
-       <td class="s4-action">
+       <td class="s4-action blue-actions-cell">
         @if(in_array($series, \App\Services\Finance\ProjectVoucherDisplay::SERIES, true))
          <button class="btn btn-outline-primary btn-sm s4-edit" type="button" data-s4-edit="{{ $series }}" @if(!$canManageFinanceSettings || !$voucherDisplaySettingsReady) disabled @endif><i class="fas fa-edit mr-1"></i>Edit</button>
         @else <span class="s4-subtle">Legacy header only</span> @endif
@@ -66,6 +79,7 @@
     </table>
    </form>
   </div>
+  <div class="bm-account-footer s4-list-footer"></div>
   <footer class="s4-footer">Internal voucher identities, historical receipts and posted entries remain unchanged. A configured prefix is not yet an activated new numbering series.</footer>
  </section>
 </div>
