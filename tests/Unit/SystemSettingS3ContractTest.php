@@ -90,6 +90,11 @@ final class SystemSettingS3ContractTest extends TestCase
         $script = file_get_contents(public_path('js/settings-s3-accounts.js'));
 
         $this->assertStringContainsString('select.s3-coa-head.tomselected', $view);
+        $this->assertStringContainsString('class="s3-coa-head"', $view);
+        $this->assertStringContainsString('class="s3-coa-subhead"', $view);
+        $this->assertStringNotContainsString('class="form-control s3-coa-head"', $view);
+        $this->assertStringNotContainsString('class="form-control s3-coa-subhead"', $view);
+        $this->assertStringContainsString('.ts-wrapper{width:100%;border:0!important', $view);
         $this->assertStringContainsString('select.s3-coa-subhead.tomselected', $view);
         $this->assertStringContainsString('select.s3-coa-head.ts-hidden-accessible', $view);
         $this->assertStringContainsString('display:none!important', $view);
