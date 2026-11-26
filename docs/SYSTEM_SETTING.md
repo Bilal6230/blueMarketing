@@ -3,7 +3,7 @@
 **Project:** BlueMarketing / Waqas ERP  
 **Scope:** Settings (`/admin/setting`) — project-scoped configuration and modern UI  
 **Baseline:** 26 November 2026  
-**Status:** Requirements captured; implementation batches pending.  
+**Status:** S1 code implemented (verification pending); S2–S4 pending.  
 **Tracker rule:** Check `[x]` only after code + automated tests + user browser verification pass. Do not mark existing partial code as complete.
 
 ## Overall behavior (applies to every batch)
@@ -18,14 +18,18 @@
 ## Implementation batches
 
 ### S1 — Settings layout, Information & Contact
-**State: [ ] Pending**
+**State: Code implemented; automated test run and browser verification pending.**  
+**Implementation commits:** `f954258a`, `0bace770`, `f6a9dd33`, `b6a80847`, `60aab9f8`, `6cea76f0`, `faabc3da`.
 
-- [ ] Main Settings tab card fills available viewport height up to the footer; card-only scroll; footer visible.
-- [ ] Merge **Contact** fields into **Information** and remove separate Contact tab.
-- [ ] Render Information + Contact fields **directly inside the card** (no Configure Settings modal); AJAX save with validation and confirmation.
-- [ ] Remove receipt-header toggles from Information; move them to Voucher Display.
-- [ ] Keep existing global application logo/favicon/loading-image settings in Information. These control login/landing, not project branding in ERP.
-- [ ] Verify both large and mobile screen behavior, file upload, no outer scroll, AJAX updates.
+- [x] Main Settings card fits available viewport up to the footer; tab content owns vertical scrolling, page remains fixed.
+- [x] Merge **Contact** into **Information & Contact** and remove separate Contact tab.
+- [x] Render Information + Contact fields **directly in tab card**; no configuration modal for these sections.
+- [x] AJAX FormData save with Yes/No confirmation, JSON response, validation and toast feedback; File Manager path selection stays compatible and shows the preview.
+- [x] Move receipt-header toggles into **Voucher Display** table; each ON/OFF change saves via confirmation + AJAX and reverts on cancel/failure.
+- [x] Keep existing global application logo/favicon/loading-image settings in Information, without changing project branding in ERP.
+- [ ] Run `php artisan view:cache`, `php artisan test --filter=SystemSettingS1ContractTest`, and `php artisan test --filter=ProjectLogoBrandingContractTest`.
+- [ ] Browser verify: initial Information tab, change Contact field then confirm Save, cancel/reject flow, File Manager logo path and preview, voucher header Yes/No, footer visibility and card-only scrollbar.
+- [ ] After both automated and browser tests pass, mark S1 **Fully verified**.
 
 ### S2 — Attendance Machine
 **State: [ ] Pending**
