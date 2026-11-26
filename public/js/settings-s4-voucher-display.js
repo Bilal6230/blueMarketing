@@ -37,15 +37,20 @@ $(function(){
     var data=xhr.responseJSON||{},errors=data.errors||{},message=data.message||'Unable to save prefix.';
     $.each(errors,function(_,messages){message=messages[0]||message;return false;});
     notify(message,true);
+    $modal.modal('show');
    }).always(function(){busy=false;$button.prop('disabled',false);});
   }
   // Use the project's Bootstrap modal instead of relying on a globally loaded
   // SweetAlert instance. S4 can run on screens where Swal is not installed.
-  $('#s4-prefix-confirm').modal('show');
-  $('#s4-prefix-confirm-yes').off('click.s4').one('click.s4',function(){
-   $('#s4-prefix-confirm').modal('hide');
-   send();
-  });
+  // Bootstrap 4 supports only one active modal at a time. Close the
+  // editor first, then open confirmation. Cancel restores the editor.
+  var $confirm=$('#s4-prefix-confirm'),approved=false;
+  $confirm.off('click.s4','#s4-prefix-confirm-yes')
+   .on('click.s4','#s4-prefix-confirm-yes',function(){approved=true;$confirm.modal('hide');})
+   .one('hidden.bs.modal',function(){
+    if(approved)send();else $modal.modal('show');
+   });
+  $modal.one('hidden.bs.modal',function(){$confirm.modal('show');}).modal('hide');
  });
  // Availability is a project-scoped control; never hide history or re-number vouchers.
  $tab.on('change','.s4-availability-toggle',function(){
