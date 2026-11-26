@@ -82,7 +82,7 @@ function mount(options){
       .on('click',function(){exportNow(pair[0]);}));
   });
   var $placeholder=$card.find('.bm-modern-export-toolbar.bm-export-placeholder').first();
-  $placeholder.find('.bm-user-toolbar-actions,.bm-permission-toolbar-actions').appendTo($toolbar);
+  $placeholder.find('.bm-user-toolbar-actions,.bm-permission-toolbar-actions,.bm-plot-toolbar-actions').appendTo($toolbar);
   $placeholder.remove();
   var $wrap=$table.closest('.bm-account-table-wrap,.project-table-wrap,.sector-table-wrap,.area-table-wrap');
   if($wrap.length)$toolbar.insertBefore($wrap);else $card.prepend($toolbar);
