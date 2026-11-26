@@ -20,9 +20,9 @@
 #bank-accounts .s3-table tbody tr:nth-child(even){background:#edf3f9}
 #bank-accounts .s3-table .s3-action{width:68px;text-align:center}
 #bank-accounts .s3-note{font-size:12px;color:#65809a}
-#bank-accounts .s3-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-#bank-accounts .s3-span{grid-column:1/-1}
-#bank-accounts .s3-form-grid label{font-weight:650;font-size:14px}
+#s3-account-modal .s3-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#s3-account-modal .s3-span{grid-column:1/-1}
+#s3-account-modal .s3-form-grid label{font-weight:650;font-size:14px}
 #bank-accounts .bm-modern-export-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px;border-bottom:1px solid #bbcddd}
 #bank-accounts .bm-modern-export-btn{border:1px solid #b9cbe0;background:#fff;padding:5px 8px;border-radius:5px;color:#174879;font-size:12px;font-weight:650}
 #bank-accounts .bm-account-col{float:right;border:0;background:transparent;color:#526b8b;cursor:pointer}
@@ -31,7 +31,7 @@
 #bank-accounts .blue-actions-source{display:none!important}
 #bank-accounts .blue-actions-cell{text-align:center}
 @media(max-width:1100px){#bank-accounts{height:auto;overflow:visible}#bank-accounts .s3-shell{height:auto}#bank-accounts .s3-layout{grid-template-columns:1fr}#bank-accounts .s3-card{min-height:300px}#bank-accounts .s3-table-scroll{max-height:380px}}
-@media(max-width:650px){#bank-accounts .s3-form-grid{grid-template-columns:1fr}#bank-accounts .s3-span{grid-column:auto}}
+@media(max-width:650px){#s3-account-modal .s3-form-grid{grid-template-columns:1fr}#s3-account-modal .s3-span{grid-column:auto}}
 </style>
 <div class="s3-shell" id="s3-account-workspace" data-detail="{{ route('setting.account.detail',['type'=>'bank','id'=>987654321]) }}" data-status="{{ route('setting.account.status',['type'=>'bank','id'=>987654321]) }}">
  <div class="s3-toolbar">
