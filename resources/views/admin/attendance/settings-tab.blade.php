@@ -142,6 +142,11 @@ $(function(){
     var $workspace=$('#as-workspace'),$modal=$('#as-device-modal'),$deviceForm=$('#as-device-form'),
         $mapForm=$('#as-mapping-form'),$mapSelect=$('#as-map-device');
     if(!$workspace.length || !$modal.length) return;
+    // The Settings tab and its cards use overflow clipping for independent
+    // scrolling. Bootstrap modals must live outside those containers or the
+    // dialog can be hidden even though Bootstrap receives the show command.
+    // Keep the same modal instance, its form and all existing AJAX handlers.
+    $modal.appendTo('body');
     // The ERP's shared submit interceptor is registered on document. These
     // forms explicitly opt out so only this AJAX flow owns their response.
     var selectedId='',selectionRequest=0,busy=false;
