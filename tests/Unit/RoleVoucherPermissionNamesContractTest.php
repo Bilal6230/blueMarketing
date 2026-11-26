@@ -44,6 +44,7 @@ final class RoleVoucherPermissionNamesContractTest extends TestCase
         self::assertStringContainsString("p.names.some(function(n){return selected.has(n);})", $view);
         self::assertStringContainsString("$(this).data('permission-names')", $view);
         self::assertStringContainsString("$.each(p.names,function(_,name)", $view);
+        self::assertStringContainsString('names:[p.name]', $view);
     }
 
     public function test_ec_and_ecp_keep_distinct_access_rights_and_existing_grants(): void
