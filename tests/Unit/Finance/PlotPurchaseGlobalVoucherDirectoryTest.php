@@ -18,10 +18,8 @@ final class PlotPurchaseGlobalVoucherDirectoryTest extends TestCase
         foreach ([
             'bm-voucher-directory bm-voucher-workspace',
             '--voucher-accent:#1769e0',
-            '<x-finance.voucher-filter-card',
             '<x-finance.voucher-table-card',
             '<x-finance.voucher-column-filters />',
-            'bm-voucher-filter-grid',
             'bm-voucher-table-scroll',
             'bm-voucher-table-footer',
             'bm-voucher-page-btn',
@@ -66,10 +64,14 @@ final class PlotPurchaseGlobalVoucherDirectoryTest extends TestCase
         $this->assertStringContainsString('$.blueVoucherPagination.render(', $view);
         $this->assertStringContainsString('$.blueActionMenu.enhance(', $view);
         $this->assertStringContainsString('blue-actions-cell', $view);
-        $this->assertStringContainsString('ppFilterSearch', $view);
-        $this->assertStringContainsString('ppSellerFilter', $view);
-        $this->assertStringContainsString('ppFrom', $view);
-        $this->assertStringContainsString('ppTo', $view);
+        // The shared column-filter popover now owns sorting/search by field.
+        // The former standalone date/seller filter-card IDs were retired.
+        $this->assertStringContainsString("formSelector:'#ppFilterForm'", $view);
+        $this->assertStringContainsString("quickSearchSelector:'#ppQuickSearch'", $view);
+        $this->assertStringContainsString("triggerSelector:'#plotPurchaseApp .dv-excel-trigger'", $view);
+        $this->assertStringContainsString("choicesFor:function(field)", $view);
+        $this->assertStringNotContainsString('ppFilterSearch', $view);
+        $this->assertStringNotContainsString('<x-finance.voucher-filter-card', $view);
         $this->assertStringContainsString('$(function(){', $view);
         $this->assertStringNotContainsString('$.blueVoucherRegisterActions.enhance(', $view);
     }
