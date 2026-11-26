@@ -2,18 +2,33 @@
 
 @section('content')
 <style>
-    .definition-page .definition-card{border:1px solid #e4ebf5;border-radius:16px;box-shadow:0 8px 24px rgba(23,43,77,.06);overflow:hidden}
-    .definition-page .card-header{background:linear-gradient(110deg,#f7faff,#fff);padding:14px 18px}
-    .definition-page .card-title{font-weight:700;color:#17345b;margin:0}
-    .definition-page .table{font-size:.88rem;margin-bottom:0}
-    .definition-page .table thead{background:#f0f6ff}
-    .definition-page .table-wrap{max-height:46vh;overflow:auto}
-    .definition-page .table-wrap thead th{position:sticky;top:0;z-index:1}
-    .definition-page .btn{border-radius:9px;font-weight:600}
-    .definition-page .action-btn{width:32px;height:32px;padding:0;display:inline-grid;place-items:center}
-    .definition-page .modal-content{border:0;border-radius:16px;box-shadow:0 20px 60px #132b4a30}
-    .definition-page .modal-header{background:#f5f8fd;border-radius:16px 16px 0 0}
-    .definition-page .form-control{border-radius:9px;min-height:39px}
+.definition-page{font-size:14px}
+.definition-page .definition-card{border:1.5px solid #b9cbdc;border-top:3px solid #2563eb;border-radius:9px;box-shadow:0 2px 10px #183c6510;overflow:hidden;display:flex;flex-direction:column;height:100%;margin:0}
+.definition-page .card-header{background:#f3f8fe;padding:11px 14px;border-bottom:1px solid #bed0e0;min-height:53px}
+.definition-page .card-title{font-size:16px;font-weight:750;color:#164477;margin:0}
+.definition-page .card-body{min-height:0;flex:1;display:flex;flex-direction:column}
+.definition-page .table{font-size:14px;margin:0;border-collapse:separate;border-spacing:0}
+.definition-page .table thead th{background:#eaf2fa;color:#173d68;position:sticky;top:0;border-bottom:2px solid #2563eb!important;z-index:1;padding:10px}
+.definition-page .table tbody td{padding:10px;border-color:#c1d0df;vertical-align:middle}
+.definition-page .table tbody tr:nth-child(even){background:#edf3f9}
+.definition-page .table-wrap{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.definition-page .definition-grid{height:calc(100vh - 245px);min-height:420px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:12px}
+.definition-page .definition-grid>div{min-width:0;min-height:0}
+.definition-page .btn{border-radius:6px;font-weight:650;font-size:13px}
+.definition-page .action-btn{width:32px;height:32px;padding:0;display:inline-grid;place-items:center}
+.definition-page .modal-dialog{max-width:700px;width:calc(100% - 30px)}
+.definition-page .modal-content{border:0;border-radius:11px;box-shadow:0 20px 60px #132b4a30;overflow:hidden}
+.definition-page .modal-header{background:#f5f9fe;border-bottom:1px solid #d6e3f1;padding:16px 20px}
+.definition-page .modal-title{font-size:18px;font-weight:750;color:#153f6d}
+.definition-page .modal-body{padding:18px 20px;max-height:calc(100vh - 230px);overflow:auto}
+.definition-page .modal-footer{padding:12px 20px;background:#fafcff;border-top:1px solid #d7e2ef}
+.definition-page .form-control{border-radius:6px;min-height:40px;font-size:14px;border-color:#b8cadc}
+.definition-page .form-group label{font-size:14px;font-weight:650;color:#26496e}
+.definition-page .definition-info{border:1px solid #d5e4f1;background:#f5f9fd;border-radius:7px;padding:10px 13px;font-size:13px;margin-bottom:12px}
+.definition-page .definition-info strong{color:#164677}
+.definition-page .definition-card .badge{font-size:12px}
+.definition-page .definition-section-add{margin-left:auto}
+@media(max-width:950px){.definition-page .definition-grid{height:auto;grid-template-columns:1fr;grid-template-rows:none}.definition-page .definition-grid>div{min-height:290px}.definition-page .table-wrap{max-height:340px}}
 </style>
 <div class="content-wrapper definition-page">
     <section class="content-header"><div class="container-fluid d-flex justify-content-between align-items-center">
@@ -23,15 +38,15 @@
     <section class="content"><div class="container-fluid">
         @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
         @if ($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-        <div class="alert alert-info">Definitions belong to the selected project. Existing plots are not changed automatically; link them only after checking their current values.</div>
-        <div class="row">
+        <div class="definition-info"><strong>How it works:</strong> Add Units first, then Sizes (with their effective rates), and Categories/Types. Select these definitions when creating a Plot. Changing a master definition never silently rewrites existing plot values.</div>
+        <div class="definition-grid">
         @foreach (['category' => 'Plot Categories', 'type' => 'Plot Types', 'size' => 'Plot Sizes', 'unit' => 'Plot Units'] as $kind => $heading)
             @php($items = $definitions->get($kind, collect()))
-            <div class="col-xl-6 mb-3">
+            <div>
                 <section class="card h-100 definition-card" data-ajax-panel="plot-{{ $kind }}">
                     <header class="card-header d-flex justify-content-between align-items-center">
                         <h3 class="card-title">{{ $heading }} <span class="badge badge-light ml-1">{{ $items->count() }}</span></h3>
-                        <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#create-{{ $kind }}"><i class="fas fa-plus mr-1"></i> Add</button>
+                        <button type="button" class="btn btn-primary btn-sm definition-section-add" data-toggle="modal" data-target="#create-{{ $kind }}"><i class="fas fa-plus mr-1"></i> Add</button>
                     </header>
                     <div class="card-body p-3">
                         <div class="table-wrap">
