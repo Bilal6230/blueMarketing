@@ -29,39 +29,40 @@
 .role-filter-menu{position:fixed;display:none;z-index:1100;width:265px;border:1px solid #d2dfed;border-top:3px solid #2563eb;border-radius:9px;background:#fff;box-shadow:0 14px 38px #122d4a30;padding:12px;font-size:12px}
 .role-filter-menu .menu-title{font-weight:750;color:#234466;margin-bottom:8px}.role-filter-menu .menu-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
 .role-filter-menu button{font-size:11px}
-.role-editor .modal-dialog{max-width:1000px;width:calc(100% - 36px);margin:24px auto}
+.role-editor .modal-dialog{max-width:1080px;width:calc(100% - 36px);margin:24px auto}
 .role-editor .modal-content{border:0;border-radius:15px;box-shadow:0 24px 75px #0e203851;overflow:hidden}
 .role-editor .modal-header{padding:15px 20px;background:#f8fbff;border-bottom:1px solid #dfe8f4}
 .role-editor .modal-title{font-weight:800;font-size:16px;color:#193d72}
 .role-editor .modal-body{padding:16px 20px;max-height:calc(100vh - 180px);overflow:hidden;display:flex;flex-direction:column;gap:12px}
 .role-editor .modal-footer{background:white;border-top:1px solid #e2eaf4;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
 .role-editor .role-fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px}
-.role-editor label{font-size:12px;font-weight:700;color:#334c69;margin-bottom:5px}.role-editor .form-control{height:36px;border-color:#cfdcea;border-radius:7px;font-size:12px}
+.role-editor label{font-size:14px;font-weight:700;color:#334c69;margin-bottom:5px}.role-editor .form-control{height:38px;border-color:#cfdcea;border-radius:7px;font-size:14px}
 .role-editor .role-permission-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .role-editor .role-permission-tools input{flex:1 1 250px}.role-editor .role-selected{font-weight:700;color:#1f5fad;background:#e9f2ff;border-radius:15px;padding:5px 10px}
-.role-editor .role-permission-grid{display:grid;grid-template-columns:225px minmax(0,1fr);border:1px solid #dce5f1;border-radius:10px;overflow:hidden;height:min(430px,51vh)}
+.role-editor .role-permission-grid{display:grid;grid-template-columns:310px minmax(0,1fr);border:1px solid #dce5f1;border-radius:10px;overflow:hidden;height:min(430px,51vh)}
 .role-editor .role-navigation{overflow-y:auto;background:#f6f9fe;border-right:1px solid #dfe7f2;padding:9px}
-.role-editor .role-nav-item{width:100%;border:0;background:transparent;text-align:left;border-radius:7px;padding:9px 11px;margin-bottom:3px;font-size:12px;color:#344c69;display:flex;justify-content:space-between;gap:5px;align-items:center}
+.role-editor .role-nav-item{width:100%;border:0;background:transparent;text-align:left;border-radius:7px;padding:9px 11px;margin-bottom:3px;font-size:14px;color:#344c69;display:flex;justify-content:space-between;gap:5px;align-items:center}
 .role-editor .role-nav-item.active{background:#dfeeff;color:#1459a7;font-weight:800}
 .role-editor .role-nav-item:hover{background:#eaf3ff}
-.role-editor .role-nav-count{font-size:10px;font-weight:700;color:#5e7ba0}
+.role-editor .role-nav-count{font-size:12px;font-weight:700;color:#5e7ba0}
 .role-editor .role-nav-item>span:first-child{min-width:0;overflow-wrap:anywhere;line-height:1.35}
 .role-editor .role-nav-count{flex-shrink:0}
-.role-editor .role-nav-group{padding:12px 9px 5px;color:#72869f;font-size:10px;font-weight:800;letter-spacing:.055em}
+.role-editor .role-nav-group{padding:12px 9px 5px;color:#72869f;font-size:12px;font-weight:800;letter-spacing:.055em}
 .role-editor .role-nav-group:first-child{padding-top:5px}
 .role-editor .role-permission-content{overflow:auto;padding:13px 15px}
+.role-editor .role-permission-tools,.role-editor .role-permission-content,.role-editor .role-selected,.role-editor .modal-footer{font-size:14px}
 .role-editor .role-panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:9px}
 .role-editor .role-panel-head h5{font-size:14px;font-weight:800;color:#21496f;margin:0}
 .role-editor .role-permissions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
-.role-editor .role-permission-item{display:flex;align-items:center;gap:7px;padding:9px 10px;border:1px solid #e1eaf4;border-radius:7px;min-height:39px;background:white;cursor:pointer;margin:0!important;font-weight:500;color:#334d67}
+.role-editor .role-permission-item{font-size:14px;display:flex;align-items:center;gap:7px;padding:9px 10px;border:1px solid #e1eaf4;border-radius:7px;min-height:39px;background:white;cursor:pointer;margin:0!important;font-weight:500;color:#334d67}
 .role-editor .role-permission-item:has(input:checked){background:#eaf4ff;border-color:#9dcbfc;color:#17569d}
 .role-editor .role-permission-item input{margin:0;accent-color:#236bd1}
 .role-editor .role-permission-item.danger{color:#b64242}
-.role-editor .role-notice{background:#f4f8fd;border:1px solid #dfebf8;padding:8px 11px;border-radius:7px;color:#637b99;font-size:11px}
+.role-editor .role-notice{background:#f4f8fd;border:1px solid #dfebf8;padding:8px 11px;border-radius:7px;color:#637b99;font-size:12px}
 .role-editor .role-inline-errors{font-size:12px;color:#b42318;min-height:0}
 .bm-role-delete .modal-content{border:0;border-radius:13px}.bm-role-delete .modal-body{text-align:center;padding:25px}
 .bm-role-delete .danger-symbol{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff0f0;color:#cf3030;margin:auto auto 12px;font-size:24px}
-@media(max-width:760px){.role-editor .role-permission-grid{grid-template-columns:150px 1fr}.role-editor .role-permissions{grid-template-columns:1fr 1fr}.role-editor .modal-dialog{margin:12px auto;width:calc(100% - 18px)}}
+@media(max-width:760px){.role-editor .role-permission-grid{grid-template-columns:180px minmax(0,1fr)}.role-editor .role-permissions{grid-template-columns:1fr 1fr}.role-editor .modal-dialog{margin:12px auto;width:calc(100% - 18px)}}
 @media(max-width:540px){.role-editor .role-fields{grid-template-columns:1fr}.role-editor .role-permission-grid{grid-template-columns:110px 1fr}.role-editor .role-permissions{grid-template-columns:1fr}.bm-roles{padding:12px 8px}}
 </style>
 @endpush
