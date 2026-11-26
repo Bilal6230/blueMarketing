@@ -1,8 +1,38 @@
 @extends('admin.layouts.master')
 @section('content')
 <style>
-.settings-screen .card{border:1px solid #e3eaf4;border-radius:14px;box-shadow:0 8px 26px rgba(26,48,83,.06);overflow:hidden}.settings-screen .card-header{background:linear-gradient(110deg,#f5f9ff,#fff);padding:11px 15px}.settings-screen .nav-pills .nav-link{border-radius:9px;padding:7px 12px;font-size:.9rem;font-weight:600}.settings-screen .form-control{border-radius:8px;min-height:36px;height:36px;font-size:.9rem}.settings-screen .btn{border-radius:8px;font-weight:600}.settings-screen .table thead{background:#eff5fc;color:#304a6c}.settings-screen .tab-pane{min-height:150px}.settings-screen .table-responsive{max-height:360px;overflow:auto}
-.settings-screen .settings-modal-trigger{display:flex;justify-content:flex-end;margin:0 0 12px}.settings-screen .modal-content{border:0;border-radius:14px;box-shadow:0 18px 55px #172b4d33}.settings-screen .modal-header{background:#f5f8fd;border-radius:14px 14px 0 0}.settings-screen .modal-body{max-height:70vh;overflow:auto}.settings-screen label{font-size:.88rem}
+html.settings-s1-viewport,body.settings-s1-viewport{overflow:hidden!important;height:100dvh}
+body.settings-s1-viewport .wrapper{height:100dvh;overflow:hidden}
+body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-index:12}
+.settings-screen{height:auto;min-height:0;padding-bottom:0}
+.settings-screen .content-header{padding:10px 0 6px;flex:none}
+.settings-screen .content-header h1{font-size:22px}
+.settings-screen .content,.settings-screen .content>.container-fluid,.settings-screen .content>.container-fluid>.row,.settings-screen .content>.container-fluid>.row>.col-md-12{min-height:0;display:flex;flex:1;flex-direction:column}
+.settings-screen .content{padding-bottom:0}
+.settings-screen .settings-main-card{border:1px solid #b5c4d4;border-radius:9px;box-shadow:0 5px 18px #1a305314;overflow:hidden;display:flex;flex:1;min-height:0;flex-direction:column;margin-bottom:0}
+.settings-screen .settings-main-card>.card-header{flex:none;background:#f5f8fc;padding:9px 12px;border-bottom:1px solid #bfceda}
+.settings-screen .settings-main-card>.card-body{display:flex;min-height:0;flex:1;overflow:hidden;padding:12px}
+.settings-screen .settings-main-card .tab-content{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.settings-screen .nav-pills .nav-link{border-radius:7px;padding:7px 12px;font-size:14px;font-weight:600}
+.settings-screen .form-control{border-radius:6px;min-height:36px;height:36px;font-size:14px}
+.settings-screen textarea.form-control{height:auto;min-height:80px}
+.settings-screen .btn{border-radius:6px;font-weight:600;font-size:14px}
+.settings-screen label{font-size:14px;font-weight:600}
+.settings-screen .table{font-size:14px}
+.settings-screen .table thead{background:#eaf2f9;color:#304a6c}
+.settings-screen .table-responsive{max-height:calc(100dvh - 340px);overflow:auto}
+.settings-screen .tab-pane{min-height:0}
+.settings-screen .settings-modal-trigger{display:flex;justify-content:flex-end;margin:0 0 12px}
+.settings-screen .settings-field-image{max-width:96px;max-height:65px;object-fit:contain;margin:0 0 6px}
+.settings-screen .settings-section-title{border-bottom:1px solid #cad8e5;padding-bottom:8px;margin:8px 0 15px;font-size:17px;font-weight:700;color:#224b70}
+.settings-screen .settings-info-form{max-width:1200px}
+.settings-screen .settings-info-form .form-group{margin-bottom:12px}
+.settings-screen .settings-receipt-table{max-width:900px}
+.settings-screen .settings-receipt-table td{vertical-align:middle;padding:8px 11px}
+.settings-screen .settings-receipt-table tr:nth-child(even){background:#f0f5f9}
+.settings-screen .settings-receipt-table th{padding:9px 11px}
+.settings-screen .ajax-panel-loading{opacity:.65;pointer-events:none}
+@media(max-width:767px){.settings-screen .settings-main-card>.card-body{padding:8px}.settings-screen .content-header{padding:6px 0}.settings-screen .nav-pills{flex-wrap:nowrap;overflow-x:auto}}
 </style>
     <div class="content-wrapper settings-screen">
         <!-- Content Header (Page header) -->
@@ -29,14 +59,10 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-md-12">
-                        <div class="card">
+                        <div class="card settings-main-card">
                             <div class="card-header p-2">
                                 <ul class="nav nav-pills">
-                                    @foreach ($category as $i)
-                                        <li class="nav-item"><a class="nav-link {{ $activeSettingsTab === $i->category ? 'active' : '' }}"
-                                                href="#{{ $i->category }}"
-                                                data-toggle="tab">{{ Str::ucfirst($i->category) }}</a></li>
-                                    @endforeach
+                                    <li class="nav-item"><a class="nav-link {{ $activeSettingsTab === 'information' ? 'active' : '' }}" href="#information" data-toggle="tab">Information &amp; Contact</a></li>
                                     <li class="nav-item"><a class="nav-link {{ $attendanceTabActive ? 'active' : '' }}" href="#attendance-machine" data-toggle="tab">Attendance Machine</a></li>
                                     <li class="nav-item"><a class="nav-link {{ $financeSettingsTabActive ? 'active' : '' }}" href="#bank-accounts" data-toggle="tab">Bank Accounts</a></li>
                                     <li class="nav-item"><a class="nav-link {{ $voucherSettingsTabActive ? 'active' : '' }}" href="#voucher-settings" data-toggle="tab">Voucher Display</a></li>
@@ -62,6 +88,27 @@
                                             @endforeach
                                             </tbody></table>
                                         @endif
+                                        <hr>
+                                        <h4 class="settings-section-title">Voucher Print Headers</h4>
+                                        <p class="text-muted">Choose which voucher families show the project-branded receipt header. These settings apply globally as before.</p>
+                                        <form id="settings-receipt-header-form" action="{{ route('setting.update') }}" method="POST">
+                                            @csrf
+                                            @method('PUT')
+                                            @php($receiptHeaderSettings = \App\Models\Setting::where('type','toggle')->whereIn('key',array_map(fn($type) => $type.'_Receipt_Header',$types))->get()->keyBy('key'))
+                                            <div class="table-responsive"><table class="table table-bordered table-sm settings-receipt-table">
+                                                <thead><tr><th>Voucher Name</th><th>Print Header</th></tr></thead><tbody>
+                                                @foreach($types as $type)
+                                                    @php($keyType = $type.'_Receipt_Header')
+                                                    <tr><td>{{ $type }} Receipt Header</td><td>
+                                                        <div class="custom-control custom-switch">
+                                                            <input type="hidden" name="toggles[{{ $keyType }}]" value="0">
+                                                            <input type="checkbox" class="custom-control-input settings-receipt-toggle" id="setting-receipt-{{ $type }}" name="toggles[{{ $keyType }}]" value="1" @checked((int)($receiptHeaderSettings->get($keyType)?->value ?? 0)===1) @cannot('update setting') disabled @endcannot>
+                                                            <label class="custom-control-label" for="setting-receipt-{{ $type }}">{{ (int)($receiptHeaderSettings->get($keyType)?->value ?? 0)===1 ? 'ON':'OFF' }}</label>
+                                                        </div>
+                                                    </td></tr>
+                                                @endforeach
+                                                </tbody></table></div>
+                                        </form>
                                         <hr><h4>Custom payment methods</h4>
                                         <p class="text-muted">Each custom name maps to Cash, Online or Cheque. Voucher forms will offer these methods after their posting integration is complete.</p>
                                         @if(!$customPaymentMethodsReady)
@@ -81,95 +128,39 @@
                                             </tbody></table>
                                         @endif
                                     </div>
-                                    @foreach ($category as $i)
-                                        @php
-                                            $settings = \App\Models\Setting::where('type', '!=', 'toggle')->where(['category' => $i->category])->get();
-                                        @endphp
-                                        <div class="tab-pane {{ $activeSettingsTab === $i->category ? 'active' : '' }}"
-                                            id="{{ $i->category }}">
-                                            <form data-ajax-form class="form-horizontal" action="{{ route('setting.update') }}"
-                                                method="POST">
-                                                @csrf
-                                                @method('PUT')
-                                                @foreach ($settings as $set)
-                                                    <div class="form-group row">
-                                                        <label for="{{ $set->key }}"
-                                                            class="col-sm-2 col-form-label">{{ str_replace('Application ', '', $set->name) }}</label>
-                                                        <div class="col-sm-10">
-                                                            @if ($set->type == 'text')
-                                                                <input type="hidden" name="key[]"
-                                                                    value="{{ $set->key }}">
-                                                                <input type="text" name="value[]"
-                                                                    value="{{ $set->value }}" class="form-control"
-                                                                    id="{{ $set->key }}"
-                                                                    placeholder="{{ $set->name }}" required>
-                                                            @elseif($set->type == 'textarea')
-                                                                <input type="hidden" name="key[]"
-                                                                    value="{{ $set->key }}">
-                                                                <textarea type="text" name="value[]" rows="3" class="form-control" id="{{ $set->key }}"
-                                                                    placeholder="{{ $set->name }}" required>{{ $set->value }}</textarea>
-                                                            @elseif($set->type == 'file')
-                                                                <img src="{{ asset($set->value) }}"
-                                                                    alt="{{ $set->name }}"
-                                                                    id="{{ $set->key }}-image" width="8%">
-                                                                <div class="input-group">
-                                                                    <input type="hidden" name="key[]"
-                                                                        value="{{ $set->key }}">
-                                                                    <input type="text" readonly class="form-control"
-                                                                        placeholder="{{ $set->name }}" name="value[]"
-                                                                        id="{{ $set->key }}"
-                                                                        value="{{ $set->value }}" readonly required>
-                                                                    {{-- <div class="input-group-append">
-                                                                        <button class="btn btn-primary" type="button" id="{{ $set->key }}button">Pilih Foto</button>
-                                                                    </div> --}}
-                                                                </div>
-                                                                <small class="text-primary">Click to select file</small>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                                @php
-                                                    $settings = \App\Models\Setting::where('type', 'toggle')->get();
-                                                @endphp
-                                                @foreach ($types as $type)
-                                                    @php
-                                                        $keyType = $type . '_Receipt_Header';
-                                                    @endphp
-
-                                                    <div class="form-group row">
-                                                        <label class="col-sm-2 col-form-label">
-                                                            {{ str_replace('Application ', '', $type) }} Receipt Header
-                                                        </label>
-
-                                                        <div class="col-sm-10">
-                                                            <div class="custom-control custom-switch">
-
-                                                                {{-- always send 0 --}}
-                                                                <input type="hidden" name="toggles[{{ $keyType }}]" value="0">
-
-                                                                {{-- checked sends 1 --}}
-                                                                <input type="checkbox"
-                                                                    class="custom-control-input"
-                                                                    id="{{ $type }}"
-                                                                    name="toggles[{{ $keyType }}]"
-                                                                    value="1"
-                                                                    {{ $settings->where('key', $keyType)->first()?->value == 1 ? 'checked' : '' }}>
-
-                                                                <label class="custom-control-label" for="{{ $type }}">
-                                                                    {{ $type }} Receipt Header
-                                                                </label>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                @endforeach
+                                    <div class="tab-pane {{ $activeSettingsTab === 'information' ? 'active' : '' }}" id="information" data-settings-direct="1">
+                                        <form id="settings-information-form" class="settings-info-form" action="{{ route('setting.update') }}" method="POST" enctype="multipart/form-data">
+                                            @csrf
+                                            @method('PUT')
+                                            @foreach(['information'=>'Application Information','contact'=>'Contact Details'] as $groupName=>$groupTitle)
+                                                @php($groupSettings = \App\Models\Setting::where('type','!=','toggle')->where('category',$groupName)->get())
+                                                @if($groupSettings->isNotEmpty())
+                                                <h4 class="settings-section-title">{{ $groupTitle }}</h4>
+                                                @foreach($groupSettings as $set)
                                                 <div class="form-group row">
-                                                    <div class="offset-sm-2 col-sm-10">
-                                                        <button type="submit" class="btn btn-primary">Save</button>
+                                                    <label class="col-md-3 col-form-label" for="setting-{{ $set->key }}">{{ str_replace('Application ', '', $set->name) }}</label>
+                                                    <div class="col-md-9">
+                                                        <input type="hidden" name="key[]" value="{{ $set->key }}">
+                                                        @if($set->type === 'text')
+                                                            <input id="setting-{{ $set->key }}" class="form-control" type="text" name="value[]" value="{{ $set->value }}" required>
+                                                        @elseif($set->type === 'textarea')
+                                                            <textarea id="setting-{{ $set->key }}" class="form-control" rows="3" name="value[]" required>{{ $set->value }}</textarea>
+                                                        @elseif($set->type === 'file')
+                                                            @if($set->value)<img class="settings-field-image" id="{{ $set->key }}-image" src="{{ asset($set->value) }}" alt="{{ $set->name }}" onerror="this.style.display='none'">@endif
+                                                            <input id="{{ $set->key }}" name="value[]" value="{{ $set->value }}" class="form-control" readonly data-settings-file="1">
+                                                            <small class="text-primary">Click the path to select a file from File Manager</small>
+                                                        @endif
+                                                        <small class="text-danger settings-input-error" data-error-key="{{ $set->key }}"></small>
                                                     </div>
                                                 </div>
-                                            </form>
-                                        </div>
-                                    @endforeach
+                                                @endforeach
+                                                @endif
+                                            @endforeach
+                                            <div class="d-flex justify-content-end pt-2 border-top">
+                                                <button type="submit" class="btn btn-primary" @cannot('update setting') disabled @endcannot>Save Information &amp; Contact</button>
+                                            </div>
+                                        </form>
+                                    </div>
                                     @include('admin.attendance.settings-tab')
                                     <div class="tab-pane {{ $financeSettingsTabActive ? 'active' : '' }}" id="bank-accounts">
                                         @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
@@ -244,7 +235,7 @@
             let nextModal = 0;
             function modalizeSettingsForms(root=document){
                 const $root=$(root);
-                $root.find('form[method="POST"]:not([data-settings-modalized])').each(function(){
+                $root.find('form[method="POST"]:not([data-settings-modalized]):not(#settings-information-form):not(#settings-receipt-header-form)').each(function(){
                     const $form=$(this),$pane=$form.closest('.settings-screen .tab-pane');
                     if(!$pane.length)return;
                     const id='settingsEditor'+(++nextModal),action=$form.attr('action')||'';
@@ -310,11 +301,90 @@
 
             window.fmSetLink = fmSetLink;
 
-            $(document).on("click", '{{ implode(',', $setid) }}', function(event) {
+            $(document).on("click", '[data-settings-file="1"]', function(event) {
+                event.preventDefault();
+                inputId = '#' + this.id;
+                window.open('/file-manager/fm-button', 'fm', 'width=800,height=600');
+            });
+            $(document).on("click", '{{ implode(',', $setid ?? []) }}', function(event) {
                 event.preventDefault();
                 inputId = '#' + event.target.id;
                 window.open('/file-manager/fm-button', 'fm', 'width=800,height=600');
             });
         });
+    </script>
+    <script>
+    $(function(){
+        // Keep the shared footer visible while the Settings card itself owns scrolling.
+        function fitSettingsCard(){
+            var $screen=$('.settings-screen'),$footer=$('.main-footer');
+            if(!$screen.length)return;
+            $('html, body').addClass('settings-s1-viewport');
+            var y=$screen[0].getBoundingClientRect().top;
+            var footerTop=$footer.length?$footer[0].getBoundingClientRect().top:window.innerHeight-40;
+            var room=footerTop-y-4;
+            $screen.css({height:Math.max(300,room)+'px',overflow:'hidden',display:'flex',flexDirection:'column'});
+            $screen.find('> .content').css({flex:'1',minHeight:0});
+        }
+        fitSettingsCard();$(window).on('resize.settingsS1',fitSettingsCard);
+        var $form=$('#settings-information-form'), $receipt=$('#settings-receipt-header-form');
+        function alertUser(message,error){
+            if(window.toastr){if(error)toastr.error(message);else toastr.success(message);}
+            else if(window.Swal)Swal.fire({icon:error?'error':'success',text:message});
+        }
+        function putSettings(form,values,callback){
+            var $f=$(form),$btn=$f.find('button[type=submit]');
+            $btn.prop('disabled',true);
+            $.ajax({url:$f.attr('action'),method:'POST',data:values,
+                headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},
+                dataType:'json'
+            }).done(function(response){alertUser(response.message||'Settings saved.',false);if(callback)callback(true);})
+            .fail(function(xhr){
+                var message=xhr.responseJSON&&xhr.responseJSON.message||'Unable to save settings.';
+                if(xhr.responseJSON&&xhr.responseJSON.errors){
+                    $.each(xhr.responseJSON.errors,function(_,value){message=value[0]||message;return false;});
+                }
+                alertUser(message,true);if(callback)callback(false);
+            }).always(function(){$btn.prop('disabled',false);});
+        }
+        $form.on('submit',function(e){
+            e.preventDefault();e.stopImmediatePropagation();
+            var form=this,send=function(){
+                // The hidden PUT method is passed through FormData for Laravel.
+                var formData=new FormData(form);
+                var $button=$form.find('button[type=submit]').prop('disabled',true);
+                $.ajax({url:$form.attr('action'),type:'POST',data:formData,processData:false,contentType:false,
+                    headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},dataType:'json'})
+                .done(function(response){alertUser(response.message||'Information saved.',false);})
+                .fail(function(xhr){
+                    var message=xhr.responseJSON&&xhr.responseJSON.message||'Unable to save information.';
+                    if(xhr.responseJSON&&xhr.responseJSON.errors)$.each(xhr.responseJSON.errors,function(_,v){message=v[0]||message;return false;});
+                    alertUser(message,true);
+                }).always(function(){$button.prop('disabled',false);});
+            };
+            if(window.Swal)Swal.fire({icon:'question',title:'Save Information & Contact?',showCancelButton:true,
+                confirmButtonText:'Yes, Save',cancelButtonText:'No'}).then(function(result){if(result.isConfirmed)send();});
+            else if(window.confirm('Save information and contact?'))send();
+        });
+        $receipt.on('change','.settings-receipt-toggle',function(){
+            var $input=$(this),old=!this.checked,key=$input.attr('name');
+            if($input.data('busy'))return;
+            var apply=function(){
+                var payload={_token:$receipt.find('[name=_token]').val(),_method:'PUT'};
+                payload[key]=$input.prop('checked')?'1':'0';
+                $input.data('busy',true).prop('disabled',true);
+                putSettings($receipt,payload,function(ok){
+                    if(!ok)$input.prop('checked',old);
+                    $input.siblings('label').text($input.prop('checked')?'ON':'OFF');
+                    $input.prop('disabled',false).data('busy',false);
+                });
+            };
+            if(window.Swal)Swal.fire({icon:'question',title:'Update Print Header?',showCancelButton:true,
+                confirmButtonText:'Yes, Apply',cancelButtonText:'No'})
+                .then(function(result){if(result.isConfirmed)apply();else $input.prop('checked',old);});
+            else if(window.confirm('Update print header?'))apply();
+            else $input.prop('checked',old);
+        });
+    });
     </script>
 @endsection
