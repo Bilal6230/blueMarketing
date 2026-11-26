@@ -671,7 +671,7 @@ class VoucherController extends Controller
         $selectedProjectId = getSelectedTown();
         $x['bankSettlementAccounts'] = \Illuminate\Support\Facades\Schema::hasTable('project_bank_accounts')
             ? DB::table('project_bank_accounts')->where('project_id', $selectedProjectId)->where('is_active', 1)
-                ->orderBy('bank_name')->orderBy('account_title')->get(['id', 'account_mapping_id', 'bank_name', 'account_title'])
+                ->orderBy('bank_name')->orderBy('account_title')->get(['id', 'account_mapping_id', 'bank_name', 'account_title', 'display_title'])
             : collect();
         $x['cashSettlementAccounts'] = \Illuminate\Support\Facades\Schema::hasTable('project_cash_accounts')
             ? DB::table('project_cash_accounts')->where('project_id',$selectedProjectId)->where('is_active',1)
