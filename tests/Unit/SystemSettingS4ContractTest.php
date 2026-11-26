@@ -63,6 +63,9 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString('saveVoucherAvailability(Request $request)', $controller);
         $this->assertStringContainsString('project_voucher_availability', $controller);
         $this->assertStringContainsString('allowedReceiptTypes', $controller);
+        $this->assertStringContainsString('ProjectVoucherDisplay::SERIES', $controller);
+        $this->assertStringContainsString('ProjectVoucherDisplay::SERIES, true) || array_key_exists', $view);
+
         $this->assertStringContainsString('_Receipt_Header', $controller);
         $this->assertStringContainsString('url:$tab.find(\'.s4-shell\').attr(\'data-s4-status-url\')', $script);
     }
