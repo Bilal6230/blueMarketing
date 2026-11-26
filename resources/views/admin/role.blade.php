@@ -235,10 +235,25 @@ $(function(){
     var available=function(p){return p.guard===guard&&p.category!=='legacy';};
     var sections=[];
     $.each(modules,function(_,m){
-      var names=m.actions.map(function(a){return 'finance '+m.module+' '+a;});
-      var items=catalog.filter(function(p){return available(p)&&names.indexOf(p.name)>=0;});
+      // PPR is the same voucher family as Plot Receive Payment. Its daily
+      // voucher permission names still exist and must remain effective.
+      // Display one action choice that grants both applicable scopes.
+      if(m.module==='ppr')return;
+      var family=m.module==='plot-receipt'?['plot-receipt','ppr']:[m.module];
+      var byAction={};
+      $.each(family,function(_,module){
+        var definition=modules.find(function(d){return d.module===module;});
+        if(!definition)return;
+        $.each(definition.actions,function(_,action){
+          var permissionName='finance '+module+' '+action;
+          if(!catalog.some(function(p){return available(p)&&p.name===permissionName;}))return;
+          if(!byAction[action])byAction[action]={name:permissionName,names:[],label:action};
+          byAction[action].names.push(permissionName);
+        });
+      });
+      var items=Object.keys(byAction).map(function(action){return byAction[action];});
       if(items.length)sections.push({id:'finance:'+m.module,title:m.label,subtitle:'Finance & Daily Entries',
-        group:'finance',items:items.map(function(p){return {name:p.name,label:p.name.slice(('finance '+m.module+' ').length)};})});
+        group:'finance',items:items});
     });
     // Keep one tab for each actual module, instead of dumping every
     // non-finance permission into one overwhelming "Other Modules" tab.
@@ -254,7 +269,7 @@ $(function(){
       return grouped[a].title.localeCompare(grouped[b].title);
     }),function(_,key){sections.push(grouped[key]);});
     if(term){
-      sections=sections.map(function(s){return $.extend({},s,{items:s.items.filter(function(i){return (s.title+' '+i.label+' '+i.name).toLowerCase().includes(term);})});}).filter(function(s){return s.items.length;});
+      sections=sections.map(function(s){return $.extend({},s,{items:s.items.filter(function(i){return (s.title+' '+i.label+' '+i.names.join(' ')).toLowerCase().includes(term);})});}).filter(function(s){return s.items.length;});
     }
     return sections;
   }
@@ -267,14 +282,16 @@ $(function(){
         previousGroup=s.group;
         $nav.append($('<div>',{'class':'role-nav-group',text:s.group==='finance'?'FINANCE & DAILY ENTRIES':'OTHER MODULES'}));
       }
-      var count=s.items.filter(function(i){return selected.has(i.name);}).length;
+      var count=s.items.filter(function(i){return i.names.every(function(n){return selected.has(n);});}).length;
       $nav.append($('<button>',{type:'button','class':'role-nav-item'+(s.id===activeSection?' active':''),'data-section':s.id}).append($('<span>',{text:s.title}),$('<span>',{'class':'role-nav-count',text:count+'/'+s.items.length})));
     });
     var current=sections.find(function(s){return s.id===activeSection;}),$items=$('#rolePermissionChoices').empty();
     $('#rolePanelTitle').text(current?current.title:'No results');
     $('#rolePermissionEmpty').toggle(!current);
     if(current)$.each(current.items,function(_,p){
-      var $input=$('<input>',{type:'checkbox','data-permission':p.name,checked:selected.has(p.name)});
+      var $input=$('<input>',{type:'checkbox','data-permission':p.name,checked:p.names.every(function(n){return selected.has(n);})});
+      $input.prop('indeterminate',p.names.some(function(n){return selected.has(n);})&&!p.names.every(function(n){return selected.has(n);}));
+      $input.data('permission-names',p.names);
       var $label=$('<label>',{'class':'role-permission-item'+(/delete|reject|reverse|return/.test(p.label)?' danger':'')});
       $label.append($input,$('<span>',{text:p.label.replace(/(^|\s)\S/g,function(t){return t.toUpperCase();})}));
       $items.append($label);
@@ -283,13 +300,19 @@ $(function(){
     $('#roleSelectedCount').text(valid+' selected');
   }
   $('#roleNavigation').on('click','.role-nav-item',function(){activeSection=$(this).data('section');renderPermissions();});
-  $('#rolePermissionChoices').on('change','input[data-permission]',function(){var n=$(this).data('permission');if(this.checked)selected.add(n);else selected.delete(n);renderPermissions();});
+  $('#rolePermissionChoices').on('change','input[data-permission]',function(){
+    var checked=this.checked;
+    $.each($(this).data('permission-names')||[$(this).data('permission')],function(_,name){
+      if(checked)selected.add(name);else selected.delete(name);
+    });
+    renderPermissions();
+  });
   $('#rolePermissionSearch').on('input',renderPermissions);
   $('#roleGuard').on('change',function(){selected.clear();renderPermissions();});
   function sectionChange(check){
     var section=sectionList().find(function(s){return s.id===activeSection;});
     if(!section)return;
-    $.each(section.items,function(_,p){if(check)selected.add(p.name);else selected.delete(p.name);});
+    $.each(section.items,function(_,p){$.each(p.names,function(_,name){if(check)selected.add(name);else selected.delete(name);});});
     renderPermissions();
   }
   $('#roleSelectVisible').on('click',function(){sectionChange(true);});
