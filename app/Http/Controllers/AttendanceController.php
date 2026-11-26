@@ -83,6 +83,7 @@ class AttendanceController extends Controller
             'has_password' => $device->password !== null && $device->password !== '',
             'mapping_count' => $device->mappings->count(),
             'mappings' => $device->mappings->map(fn ($mapping) => [
+                'id' => (int) $mapping->id,
                 'user_id' => (int) $mapping->user_id,
                 'user_name' => (string) ($mapping->user?->name ?? 'Employee unavailable'),
                 'device_user_id' => (string) $mapping->device_user_id,
@@ -134,6 +135,22 @@ class AttendanceController extends Controller
      * Remove only unused setup records. Mapping removal is deliberately
      * separate from a device delete to prevent accidental data loss.
      */
+    public function deleteMapping(Request $request, AttendanceDeviceUserMapping $mapping)
+    {
+        abort_unless($this->canManage() && $request->user()->can('update setting'), 403);
+        $projectId = $this->projectId();
+        $device = AttendanceDevice::query()->where('project_id', $projectId)
+            ->findOrFail($mapping->attendance_device_id);
+        $mapping->delete();
+        $device->load(['mappings.user:id,name']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee mapping removed.',
+            'device' => $this->devicePayload($device),
+        ]);
+    }
+
     public function deleteDevice(Request $request, AttendanceDevice $device)
     {
         abort_unless($this->canManage() && $request->user()->can('update setting'), 403);
