@@ -39,10 +39,13 @@ $(function(){
     notify(message,true);
    }).always(function(){busy=false;$button.prop('disabled',false);});
   }
-  if(window.Swal)Swal.fire({icon:'question',title:'Save prefix configuration?',
-    text:'This does not yet activate new voucher numbering. Existing vouchers are unchanged.',
-    showCancelButton:true,confirmButtonText:'Yes, Save'}).then(function(res){if(res.isConfirmed)send();});
-  else notify('Confirmation dialog is unavailable. Refresh the page and try again.',true);
+  // Use the project's Bootstrap modal instead of relying on a globally loaded
+  // SweetAlert instance. S4 can run on screens where Swal is not installed.
+  $('#s4-prefix-confirm').modal('show');
+  $('#s4-prefix-confirm-yes').off('click.s4').one('click.s4',function(){
+   $('#s4-prefix-confirm').modal('hide');
+   send();
+  });
  });
  // Users-style directory actions, exports, sortable column popovers and pagination.
  (function directory(){
