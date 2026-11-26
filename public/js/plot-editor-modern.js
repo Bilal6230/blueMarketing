@@ -54,14 +54,6 @@ $(function(){
     if(this.tomselect)this.tomselect.setValue($(this).val()||'',true);
    });
   });
-  // Existing edit-loader sets jQuery values directly; update TS display
-  // after the AJAX-driven modal has been populated.
-  $modal.on('show.bs.modal',function(){
-   var $target=$form.find('select[name$="_definition_id"]');
-   window.setTimeout(function(){
-    $target.each(function(){if(this.tomselect)this.tomselect.setValue($(this).val()||'',true);});
-   },0);
-  });
   $form.on('change','.plot-size-definition',function(){
    var $unit=$form.find('.plot-unit-definition'),value=$unit.val();
    if($unit.length&&$unit[0].tomselect)$unit[0].tomselect.setValue(value||'',true);
