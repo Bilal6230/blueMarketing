@@ -140,7 +140,7 @@
             <small class="text-muted">Required only when an existing project's corner/facing charges change.</small>
           </div>
           <div><label for="projectActive">Status *</label><select name="is_active" id="projectActive" class="form-control"><option value="1">Active</option><option value="0">Inactive</option></select></div>
-          <div><label for="projectLogo">Project Logo (optional)</label><input type="file" accept="image/*" class="form-control-file" name="logo" id="projectLogo"><span class="project-field-error" data-error="logo"></span></div>
+          <div><label for="projectLogo">Project Logo (optional)</label><div class="d-flex align-items-center" style="gap:12px"><img id="projectLogoPreview" src="{{ asset('images/logo/project-placeholder.svg') }}" alt="Project logo preview" style="width:52px;height:52px;border:1px solid #cad8e5;border-radius:8px;object-fit:contain;background:#fff"><input type="file" accept="image/*" class="form-control-file" name="logo" id="projectLogo"></div><small class="text-muted d-block mt-1">Current logo is kept if no new image is selected.</small><span class="project-field-error" data-error="logo"></span></div>
           <div class="project-span-full project-note"><i class="fas fa-info-circle mr-1"></i> Project codes and system accounting mappings are managed by the existing backend. Editing charges creates an effective-dated revision.</div>
         </div>
         <div class="project-field-error mt-2" id="projectFormErrors" role="alert" aria-live="polite"></div>
@@ -331,10 +331,18 @@ $(function(){
     $('#projectCorner').val(p?Number(p.corner_charge_percent).toFixed(2):'0');
     $('#projectFacing').val(p?Number(p.facing_charge_percent).toFixed(2):'0');
     $('#projectActive').val(p?String(p.is_active):'1');
+    $('#projectLogoPreview').attr('src',p&&p.logo_url?p.logo_url:@json(asset('images/logo/project-placeholder.svg')));
     $('#projectEffectiveDate').val('');
     chargeHint();
     $('#projectEditor').modal({backdrop:'static',keyboard:false,show:true});
   }
+  $('#projectLogo').on('change',function(){
+    var file=this.files&&this.files[0];
+    if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(event){$('#projectLogoPreview').attr('src',event.target.result);};
+    reader.readAsDataURL(file);
+  });
   $('#projectAdd').on('click',function(){openEditor(null);});
   $('#projectRows').on('click','.btn-edit',function(){
     var id=Number($(this).data('id')),project=projects.find(function(p){return p.id===id;});
