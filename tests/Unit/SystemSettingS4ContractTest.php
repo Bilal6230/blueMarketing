@@ -106,6 +106,8 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString("'BR'=>'BR Voucher'", $availability);
         $this->assertStringContainsString("['BO','BR']", $allocator);
         $this->assertStringContainsString('VoucherAvailability::enforce($projectId, $series)', $allocator);
+        $voucherController = file_get_contents(app_path('Http/Controllers/Finance/VoucherController.php'));
+        $this->assertStringContainsString('VoucherAvailability::enforce((int)$selectedProjectId, \'BR\')', $voucherController);
         foreach (['DR','BD','BW','PP','BO','BR'] as $series) {
             $this->assertContains($series, \App\Services\Finance\ProjectVoucherDisplay::SERIES);
         }
