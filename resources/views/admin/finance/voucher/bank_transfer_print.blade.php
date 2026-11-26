@@ -46,7 +46,8 @@
     <div class="toolbar"><button type="button" onclick="window.print()">Print voucher</button></div>
     <main class="sheet">
         <header class="heading">
-            <h1>{{ Setting::getValue('app_name') }}</h1>
+            @include('admin.partials.project_print_identity', ['brandingProjectId' => $source->project_id ?? null])
+            <h1>{{ \App\Support\ProjectBranding::title($source->project_id ?? null) }}</h1>
             <h2>{{ $kind === 'deposit' ? 'Bank Deposit Voucher' : 'Bank Withdrawal Voucher' }}</h2>
         </header>
         <section class="meta">
