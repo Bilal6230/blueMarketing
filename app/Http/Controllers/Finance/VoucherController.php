@@ -2248,6 +2248,13 @@ class VoucherController extends Controller
             'subaccounts_id' => 'nullable|integer',
         ]);
 
+        if ((int)$validated['passing_status'] === 1) {
+            // A BR is a bank-clearance ledger posting, not a standalone page.
+            // Enforce its active setting before the legacy exception handler
+            // can turn an HTTP 403 into an unrelated generic error.
+            \App\Services\Finance\VoucherAvailability::enforce((int)$selectedProjectId, 'BR');
+        }
+
         try {
             DB::transaction(function () use ($validated, $customerLedger, $selectedProjectId) {
                 $lockedLedger = CustomerLedger::where('project_id', $selectedProjectId)
