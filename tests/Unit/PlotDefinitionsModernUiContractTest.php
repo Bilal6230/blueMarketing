@@ -16,7 +16,7 @@ final class PlotDefinitionsModernUiContractTest extends TestCase
         $this->assertStringContainsString('max-width:700px', $view);
         $this->assertStringContainsString("route('project.plot-definitions.store')", $view);
         $this->assertStringContainsString("route('project.plot-definitions.rate'", $view);
-        $this->assertStringContainsString("where('project_id', $projectId)", $controller);
+        $this->assertStringContainsString('where(\'project_id\', $projectId)', $controller);
         $this->assertStringContainsString('plot_definition_rate_revisions', $controller);
     }
 
@@ -25,8 +25,8 @@ final class PlotDefinitionsModernUiContractTest extends TestCase
         $view=file_get_contents(resource_path('views/admin/plots/index.blade.php'));
         $script=file_get_contents(public_path('js/plot-editor-modern.js'));
         $controller=file_get_contents(app_path('Http/Controllers/PlotController.php'));
-        $this->assertStringContainsString('plot-list-page', $view);
-        $this->assertStringContainsString('plot-list-card', $view);
+        $this->assertStringContainsString('bm-modern-accounts bm-plot-directory', $view);
+        $this->assertStringContainsString('bm-account-card', $view);
         $this->assertStringContainsString('id="modal-tambah"', $view);
         $this->assertStringContainsString('id="modal-edit"', $view);
         $this->assertStringContainsString('plot-editor-modern.js', $view);
