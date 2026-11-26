@@ -13,7 +13,7 @@ final class VoucherAvailability
 {
     public const FAMILIES = [
         'CR'=>'Credit Voucher', 'DR'=>'Debit Voucher',
-        'CP'=>'Cash Payment Voucher', 'CCR'=>'Cash Credit Voucher',
+        'CCR'=>'Cash Credit Voucher',
         'CDR'=>'Cash Debit Voucher', 'BOR'=>'Bank Receipt Voucher',
         'BOP'=>'Bank Payment Voucher', 'BD'=>'Bank Deposit Voucher',
         'BW'=>'Bank Withdrawal Voucher', 'JV'=>'Journal Voucher',
@@ -25,6 +25,8 @@ final class VoucherAvailability
 
     public static function enabled(int $projectId, string $series): bool
     {
+        // Stored CP records share DR's current project activation setting.
+        $series = strtoupper(trim($series)) === 'CP' ? 'DR' : strtoupper(trim($series));
         if ($projectId < 1 || !array_key_exists($series,self::FAMILIES)) return false;
         // One project-scoped lookup per HTTP request, even for large sidebars.
         // Request attributes avoid stale state across tests and subsequent requests.
