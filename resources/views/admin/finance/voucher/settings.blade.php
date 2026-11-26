@@ -2,43 +2,45 @@
 @section('title','Voucher Settings')
 @section('content')
 <style>
-.vs-no-outer-scroll{overflow:hidden!important}
-.main-content:has(> .voucher-settings-page){overflow:hidden!important}
-.voucher-settings-page{background:#f3f7fb;min-height:0!important;padding:12px;height:calc(100dvh - 125px);overflow:hidden!important;display:flex;flex-direction:column;box-sizing:border-box}
-.voucher-settings-page>.container-fluid{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
-.voucher-settings-page .vs-head{flex:none}
-.voucher-settings-page .vs-panel{flex:1;min-height:0;display:flex;flex-direction:column}
-.voucher-settings-page .vs-panel-head{flex:none}
-.voucher-settings-page .vs-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#e9f7ed;border-bottom:2px solid #128044;border-radius:7px;padding:12px 16px;margin-bottom:12px}
+.voucher-settings-page{background:#f3f7fb;padding:12px;box-sizing:border-box;min-height:0!important;overflow:visible}
+.voucher-settings-page>.container-fluid{display:flex;flex-direction:column;height:100%;min-height:0;padding:0}
+.voucher-settings-page .vs-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;flex:none;background:#e9f7ed;border-bottom:2px solid #128044;border-radius:7px;padding:12px 16px;margin-bottom:12px}
 .voucher-settings-page h4{margin:0;color:#08763e;font-weight:700;font-size:21px}
-.voucher-settings-page .vs-panel{border:1px solid #b8d0c3;border-top:3px solid #168348;border-radius:8px;background:#fff;overflow:hidden}
-.voucher-settings-page .vs-panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #b8d0c3}
+.voucher-settings-page .vs-panels{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;flex:1;min-height:0}
+.voucher-settings-page .vs-panel{border:1px solid #b8d0c3;border-top:3px solid #168348;border-radius:8px;background:#fff;overflow:hidden;display:flex;flex-direction:column;min-width:0;min-height:0}
+.voucher-settings-page .vs-panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex:none;padding:10px 12px;border-bottom:1px solid #b8d0c3}
 .voucher-settings-page .vs-panel-head h5{margin:0;color:#12663d;font-size:15px;font-weight:700}
-.voucher-settings-page .vs-panel-head small{color:#68766e;font-size:12px}
-.voucher-settings-page .vs-table-wrap{flex:1;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain}
-.voucher-settings-page .vs-table{width:100%;min-width:930px;margin:0;border-collapse:separate;border-spacing:0;font-size:13px}
-.voucher-settings-page .vs-table thead th{position:sticky;top:0;z-index:3;background:#eaf3ed;color:#235c40;border-bottom:2px solid #96bba6;padding:11px 12px;text-align:left;white-space:nowrap}
-.voucher-settings-page .vs-table tbody td{padding:9px 12px;vertical-align:middle;border-bottom:1px solid #c4d4ca}
+.voucher-settings-page .vs-panel-head small{font-size:12px;color:#68766e;white-space:nowrap}
+.voucher-settings-page .vs-table-wrap{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.voucher-settings-page .vs-table{width:100%;min-width:0;margin:0;border-collapse:separate;border-spacing:0;font-size:12px;table-layout:fixed}
+.voucher-settings-page .vs-table thead th{position:sticky;top:0;z-index:3;background:#eaf3ed;color:#235c40;border-bottom:2px solid #96bba6;padding:9px 6px;text-align:left;white-space:normal;line-height:1.25}
+.voucher-settings-page .vs-table tbody td{padding:8px 6px;vertical-align:middle;border-bottom:1px solid #c4d4ca}
 .voucher-settings-page .vs-table tbody tr:nth-child(even){background:#f1f6f3}
 .voucher-settings-page .vs-table tbody tr:hover{background:#e5f3e9}
-.voucher-settings-page .vs-table tbody tr:last-child td{border-bottom:0}
-.voucher-settings-page .vs-voucher{font-size:13px;font-weight:700;color:#1c2b21}
-.voucher-settings-page .vs-code{font-size:11px;color:#5d7566;margin-left:4px;font-weight:600}
-.voucher-settings-page .vs-switch{display:inline-flex;align-items:center;min-width:55px;margin-left:2px}
-.voucher-settings-page .vs-switch label{cursor:pointer;font-size:12px;font-weight:600;margin:0}
+.voucher-settings-page .vs-voucher{font-size:12px;font-weight:700;line-height:1.3;color:#1c2b21}
+.voucher-settings-page .vs-code{font-size:11px;color:#5d7566;font-weight:600;white-space:nowrap}
+.voucher-settings-page .vs-switch{display:inline-flex;align-items:center;min-width:48px;margin-left:1px}
+.voucher-settings-page .vs-switch label{font-size:11px;font-weight:600;margin:0;cursor:pointer}
 .voucher-settings-page .vs-approver{width:100%}
-.voucher-settings-page .ts-wrapper{width:100%}
-.voucher-settings-page .ts-control{min-height:34px;border-radius:5px;font-size:13px}
+.voucher-settings-page .ts-wrapper{width:100%;min-width:0}
+.voucher-settings-page .ts-control{min-height:32px;border-radius:5px;font-size:12px;padding:5px 7px}
 .voucher-settings-page select.tomselected{display:none!important}
 .voucher-settings-page .vs-field-error{font-size:11px;line-height:1.25}
-.voucher-settings-page .vs-save,.voucher-settings-page .vs-reversal-save{white-space:nowrap;font-size:12px}
-.voucher-settings-page .vs-muted{color:#84938a;font-size:12px}
+.voucher-settings-page .vs-save,.voucher-settings-page .vs-reversal-save{white-space:nowrap;font-size:11px;padding:5px 7px}
+.voucher-settings-page .vs-muted{color:#84938a;font-size:11px}
 .voucher-settings-page .vs-toast{position:fixed;right:18px;top:78px;z-index:2150;display:none;max-width:400px}
-.voucher-settings-page .vs-table .vs-group-row td{background:#e3ede7!important;color:#2b6746;font-size:12px;font-weight:700;letter-spacing:.015em;padding:7px 12px;border-bottom:1px solid #bbd2c1}
-.voucher-settings-page .vs-table .vs-group-row:hover{background:#e3ede7}
-.voucher-settings-page .vs-table .vs-reversal-form,.voucher-settings-page .vs-table .vs-policy-form{margin:0}
 .voucher-settings-page .vs-disabled{opacity:.65}
-@media(max-width:767px){.voucher-settings-page{padding:8px}.voucher-settings-page .vs-head{padding:10px}.voucher-settings-page .vs-panel-head{align-items:flex-start;flex-direction:column}.voucher-settings-page .vs-table-wrap{max-height:none}}
+@media(max-width:1199.98px){
+ .voucher-settings-page .vs-panels{grid-template-columns:minmax(0,1fr)}
+ .voucher-settings-page .vs-panel{min-height:260px}
+ .voucher-settings-page .vs-table-wrap{overflow:auto}
+}
+@media(max-width:767.98px){
+ .voucher-settings-page{padding:8px}
+ .voucher-settings-page .vs-head{padding:10px}
+ .voucher-settings-page .vs-panel-head{flex-wrap:wrap}
+ .voucher-settings-page .vs-table{min-width:590px}
+}
 </style>
 <div class="content-wrapper voucher-settings-page">
  <div class="container-fluid">
@@ -46,29 +48,29 @@
    <div><h4>Voucher Settings</h4><small class="text-muted">Project-wise voucher approval and reversal controls</small></div>
    <a class="btn btn-outline-success btn-sm" href="{{ route('finance.daily-vouchers.approvals.index') }}">Approval Dashboard</a>
   </div>
-  <section class="vs-panel" aria-labelledby="vs-table-title">
-   <div class="vs-panel-head">
-    <h5 id="vs-table-title">Voucher Policies</h5>
-    <small>{{ count($types) }} voucher types · Changes apply to new approvals; reversal is independent</small>
-   </div>
-   <div class="vs-table-wrap">
-    <table class="vs-table">
-     <thead>
-      <tr>
-       <th style="width:27%">Voucher Type</th>
-       <th style="width:12%">Approval</th>
-       <th style="width:26%">Authorized Approver</th>
-       <th style="width:12%">Approval Action</th>
-       <th style="width:10%">Reversal</th>
-       <th style="width:13%">Reversal Action</th>
-      </tr>
-     </thead>
-     <tbody>
-      @foreach([
-       ['title'=>'Approval + Reversal','codes'=>$reversalTypes],
-       ['title'=>'Approval Only','codes'=>array_values(array_diff(array_keys($types),$reversalTypes))]
-      ] as $group)
-       <tr class="vs-group-row"><td colspan="6">{{ $group['title'] }} · {{ count($group['codes']) }} voucher types</td></tr>
+  <div class="vs-panels">
+   @foreach([
+    ['id'=>'reversal','title'=>'Approval + Reversal','codes'=>$reversalTypes,'has_reversal'=>true],
+    ['id'=>'approval','title'=>'Approval Only','codes'=>array_values(array_diff(array_keys($types),$reversalTypes)),'has_reversal'=>false]
+   ] as $group)
+   <section class="vs-panel" aria-labelledby="vs-title-{{ $group['id'] }}">
+    <div class="vs-panel-head">
+     <h5 id="vs-title-{{ $group['id'] }}">{{ $group['title'] }}</h5>
+     <small>{{ count($group['codes']) }} voucher types</small>
+    </div>
+    <div class="vs-table-wrap" tabindex="0" aria-label="{{ $group['title'] }} voucher settings">
+     <table class="vs-table {{ $group['has_reversal'] ? 'vs-reversal-table' : 'vs-approval-table' }}">
+      @if($group['has_reversal'])
+       <colgroup><col style="width:23%"><col style="width:11%"><col style="width:27%"><col style="width:9%"><col style="width:17%"><col style="width:13%"></colgroup>
+      @else
+       <colgroup><col style="width:30%"><col style="width:14%"><col style="width:42%"><col style="width:14%"></colgroup>
+      @endif
+      <thead>
+       <tr><th>Voucher</th><th>Approval</th><th>Approver</th><th>Save</th>
+       @if($group['has_reversal'])<th>Reversal</th><th>Save</th>@endif
+       </tr>
+      </thead>
+      <tbody>
        @foreach($group['codes'] as $type)
         @php($definition=$types[$type])
         @php($policy=$policies->get($type))
@@ -82,7 +84,7 @@
             <input type="hidden" name="voucher_type" value="{{ $type }}">
            </form>
           @endif
-          @if(in_array($type,$reversalTypes,true))
+          @if($group['has_reversal'])
            <form id="vs-reversal-form-{{ $type }}" method="post" class="vs-reversal-form" action="{{ route('finance.voucher-settings.reversal.save') }}">
             @csrf
             <input type="hidden" name="voucher_type" value="{{ $type }}">
@@ -96,13 +98,13 @@
              {{ $policy?->approval_required ? 'checked':'' }} {{ $editable ? '' : 'disabled' }}>
             <label class="custom-control-label" for="vs-required-{{ $type }}">{{ $policy?->approval_required ? 'ON':'OFF' }}</label>
            </div>
-          @else <span class="vs-muted">Unavailable</span> @endif
+          @else <span class="vs-muted">N/A</span> @endif
          </td>
          <td>
           @if($definition['supported'])
            <select id="vs-approver-{{ $type }}" name="approver_user_id" form="vs-policy-form-{{ $type }}" class="form-select form-select-sm vs-approver"
             {{ $editable ? '' : 'disabled' }}>
-            <option value="">Select project approver</option>
+            <option value="">Select approver</option>
             @foreach($approvers as $user)
              <option value="{{ $user->id }}" {{ (int)($policy?->approver_user_id??0)===(int)$user->id?'selected':'' }}>{{ $user->name }}</option>
             @endforeach
@@ -115,27 +117,28 @@
            <button type="submit" form="vs-policy-form-{{ $type }}" class="btn btn-sm btn-success vs-save">Save</button>
           @else <span class="vs-muted">—</span> @endif
          </td>
-         <td>
-          @if(in_array($type,$reversalTypes,true))
+         @if($group['has_reversal'])
+          <td>
            <div class="custom-control custom-switch vs-switch">
             <input type="checkbox" class="custom-control-input vs-reversal-enabled" id="vs-reversal-{{ $type }}" form="vs-reversal-form-{{ $type }}" name="reversal_enabled" value="1"
              {{ ($policy?->reversal_enabled ?? true) ? 'checked':'' }} {{ $editable ? '' : 'disabled' }}>
             <label class="custom-control-label" for="vs-reversal-{{ $type }}">{{ ($policy?->reversal_enabled ?? true) ? 'ON':'OFF' }}</label>
            </div>
-          @else <span class="vs-muted">Not available</span> @endif
-         </td>
-         <td>
-          @if(in_array($type,$reversalTypes,true) && $editable)
-           <button type="submit" form="vs-reversal-form-{{ $type }}" class="btn btn-sm btn-outline-success vs-reversal-save">Save</button>
-          @else <span class="vs-muted">—</span> @endif
-         </td>
+          </td>
+          <td>
+           @if($editable)
+            <button type="submit" form="vs-reversal-form-{{ $type }}" class="btn btn-sm btn-outline-success vs-reversal-save">Save</button>
+           @else <span class="vs-muted">—</span> @endif
+          </td>
+         @endif
         </tr>
        @endforeach
-      @endforeach
-     </tbody>
-    </table>
-   </div>
-  </section>
+      </tbody>
+     </table>
+    </div>
+   </section>
+   @endforeach
+  </div>
  </div>
 </div>
 <div class="alert vs-toast" role="status" id="vs-toast"></div>
@@ -145,19 +148,23 @@
 <script>
 $(function(){
  'use strict';
- // Lock document scrolling only on this screen. The table remains the
- // single vertical scroller, and its size follows the actual navbar offset.
- $('html, body').addClass('vs-no-outer-scroll');
- $(window).scrollTop(0);
- function sizeVoucherSettings(){
+ // Keep the shared footer in view; only the two cards should scroll.
+ function sizeVoucherPanels(){
   var $page=$('.voucher-settings-page');
   if(!$page.length)return;
+  var footerHeight=$('.main-footer').outerHeight(true)||42;
   var top=$page.offset().top;
-  var available=Math.max(280,$(window).height()-top-8);
-  $page.css('height',available+'px');
+  var available=$(window).height()-top-footerHeight-10;
+  if(available>=320){
+   $page.css('height',available+'px');
+   $page.find('.vs-panels').css('min-height','0');
+  }else{
+   $page.css('height','auto');
+   $page.find('.vs-panels').css('min-height','520px');
+  }
  }
- sizeVoucherSettings();
- $(window).on('resize.voucherSettings',sizeVoucherSettings);
+ sizeVoucherPanels();
+ $(window).on('resize.voucherSettings',sizeVoucherPanels);
  $('.vs-approver').each(function(){
   if(typeof window.TomSelect!=='undefined'&&!this.tomselect)
    new TomSelect(this,{create:false,persist:false,maxItems:1,allowEmptyOption:true});
