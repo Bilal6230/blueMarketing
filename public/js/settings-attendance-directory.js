@@ -103,12 +103,7 @@ $(function(){
     }
     $reset.on('click',function(){filters={};sortColumn=-1;descending=false;page=1;size=25;$pageSize.val('25');closePopup();refresh();});
     $pageSize.on('change',function(){size=Number($(this).val())||25;page=1;refresh();});
-    if($.blueModernDirectoryTools)exports=$.blueModernDirectoryTools.mount({
-      card:$card,table:$table,title:title,getRows:function(){
-        return matches().map(function(row){return $(row).children('td').map(function(){return $.trim($(this).text()).replace(/\\s+/g,' ');}).get();});
-      }
-    });
-    // Move action buttons into shared source wrapper by enhancing original cells.
+        // Move action buttons into shared source wrapper by enhancing original cells.
     function enhanceActions(){
       $body.find('td.blue-actions-cell').each(function(){
         var $cell=$(this),$actions=$cell.children('.as-actions');
