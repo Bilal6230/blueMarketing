@@ -23,6 +23,12 @@
 #s3-account-modal .s3-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 #s3-account-modal .s3-span{grid-column:1/-1}
 #s3-account-modal .s3-form-grid label{font-weight:650;font-size:14px}
+#s3-account-modal .s3-form-grid .ts-wrapper{width:100%}
+#s3-account-modal .s3-form-grid .ts-control{min-height:38px;border:1px solid #b6c9da;border-radius:6px;font-size:14px;padding:8px 11px}
+#s3-account-modal .s3-form-grid .ts-wrapper.focus .ts-control{border-color:#2580d8;box-shadow:0 0 0 3px #2580d81c}
+.s3-coa-dropdown{z-index:1100!important;font-size:14px}
+.s3-coa-dropdown .option{padding:9px 11px}
+
 #bank-accounts .bm-modern-export-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px;border-bottom:1px solid #bbcddd}
 #bank-accounts .bm-modern-export-btn{border:1px solid #b9cbe0;background:#fff;padding:5px 8px;border-radius:5px;color:#174879;font-size:12px;font-weight:650}
 #bank-accounts .bm-account-col{float:right;border:0;background:transparent;color:#526b8b;cursor:pointer}
