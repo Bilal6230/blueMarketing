@@ -24,7 +24,8 @@ class SettingController extends Controller
     {
         $x['title']     = 'Settings';
         $x['types'] = collect(\App\Services\Finance\VoucherAvailability::FAMILIES)
-            ->keys()->merge(Ledger::distinct()->pluck('type'))->unique()->values()->all();
+            ->keys()->merge(\App\Services\Finance\ProjectVoucherDisplay::SERIES)
+            ->merge(Ledger::distinct()->pluck('type'))->unique()->values()->all();
         $x['category']  = Setting::where('type', '!=', 'toggle')->select('category')->groupBy('category')->get();
         $categoryNames = $x['category']->pluck('category')->all();
         $requestedTab = (string) request()->query('tab', '');
