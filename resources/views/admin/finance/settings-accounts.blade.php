@@ -60,7 +60,6 @@
  <div class="s3-layout">
   <section class="s3-card settings-fill-card">
    <header class="s3-card-head"><h5>Bank Accounts</h5><small class="text-muted" id="s3-bank-count">{{ $projectBankAccounts->count() }} accounts</small></header>
-   <div class="bm-modern-export-toolbar bm-export-placeholder"><button class="bm-modern-export-btn" disabled>Column Visibility</button><button class="bm-modern-export-btn" disabled>Copy</button><button class="bm-modern-export-btn" disabled>CSV</button><button class="bm-modern-export-btn" disabled>Excel</button><button class="bm-modern-export-btn" disabled>PDF</button><button class="bm-modern-export-btn" disabled>Print</button></div>
    <div class="s3-table-scroll bm-account-table-wrap settings-fill-scroll">
     <table class="s3-table table-bordered" id="s3-bank-table"><thead><tr><th>Display Title</th><th>Bank / Account</th><th>COA Mapping</th><th>Status</th><th>Action</th></tr></thead><tbody>
     @foreach($projectBankAccounts as $a)
@@ -71,7 +70,6 @@
   </section>
   <section class="s3-card settings-fill-card">
    <header class="s3-card-head"><h5>Cash Accounts</h5><small class="text-muted" id="s3-cash-count">{{ $projectCashAccounts->count() }} accounts</small></header>
-   <div class="bm-modern-export-toolbar bm-export-placeholder"><button class="bm-modern-export-btn" disabled>Column Visibility</button><button class="bm-modern-export-btn" disabled>Copy</button><button class="bm-modern-export-btn" disabled>CSV</button><button class="bm-modern-export-btn" disabled>Excel</button><button class="bm-modern-export-btn" disabled>PDF</button><button class="bm-modern-export-btn" disabled>Print</button></div>
    <div class="s3-table-scroll bm-account-table-wrap settings-fill-scroll">
     <table class="s3-table table-bordered" id="s3-cash-table"><thead><tr><th>Display Title</th><th>COA Mapping</th><th>Status</th><th>Action</th></tr></thead><tbody>
     @foreach($projectCashAccounts as $a)
