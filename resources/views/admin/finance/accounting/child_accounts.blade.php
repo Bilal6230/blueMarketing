@@ -1,5 +1,16 @@
 @extends('admin.layouts.master')
-@push('style')<link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}">@endpush
+@push('style')
+<link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}">
+<style>
+.bm-account-create-modal #party-create-head:not(.tomselected){width:100%;min-height:38px;border:1px solid #b9cbe0;border-radius:5px;padding:6px 10px;background:#fff}
+.bm-account-create-modal #party-create-head.tomselected,
+.bm-account-create-modal #party-create-head.ts-hidden-accessible{display:none!important}
+.bm-account-create-modal .ts-wrapper.party-head-select{width:100%;border:0!important;padding:0!important;background:transparent!important;box-shadow:none!important}
+.bm-account-create-modal .ts-wrapper.party-head-select .ts-control{min-height:38px;border:1px solid #b9cbe0;border-radius:5px;font-size:14px}
+.bm-account-create-modal #party-create-head~small{display:block;margin-top:5px}
+.party-head-dropdown{z-index:1100!important}
+</style>
+@endpush
 @section('content')
     <div class="content-wrapper bm-modern-accounts" data-account-kind="subhead">
         <!-- Content Header (Page header) -->
