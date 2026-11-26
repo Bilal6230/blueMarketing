@@ -5,6 +5,7 @@ $(function(){
  var $tab=$('#voucher-settings'),$modal=$('#s4-display-modal'),$form=$('#s4-display-form');
  if(!$tab.length||!$modal.length||!$form.length)return;
  $modal.appendTo('body');
+ $('#s4-prefix-confirm').appendTo('body');
  var $series=$form.find('[name=series]'),$prefix=$form.find('[name=prefix]'),busy=false;
  function notify(message,failed){
   if(window.toastr){failed?toastr.error(message):toastr.success(message);}
