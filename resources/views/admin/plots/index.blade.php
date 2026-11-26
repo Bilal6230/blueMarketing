@@ -263,11 +263,12 @@
                                 <div class="input-group">
                                     <label class="fbox">Project</label>
                                     <div class="input-group">
-                                        <select class="form-control" name="project_id">
+                                        <select class="form-control" disabled aria-label="Selected Project">
                                             @foreach (Setting::get_active_project(getSelectedTown()) as $v)
                                                 <option value="{{ $v->id }}">{{ $v->project }}</option>
                                             @endforeach
                                         </select>
+                                        <input type="hidden" name="project_id" value="{{ getSelectedTown() }}">
                                         @error('project_id')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -461,11 +462,12 @@
                                 <div class="input-group">
                                     <label class="fbox">Project</label>
                                     <div class="input-group">
-                                        <select class="form-control" name="project_id" id="project_id">
-                                            @foreach (Setting::get_active_project() as $v)
+                                        <select class="form-control" disabled aria-label="Selected Project" id="project_id">
+                                            @foreach (Setting::get_active_project(getSelectedTown()) as $v)
                                                 <option value="{{ $v->id }}">{{ $v->project }}</option>
                                             @endforeach
                                         </select>
+                                        <input type="hidden" name="project_id" value="{{ getSelectedTown() }}">
                                         @error('project_id')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
