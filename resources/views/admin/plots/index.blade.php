@@ -1,19 +1,8 @@
 @extends('admin.layouts.master')
 @push('style')
+<link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}?v=2">
+<link rel="stylesheet" href="{{ asset('css/modern-user-directory.css') }}?v=2">
 <style>
-.plot-list-page{font-size:14px}
-.plot-list-page .plot-list-card{border:1.5px solid #b8cbdc;border-top:3px solid #2563eb;border-radius:9px;display:flex;flex-direction:column;min-height:0;height:calc(100vh - 192px);overflow:hidden}
-.plot-list-page .plot-list-card>.card-header{background:#f8fbff;padding:10px 14px;border-bottom:1px solid #d0ddea}
-.plot-list-page .plot-list-card>.card-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0}
-.plot-list-page #example1{font-size:14px;border-collapse:separate;border-spacing:0;min-width:1060px}
-.plot-list-page #example1 thead th{background:#eaf2fa;color:#193f6d;border-bottom:2px solid #2563eb;padding:11px 10px}
-.plot-list-page #example1 tbody td{padding:10px;border-color:#bdcddc;vertical-align:middle}
-.plot-list-page #example1 tbody tr:nth-child(even){background:#edf3f9}
-.plot-list-page .dataTables_wrapper{display:flex;flex-direction:column;height:100%;min-height:0}
-.plot-list-page .dataTables_scroll,.plot-list-page .dataTables_scrollBody{flex:1;min-height:0;overflow:auto!important}
-.plot-list-page .dataTables_filter,.plot-list-page .dt-buttons,.plot-list-page .dataTables_length{font-size:13px}
-.plot-list-page .dataTables_info,.plot-list-page .dataTables_paginate{padding:8px 10px!important}
-.plot-list-page .btn-group .btn{border-radius:5px;margin-right:3px}
 .plot-editor .modal-dialog{max-width:950px;width:calc(100% - 34px);margin:24px auto}
 .plot-editor .modal-content{border:0;border-radius:12px;overflow:hidden;box-shadow:0 20px 65px #132b4a35;display:flex;max-height:calc(100vh - 48px)}
 .plot-editor .modal-header{background:#f5f9fe;border-bottom:1px solid #d1e0ed;padding:15px 20px;flex-shrink:0}
@@ -38,11 +27,22 @@
 .plot-editor .ts-control{min-height:40px;border-color:#b6c9dd!important;border-radius:6px;font-size:14px}
 .plot-definition-dropdown{z-index:1100!important}
 @media(max-width:700px){.plot-editor .modal-dialog{width:calc(100% - 16px);margin:8px auto}.plot-editor .modal-content{max-height:calc(100vh - 16px)}.plot-editor .modal-body{padding:14px}.plot-list-page .plot-list-card{height:calc(100vh - 180px)}}
+
+.bm-plot-directory .bm-account-table tbody td{height:53px!important}
+.bm-plot-directory .bm-account-table thead th{position:sticky;top:0;z-index:3}
+.bm-plot-directory .bm-modern-export-toolbar .bm-plot-toolbar-actions{margin-left:auto!important;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bm-plot-directory .bm-modern-export-toolbar .bm-plot-toolbar-actions .btn{font-size:12px!important;border-radius:6px;padding:7px 12px;font-weight:650}
+.bm-plot-directory .bm-account-table td:last-child{text-align:center;min-width:85px}
+.bm-plot-directory .bm-account-table .btn-edit,.bm-plot-directory .bm-account-table .btn-delete{font-size:12px}
+.bm-plot-directory .bm-account-table td:nth-child(4) a{font-weight:650}
+.bm-plot-directory .bm-modern-export-toolbar .bm-modern-column-menu{order:0!important;margin-left:3px!important}
+.bm-plot-directory .bm-modern-export-toolbar .bm-plot-toolbar-actions{order:20!important;margin-left:auto!important}
+.bm-plot-directory .bm-account-table{min-width:1100px}
 </style>
 @endpush
 
 @section('content')
-    <div class="content-wrapper plot-list-page">
+    <div class="content-wrapper bm-modern-accounts bm-plot-directory" data-account-kind="plot">
         <!-- Content Header (Page header) -->
         <div class="content-header">
             <div class="container-fluid">
@@ -67,20 +67,24 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <div class="card plot-list-card">
-                            @can('create plot')
-                                <div class="card-header">
-                                    <h3 class="card-title">
-                                        <a href="#" class="btn btn-sm btn-success btn-add-plot" data-toggle="modal"
-                                            data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i
-                                                class="fas fa-plus"></i> Add</a>
-                                        <a href="{{ route('project.plot-definitions.index') }}" class="btn btn-sm btn-outline-primary ml-1"><i class="fas fa-list-alt"></i> Plot Definitions</a>
-                                    </h3>
+                        <div class="card bm-account-card">
+                            <div class="bm-modern-export-toolbar bm-export-placeholder" aria-label="Table tools loading">
+                                <button type="button" class="bm-modern-export-btn" disabled>Copy</button>
+                                <button type="button" class="bm-modern-export-btn" disabled>CSV</button>
+                                <button type="button" class="bm-modern-export-btn" disabled>Excel</button>
+                                <button type="button" class="bm-modern-export-btn" disabled>PDF</button>
+                                <button type="button" class="bm-modern-export-btn" disabled>Print</button>
+                                <button type="button" class="bm-modern-export-btn bm-modern-col-toggle" disabled>Column Visibility</button>
+                                <div class="bm-plot-toolbar-actions">
+                                    @can('create plot')
+                                    <a href="#" class="btn btn-sm btn-success btn-add-plot" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i class="fas fa-plus"></i> Add</a>
+                                    @endcan
+                                    <a href="{{ route('project.plot-definitions.index') }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-list-alt"></i> Plot Definitions</a>
                                 </div>
-                            @endcan
+                            </div>
                             <!-- /.card-header -->
-                            <div class="card-body table-responsive">
-                                <table id="example1" class="table table-bordered table-striped">
+                            <div class="card-body table-responsive bm-account-table-wrap">
+                                <table id="bmAccountDirectory" data-initial-skeleton="true" class="table table-bordered bm-account-table bm-pending-directory">
                                     <thead>
                                         <tr>
                                             <th>#</th>
@@ -98,6 +102,13 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        @for($skeletonIndex = 0; $skeletonIndex < 6; $skeletonIndex++)
+                                        <tr class="bm-cell-skeleton-row" aria-hidden="true">
+                                            @for($column = 0; $column < 9; $column++)<td><span class="bm-cell-skeleton"></span></td>@endfor
+                                            @canany(['update plot','delete plot'])<td><span class="bm-cell-skeleton"></span></td>@endcanany
+                                        </tr>
+                                        @endfor
+
                                         @foreach ($data as $i)
                                             <tr>
                                                 <td>{{ $loop->iteration }}</td>
@@ -139,6 +150,14 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="bm-account-footer bm-account-footer-placeholder" aria-label="Table pagination loading">
+                                <div class="bm-account-footer-left">
+                                    <small class="text-muted">Loading records...</small>
+                                    <select disabled aria-label="Rows per page"><option selected>25</option></select>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled>Reset filters</button>
+                                </div>
+                                <div class="bm-account-pages"><button type="button" class="dv-page-btn" disabled>1</button></div>
+                            </div>
                             <!-- /.card-body -->
                         </div>
 
@@ -157,6 +176,7 @@
 
 @section('js')
     <script src="{{ asset('js/plot-editor-modern.js') }}?v=1"></script>
+    <script src="{{ asset('js/modern-account-directory.js') }}?v=plots1"></script>
 
     @if ($errors->any())
         <script>
