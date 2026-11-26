@@ -52,6 +52,43 @@ class AttendanceController extends Controller
         return view('admin.attendance.index', compact('punches', 'employees', 'from', 'to', 'projectId') + ['title' => 'Employee Attendance']);
     }
 
+    /**
+     * Return only the selected project's device metadata; never expose
+     * the encrypted secret or the underlying stored credential value.
+     */
+    public function deviceSettings(Request $request)
+    {
+        abort_unless($this->canManage() && $request->user()->can('update setting'), 403);
+        $projectId = $this->projectId();
+        $device = AttendanceDevice::with(['mappings.user:id,name'])
+            ->where('project_id', $projectId)->findOrFail($request->route('device'));
+        return response()->json([
+            'success' => true,
+            'device' => $this->devicePayload($device),
+        ]);
+    }
+
+    private function devicePayload(AttendanceDevice $device): array
+    {
+        return [
+            'id' => (int) $device->id,
+            'name' => (string) $device->name,
+            'vendor' => (string) ($device->vendor ?? ''),
+            'model' => (string) ($device->model ?? ''),
+            'connection_type' => (string) $device->connection_type,
+            'host' => (string) ($device->host ?? ''),
+            'port' => (int) $device->port,
+            'protocol' => (string) ($device->protocol ?? ''),
+            'username' => (string) ($device->username ?? ''),
+            'has_password' => $device->password !== null && $device->password !== '',
+            'mappings' => $device->mappings->map(fn ($mapping) => [
+                'user_id' => (int) $mapping->user_id,
+                'user_name' => (string) ($mapping->user?->name ?? 'Employee unavailable'),
+                'device_user_id' => (string) $mapping->device_user_id,
+            ])->values()->all(),
+        ];
+    }
+
     public function saveDevice(Request $request)
     {
         abort_unless($this->canManage(), 403);
@@ -80,6 +117,14 @@ class AttendanceController extends Controller
         $device->enabled = false; // No device is considered connected until an adapter verifies it.
         $device->save();
 
+        if ($request->expectsJson()) {
+            $device->load(['mappings.user:id,name']);
+            return response()->json([
+                'success' => true,
+                'message' => 'Device settings saved. Connection and sync are unavailable until verified.',
+                'device' => $this->devicePayload($device),
+            ]);
+        }
         return redirect()->route('setting.index', ['device_id' => $device->id, 'tab' => 'attendance-machine'])
             ->with('success', 'Device settings saved. Connection and sync will be enabled after the terminal is available for verification.');
     }
@@ -105,6 +150,14 @@ class AttendanceController extends Controller
             ['device_user_id' => $data['device_user_id']]
         );
 
+        if ($request->expectsJson()) {
+            $device->load(['mappings.user:id,name']);
+            return response()->json([
+                'success' => true,
+                'message' => 'Employee mapping saved.',
+                'device' => $this->devicePayload($device),
+            ]);
+        }
         return back()->with('success', 'Employee mapping saved.');
     }
 }
