@@ -413,18 +413,6 @@ final class PlotVoucherEditor
                         'size'=>$v['area'],'unit'=>$v['unit'],'type'=>(string)$v['type'],
                         'road_id'=>$v['road_id'],'facing_id'=>$v['facing_id'],
                         'is_corner'=>($v['is_corner']??0)?1:0];
-                    foreach (['category','type','size','unit'] as $type) {
-                        $field='plot_'.$type.'_definition_id';
-                        if (!Schema::hasColumn('plots',$field)) continue;
-                        $definition=(int)($v[$field]??0);
-                        if ($definition && (!Schema::hasTable('plot_definitions') ||
-                            !DB::table('plot_definitions')->where('id',$definition)
-                                ->where('project_id',$project)->where('kind',$type)
-                                ->where('is_active',1)->exists())) {
-                            throw new \DomainException('Invalid plot definition.');
-                        }
-                        $changed[$field]=$definition?:null;
-                    }
                     DB::table('plots')->where('id',$plotId)->where('project_id',$project)->update($changed);
                     DB::table('finance_plot_purchase_items')->where('id',$p['row']->id)
                         ->where('purchase_id',$id)->update([
