@@ -45,7 +45,7 @@
     @csrf
     @method('PUT')
     @php($receiptHeaderSettings = \App\Models\Setting::where('type','toggle')->whereIn('key',array_map(fn($type) => $type.'_Receipt_Header',$types))->get()->keyBy('key'))
-    @php($displayVoucherSeries = collect(\App\Services\Finance\ProjectVoucherDisplay::SERIES)->merge(array_keys(\App\Services\Finance\VoucherAvailability::FAMILIES))->merge($types)->unique()->values())
+    @php($displayVoucherSeries = collect(\App\Services\Finance\ProjectVoucherDisplay::SERIES)->merge(array_keys(\App\Services\Finance\VoucherAvailability::FAMILIES))->merge($types)->unique()->reject(fn($series) => $series === 'CP')->values())
     <table class="s4-table" id="s4-directory-table">
      <thead><tr><th>Voucher Name</th><th>Current Prefix</th><th>Legacy Series</th><th>Print Header</th><th>Active / Inactive</th><th>Action</th></tr></thead>
      <tbody>
@@ -102,6 +102,7 @@
      <div class="s4-full"><label for="s4-series">Voucher Name *</label>
       <select id="s4-series" class="form-control" name="series" required>
        @foreach(\App\Services\Finance\ProjectVoucherDisplay::SERIES as $series)
+        @continue($series === 'CP')
         <option value="{{ $series }}" data-prefix="{{ $voucherDisplaySettings[$series] ?? ($series==='CP' ? 'DR' : $series) }}">{{ \App\Services\Finance\ProjectVoucherDisplay::label($series) }}</option>
        @endforeach
       </select>
