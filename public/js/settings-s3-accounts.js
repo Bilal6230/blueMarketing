@@ -6,6 +6,50 @@ $(function(){
  if(!$root.length||!$modal.length||!$form.length)return;
  $modal.appendTo('body');
  var busy=false,currentType='bank';
+ // Each Subhead option carries the actual project-scoped mapping ID. Never
+ // reconstruct financial mapping identities from separate numeric IDs.
+ var $head=$form.find('#s3-head-account'),$subhead=$form.find('#s3-subhead-account'),
+     $mapping=$form.find('[name=account_mapping_id]');
+ var coaOptions=$subhead.find('option[value!=""]').map(function(){
+  return {id:String(this.value),head:String($(this).attr('data-head-id')),
+    subhead:String($(this).attr('data-subhead-id')),label:$(this).text()};
+ }).get();
+ function populateSubheads(headId,chosenMapping){
+  var requested=String(chosenMapping||''),head=String(headId||'');
+  $subhead.empty().append($('<option>',{value:'',text:'Select Subhead Account'}));
+  $.each(coaOptions,function(_,item){
+   if(head && item.head!==head)return;
+   $subhead.append($('<option>',{value:item.id,text:item.label,
+    'data-head-id':item.head,'data-subhead-id':item.subhead}));
+  });
+  $subhead.val(requested && $subhead.find('option').filter(function(){
+   return this.value===requested;
+  }).length?requested:'');
+  $mapping.val($subhead.val()||'');
+ }
+ function selectMapping(mappingId){
+  var id=String(mappingId||'');
+  var item=coaOptions.find(function(option){return option.id===id;});
+  $head.val(item?item.head:'');
+  populateSubheads(item?item.head:'',item?item.id:'');
+ }
+ $head.on('change',function(){
+  var next=String($(this).val()||''),previous=String($subhead.val()||'');
+  populateSubheads(next,previous);
+ });
+ $subhead.on('change',function(){
+  var id=String($(this).val()||''),item=coaOptions.find(function(option){
+   return option.id===id;
+  });
+  if(item){
+   $head.val(item.head);
+   // A Subhead chosen before a Head must remain selected, not be reset.
+   populateSubheads(item.head,item.id);
+  }else{
+   $mapping.val('');
+  }
+ });
+
  function notify(message,failed){
   if(window.toastr){failed?toastr.error(message):toastr.success(message);}
   else if(window.Swal)Swal.fire({icon:failed?'error':'success',text:message});
@@ -25,13 +69,15 @@ $(function(){
   $form.find('input[name=bank_account_id],input[name=cash_account_id]').val('').prop('disabled',true);
   $form.find('.s3-bank-only :input').prop('disabled',type!=='bank');
   $form.find('.s3-bank-only').toggle(type==='bank');
-  $form.find('[name=display_title],[name=account_mapping_id]').val('');
+  $form.find('[name=display_title]').val('');
+  selectMapping('');
   $form.find('[name=is_active]').val('1');
   if(account){
    $form.find('[name='+type+'_account_id]').prop('disabled',false).val(account.id);
-   $.each(['display_title','bank_name','account_title','branch','account_mapping_id','is_active'],function(_,key){
+   $.each(['display_title','bank_name','account_title','branch','is_active'],function(_,key){
     if(account[key]!==undefined)$form.find('[name='+key+']').val(key==='is_active'?(account[key]?'1':'0'):String(account[key]));
    });
+   selectMapping(account.account_mapping_id);
    $('#s3-bank-number-note').text(account.account_number_last4?'Saved number ends '+account.account_number_last4+'; leave blank to keep.':'No saved number.');
   }else{
    $('#s3-bank-number-note').text('Encrypted when saved.');
@@ -86,6 +132,11 @@ $(function(){
   event.preventDefault();event.stopImmediatePropagation();
   if(busy)return;
   if(!this.checkValidity()){this.reportValidity();return;}
+  if(!$mapping.val()){
+   notify('Select a valid project Head and Subhead Account mapping.',true);
+   $subhead.trigger('focus');
+   return;
+  }
   function send(){
    busy=true;$form.find('[type=submit]').prop('disabled',true);
    $.ajax({url:$form.attr('action'),type:'POST',data:$form.serialize(),dataType:'json',
