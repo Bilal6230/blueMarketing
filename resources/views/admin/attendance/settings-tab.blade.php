@@ -1,243 +1,318 @@
 <div class="tab-pane {{ $attendanceTabActive ? 'active' : '' }}" id="attendance-machine">
-    @if(!$attendanceTablesAvailable)
-        <div class="alert alert-warning">Attendance device tables are not installed. Apply the attendance setup migration.</div>
-    @elseif(!$canManageAttendanceDevice || !auth()->user()->can('update setting'))
-        <div class="alert alert-info">Device settings can be managed by an authorized project administrator.</div>
-    @elseif(!$attendanceProjectId)
-        <div class="alert alert-info">Select a project to configure its attendance devices.</div>
-    @else
-        <style>
-        #attendance-machine .as-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
-        #attendance-machine .as-toolbar h4{font-weight:700;font-size:19px;margin:0;color:#204d78}
-        #attendance-machine .as-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-        #attendance-machine .as-toolbar-actions select{min-width:215px}
-        #attendance-machine .as-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px}
-        #attendance-machine .as-card{border:1px solid #c2d3e2;border-top:3px solid #2082d7;border-radius:9px;min-width:0;background:white;overflow:hidden}
-        #attendance-machine .as-card-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 14px;border-bottom:1px solid #c2d3e2;background:#f4f8fc}
-        #attendance-machine .as-card-header h5{font-size:15px;margin:0;font-weight:700;color:#174c7b}
-        #attendance-machine .as-card-body{padding:14px}
-        #attendance-machine .as-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
-        #attendance-machine .as-grid .as-wide{grid-column:1/-1}
-        #attendance-machine .as-grid label,#attendance-machine .as-mapping-form label{font-weight:650;font-size:13px;display:block;margin-bottom:5px}
-        #attendance-machine .as-grid input,#attendance-machine .as-grid select{width:100%;font-size:14px}
-        #attendance-machine .as-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:13px}
-        #attendance-machine .as-hint{font-size:12px;color:#6c7988;line-height:1.5}
-        #attendance-machine .as-mapping-form{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:9px;align-items:end}
-        #attendance-machine .as-mapping-table{font-size:13px;margin-top:12px;max-height:270px;overflow:auto}
-        #attendance-machine .as-mapping-table table{margin:0}
-        #attendance-machine .as-mapping-table th{background:#e9f2fa;position:sticky;top:0;border-bottom:2px solid #9abbd5}
-        #attendance-machine .as-mapping-table tbody tr:nth-child(even){background:#f2f7fb}
-        #attendance-machine .as-mapping-empty{padding:28px 8px;text-align:center;color:#76879a}
-        #attendance-machine .as-busy{opacity:.65;pointer-events:none}
-        #attendance-machine .as-field-error{font-size:11px;color:#b42318;display:block;min-height:0}
-        @media(max-width:1150px){#attendance-machine .as-layout{grid-template-columns:1fr}}
-        @media(max-width:650px){#attendance-machine .as-grid,#attendance-machine .as-mapping-form{grid-template-columns:1fr}#attendance-machine .as-grid .as-wide{grid-column:auto}#attendance-machine .as-toolbar-actions select{min-width:160px}}
-        </style>
-        <div class="as-toolbar">
-            <div><h4>Attendance Machine</h4><small class="text-muted">Project-wise device setup and employee mapping · saved via AJAX</small></div>
-            <div class="as-toolbar-actions">
-                <select id="as-device-select" class="form-control" aria-label="Select attendance device">
-                    <option value="">New device</option>
+@if(!$attendanceTablesAvailable)
+    <div class="alert alert-warning">Attendance device tables are not installed. Contact your administrator.</div>
+@elseif(!$canManageAttendanceDevice || !auth()->user()->can('update setting'))
+    <div class="alert alert-info">Attendance devices can be managed by an authorized project administrator.</div>
+@elseif(!$attendanceProjectId)
+    <div class="alert alert-info">Select a project to configure attendance devices.</div>
+@else
+<style>
+#attendance-machine .as-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+#attendance-machine .as-toolbar h4{font-size:19px;font-weight:700;color:#204d78;margin:0}
+#attendance-machine .as-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px}
+#attendance-machine .as-card{border:1px solid #c2d3e2;border-top:3px solid #2082d7;border-radius:9px;background:#fff;min-width:0;overflow:hidden}
+#attendance-machine .as-card-head{background:#f4f8fc;border-bottom:1px solid #c2d3e2;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
+#attendance-machine .as-card-head h5{font-size:15px;font-weight:700;color:#174c7b;margin:0}
+#attendance-machine .as-card-body{padding:12px}
+#attendance-machine .as-table-scroll{max-height:calc(100dvh - 385px);overflow:auto;min-height:130px;overscroll-behavior:contain}
+#attendance-machine .as-table{width:100%;font-size:14px;margin:0}
+#attendance-machine .as-table th{position:sticky;top:0;z-index:1;background:#eaf2f9;border-bottom:2px solid #9abbd5;white-space:nowrap}
+#attendance-machine .as-table td,#attendance-machine .as-table th{padding:9px 8px;vertical-align:middle}
+#attendance-machine .as-table tbody tr:nth-child(even){background:#f1f6fa}
+#attendance-machine .as-table tbody tr:hover{background:#e6f2fb}
+#attendance-machine .as-actions{display:flex;gap:5px;flex-wrap:wrap}
+#attendance-machine .as-note{font-size:12px;color:#65798b}
+#attendance-machine .as-mapping-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:8px;align-items:end}
+#attendance-machine .as-mapping-grid label,#as-device-modal label{font-weight:650;font-size:14px;display:block;margin-bottom:5px}
+#attendance-machine .as-input-error,#as-device-modal .as-input-error{color:#b42318;font-size:12px}
+#attendance-machine .as-table-empty{text-align:center;color:#698197;padding:22px!important}
+#attendance-machine .as-busy{opacity:.65;pointer-events:none}
+#as-device-modal .modal-content{border-radius:12px;overflow:hidden}
+#as-device-modal .modal-header{background:#f3f8fd;border-bottom:1px solid #bfd0de}
+#as-device-modal .as-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+#as-device-modal .as-form-wide{grid-column:1/-1}
+#as-device-modal .as-form-grid input,#as-device-modal .as-form-grid select{width:100%;font-size:14px}
+#as-device-modal .as-readonly-note{font-size:12px;color:#697c90}
+@media(max-width:1100px){#attendance-machine .as-layout{grid-template-columns:1fr}}
+@media(max-width:650px){#attendance-machine .as-mapping-grid,#as-device-modal .as-form-grid{grid-template-columns:1fr}#as-device-modal .as-form-wide{grid-column:auto}}
+</style>
+<div id="as-workspace"
+    data-device-url="{{ route('attendance.device.settings',['device'=>987654321]) }}"
+    data-delete-url="{{ route('attendance.device.delete',['device'=>987654321]) }}">
+    <div class="as-toolbar">
+        <div><h4>Attendance Machine</h4><small class="text-muted">Manage devices and employee mappings for the selected project</small></div>
+        <button type="button" class="btn btn-primary" id="as-new-device"><i class="fas fa-plus mr-1"></i> Add Device</button>
+    </div>
+    <div class="as-layout">
+        <section class="as-card">
+            <header class="as-card-head"><h5>Device Configuration</h5><small id="as-device-count" class="text-muted">{{ $attendanceDevices->count() }} devices</small></header>
+            <div class="as-table-scroll">
+                <table class="table table-bordered as-table">
+                    <thead><tr><th>Device</th><th>Connection</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="as-device-rows">
+                    @forelse($attendanceDevices as $item)
+                        <tr data-id="{{ $item->id }}">
+                            <td><strong class="as-device-name">{{ $item->name }}</strong><div class="as-note">{{ $item->vendor }} {{ $item->model }}</div></td>
+                            <td><span class="as-device-connection">{{ ucfirst($item->connection_type) }}</span><div class="as-note as-device-host">{{ $item->host ?: 'Not provided' }}</div></td>
+                            <td><span class="badge badge-warning">Not connected</span></td>
+                            <td><div class="as-actions">
+                                <button type="button" class="btn btn-sm btn-outline-primary as-edit-device" data-id="{{ $item->id }}" aria-label="Edit device">Edit</button>
+                                <button type="button" class="btn btn-sm btn-outline-info as-select-device" data-id="{{ $item->id }}">Map IDs</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger as-delete-device" data-id="{{ $item->id }}">Delete</button>
+                            </div></td>
+                        </tr>
+                    @empty
+                        <tr class="as-empty-device"><td colspan="4" class="as-table-empty">No devices configured. Click Add Device to begin.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-2 border-top as-note">Deletion is blocked when employee mappings exist. No attendance sync happens until integration is verified.</div>
+        </section>
+        <section class="as-card">
+            <header class="as-card-head"><h5>Employee ID Mapping</h5><small class="text-muted" id="as-mapping-count">0 mappings</small></header>
+            <div class="as-card-body">
+                <label for="as-map-device" style="font-weight:650;font-size:14px">Select device</label>
+                <select id="as-map-device" class="form-control mb-3">
+                    <option value="">Select saved device</option>
                     @foreach($attendanceDevices as $item)
-                        <option value="{{ $item->id }}" @selected((int)($attendanceDevice?->id ?? 0)===(int)$item->id)>{{ $item->name }}</option>
+                        <option value="{{ $item->id }}">{{ $item->name }}</option>
                     @endforeach
                 </select>
-                <button type="button" id="as-new-device" class="btn btn-primary"><i class="fas fa-plus mr-1"></i>Add Device</button>
-            </div>
-        </div>
-        <div class="as-layout" id="as-workspace"
-             data-device-url="{{ route('attendance.device.settings',['device'=>'987654321']) }}"
-             data-project-id="{{ $attendanceProjectId }}">
-            <section class="as-card">
-                <div class="as-card-header"><h5 id="as-editor-title">Device Configuration</h5><span id="as-device-status" class="badge badge-warning">{{ $attendanceDevice ? 'Saved · Not connected' : 'New device · Not connected' }}</span></div>
-                <div class="as-card-body">
-                    <p class="as-hint">Add Device starts a blank editor. Selecting a saved device loads its settings here, without reloading the page.</p>
-                    <form id="as-device-form" method="POST" action="{{ route('attendance.device.save') }}">
-                        @csrf
-                        <input type="hidden" name="device_id" value="{{ $attendanceDevice?->id ?? '' }}">
-                        <div class="as-grid">
-                            <div><label>Device name *</label><input name="name" class="form-control" maxlength="120" required placeholder="Main office terminal" value="{{ $attendanceDevice?->name ?? '' }}"><small class="as-field-error" data-field="name"></small></div>
-                            <div><label>Vendor</label><input name="vendor" class="form-control" maxlength="120" placeholder="Manufacturer" value="{{ $attendanceDevice?->vendor ?? '' }}"></div>
-                            <div><label>Model *</label><input name="model" class="form-control" maxlength="120" required placeholder="Device model" value="{{ $attendanceDevice?->model ?? '' }}"><small class="as-field-error" data-field="model"></small></div>
-                            <div><label>Connection type</label><select name="connection_type" class="form-control">
-                                @foreach(['network'=>'Local network','cloud'=>'Cloud service','webhook'=>'Webhook','sdk'=>'Vendor SDK','other'=>'Other'] as $key=>$label)
-                                    <option value="{{ $key }}" @selected(($attendanceDevice?->connection_type ?? 'network')===$key)>{{ $label }}</option>
-                                @endforeach
-                            </select></div>
-                            <div class="as-wide"><label>IP address / Hostname / Endpoint</label><input name="host" class="form-control" maxlength="255" value="{{ $attendanceDevice?->host ?? '' }}"></div>
-                            <div><label>Port *</label><input type="number" name="port" class="form-control" min="1" max="65535" required value="{{ $attendanceDevice?->port ?? 80 }}"><small class="as-field-error" data-field="port"></small></div>
-                            <div><label>Protocol / API version</label><input name="protocol" class="form-control" maxlength="80" value="{{ $attendanceDevice?->protocol ?? '' }}"></div>
-                            <div><label>Username / API key name</label><input name="username" class="form-control" maxlength="120" autocomplete="off" value="{{ $attendanceDevice?->username ?? '' }}"></div>
-                            <div><label>Password / Secret</label><input type="password" name="password" class="form-control" maxlength="500" autocomplete="new-password" placeholder="{{ $attendanceDevice?->password ? 'Saved secret · blank keeps current' : 'Optional secret' }}"></div>
-                        </div>
-                        <div class="as-actions">
-                            <button type="submit" class="btn btn-primary"><i class="fas fa-save mr-1"></i><span id="as-save-caption">Save Device</span></button>
-                            <button type="button" class="btn btn-outline-secondary" disabled title="A vendor integration must be verified first">Test Connection</button>
-                            <button type="button" class="btn btn-outline-secondary" disabled title="A vendor integration must be verified first">Sync Attendance</button>
-                        </div>
-                    </form>
-                    <small class="as-hint d-block mt-2">Passwords are encrypted; saved secrets are never returned in the editor. Saving does not connect or sync the device.</small>
-                </div>
-            </section>
-            <section class="as-card">
-                <div class="as-card-header"><h5>Employee ID Mapping</h5><small id="as-mapping-count" class="text-muted">{{ $attendanceDevice?->mappings->count() ?? 0 }} mappings</small></div>
-                <div class="as-card-body">
-                    <p class="as-hint">Link an employee's device user number to their account in this project. Save a device first to enable mappings.</p>
-                    <form id="as-mapping-form" method="POST" action="{{ route('attendance.mapping.save') }}">
-                        @csrf
-                        <input type="hidden" name="device_id" value="{{ $attendanceDevice?->id ?? '' }}">
-                        <div class="as-mapping-form">
-                            <div><label>Employee</label><select name="user_id" class="form-control" required @disabled(!$attendanceDevice)><option value="">Select employee</option>
-                                @foreach($attendanceEmployees as $employee)<option value="{{ $employee->id }}">{{ $employee->name }}</option>@endforeach
-                            </select></div>
-                            <div><label>Device user ID</label><input name="device_user_id" class="form-control" maxlength="100" required @disabled(!$attendanceDevice)></div>
-                            <button type="submit" class="btn btn-info" @disabled(!$attendanceDevice)>Apply</button>
-                        </div>
-                        <small class="as-field-error" data-field="device_user_id"></small>
-                    </form>
-                    <div class="as-mapping-table">
-                        <table class="table table-bordered table-sm">
-                            <thead><tr><th>Employee</th><th>Device User ID</th><th>Action</th></tr></thead>
-                            <tbody id="as-mapping-rows">
-                                @forelse($attendanceDevice?->mappings ?? collect() as $mapping)
-                                    <tr data-user-id="{{ $mapping->user_id }}"><td>{{ $mapping->user?->name ?? 'Employee unavailable' }}</td><td>{{ $mapping->device_user_id }}</td><td><button type="button" class="btn btn-sm btn-outline-primary as-edit-mapping" data-user="{{ $mapping->user_id }}" data-device-user="{{ $mapping->device_user_id }}">Edit</button></td></tr>
-                                @empty
-                                    <tr class="as-empty-row"><td colspan="3" class="as-mapping-empty">No employee mappings for this device.</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+                <form id="as-mapping-form" method="POST" action="{{ route('attendance.mapping.save') }}" data-ajax="off">
+                    @csrf
+                    <input type="hidden" name="device_id" value="">
+                    <div class="as-mapping-grid">
+                        <div><label>Employee</label><select name="user_id" class="form-control" required disabled><option value="">Select employee</option>@foreach($attendanceEmployees as $employee)<option value="{{ $employee->id }}">{{ $employee->name }}</option>@endforeach</select></div>
+                        <div><label>Device user ID</label><input name="device_user_id" class="form-control" maxlength="100" required disabled placeholder="e.g. 1205"></div>
+                        <button type="submit" class="btn btn-info" disabled>Apply</button>
                     </div>
+                    <small class="as-input-error" data-field="device_user_id"></small>
+                </form>
+                <div class="as-table-scroll mt-3">
+                    <table class="table table-bordered as-table">
+                        <thead><tr><th>Employee</th><th>Device ID</th><th>Action</th></tr></thead>
+                        <tbody id="as-mapping-rows"><tr><td colspan="3" class="as-table-empty">Select a saved device to view employee mappings.</td></tr></tbody>
+                    </table>
                 </div>
-            </section>
-        </div>
-        <script>
-        $(function(){
-            'use strict';
-            var $tab=$('#attendance-machine'),$workspace=$('#as-workspace'),$deviceForm=$('#as-device-form'),
-                $mappingForm=$('#as-mapping-form'),$selector=$('#as-device-select');
-            if(!$workspace.length)return;
-            var activeId=$deviceForm.find('[name=device_id]').val()||'';
-            var requestId=0;
-            function notice(message,error){
-                if(window.toastr){if(error)toastr.error(message);else toastr.success(message);}
-                else if(window.Swal)Swal.fire({icon:error?'error':'success',text:message});
-            }
-            function setLoading(busy){
-                $workspace.toggleClass('as-busy',busy);
-                $('#as-new-device,#as-device-select').prop('disabled',busy);
-            }
-            function clearErrors(){
-                $tab.find('.as-field-error').text('');
-                $tab.find('.is-invalid').removeClass('is-invalid');
-            }
-            function renderErrors(xhr){
-                var json=xhr.responseJSON||{},message=json.message||'Could not save settings.';
-                if(json.errors){
-                    $.each(json.errors,function(field,items){
-                        $tab.find('[data-field="'+field+'"]').text(items[0]||'');
-                        var $input=$tab.find('#as-device-form [name="'+field+'"], #as-mapping-form [name="'+field+'"]');
-                        $input.addClass('is-invalid');
-                        if(items.length)message=items[0];
-                    });
-                }
-                notice(message,true);
-            }
-            function setMappingAvailable(enabled){
-                $mappingForm.find('select[name=user_id],input[name=device_user_id],button[type=submit]').prop('disabled',!enabled);
-            }
-            function renderMappings(items){
-                var $rows=$('#as-mapping-rows').empty();
-                $('#as-mapping-count').text(items.length+' mappings');
-                if(!items.length){
-                    $rows.append($('<tr class="as-empty-row">').append($('<td colspan="3" class="as-mapping-empty">').text('No employee mappings for this device.')));
-                    return;
-                }
-                $.each(items,function(_,item){
-                    var $button=$('<button>',{type:'button','class':'btn btn-sm btn-outline-primary as-edit-mapping'}).text('Edit')
-                        .attr('data-user',item.user_id).attr('data-device-user',item.device_user_id);
-                    $rows.append($('<tr>').attr('data-user-id',item.user_id)
-                        .append($('<td>').text(item.user_name),$('<td>').text(item.device_user_id),$('<td>').append($button)));
-                });
-            }
-            function setField(name,value){
-                $deviceForm.find('[name="'+name+'"]').val(value===undefined||value===null?'':value);
-            }
-            function blankEditor(){
-                ++requestId; activeId='';
-                $deviceForm[0].reset();
-                setField('device_id','');setField('password','');setField('port',80);setField('connection_type','network');
-                $deviceForm.find('[name=password]').attr('placeholder','Optional secret');
-                $selector.val('');
-                $('#as-device-status').text('New device · Not connected');
-                $('#as-save-caption').text('Save New Device');
-                $mappingForm[0].reset();$mappingForm.find('[name=device_id]').val('');
-                renderMappings([]);setMappingAvailable(false);clearErrors();
-                setLoading(false);
-            }
-            function applyDevice(device){
-                activeId=String(device.id);
-                $.each(['name','vendor','model','connection_type','host','port','protocol','username'],function(_,name){
-                    setField(name,device[name]);
-                });
-                setField('device_id',activeId);setField('password','');
-                $deviceForm.find('[name=password]').attr('placeholder',device.has_password?'Saved secret · blank keeps current':'Optional secret');
-                $selector.val(activeId);
-                $('#as-device-status').text('Saved · Not connected');
-                $('#as-save-caption').text('Update Device');
-                $mappingForm[0].reset();$mappingForm.find('[name=device_id]').val(activeId);
-                setMappingAvailable(true);renderMappings(device.mappings||[]);clearErrors();
-            }
-            function fetchDevice(id){
-                if(!id){blankEditor();return;}
-                var number=++requestId;setLoading(true);
-                var url=$workspace.attr('data-device-url').replace('987654321',encodeURIComponent(id));
-                $.ajax({url:url,method:'GET',dataType:'json',headers:{Accept:'application/json'}})
-                .done(function(data){if(number===requestId)applyDevice(data.device);})
-                .fail(function(xhr){if(number===requestId){$selector.val(activeId);renderErrors(xhr);}})
-                .always(function(){if(number===requestId)setLoading(false);});
-            }
-            $('#as-new-device').on('click',blankEditor);
-            $selector.on('change',function(){fetchDevice($(this).val());});
-            $deviceForm.on('submit',function(event){
-                event.preventDefault();event.stopImmediatePropagation();
-                if(!$deviceForm[0].checkValidity()){$deviceForm[0].reportValidity();return;}
-                function send(){
-                    setLoading(true);clearErrors();
-                    $.ajax({url:$deviceForm.attr('action'),type:'POST',data:$deviceForm.serialize(),
-                        headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},dataType:'json'})
-                    .done(function(data){
-                        var device=data.device;
-                        var $option=$selector.find('option[value="'+device.id+'"]');
-                        if(!$option.length){$option=$('<option>').val(device.id).appendTo($selector);}
-                        $option.text(device.name);
-                        applyDevice(device);notice(data.message||'Device saved.',false);
-                    }).fail(renderErrors).always(function(){setLoading(false);});
-                }
-                if(window.Swal)Swal.fire({icon:'question',title:'Save Attendance Device?',text:'Save device settings for this project?',
-                    showCancelButton:true,confirmButtonText:'Yes, Save',cancelButtonText:'No'}).then(function(answer){if(answer.isConfirmed)send();});
-                else send();
-            });
-            $mappingForm.on('submit',function(event){
-                event.preventDefault();event.stopImmediatePropagation();
-                if(!activeId){notice('Save a device first.',true);return;}
-                if(!$mappingForm[0].checkValidity()){$mappingForm[0].reportValidity();return;}
-                function send(){
-                    setLoading(true);clearErrors();
-                    $.ajax({url:$mappingForm.attr('action'),type:'POST',data:$mappingForm.serialize(),
-                        headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},dataType:'json'})
-                    .done(function(data){
-                        applyDevice(data.device);notice(data.message||'Employee mapping saved.',false);
-                    }).fail(renderErrors).always(function(){setLoading(false);});
-                }
-                if(window.Swal)Swal.fire({icon:'question',title:'Save Employee Mapping?',showCancelButton:true,
-                    confirmButtonText:'Yes, Apply',cancelButtonText:'No'}).then(function(answer){if(answer.isConfirmed)send();});
-                else send();
-            });
-            $tab.on('click','.as-edit-mapping',function(){
-                $mappingForm.find('[name=user_id]').val($(this).attr('data-user'));
-                $mappingForm.find('[name=device_user_id]').val($(this).attr('data-device-user')).trigger('focus');
-            });
-        });
-        </script>
-    @endif
+            </div>
+        </section>
+    </div>
 </div>
+<div class="modal fade" id="as-device-modal" tabindex="-1" role="dialog" aria-labelledby="as-device-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title font-weight-bold" id="as-device-modal-title">Add Attendance Device</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <form id="as-device-form" method="POST" action="{{ route('attendance.device.save') }}" data-ajax="off">
+                @csrf
+                <input type="hidden" name="device_id" value="">
+                <div class="modal-body">
+                    <div class="as-form-grid">
+                        <div><label>Device Name *</label><input name="name" class="form-control" required maxlength="120" placeholder="Office Hikvision"><small class="as-input-error" data-field="name"></small></div>
+                        <div><label>Vendor</label><input name="vendor" class="form-control" maxlength="120" placeholder="Hikvision"></div>
+                        <div><label>Model *</label><input name="model" class="form-control" required maxlength="120" placeholder="Device model"><small class="as-input-error" data-field="model"></small></div>
+                        <div><label>Connection Type</label><select name="connection_type" class="form-control">@foreach(['network'=>'Local network','cloud'=>'Cloud service','webhook'=>'Webhook','sdk'=>'Vendor SDK','other'=>'Other'] as $type=>$label)<option value="{{ $type }}">{{ $label }}</option>@endforeach</select></div>
+                        <div class="as-form-wide"><label>IP Address / Hostname / Endpoint</label><input name="host" class="form-control" maxlength="255" placeholder="192.168.0.195"></div>
+                        <div><label>Port *</label><input name="port" class="form-control" type="number" min="1" max="65535" required value="80"><small class="as-input-error" data-field="port"></small></div>
+                        <div><label>Protocol / API Version</label><input name="protocol" class="form-control" maxlength="80" placeholder="ISAPI"></div>
+                        <div><label>Username / API Key Name</label><input name="username" class="form-control" maxlength="120" autocomplete="off"></div>
+                        <div><label>Password / Secret</label><input name="password" type="password" class="form-control" maxlength="500" autocomplete="new-password" placeholder="Optional"></div>
+                    </div>
+                    <p class="as-readonly-note mt-3 mb-0"><i class="fas fa-lock mr-1"></i> Secrets are encrypted. Saving does not connect to or synchronize the device. Test Connection and Sync remain unavailable until vendor integration is verified.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-check mr-1"></i> Save Device</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+</div>
+@push('script')
+@if($attendanceTablesAvailable && $canManageAttendanceDevice && $attendanceProjectId && auth()->user()->can('update setting'))
+<script>
+$(function(){
+    'use strict';
+    var $workspace=$('#as-workspace'),$modal=$('#as-device-modal'),$deviceForm=$('#as-device-form'),
+        $mapForm=$('#as-mapping-form'),$mapSelect=$('#as-map-device');
+    if(!$workspace.length || !$modal.length) return;
+    // The ERP's shared submit interceptor is registered on document. These
+    // forms explicitly opt out so only this AJAX flow owns their response.
+    var selectedId='',selectionRequest=0,busy=false;
+    function notify(message,error){
+        if(window.toastr){if(error)window.toastr.error(message);else window.toastr.success(message);}
+        else if(window.Swal)window.Swal.fire({icon:error?'error':'success',text:message});
+    }
+    function errorMessage(xhr){
+        var json=xhr.responseJSON||{},message=json.message||'Unable to save. Please retry.';
+        if(json.errors)$.each(json.errors,function(field,issues){
+            var $target=$modal.find('[data-field="'+field+'"]').add($mapForm.find('[data-field="'+field+'"]'));
+            $target.text(issues[0]||'Invalid value');
+            if(issues.length)message=issues[0];
+        });
+        return message;
+    }
+    function setBusy(value){
+        busy=value;
+        $workspace.toggleClass('as-busy',value);
+        $modal.find('button[type=submit]').prop('disabled',value);
+        $('#as-new-device').prop('disabled',value);
+    }
+    function mappingEnabled(value){
+        $mapForm.find('[name=user_id],[name=device_user_id],button[type=submit]').prop('disabled',!value);
+    }
+    function resetMappings(message){
+        $('#as-mapping-rows').empty().append($('<tr>').append($('<td>',{colspan:3,'class':'as-table-empty'}).text(message)));
+        $('#as-mapping-count').text('0 mappings');
+        $mapForm[0].reset();$mapForm.find('[name=device_id]').val('');
+        mappingEnabled(false);
+    }
+    function populateMappings(items,id){
+        var $rows=$('#as-mapping-rows').empty();
+        $mapForm[0].reset();$mapForm.find('[name=device_id]').val(id);
+        mappingEnabled(true);
+        $('#as-mapping-count').text(items.length+' mappings');
+        if(!items.length){$rows.append($('<tr>').append($('<td>',{colspan:3,'class':'as-table-empty'}).text('No employee mappings for this device.')));return;}
+        $.each(items,function(_,item){
+            $rows.append($('<tr>')
+                .append($('<td>').text(item.user_name),$('<td>').text(item.device_user_id),
+                    $('<td>').append($('<button>',{type:'button','class':'btn btn-sm btn-outline-primary as-edit-mapping'}).text('Edit')
+                        .attr('data-user-id',item.user_id).attr('data-device-user-id',item.device_user_id))));
+        });
+    }
+    function deviceUrl(id,action){
+        return $workspace.attr(action==='delete'?'data-delete-url':'data-device-url').replace('987654321',encodeURIComponent(id));
+    }
+    function chooseDevice(id){
+        var token=++selectionRequest;
+        if(!id){
+            selectedId='';$mapSelect.val('');resetMappings('Select a saved device to view employee mappings.');
+            return $.Deferred().resolve(null).promise();
+        }
+        $mapSelect.val(id);
+        return $.ajax({url:deviceUrl(id),method:'GET',headers:{Accept:'application/json'},dataType:'json'})
+            .done(function(data){
+                if(token!==selectionRequest)return;
+                selectedId=String(data.device.id);$mapSelect.val(selectedId);
+                populateMappings(data.device.mappings||[],selectedId);
+            }).fail(function(xhr){
+                if(token!==selectionRequest)return;
+                $mapSelect.val(selectedId);notify(errorMessage(xhr),true);
+            });
+    }
+    function fillDevice(device){
+        $deviceForm[0].reset();
+        $deviceForm.find('.as-input-error').text('');
+        $.each(['id','name','vendor','model','connection_type','host','port','protocol','username'],function(_,name){
+            var inputName=name==='id'?'device_id':name;
+            $deviceForm.find('[name="'+inputName+'"]').val(device[inputName]===undefined ? (name==='id'?device.id:'') : device[inputName]);
+        });
+        $deviceForm.find('[name=password]').val('').attr('placeholder',device.has_password?'Saved secret · leave blank to keep':'Optional secret');
+        $('#as-device-modal-title').text('Edit Attendance Device');
+        $modal.modal('show');
+    }
+    function updateRow(device){
+        var $rows=$('#as-device-rows'),$row=$rows.find('tr[data-id="'+device.id+'"]');
+        var $new=$('<tr>').attr('data-id',device.id);
+        var $actions=$('<div>',{'class':'as-actions'})
+          .append($('<button>',{type:'button','class':'btn btn-sm btn-outline-primary as-edit-device'}).text('Edit').attr('data-id',device.id),
+                  $('<button>',{type:'button','class':'btn btn-sm btn-outline-info as-select-device'}).text('Map IDs').attr('data-id',device.id),
+                  $('<button>',{type:'button','class':'btn btn-sm btn-outline-danger as-delete-device'}).text('Delete').attr('data-id',device.id));
+        $new.append($('<td>').append($('<strong>',{'class':'as-device-name'}).text(device.name),$('<div>',{'class':'as-note'}).text((device.vendor||'')+' '+(device.model||''))),
+            $('<td>').append($('<span>').text(device.connection_type),$('<div>',{'class':'as-note'}).text(device.host||'Not provided')),
+            $('<td>').append($('<span>',{'class':'badge badge-warning'}).text('Not connected')),
+            $('<td>').append($actions));
+        $rows.find('.as-empty-device').remove();
+        if($row.length)$row.replaceWith($new);else $rows.append($new);
+        var $option=$mapSelect.find('option[value="'+device.id+'"]');
+        if(!$option.length)$option=$('<option>').val(device.id).appendTo($mapSelect);
+        $option.text(device.name);
+        $('#as-device-count').text($rows.find('tr[data-id]').length+' devices');
+    }
+    $('#as-new-device').on('click',function(){
+        $deviceForm[0].reset();
+        $deviceForm.find('[name=device_id]').val('');
+        $deviceForm.find('[name=port]').val('80');
+        $deviceForm.find('.as-input-error').text('');
+        $('#as-device-modal-title').text('Add Attendance Device');
+        $modal.modal('show');
+    });
+    $workspace.on('click','.as-edit-device',function(){
+        var id=$(this).attr('data-id');
+        if(busy)return;
+        setBusy(true);
+        $.ajax({url:deviceUrl(id),method:'GET',headers:{Accept:'application/json'},dataType:'json'})
+            .done(function(data){fillDevice(data.device);})
+            .fail(function(xhr){notify(errorMessage(xhr),true);})
+            .always(function(){setBusy(false);});
+    }).on('click','.as-select-device',function(){
+        chooseDevice($(this).attr('data-id'));
+    }).on('click','.as-delete-device',function(){
+        var id=$(this).attr('data-id'),$row=$(this).closest('tr');
+        function remove(){
+            setBusy(true);
+            $.ajax({url:deviceUrl(id,'delete'),type:'POST',
+                data:{_method:'DELETE',_token:$deviceForm.find('[name=_token]').val()},
+                headers:{Accept:'application/json'},dataType:'json'})
+              .done(function(data){
+                  $row.remove();$mapSelect.find('option[value="'+id+'"]').remove();
+                  if(selectedId===String(id))chooseDevice('');
+                  var n=$('#as-device-rows tr[data-id]').length;
+                  $('#as-device-count').text(n+' devices');
+                  if(!n)$('#as-device-rows').append($('<tr>',{'class':'as-empty-device'}).append($('<td>',{colspan:4,'class':'as-table-empty'}).text('No devices configured. Click Add Device to begin.')));
+                  notify(data.message||'Device removed.',false);
+              }).fail(function(xhr){notify(errorMessage(xhr),true);})
+              .always(function(){setBusy(false);});
+        }
+        if(window.Swal)Swal.fire({icon:'warning',title:'Delete Attendance Device?',text:'Deletion is blocked if employee mappings exist.',showCancelButton:true,confirmButtonText:'Yes, Delete',confirmButtonColor:'#d33'}).then(function(result){if(result.isConfirmed)remove();});
+        else if(window.confirm('Delete this unused device?'))remove();
+    });
+    $mapSelect.on('change',function(){chooseDevice($(this).val());});
+    $deviceForm.on('submit',function(e){
+        e.preventDefault();e.stopImmediatePropagation();
+        if(busy)return;
+        if(!this.checkValidity()){this.reportValidity();return;}
+        var send=function(){
+            setBusy(true);$deviceForm.find('.as-input-error').text('');
+            $.ajax({url:$deviceForm.attr('action'),method:'POST',data:$deviceForm.serialize(),
+                headers:{Accept:'application/json'},dataType:'json'})
+              .done(function(data){
+                  updateRow(data.device);$modal.modal('hide');
+                  if(selectedId===String(data.device.id))populateMappings(data.device.mappings||[],selectedId);
+                  notify(data.message||'Device saved.',false);
+              }).fail(function(xhr){notify(errorMessage(xhr),true);})
+              .always(function(){setBusy(false);});
+        };
+        if(window.Swal)Swal.fire({icon:'question',title:'Save Attendance Device?',showCancelButton:true,confirmButtonText:'Yes, Save',cancelButtonText:'No'}).then(function(result){if(result.isConfirmed)send();});
+        else send();
+    });
+    $mapForm.on('submit',function(e){
+        e.preventDefault();e.stopImmediatePropagation();
+        if(busy||!selectedId)return;
+        if(!this.checkValidity()){this.reportValidity();return;}
+        function send(){
+            setBusy(true);$mapForm.find('.as-input-error').text('');
+            $.ajax({url:$mapForm.attr('action'),method:'POST',data:$mapForm.serialize(),
+                headers:{Accept:'application/json'},dataType:'json'})
+              .done(function(data){
+                  if(selectedId===String(data.device.id))populateMappings(data.device.mappings||[],selectedId);
+                  notify(data.message||'Employee mapping saved.',false);
+              }).fail(function(xhr){notify(errorMessage(xhr),true);})
+              .always(function(){setBusy(false);});
+        }
+        if(window.Swal)Swal.fire({icon:'question',title:'Apply Employee Mapping?',showCancelButton:true,confirmButtonText:'Yes, Apply',cancelButtonText:'No'}).then(function(result){if(result.isConfirmed)send();});
+        else send();
+    });
+    $workspace.on('click','.as-edit-mapping',function(){
+        $mapForm.find('[name=user_id]').val($(this).attr('data-user-id'));
+        $mapForm.find('[name=device_user_id]').val($(this).attr('data-device-user-id')).trigger('focus');
+    });
+});
+</script>
+@endif
+@endpush
