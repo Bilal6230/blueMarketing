@@ -241,8 +241,11 @@ $(function(){
       // PPR is the same voucher family as Plot Receive Payment. Its daily
       // voucher permission names still exist and must remain effective.
       // Display one action choice that grants both applicable scopes.
-      if(m.module==='ppr')return;
-      var family=m.module==='plot-receipt'?['plot-receipt','ppr']:[m.module];
+      // CP is the previous internal identity for DR, not a second voucher.
+      // Keep both permission names effective behind the single DR control.
+      if(m.module==='ppr'||m.module==='cp')return;
+      var family=m.module==='plot-receipt'?['plot-receipt','ppr']
+        :(m.module==='dr'?['dr','cp']:[m.module]);
       var byAction={};
       $.each(family,function(_,module){
         var definition=modules.find(function(d){return d.module===module;});
