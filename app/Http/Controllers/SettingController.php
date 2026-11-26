@@ -14,6 +14,8 @@ use App\Models\ProjectHeadSubhead;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class SettingController extends Controller
 {
@@ -358,8 +360,6 @@ class SettingController extends Controller
 
     public function update(Request $request)
     {
-        // Existing HTML routes still work, but the direct Settings S1 editor
-        // saves via JSON/AJAX without redirecting or reloading the page.
         $validated = $request->validate([
             'key' => ['sometimes', 'array'],
             'key.*' => ['required', 'string', 'max:191'],
@@ -367,6 +367,8 @@ class SettingController extends Controller
             'value.*' => ['nullable', 'string', 'max:10000'],
             'toggles' => ['sometimes', 'array'],
             'toggles.*' => ['required', 'in:0,1'],
+            'setting_images' => ['sometimes', 'array'],
+            'setting_images.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:4096'],
         ]);
         $keys = array_values($validated['key'] ?? []);
         $values = array_values($validated['value'] ?? []);
@@ -375,12 +377,11 @@ class SettingController extends Controller
                 'value' => ['Every setting must have a corresponding value.'],
             ]);
         }
-        $allowedKeys = Setting::query()->where('type', '!=', 'toggle')->pluck('key')->all();
+        $available = Setting::query()->where('type', '!=', 'toggle')->get()->keyBy('key');
         $allowedReceiptTypes = Ledger::query()->distinct()->pluck('type')->filter()
             ->map(fn ($type) => (string) $type.'_Receipt_Header')->all();
-
         foreach ($keys as $key) {
-            if (!in_array($key, $allowedKeys, true)) {
+            if (!$available->has($key)) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'key' => ['Unknown or protected setting: '.$key],
                 ]);
@@ -393,28 +394,62 @@ class SettingController extends Controller
                 ]);
             }
         }
-        DB::transaction(function () use ($keys, $values, $validated): void {
-            foreach ($keys as $index => $key) {
-                Setting::query()->where('key', $key)->where('type', '!=', 'toggle')
-                    ->update(['value' => $values[$index]]);
+
+        $uploads = $request->file('setting_images', []);
+        foreach ($uploads as $key => $file) {
+            $setting = $available->get($key);
+            if (!$setting || $setting->type !== 'file' || !in_array($setting->category, ['information', 'contact'], true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'setting_images.'.$key => ['This image field cannot be uploaded.'],
+                ]);
             }
-            foreach (($validated['toggles'] ?? []) as $key => $value) {
-                $existing = Setting::query()->where('key', $key)->first();
-                if ($existing) {
-                    $existing->update(['value' => (string) $value]);
-                } else {
-                    Setting::query()->create([
-                        'key' => $key,
-                        'value' => (string) $value,
-                        'name' => str_replace('_', ' ', $key),
-                        'type' => 'toggle',
-                        'category' => 'information',
-                    ]);
+        }
+        // Existing image paths are never trusted from the client: they are
+        // kept from the database unless a newly validated file is uploaded.
+        $written = [];
+        $imageUrls = [];
+        try {
+            foreach ($uploads as $key => $file) {
+                $filename = (string) Str::uuid().'.'.strtolower($file->extension());
+                $path = $file->storeAs('settings', $filename, 'public');
+                if ($path === false) throw new \RuntimeException('Image storage failed.');
+                $written[] = $path;
+                $imageUrls[$key] = 'storage/'.$path;
+            }
+            DB::transaction(function () use ($keys, $values, $validated, $available, $imageUrls): void {
+                foreach ($keys as $index => $key) {
+                    $setting = $available->get($key);
+                    if ($setting->type === 'file') continue;
+                    $setting->update(['value' => $values[$index]]);
                 }
-            }
-        }, 3);
+                foreach ($imageUrls as $key => $path) {
+                    $available->get($key)->update(['value' => $path]);
+                }
+                foreach (($validated['toggles'] ?? []) as $key => $value) {
+                    $existing = Setting::query()->where('key', $key)->first();
+                    if ($existing) {
+                        $existing->update(['value' => (string) $value]);
+                    } else {
+                        Setting::query()->create([
+                            'key' => $key,
+                            'value' => (string) $value,
+                            'name' => str_replace('_', ' ', $key),
+                            'type' => 'toggle',
+                            'category' => 'information',
+                        ]);
+                    }
+                }
+            }, 3);
+        } catch (\Throwable $exception) {
+            foreach ($written as $path) Storage::disk('public')->delete($path);
+            throw $exception;
+        }
         if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => 'Settings saved successfully.']);
+            return response()->json([
+                'success' => true,
+                'message' => 'Settings saved successfully.',
+                'images' => collect($imageUrls)->map(fn ($path) => asset($path))->all(),
+            ]);
         }
         Alert::success('Notification', 'Settings saved successfully')->toToast()->toHtml();
         return back();
