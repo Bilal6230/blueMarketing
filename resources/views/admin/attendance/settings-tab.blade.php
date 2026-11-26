@@ -60,13 +60,14 @@
     <div class="as-layout">
         <section class="as-card settings-fill-card">
             <header class="as-card-head"><h5>Device Configuration</h5><small id="as-device-count" class="text-muted">{{ $attendanceDevices->count() }} devices</small></header>
-            <div class="as-filters" aria-label="Device table filters">
+            <div class="as-filters d-none" aria-label="Device table filters">
                 <div class="as-search-wrap"><i class="fas fa-search" aria-hidden="true"></i><input type="search" class="form-control as-search" id="as-device-search" placeholder="Search devices..." aria-label="Search devices"></div>
                 <select class="form-control" id="as-connection-filter" aria-label="Filter by connection"><option value="">All connections</option><option value="network">Network</option><option value="cloud">Cloud</option><option value="webhook">Webhook</option><option value="sdk">SDK</option><option value="other">Other</option></select>
                 <span class="as-filter-count" id="as-device-visible-count"></span>
             </div>
-            <div class="as-table-scroll settings-fill-scroll">
-                <table class="table table-bordered as-table">
+            <div class="bm-modern-export-toolbar bm-export-placeholder"><button type="button" class="bm-modern-export-btn" disabled>Column Visibility</button><button type="button" class="bm-modern-export-btn" disabled>Copy</button><button type="button" class="bm-modern-export-btn" disabled>CSV</button><button type="button" class="bm-modern-export-btn" disabled>Excel</button><button type="button" class="bm-modern-export-btn" disabled>PDF</button><button type="button" class="bm-modern-export-btn" disabled>Print</button></div>
+            <div class="as-table-scroll settings-fill-scroll bm-account-table-wrap">
+                <table id="as-device-table" class="table table-bordered as-table bm-account-table">
                     <thead><tr><th>Device</th><th>Connection</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody id="as-device-rows">
                     @forelse($attendanceDevices as $item)
@@ -74,7 +75,7 @@
                             <td><strong class="as-device-name">{{ $item->name }}</strong><div class="as-note">{{ $item->vendor }} {{ $item->model }}</div></td>
                             <td><span class="as-device-connection">{{ ucfirst($item->connection_type) }}</span><div class="as-note as-device-host">{{ $item->host ?: 'Not provided' }}</div></td>
                             <td><span class="badge badge-warning">Not connected</span></td>
-                            <td><div class="as-actions">
+                            <td class="blue-actions-cell"><div class="as-actions">
                                 <button type="button" class="btn btn-sm btn-outline-primary as-edit-device" data-id="{{ $item->id }}" aria-label="Edit device"><i class="fas fa-pen" aria-hidden="true"></i>Edit</button>
                                 <button type="button" class="btn btn-sm btn-outline-info as-select-device" data-id="{{ $item->id }}"><i class="fas fa-users" aria-hidden="true"></i>Map IDs</button>
                                 <button type="button" class="btn btn-sm btn-outline-danger as-delete-device" data-id="{{ $item->id }}"><i class="fas fa-trash-alt" aria-hidden="true"></i>Delete</button>
@@ -109,12 +110,13 @@
                     </div>
                     <small class="as-input-error" data-field="device_user_id"></small>
                 </form>
-                <div class="as-filters mt-3" aria-label="Employee mapping table filters">
+                <div class="as-filters mt-3 d-none" aria-label="Employee mapping table filters">
                     <div class="as-search-wrap"><i class="fas fa-search" aria-hidden="true"></i><input type="search" class="form-control as-search" id="as-mapping-search" placeholder="Search employees or IDs..." aria-label="Search employee mappings"></div>
                     <span class="as-filter-count" id="as-mapping-visible-count"></span>
                 </div>
-                <div class="as-table-scroll settings-fill-scroll">
-                    <table class="table table-bordered as-table">
+                <div class="bm-modern-export-toolbar bm-export-placeholder"><button type="button" class="bm-modern-export-btn" disabled>Column Visibility</button><button type="button" class="bm-modern-export-btn" disabled>Copy</button><button type="button" class="bm-modern-export-btn" disabled>CSV</button><button type="button" class="bm-modern-export-btn" disabled>Excel</button><button type="button" class="bm-modern-export-btn" disabled>PDF</button><button type="button" class="bm-modern-export-btn" disabled>Print</button></div>
+                <div class="as-table-scroll settings-fill-scroll bm-account-table-wrap">
+                    <table id="as-mapping-table" class="table table-bordered as-table bm-account-table">
                         <thead><tr><th>Employee</th><th>Device ID</th><th>Action</th></tr></thead>
                         <tbody id="as-mapping-rows"><tr><td colspan="3" class="as-table-empty">Select a saved device to view employee mappings.</td></tr></tbody>
                     </table>
@@ -233,7 +235,7 @@ $(function(){
         $.each(items,function(_,item){
             $rows.append($('<tr>').attr('data-mapping-id',item.id)
                 .append($('<td>').text(item.user_name),$('<td>').text(item.device_user_id),
-                    $('<td>').append(
+                    $('<td>',{'class':'blue-actions-cell'}).append(
                         $('<button>',{type:'button','class':'btn btn-sm btn-outline-primary as-edit-mapping'}).text('Edit')
                             .attr('data-user-id',item.user_id).attr('data-device-user-id',item.device_user_id),
                         $('<button>',{type:'button','class':'btn btn-sm btn-outline-danger ml-1 as-delete-mapping'}).text('Delete')
@@ -283,7 +285,7 @@ $(function(){
         $new.append($('<td>').append($('<strong>',{'class':'as-device-name'}).text(device.name),$('<div>',{'class':'as-note'}).text((device.vendor||'')+' '+(device.model||''))),
             $('<td>').append($('<span>').text(device.connection_type),$('<div>',{'class':'as-note'}).text(device.host||'Not provided')),
             $('<td>').append($('<span>',{'class':'badge badge-warning'}).text('Not connected')),
-            $('<td>').append($actions));
+            $('<td>',{'class':'blue-actions-cell'}).append($actions));
         $rows.find('.as-empty-device').remove();
         if($row.length)$row.replaceWith($new);else $rows.append($new);
         var $option=$mapSelect.find('option[value="'+device.id+'"]');
