@@ -221,15 +221,6 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
     </div>
 @endsection
 @section('js')
-    @php
-        $setts = \App\Models\Setting::where(['type' => 'file'])->get();
-    @endphp
-    @foreach ($setts as $set)
-        @php
-            $setid[] = '#' . $set->key;
-            $jsonsetid = json_encode($setid, true);
-        @endphp
-    @endforeach
     <script>
         (() => {
             let nextModal = 0;
