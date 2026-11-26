@@ -20,9 +20,19 @@ final class EnforceVoucherAvailability
         if (in_array($name,['finance.daily-vouchers.index','finance.daily-vouchers.data'],true)) {
             $series=strtoupper((string)$request->query('type',''));
         } elseif (in_array($name,['finance.voucher.in','finance.voucher.in.method'],true)) {
-            $series='CR';
+            $series=strtoupper((string)$request->query('series','CR'));
         } elseif (in_array($name,['finance.voucher.out','finance.voucher.out.method'],true)) {
-            $series='DR';
+            $series=strtoupper((string)$request->query('series','DR'));
+        } elseif (in_array($name,['finance.voucher.bank.sources'],true)) {
+            $series=$request->route('direction')==='receipt'?'BOR':'BOP';
+        } elseif (in_array($name,['finance.voucher.transfer.sources','finance.voucher.transfer.next-number'],true)) {
+            $series=$request->route('kind')==='deposit'?'BD':'BW';
+        } elseif (in_array($name,['finance.voucher.plot-receipt.options'],true)) {
+            $series='PPR';
+        } elseif (in_array($name,['finance.voucher.plot-purchase.options'],true)) {
+            $series='PP';
+        } elseif ($name==='finance.voucher.plot-next-number') {
+            $series=strtoupper((string)$request->route('series'));
         } elseif ($name==='finance.voucher.bank.workspace') {
             $series=$request->route('direction')==='receipt'?'BOR':'BOP';
         } elseif ($name==='finance.voucher.transfer.workspace') {
