@@ -77,7 +77,10 @@
    <div class="s3-bank-only"><label>Account Title *</label><input class="form-control" name="account_title" maxlength="120"></div>
    <div class="s3-bank-only"><label>Branch</label><input class="form-control" name="branch" maxlength="120"></div>
    <div class="s3-bank-only"><label>Account Number (optional)</label><input class="form-control" name="account_number" autocomplete="off" maxlength="255"><small class="s3-note" id="s3-bank-number-note">Encrypted. Leave blank on edit to preserve.</small></div>
-   <div class="s3-span"><label>Project Chart of Accounts Mapping *</label><select name="account_mapping_id" class="form-control" required><option value="">Select active project COA mapping</option>@foreach($projectBankMappings as $mapping)<option value="{{ $mapping->id }}">{{ $mapping->headAccounting->name ?? 'Head' }} / {{ $mapping->subheadAccounting->name ?? 'Account' }}</option>@endforeach</select></div>
+   <div><label for="s3-head-account">Head Account *</label><select id="s3-head-account" class="form-control s3-coa-head" required><option value="">Select Head Account</option>@foreach($projectBankMappings->unique('head_accounting_id')->sortBy(fn($mapping) => $mapping->headAccounting->name ?? '') as $mapping)<option value="{{ $mapping->head_accounting_id }}">{{ $mapping->headAccounting->name ?? 'Head' }}</option>@endforeach</select></div>
+   <div><label for="s3-subhead-account">Subhead Account *</label><select id="s3-subhead-account" class="form-control s3-coa-subhead" required><option value="">Select Subhead Account</option>@foreach($projectBankMappings as $mapping)<option value="{{ $mapping->id }}" data-head-id="{{ $mapping->head_accounting_id }}" data-subhead-id="{{ $mapping->subhead_accounting_id }}">{{ $mapping->subheadAccounting->name ?? 'Account' }}</option>@endforeach</select></div>
+   <input type="hidden" name="account_mapping_id" value="">
+   <div class="s3-span"><small class="text-muted">Select a Head to filter Subheads, or select a Subhead first to auto-select its Head. Only this project's COA mappings are available.</small></div>
    <div><label>Status</label><select name="is_active" class="form-control"><option value="1">Active</option><option value="0">Inactive</option></select></div>
   </div><div class="text-muted mt-3 small">Existing financial entries and mapped account identities will not be rewritten.</div></div>
   <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Save Account</button></div>
@@ -90,5 +93,5 @@
 <link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}?v=2">
 @endpush
 @push('script')
-<script src="{{ asset('js/settings-s3-accounts.js') }}?v=1"></script>
+<script src="{{ asset('js/settings-s3-accounts.js') }}?v=2"></script>
 @endpush
