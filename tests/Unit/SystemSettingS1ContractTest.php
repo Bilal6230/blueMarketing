@@ -33,7 +33,7 @@ final class SystemSettingS1ContractTest extends TestCase
 
         $this->assertStringContainsString('id="settings-receipt-header-form"', $view);
         $this->assertStringContainsString('Voucher Print Headers', $view);
-        $this->assertStringContainsString("name=\"toggles[{{ \\$keyType }}]\"", $view);
+        $this->assertStringContainsString('name="toggles[{{ $keyType }}]"', $view);
         $this->assertStringContainsString("change','.settings-receipt-toggle'", $view);
         $this->assertStringContainsString('Update Print Header?', $view);
         $this->assertStringContainsString('putSettings($receipt,payload', $view);
@@ -49,7 +49,7 @@ final class SystemSettingS1ContractTest extends TestCase
         $this->assertStringContainsString("headers:{Accept:'application/json'", $view);
         $this->assertStringContainsString('e.stopImmediatePropagation()', $view);
         $this->assertStringContainsString('response()->json', $controller);
-        $this->assertStringContainsString("if ($request->expectsJson())", $controller);
+        $this->assertStringContainsString('if ($request->expectsJson())', $controller);
         $this->assertStringContainsString('DB::transaction(', $controller);
     }
 
