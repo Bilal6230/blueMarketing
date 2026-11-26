@@ -296,7 +296,7 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
 
             function fmSetLink($url) {
                 $(inputId).val($url.substring(1));
-                $(inputId + '-image').attr("src", "{{ asset(null) }}" + $url.substring(1));
+                $(inputId + '-image').attr("src", "{{ asset(null) }}" + $url.substring(1)).show();
             }
 
             window.fmSetLink = fmSetLink;
@@ -304,11 +304,6 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
             $(document).on("click", '[data-settings-file="1"]', function(event) {
                 event.preventDefault();
                 inputId = '#' + this.id;
-                window.open('/file-manager/fm-button', 'fm', 'width=800,height=600');
-            });
-            $(document).on("click", '{{ implode(',', $setid ?? []) }}', function(event) {
-                event.preventDefault();
-                inputId = '#' + event.target.id;
                 window.open('/file-manager/fm-button', 'fm', 'width=800,height=600');
             });
         });
