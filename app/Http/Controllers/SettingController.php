@@ -551,6 +551,7 @@ class SettingController extends Controller
         $available = Setting::query()->where('type', '!=', 'toggle')->get()->keyBy('key');
         // Permit headers for supported voucher families before their first posting.
         $allowedReceiptTypes = collect(array_keys(\App\Services\Finance\VoucherAvailability::FAMILIES))
+            ->merge(\App\Services\Finance\ProjectVoucherDisplay::SERIES)
             ->merge(Ledger::query()->distinct()->pluck('type')->filter())
             ->unique()->map(fn ($type) => (string) $type.'_Receipt_Header')->all();
         foreach ($keys as $key) {
