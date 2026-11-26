@@ -12,6 +12,10 @@ $(function () {
   // - MONTHLY SALES CHART -
   //-----------------------
 
+  // This demo dashboard script is loaded by the shared layout. Settings and
+  // other pages do not have these chart targets; never initialize charts there.
+  if (!$('#salesChart').length || !$('#pieChart').length || !$('#world-map-markers').length) return;
+
   // Get context with jQuery - using jQuery's .get() method.
   var salesChartCanvas = $('#salesChart').get(0).getContext('2d')
 
