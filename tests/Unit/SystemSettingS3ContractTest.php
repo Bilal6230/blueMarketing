@@ -84,6 +84,19 @@ final class SystemSettingS3ContractTest extends TestCase
         $this->assertStringContainsString('if(!$mapping.val())', $script);
     }
 
+    public function test_s3_tom_select_hides_the_native_duplicate_controls(): void
+    {
+        $view = file_get_contents(resource_path('views/admin/finance/settings-accounts.blade.php'));
+        $script = file_get_contents(public_path('js/settings-s3-accounts.js'));
+
+        $this->assertStringContainsString('select.s3-coa-head.tomselected', $view);
+        $this->assertStringContainsString('select.s3-coa-subhead.tomselected', $view);
+        $this->assertStringContainsString('select.s3-coa-head.ts-hidden-accessible', $view);
+        $this->assertStringContainsString('display:none!important', $view);
+        $this->assertStringContainsString('if(!$mapping.val())', $script);
+        $this->assertStringContainsString('if(window.TomSelect)', $script);
+    }
+
     public function test_s3_migration_preserves_original_bank_records(): void
     {
         $migration=file_get_contents(database_path('migrations/2026_11_26_210000_add_s3_bank_cash_account_masters.php'));
