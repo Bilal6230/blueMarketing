@@ -63,6 +63,29 @@ final class SystemSettingS1ContractTest extends TestCase
         $this->assertStringContainsString('window.fmSetLink = fmSetLink', $view);
     }
 
+    public function test_information_fields_use_responsive_columns_and_image_preview_canvas(): void
+    {
+        $view = $this->settingsBladeSource();
+
+        $this->assertStringContainsString('settings-info-grid', $view);
+        $this->assertStringContainsString('grid-template-columns:repeat(2,minmax(0,1fr))', $view);
+        $this->assertStringContainsString('settings-info-field {{ $isWide', $view);
+        $this->assertStringContainsString('settings-media-canvas', $view);
+        $this->assertStringContainsString('settings-s1-busy-preview', $view);
+        $this->assertStringContainsString('settings-s1-busy', $view);
+    }
+
+    public function test_information_save_uses_bootstrap_modal_instead_of_native_confirm(): void
+    {
+        $view = $this->settingsBladeSource();
+
+        $this->assertStringContainsString('id="settingsS1Confirm"', $view);
+        $this->assertStringContainsString("$('#settingsS1Confirm').modal('show')", $view);
+        $this->assertStringContainsString("$('#settingsS1ConfirmYes').on('click'", $view);
+        $this->assertStringContainsString('sendInformationAjax()', $view);
+        $this->assertStringNotContainsString("window.confirm('Save information and contact?')", $view);
+    }
+
     public function test_card_scrolling_is_isolated_from_page_and_footer(): void
     {
         $view = $this->settingsBladeSource();
