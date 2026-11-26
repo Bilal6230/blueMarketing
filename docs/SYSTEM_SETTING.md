@@ -63,7 +63,9 @@
 
 **S3 implementation notes (not acceptance):** Migration `2026_11_26_210000_add_s3_bank_cash_account_masters.php`, `ProjectCashAccount`, bank Display Title, scoped JSON edit/save/status endpoints, cash and bank audit writes, side-by-side modern table cards, modal forms, and `SystemSettingS3ContractTest` were pushed. S3 front-end reloads the selected tab through AJAX; existing account IDs remain unchanged. Do not mark S3 complete until picker integration and live verification.
 
-**Outstanding S3 requirements:** Integrate Display Title into each actual finance voucher bank/cash selection consumer (including BOR/BOP Counter Account) without changing IDs or posted vouchers; add integration tests for posting and multiple projects. Run migration, view cache, S1/S2/S3 tests and browser checks on the local database. Review existing active/inactive settings and historical mapping behavior.
+**S3 voucher picker update:** BOR/BOP new voucher Counter Account now displays the active bank profile Display Title (falls back to Bank / Account Title); CCR/CDR new voucher Counter Account now displays active Cash Account Display Titles. Cash Save verifies the current project's active cash mapping both before and inside the posting transaction. Bank profile and COA mapping IDs have not been changed. Static picker regression test: `SystemSettingS3VoucherPickerIntegrationTest`.
+
+**Outstanding S3 verification:** Run picker and S3 contract tests, and browser-test BOR/BOP and CCR/CDR Create forms, disabled accounts, project switching, and recorded postings. Review existing historical voucher Edit / print display labels separately before marking all S3 consumers integrated. No historical postings should be relinked.
 
 ### S4 — Voucher Display / receipt headers
 **State: [ ] Pending**
