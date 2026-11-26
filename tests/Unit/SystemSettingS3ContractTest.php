@@ -49,6 +49,19 @@ final class SystemSettingS3ContractTest extends TestCase
         $this->assertStringContainsString("->name('setting.cash-account.save')", $routes);
     }
 
+    public function test_s3_modal_form_is_not_extracted_by_generic_settings_modalizer(): void
+    {
+        $page = file_get_contents(resource_path('views/admin/setting.blade.php'));
+        $s3 = file_get_contents(resource_path('views/admin/finance/settings-accounts.blade.php'));
+        $this->assertStringContainsString(':not([data-ajax="off"])', $page);
+        $this->assertStringContainsString(':not(#s3-account-form)', $page);
+        $this->assertStringContainsString('id="s3-account-modal"', $s3);
+        $this->assertStringContainsString('id="s3-account-form"', $s3);
+        $this->assertStringContainsString('data-ajax="off"', $s3);
+        $this->assertStringContainsString('data-bank-url=', $s3);
+        $this->assertStringContainsString('data-cash-url=', $s3);
+    }
+
     public function test_s3_migration_preserves_original_bank_records(): void
     {
         $migration=file_get_contents(database_path('migrations/2026_11_26_210000_add_s3_bank_cash_account_masters.php'));
