@@ -146,7 +146,7 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
                                                         @elseif($set->type === 'textarea')
                                                             <textarea id="setting-{{ $set->key }}" class="form-control" rows="3" name="value[]" required>{{ $set->value }}</textarea>
                                                         @elseif($set->type === 'file')
-                                                            @if($set->value)<img class="settings-field-image" id="{{ $set->key }}-image" src="{{ asset($set->value) }}" alt="{{ $set->name }}" onerror="this.style.display='none'">@endif
+                                                            <img class="settings-field-image" id="{{ $set->key }}-image" src="{{ $set->value ? asset($set->value) : '' }}" alt="{{ $set->name }}" @if(!$set->value) style="display:none" @endif>
                                                             <input id="{{ $set->key }}" name="value[]" value="{{ $set->value }}" class="form-control" readonly data-settings-file="1">
                                                             <small class="text-primary">Click the path to select a file from File Manager</small>
                                                         @endif
@@ -293,6 +293,8 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
         $(document).ready(function() {
             // input
             let inputId = '';
+
+            $('.settings-field-image').on('error',function(){ $(this).hide(); });
 
             function fmSetLink($url) {
                 $(inputId).val($url.substring(1));
