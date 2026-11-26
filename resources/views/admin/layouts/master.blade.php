@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ trim($__env->yieldContent('title', $title ?? 'Dashboard')) . ' - ' . Setting::getValue('app_name') }}</title>
-    <link rel="icon" href="{{ \App\Support\ProjectBranding::logoUrl() }}" type="image/png" />
+    <link rel="icon" href="{{ \App\Support\ProjectBranding::logoUrl() }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
 
