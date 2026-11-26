@@ -1,6 +1,48 @@
 @extends('admin.layouts.master')
+@push('style')
+<style>
+.plot-list-page{font-size:14px}
+.plot-list-page .plot-list-card{border:1.5px solid #b8cbdc;border-top:3px solid #2563eb;border-radius:9px;display:flex;flex-direction:column;min-height:0;height:calc(100vh - 192px);overflow:hidden}
+.plot-list-page .plot-list-card>.card-header{background:#f8fbff;padding:10px 14px;border-bottom:1px solid #d0ddea}
+.plot-list-page .plot-list-card>.card-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0}
+.plot-list-page #example1{font-size:14px;border-collapse:separate;border-spacing:0;min-width:1060px}
+.plot-list-page #example1 thead th{background:#eaf2fa;color:#193f6d;border-bottom:2px solid #2563eb;padding:11px 10px}
+.plot-list-page #example1 tbody td{padding:10px;border-color:#bdcddc;vertical-align:middle}
+.plot-list-page #example1 tbody tr:nth-child(even){background:#edf3f9}
+.plot-list-page .dataTables_wrapper{display:flex;flex-direction:column;height:100%;min-height:0}
+.plot-list-page .dataTables_scroll,.plot-list-page .dataTables_scrollBody{flex:1;min-height:0;overflow:auto!important}
+.plot-list-page .dataTables_filter,.plot-list-page .dt-buttons,.plot-list-page .dataTables_length{font-size:13px}
+.plot-list-page .dataTables_info,.plot-list-page .dataTables_paginate{padding:8px 10px!important}
+.plot-list-page .btn-group .btn{border-radius:5px;margin-right:3px}
+.plot-editor .modal-dialog{max-width:950px;width:calc(100% - 34px);margin:24px auto}
+.plot-editor .modal-content{border:0;border-radius:12px;overflow:hidden;box-shadow:0 20px 65px #132b4a35;display:flex;max-height:calc(100vh - 48px)}
+.plot-editor .modal-header{background:#f5f9fe;border-bottom:1px solid #d1e0ed;padding:15px 20px;flex-shrink:0}
+.plot-editor .modal-title{color:#173f6e;font-size:19px;font-weight:750}
+.plot-editor .modal-body{overflow:auto;min-height:0;padding:18px 20px;overscroll-behavior:contain}
+.plot-editor .modal-footer{position:sticky;bottom:0;background:#fafcff;border-top:1px solid #ccdae8;z-index:2;padding:12px 20px}
+.plot-editor .modal-body form>.row{margin-bottom:3px}
+.plot-editor .modal-body .row>.col-sm-3,.plot-editor .modal-body .row>.col-sm-6,.plot-editor .modal-body .row>.col-sm-12{margin-bottom:13px}
+.plot-editor .modal-body .input-group{display:flex;flex-direction:column;align-items:stretch;width:100%;min-width:0}
+.plot-editor .modal-body .input-group>.input-group{width:100%;display:flex;flex-direction:column}
+.plot-editor .modal-body .input-group .fbox,.plot-editor .modal-body .form-group .fbox{display:block;width:100%;margin-bottom:6px;font-size:14px;font-weight:650;color:#29496b}
+.plot-editor .modal-body .form-control{width:100%;min-width:0;height:40px;border:1px solid #b6c9dd;border-radius:6px;font-size:14px;padding:7px 11px}
+.plot-editor .modal-body textarea.form-control{height:auto;min-height:87px}
+.plot-editor .plot-definition-row{margin:3px -8px 12px;padding:12px 5px 0;border-top:1px solid #dbe6ef;background:#fbfdff;border-radius:5px}
+.plot-editor .plot-definition-row>div{padding:0 8px;margin-bottom:10px}
+.plot-editor .plot-definition-row label{display:block;font-size:14px;color:#214a76;font-weight:650;margin-bottom:6px}
+.plot-editor .plot-definition-row select{width:100%;min-width:0}
+.plot-editor .plot-section-heading{font-size:13px;font-weight:750;color:#215a98;margin:5px 0 12px}
+.plot-editor .plot-definition-note{font-size:12px;color:#67819a;margin-top:-3px}
+.plot-editor select.tomselected,.plot-editor select.ts-hidden-accessible{display:none!important}
+.plot-editor .ts-wrapper{width:100%;border:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
+.plot-editor .ts-control{min-height:40px;border-color:#b6c9dd!important;border-radius:6px;font-size:14px}
+.plot-definition-dropdown{z-index:1100!important}
+@media(max-width:700px){.plot-editor .modal-dialog{width:calc(100% - 16px);margin:8px auto}.plot-editor .modal-content{max-height:calc(100vh - 16px)}.plot-editor .modal-body{padding:14px}.plot-list-page .plot-list-card{height:calc(100vh - 180px)}}
+</style>
+@endpush
+
 @section('content')
-    <div class="content-wrapper">
+    <div class="content-wrapper plot-list-page">
         <!-- Content Header (Page header) -->
         <div class="content-header">
             <div class="container-fluid">
@@ -25,7 +67,7 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-12">
-                        <div class="card">
+                        <div class="card plot-list-card">
                             @can('create plot')
                                 <div class="card-header">
                                     <h3 class="card-title">
@@ -114,6 +156,8 @@
 @endsection
 
 @section('js')
+    <script src="{{ asset('js/plot-editor-modern.js') }}?v=1"></script>
+
     @if ($errors->any())
         <script>
             $(document).ready(function() {
@@ -216,7 +260,7 @@
 
 @section('modal')
     {{-- Modal Add --}}
-    <div class="modal fade" id="modal-tambah">
+    <div class="modal fade plot-editor" id="modal-tambah">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
@@ -253,7 +297,7 @@
                                             @if ($plotDefinitionsReady && $plotDefinitions->has('type'))
                                                 @foreach ($plotDefinitions->get('type') as $typeDefinition)<option value="{{ $typeDefinition->legacy_value }}">{{ $typeDefinition->name }}</option>@endforeach
                                             @else
-                                                <option value="1">Residenational</option><option value="2">Commercial</option>
+                                                <option value="1">Residential</option><option value="2">Commercial</option>
                                             @endif
                                         </select>
                                         @error('type')
@@ -387,7 +431,7 @@
                             <div class="col-sm-12">
 
                                 <div class="form-group">
-                                    <label class="fbox">Textarea</label>
+                                    <label class="fbox">Description / Notes</label>
                                     <textarea class="form-control" rows="3" placeholder="Enter ..." spellcheck="false" name="description"></textarea>
                                 </div>
                             </div>
@@ -420,7 +464,7 @@
         <!-- /.modal-dialog -->
     </div>
     {{-- Modal Update --}}
-    <div class="modal fade" id="modal-edit">
+    <div class="modal fade plot-editor" id="modal-edit">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
