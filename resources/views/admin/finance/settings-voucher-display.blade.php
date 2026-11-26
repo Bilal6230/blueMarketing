@@ -33,10 +33,11 @@
     @csrf
     @method('PUT')
     @php($receiptHeaderSettings = \App\Models\Setting::where('type','toggle')->whereIn('key',array_map(fn($type) => $type.'_Receipt_Header',$types))->get()->keyBy('key'))
+    @php($displayVoucherSeries = collect(\App\Services\Finance\ProjectVoucherDisplay::SERIES)->merge($types)->unique()->values())
     <table class="s4-table">
      <thead><tr><th>Voucher Name</th><th>Current Prefix</th><th>Legacy Series</th><th>Print Header</th><th>Action</th></tr></thead>
      <tbody>
-     @foreach(\App\Services\Finance\ProjectVoucherDisplay::SERIES as $series)
+     @foreach($displayVoucherSeries as $series)
       @php($keyType = $series.'_Receipt_Header')
       @php($hasHeader = $receiptHeaderSettings->has($keyType))
       <tr data-s4-series="{{ $series }}">
@@ -54,7 +55,11 @@
          </div>
         @else <span class="s4-subtle">Not configured</span> @endif
        </td>
-       <td class="s4-action"><button class="btn btn-outline-primary btn-sm s4-edit" type="button" data-s4-edit="{{ $series }}" @if(!$canManageFinanceSettings || !$voucherDisplaySettingsReady) disabled @endif><i class="fas fa-edit mr-1"></i>Edit</button></td>
+       <td class="s4-action">
+        @if(in_array($series, \App\Services\Finance\ProjectVoucherDisplay::SERIES, true))
+         <button class="btn btn-outline-primary btn-sm s4-edit" type="button" data-s4-edit="{{ $series }}" @if(!$canManageFinanceSettings || !$voucherDisplaySettingsReady) disabled @endif><i class="fas fa-edit mr-1"></i>Edit</button>
+        @else <span class="s4-subtle">Legacy header only</span> @endif
+       </td>
       </tr>
      @endforeach
      </tbody>
