@@ -38,6 +38,10 @@ $(function(){
   // as a hidden field while the controller independently validates its scope.
   var $project=$form.find('select[name="project_id"]');
   if($project.length)$('<input>',{type:'hidden',name:'project_id',value:$project.val()}).insertAfter($project);
+  function syncProject() {
+   $project.siblings('input[type="hidden"][name="project_id"]').val($project.val());
+  }
+  $project.on('change',syncProject);
   $form.find('input[name="name"]').attr('placeholder','e.g. A-10');
   $form.find('input[name="size"]').attr({type:'number',step:'0.01',min:'0.01'});
   $form.find('textarea[name="description"]').attr('placeholder','Optional plot details or remarks');
@@ -50,6 +54,7 @@ $(function(){
    });
   }
   $modal.on('shown.bs.modal',function(){
+   syncProject();
    $form.find('select[name$="_definition_id"]').each(function(){
     if(this.tomselect)this.tomselect.setValue($(this).val()||'',true);
    });
