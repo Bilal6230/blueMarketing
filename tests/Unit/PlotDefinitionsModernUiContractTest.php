@@ -30,7 +30,7 @@ final class PlotDefinitionsModernUiContractTest extends TestCase
         $this->assertStringContainsString('id="modal-tambah"', $view);
         $this->assertStringContainsString('id="modal-edit"', $view);
         $this->assertStringContainsString('plot-editor-modern.js', $view);
-        $this->assertStringContainsString('grid-template-columns', $view);
+        $this->assertStringContainsString('.plot-editor .plot-definition-row', $view);
         $this->assertStringContainsString('Description / Notes', $view);
         $this->assertStringContainsString('Saved Plot Definitions (selected project)', $script);
         $this->assertStringContainsString('plot_category_definition_id', $script);
