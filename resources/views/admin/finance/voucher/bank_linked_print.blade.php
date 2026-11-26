@@ -11,6 +11,7 @@
 <body>
 <div class="actions"><button onclick="window.print()">Print</button></div>
 <main class="sheet">
+    @include('admin.partials.project_print_identity', ['brandingProjectId' => $source->project_id ?? null])
     <header class="top"><div><h1 style="margin:0">{{ $direction === 'receipt' ? 'Bank Receipt Voucher' : 'Bank Payment Voucher' }}</h1><p class="muted">Project #{{ (int) getSelectedTown() }}</p></div><div style="text-align:right"><strong>{{ $source->voucher_series }}-{{ $source->voucher_number }}</strong><br><span class="muted">{{ substr((string) $source->effective_date, 0, 10) }}</span></div></header>
     <section class="meta">
         <div><b>Linked source</b>{{ $source->source_type ? $source->source_type.'-'.$source->source_number : 'Bank transfer' }}</div>
