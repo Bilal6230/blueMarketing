@@ -12,6 +12,7 @@ use App\Models\Role;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -42,6 +43,7 @@ class ProjectController extends Controller
             'facing_charge_percent' => (float) $project->facing_charge_percent,
             'is_active' => (int) $project->is_active,
             'created_at' => optional($project->created_at)->format('Y-m-d H:i:s'),
+            'logo_url' => \App\Support\ProjectBranding::logoUrl($project),
         ])->values()->all();
 
         if ($request->wantsJson()) {
@@ -88,8 +90,8 @@ class ProjectController extends Controller
         try {
             $imageName = null;
             if ($request->hasFile('logo')) {
-                $imageName = time() . '.' . $request->logo->extension();
-                $request->logo->move(public_path('images/logo'), $imageName);
+                $imageName = (string) Str::uuid() . '.' . strtolower($request->file('logo')->extension());
+                $request->file('logo')->move(public_path('images/logo'), $imageName);
             }
             $validated = $validator->validated();
             $data = DB::transaction(function () use ($validated, $imageName) {
@@ -278,8 +280,8 @@ class ProjectController extends Controller
 
         // Handle logo update
         if ($request->hasFile('logo')) {
-            $imageName = time() . '.' . $request->logo->extension();
-            $request->logo->move(public_path('images/logo'), $imageName);
+            $imageName = (string) Str::uuid() . '.' . strtolower($request->file('logo')->extension());
+            $request->file('logo')->move(public_path('images/logo'), $imageName);
             $data['logo'] = $imageName;
         }
 
