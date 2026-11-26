@@ -734,7 +734,7 @@ if (!function_exists('getProjectPrintBranding')) {
 
         $title = trim((string) data_get($project, 'project', ''));
         if ($title === '') {
-            $title = (string) ($settings->get('app_name') ?? 'Company');
+            $title = \App\Support\ProjectBranding::title($project);
         }
 
         $address = trim((string) data_get($project, 'address', ''));
@@ -742,13 +742,7 @@ if (!function_exists('getProjectPrintBranding')) {
             $address = '—';
         }
 
-        $logo = trim((string) data_get($project, 'logo', ''));
-        if ($logo !== '') {
-            $logo = str_contains($logo, '/') ? $logo : 'images/logo/' . ltrim($logo, '/');
-        } else {
-            $logo = (string) ($settings->get('app_logo') ?? 'images/logo/blue-marketing-logo.png');
-        }
-
+        $logo = \App\Support\ProjectBranding::logoPath($project);
         $phones = collect([
             data_get($project, 'phone'),
             data_get($project, 'phone_1'),
