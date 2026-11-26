@@ -123,6 +123,9 @@ final class ProjectVoucherAllocator
     /** Allocate a CustomerLedger type_id from its own retained sequence. */
     public function nextSourceId(int $projectId, string $series): int
     {
+        if (in_array($series, ['BO','BR'], true)) {
+            VoucherAvailability::enforce($projectId, $series);
+        }
         if ($projectId < 1 || !preg_match('/^[A-Za-z]{2,4}$/D', $series)) {
             throw new \DomainException('INVALID_VOUCHER_ALLOCATION_SCOPE');
         }
@@ -160,6 +163,11 @@ final class ProjectVoucherAllocator
     /** Allocate the legacy ledgers.type_id row identity for this project/series. */
     public function nextLedgerId(int $projectId, string $series): int
     {
+        // BO/BR have no standalone page. Their creation must still respect the
+        // project's active-state setting even through internal bank workflows.
+        if (in_array($series, ['BO','BR'], true)) {
+            VoucherAvailability::enforce($projectId, $series);
+        }
         if ($projectId < 1 || !preg_match('/^[A-Z]{2,4}$/D', $series)) {
             throw new \DomainException('INVALID_VOUCHER_ALLOCATION_SCOPE');
         }
