@@ -206,19 +206,6 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
 
     });
 
-    Route::get('plot-definitions', [App\Http\Controllers\PlotDefinitionController::class, 'index'])
-        ->middleware(['permission:read plot'])->name('project.plot-definitions.index');
-    Route::post('plot-definitions', [App\Http\Controllers\PlotDefinitionController::class, 'store'])
-        ->middleware(['permission:create plot'])->name('project.plot-definitions.store');
-    Route::put('plot-definitions/{definitionId}', [App\Http\Controllers\PlotDefinitionController::class, 'update'])
-        ->middleware(['permission:update plot'])->name('project.plot-definitions.update');
-    Route::patch('plot-definitions/{definitionId}/status', [App\Http\Controllers\PlotDefinitionController::class, 'status'])
-        ->middleware(['permission:update plot'])->name('project.plot-definitions.status');
-    Route::post('plot-definitions/{definitionId}/rate', [App\Http\Controllers\PlotDefinitionController::class, 'rate'])
-        ->middleware(['permission:update plot'])->name('project.plot-definitions.rate');
-
-
-
     Route::controller(App\Http\Controllers\LeadController::class)->group(function () {
         Route::get('crm/lead', 'index')->middleware(['permission:read lead'])->name('crm.lead.index');
         Route::post('crm/lead', 'store')->middleware(['permission:create lead'])->name('crm.lead.store');
