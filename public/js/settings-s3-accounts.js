@@ -30,7 +30,7 @@ $(function(){
   if(account){
    $form.find('[name='+type+'_account_id]').prop('disabled',false).val(account.id);
    $.each(['display_title','bank_name','account_title','branch','account_mapping_id','is_active'],function(_,key){
-    if(account[key]!==undefined)$form.find('[name='+key+']').val(String(account[key]));
+    if(account[key]!==undefined)$form.find('[name='+key+']').val(key==='is_active'?(account[key]?'1':'0'):String(account[key]));
    });
    $('#s3-bank-number-note').text(account.account_number_last4?'Saved number ends '+account.account_number_last4+'; leave blank to keep.':'No saved number.');
   }else{
