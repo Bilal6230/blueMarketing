@@ -32,18 +32,20 @@
 - [x] S1 accepted. Follow-up visual tweaks, if requested, remain separate.
 
 ### S2 — Attendance Machine
-**State: Implementation pushed — automated tests and browser acceptance pending.**
+**State: Revised UI implementation pushed; fresh local PHPUnit and browser checks pending.**
 
-- [x] Unify Add/Edit: **Add Device** clears the same inline editor; selecting an existing device loads it using a scoped JSON endpoint without reloading.
-- [x] Device Save / Update uses jQuery AJAX + confirmation popup; successful saves update the selected-device dropdown, editor state and mappings in place.
-- [x] Employee ID mapping uses jQuery AJAX + confirmation popup; successful changes repaint the mapping table in place. Existing mapping row Edit pre-fills the editor.
-- [x] Device details endpoint checks project ownership, role and `update setting` permission; password/secret is never included in JSON and the Eloquent password cast remains encrypted.
-- [x] Separate project-wise Device Configuration and Employee ID Mapping cards; compact table with alternating rows, validation and inline errors.
-- [x] Test Connection and Sync Attendance remain disabled until the vendor protocol and event adapter have been verified. Saving does not claim a successful connection.
-- [x] Generic Settings modalizer excludes S2 AJAX forms.
-- [ ] Local `php artisan view:cache` and `php artisan test --filter=SystemSettingS2ContractTest` PASS.
-- [ ] Browser check: Add Device without full reload; update selected device; cancel confirm, validation errors and network failure; employee ID mappings add/update without reload; project isolation; disabled sync and connection; no plaintext secret in Network responses.
-- [ ] After local test and browser checks pass, mark S2 fully verified.
+- [x] Replace always-visible Device Configuration form with a **table of saved devices**, listing Device, Connection, Status and Edit / Map IDs / Delete actions.
+- [x] **Add Device** opens a blank, centered modal; **Edit** loads the same modal with existing device data via project-scoped AJAX JSON. Form no longer occupies the Settings card.
+- [x] Device create/update runs via jQuery AJAX + confirmation; updates the device table and mapping selector without reloading the page.
+- [x] Employee ID Mapping selects a saved device, loads mappings by AJAX and adds/updates/removes mappings by AJAX with independent confirmation and in-place table refresh. No full-page form submission.
+- [x] Fix root cause of S2 blank page / dead Add Device click: move event handlers to `@push('script')` (after jQuery) and explicitly exempt forms from generic AJAX form replacement using `data-ajax="off"`.
+- [x] Guard deletion by project ID and `update setting` permission. Device deletion is refused while employee mappings exist; a confirmed mapping Delete action is available first.
+- [x] Preserve encrypted secret; send only `has_password` flag on JSON responses. Preserve existing saved secret when update leaves password blank.
+- [x] Test Connection and Sync Attendance remain disabled until a verified device adapter exists. Saving configuration does not imply a working connection.
+- [x] Automated S2 contract file updated for revised flow.
+- [ ] Run `php artisan view:cache`, `php artisan test --filter=SystemSettingS2ContractTest`, and `php artisan test --filter=SystemSettingS1ContractTest` on the user's local project.
+- [ ] Browser verify Add opens modal; Edit pre-fills; Save Yes/No and validation; newly saved device appears without reload; Map IDs loads mappings; mapping Apply/Edit/Delete works without blank page; Device Delete with mappings refuses; after removing mappings Delete succeeds; no change of URL; credentials stay hidden.
+- [ ] Mark S2 fully verified after the above checks pass.
 
 ### S3 — Bank Accounts and Cash Accounts
 **State: [ ] Pending**
