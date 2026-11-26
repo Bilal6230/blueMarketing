@@ -212,7 +212,7 @@
             <div class="daily-voucher-muted">Selected project records · Read-only history</div>
         </div>
         <x-finance.voucher-directory-actions :approvals="true" />
-        @if($presetType ? auth()->user()->can('finance '.\App\Support\Finance\FinanceActionPermission::moduleForSeries($presetType).' create') : collect(['CR','DR','CCR','CDR','BOR','BOP'])->contains(fn($series)=>auth()->user()->can('finance '.strtolower($series).' create')))
+        @if($presetType ? (auth()->user()->can('finance '.\App\Support\Finance\FinanceActionPermission::moduleForSeries($presetType).' create') && \App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),$presetType)) : collect(['CR','DR','CCR','CDR','BOR','BOP'])->contains(fn($series)=>auth()->user()->can('finance '.strtolower($series).' create') && \App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),$series)))
         <button class="btn btn-success btn-sm" type="button" id="dv-create-voucher"><i class="fas fa-plus mr-1"></i> New voucher</button>
         @endif
     </div></section>
@@ -232,7 +232,7 @@
                     'BOR' => ['Bank Receipt Voucher (BOR)', route('finance.voucher.in', ['series'=>'BOR','embed'=>1])],
                     'BOP' => ['Bank Payment Voucher (BOP)', route('finance.voucher.out', ['series'=>'BOP','embed'=>1])],
                 ] as $series => [$label, $url])
-                    @if(auth()->user()->can('finance '.strtolower($series).' create'))
+                    @if(auth()->user()->can('finance '.strtolower($series).' create') && \App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),$series))
                     <button type="button" class="dv-create" data-url="{{$url}}" data-cheque-url="{{ in_array($series, ['BOR','BOP'], true) ? route($series === 'BOR' ? 'finance.voucher.in.method' : 'finance.voucher.out.method', ['method'=>'cheque','series'=>$series,'embed'=>1]) : '' }}" data-title="{{$label}}" data-series="{{$series}}"></button>
                     @endif
                 @endforeach
@@ -311,21 +311,47 @@
                     <label for="dv-entry-type" class="font-weight-bold mb-2">Choose voucher type</label>
                     <select id="dv-entry-type" class="form-control" aria-label="Choose a voucher to create">
                         <option value="">Select voucher type</option>
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'CR'))
                         <option value="CR">Credit Voucher (CR)</option>
+                        @endif
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'DR'))
                         <option value="DR">Debit Voucher (DR)</option>
+                        @endif
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'CCR'))
                         <option value="CCR">Cash Credit (CCR)</option>
+                        @endif
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'CDR'))
                         <option value="CDR">Cash Debit (CDR)</option>
+                        @endif
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'BOR'))
                         <option value="BOR">Bank Receipt Voucher (BOR)</option>
+                        @endif
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'BOP'))
                         <option value="BOP">Bank Payment Voucher (BOP)</option>
+                        @endif
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'JV'))
                         <option value="JV">Journal Voucher (JV)</option>
+                        @endif
                         @can('finance sv create')
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'SV'))
                         <option value="SV">Sales Voucher (SV)</option>
+                        @endif
                         @endcan
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'CV'))
                         <option value="CV">Commission Voucher (CV)</option>
+                        @endif
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'PPR'))
                         <option value="PR">Plot Receive Payment (PR)</option>
+                        @endif
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'PP'))
                         <option value="PP">Plot Purchase Voucher (PP)</option>
+                        @endif
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'BD'))
                         <option value="BD">Bank Deposit (BD)</option>
+                        @endif
+                        @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'BW'))
                         <option value="BW">Bank Withdrawal (BW)</option>
+                        @endif
                     </select>
                 </div>
                 <div id="dv-entry-error" class="alert alert-danger m-3 d-none" role="alert">
