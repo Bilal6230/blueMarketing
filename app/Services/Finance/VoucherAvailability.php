@@ -19,9 +19,7 @@ final class VoucherAvailability
         'BW'=>'Bank Withdrawal Voucher', 'JV'=>'Journal Voucher',
         'CV'=>'Commission Voucher', 'SV'=>'Sales Voucher',
         'PPR'=>'Plot Receive Payment', 'PP'=>'Plot Purchase Voucher',
-        'BO'=>'BO Voucher', 'BR'=>'BR Voucher',
         'EC'=>'Extra Charge Voucher','ECP'=>'Extra Charge Payment Voucher',
-        'CHR'=>'Cheque Receipt Voucher','CHP'=>'Cheque Payment Voucher',
     ];
 
     public static function enabled(int $projectId, string $series): bool
