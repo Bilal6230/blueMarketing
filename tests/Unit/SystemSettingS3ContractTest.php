@@ -62,6 +62,25 @@ final class SystemSettingS3ContractTest extends TestCase
         $this->assertStringContainsString('data-cash-url=', $s3);
     }
 
+    public function test_s3_head_and_subhead_selectors_keep_existing_project_mapping_identity(): void
+    {
+        $view = file_get_contents(resource_path('views/admin/finance/settings-accounts.blade.php'));
+        $script = file_get_contents(public_path('js/settings-s3-accounts.js'));
+
+        $this->assertStringContainsString('id="s3-head-account"', $view);
+        $this->assertStringContainsString('id="s3-subhead-account"', $view);
+        $this->assertStringContainsString('data-head-id="{{ $mapping->head_accounting_id }}"', $view);
+        $this->assertStringContainsString('data-subhead-id="{{ $mapping->subhead_accounting_id }}"', $view);
+        $this->assertStringContainsString('value="{{ $mapping->id }}"', $view);
+        $this->assertStringContainsString('type="hidden" name="account_mapping_id"', $view);
+        $this->assertStringContainsString('function populateSubheads(headId,chosenMapping)', $script);
+        $this->assertStringContainsString("selectMapping(account.account_mapping_id)", $script);
+        $this->assertStringContainsString("$head.on('change'", $script);
+        $this->assertStringContainsString("$subhead.on('change'", $script);
+        $this->assertStringContainsString("$mapping.val($subhead.val()||'')", $script);
+        $this->assertStringContainsString("if(!$mapping.val())", $script);
+    }
+
     public function test_s3_migration_preserves_original_bank_records(): void
     {
         $migration=file_get_contents(database_path('migrations/2026_11_26_210000_add_s3_bank_cash_account_masters.php'));
