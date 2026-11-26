@@ -234,10 +234,18 @@
                                     </a>
                                 </li>
                                 @endif
+                                @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'BD'))
                                 <li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace', ['kind' => 'deposit']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind') === 'deposit' ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Bank Deposit</p></a></li>
+                                @endif
+                                @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'BW'))
                                 <li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace', ['kind' => 'withdrawal']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind') === 'withdrawal' ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Bank Withdrawal</p></a></li>
+                                @endif
+                                @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'PPR'))
                                 <li class="nav-item"><a href="{{ route('finance.voucher.plot-receipt.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-receipt.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Plot Receive Payment</p></a></li>
+                                @endif
+                                @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'PP'))
                                 <li class="nav-item"><a href="{{ route('finance.voucher.plot-purchase.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-purchase.*') ? 'active' : '' }}"><i class="far fa-circle nav-icon"></i><p>Plot Purchase Voucher</p></a></li>
+                                @endif
                                 <li class="nav-item">
                                     <a href="{{ route('finance.voucher.draft') }}"
                                         class="nav-link {{ request()->routeIs('finance.voucher.draft') ? 'active' : '' }}">
@@ -257,6 +265,7 @@
                                 </li> --}}
                             @endcan
                             @can('read jv')
+                                @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'JV'))
                                 <li class="nav-item">
                                     <a href="{{ route('journal.voucher.index') }}"
                                         class="nav-link {{ request()->routeIs('journal.voucher.index') ? 'active' : '' }}">
@@ -264,8 +273,10 @@
                                         <p>Journal Voucher</p>
                                     </a>
                                 </li>
+                                @endif
                             @endcan
                             @can('read jv')
+                                @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'SV'))
                                 <li class="nav-item">
                                     <a href="{{ route('sales.voucher.index') }}"
                                         class="nav-link {{ request()->routeIs('sales.voucher.index') ? 'active' : '' }}">
@@ -273,8 +284,10 @@
                                         <p>Sales Voucher</p>
                                     </a>
                                 </li>
+                                @endif
                             @endcan
                             @can('read jv')
+                                @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'CV'))
                                 <li class="nav-item">
                                     <a href="{{ route('commision.voucher.index') }}"
                                         class="nav-link {{ request()->routeIs('commision.voucher.index') ? 'active' : '' }}">
@@ -282,6 +295,7 @@
                                         <p>Commision Voucher</p>
                                     </a>
                                 </li>
+                                @endif
                             @endcan
                             @canany(['read slip', 'add slip'])
                                 <li class="nav-item">
