@@ -3,7 +3,7 @@
 **Project:** BlueMarketing / Waqas ERP  
 **Scope:** Settings (`/admin/setting`) — project-scoped configuration and modern UI  
 **Baseline:** 26 November 2026  
-**Status:** S1 browser and contract checks reported PASS (7/7; 48 assertions). S2 code implemented; automated and browser checks pending. S3–S4 pending.  
+**Status:** S1 browser and contract checks reported PASS (7/7; 48 assertions). S2 code implemented; automated and browser checks pending. S3 implementation in progress; S4 pending.  
 **Tracker rule:** Check `[x]` only after code + automated tests + user browser verification pass. Do not mark existing partial code as complete.
 
 ## Overall behavior (applies to every batch)
@@ -48,17 +48,22 @@
 - [ ] Mark S2 fully verified after the above checks pass.
 
 ### S3 — Bank Accounts and Cash Accounts
-**State: [ ] Pending**
+**State: Implementation batch pushed on 26 November 2026; migration, tests, and user browser verification pending.**
 
-- [ ] Remove **Configure Payment method labels** from Bank Accounts UI (retain underlying data until dependent views are audited).
-- [ ] Remove **Recent bank account changes** and **Recent payment label changes** visual cards; continue recording actions for Audit Activity.
-- [ ] Only two top actions: **Configure Bank Account** and **Configure Cash Account**, each opening its own Add/Edit modal.
-- [ ] Add project bank **Display Title** field, keeping Bank name, Account title, Branch, Account number, Project Chart of Accounts mapping and status.
-- [ ] Add project cash account master with **Display Title**, **Project Chart of Accounts mapping**, and **Active/Inactive** status.
-- [ ] Show two **side-by-side listing cards**, Bank Accounts and Cash Accounts, with Edit / Activate / Deactivate actions and clear labels.
+- [x] Remove **Configure Payment method labels** from Bank Accounts UI (retain underlying data until dependent views are audited).
+- [x] Remove **Recent bank account changes** and **Recent payment label changes** visual cards; continue recording actions for Audit Activity.
+- [x] Only two top actions: **Configure Bank Account** and **Configure Cash Account**, each opening its own Add/Edit modal.
+- [x] Add project bank **Display Title** field, keeping Bank name, Account title, Branch, Account number, Project Chart of Accounts mapping and status.
+- [x] Add project cash account master with **Display Title**, **Project Chart of Accounts mapping**, and **Active/Inactive** status.
+- [x] Show two **side-by-side listing cards**, Bank Accounts and Cash Accounts, with Edit / Activate / Deactivate actions and clear labels.
 - [ ] Project-specific active account mappings only for new accounts. Preserve historical mappings/account IDs and protect accounts used by posted vouchers.
 - [ ] Populate relevant bank account selectors (e.g. BOR/BOP Counter Account and other voucher bank pickers) with **Display Title**. Cash pickers use configured cash Display Title. Changing a display title must not change the underlying account mapping/financial transaction.
 - [ ] Add/adjust migrations safely; audit every action; AJAX validation and UI update; test projects with zero configured accounts and multi-project isolation.
+
+
+**S3 implementation notes (not acceptance):** Migration `2026_11_26_210000_add_s3_bank_cash_account_masters.php`, `ProjectCashAccount`, bank Display Title, scoped JSON edit/save/status endpoints, cash and bank audit writes, side-by-side modern table cards, modal forms, and `SystemSettingS3ContractTest` were pushed. S3 front-end reloads the selected tab through AJAX; existing account IDs remain unchanged. Do not mark S3 complete until picker integration and live verification.
+
+**Outstanding S3 requirements:** Integrate Display Title into each actual finance voucher bank/cash selection consumer (including BOR/BOP Counter Account) without changing IDs or posted vouchers; add integration tests for posting and multiple projects. Run migration, view cache, S1/S2/S3 tests and browser checks on the local database. Review existing active/inactive settings and historical mapping behavior.
 
 ### S4 — Voucher Display / receipt headers
 **State: [ ] Pending**
