@@ -50,12 +50,13 @@ final class PlotPurchaseGlobalVoucherDirectoryTest extends TestCase
             'ppTotal', 'ppPost', 'ppDetailsModal',
             'plot_code', 'description', 'area', 'unit',
             'road_id', 'facing_id', 'inventory_account_id',
-            'unit_rate', 'is_corner', 'plot_category_definition_id',
-            'plot_type_definition_id', 'plot_size_definition_id',
-            'plot_unit_definition_id',
+            'unit_rate', 'is_corner',
         ] as $required) {
             $this->assertStringContainsString($required, $view);
         }
+        $this->assertStringNotContainsString('plot_category_definition_id', $view);
+        $this->assertStringNotContainsString('plot_definitions', $view);
+        $this->assertStringContainsString('<option value="3">Others</option>', $view);
     }
 
     public function test_purchase_history_uses_shared_global_jquery_actions_filters_and_pagination(): void
