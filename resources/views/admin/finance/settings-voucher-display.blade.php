@@ -31,7 +31,7 @@
 #s4-display-modal .s4-full{grid-column:1/-1}
 @media(max-width:700px){#s4-display-modal .s4-editor-grid{grid-template-columns:1fr}#s4-display-modal .s4-full{grid-column:auto}#voucher-settings .s4-table{min-width:650px}}
 </style>
-<div class="s4-shell">
+<div class="s4-shell" data-s4-status-url="{{ route('setting.voucher-availability.save') }}" data-s4-token="{{ csrf_token() }}">
  <header class="s4-heading">
   <div><h4>Voucher Display</h4><small class="text-muted">Voucher names, configured prefixes and receipt headers</small></div>
   <button type="button" id="s4-configure" class="btn btn-primary" @if(!$canManageFinanceSettings || !$voucherDisplaySettingsReady) disabled @endif><i class="fas fa-edit mr-1"></i> Configure Voucher Display</button>
@@ -48,11 +48,12 @@
     @php($receiptHeaderSettings = \App\Models\Setting::where('type','toggle')->whereIn('key',array_map(fn($type) => $type.'_Receipt_Header',$types))->get()->keyBy('key'))
     @php($displayVoucherSeries = collect(\App\Services\Finance\ProjectVoucherDisplay::SERIES)->merge($types)->unique()->values())
     <table class="s4-table" id="s4-directory-table">
-     <thead><tr><th>Voucher Name</th><th>Current Prefix</th><th>Legacy Series</th><th>Print Header</th><th>Action</th></tr></thead>
+     <thead><tr><th>Voucher Name</th><th>Current Prefix</th><th>Legacy Series</th><th>Print Header</th><th>Active / Inactive</th><th>Action</th></tr></thead>
      <tbody>
      @foreach($displayVoucherSeries as $series)
       @php($keyType = $series.'_Receipt_Header')
-      @php($hasHeader = $receiptHeaderSettings->has($keyType))
+      @php($hasHeader = in_array($series, array_keys(\App\Services\Finance\VoucherAvailability::FAMILIES), true) || $receiptHeaderSettings->has($keyType))
+      @php($seriesActive = (int)($voucherAvailability[$series] ?? 1)===1)
       <tr data-s4-series="{{ $series }}">
        <td><strong>{{ \App\Services\Finance\ProjectVoucherDisplay::label($series) }}</strong></td>
        <td class="s4-current-prefix">{{ $voucherDisplaySettings[$series] ?? ($series==='CP' ? 'DR' : $series) }}</td>
@@ -68,6 +69,16 @@
          </div>
         @else <span class="s4-subtle">Not configured</span> @endif
        </td>
+       <td>
+        @if(array_key_exists($series, \App\Services\Finance\VoucherAvailability::FAMILIES))
+         <div class="custom-control custom-switch">
+          <input type="checkbox" class="custom-control-input s4-availability-toggle" id="s4-active-{{ $series }}"
+           data-s4-availability="{{ $series }}" value="1" @checked($seriesActive)
+           @if(!$canManageFinanceSettings || !$voucherAvailabilityReady) disabled @endif>
+          <label class="custom-control-label s4-availability-label" for="s4-active-{{ $series }}">{{ $seriesActive ? 'Active' : 'Inactive' }}</label>
+         </div>
+        @else <span class="s4-subtle">Legacy only</span> @endif
+       </td>
        <td class="s4-action blue-actions-cell">
         @if(in_array($series, \App\Services\Finance\ProjectVoucherDisplay::SERIES, true))
          <button class="btn btn-outline-primary btn-sm s4-edit" type="button" data-s4-edit="{{ $series }}" @if(!$canManageFinanceSettings || !$voucherDisplaySettingsReady) disabled @endif><i class="fas fa-edit mr-1"></i>Edit</button>
@@ -80,7 +91,7 @@
    </form>
   </div>
   <div class="bm-account-footer s4-list-footer"></div>
-  <footer class="s4-footer">Internal voucher identities, historical receipts and posted entries remain unchanged. A configured prefix is not yet an activated new numbering series.</footer>
+  <footer class="s4-footer">Disabling a voucher hides its new-entry links and returns 403 on protected entry URLs. Historical prints and approvals remain accessible. Prefix changes do not yet activate new numbering.</footer>
  </section>
 </div>
 <div class="modal fade" id="s4-display-modal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -115,5 +126,5 @@
  </div></div>
 </div>
 @push('script')
-<script src="{{ asset('js/settings-s4-voucher-display.js') }}?v=1"></script>
+<script src="{{ asset('js/settings-s4-voucher-display.js') }}?v=2"></script>
 @endpush
