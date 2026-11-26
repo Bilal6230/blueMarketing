@@ -106,7 +106,7 @@ $(function(){
    var start=(currentPage-1)*pageSize,shown=matches.slice(start,start+pageSize);
    if($.blueActionMenu)$.blueActionMenu.close();
    $body.empty();
-   if(!shown.length)$body.append($('<tr>').append($('<td>',{colspan:columns,'class':'text-center text-muted py-4',text:'No matching accounts found'})));
+   if(!shown.length)$body.append($('<tr>').append($('<td>',{colspan:columns,'class':'text-center text-muted py-4',text:kind==='plot'?'No matching plots found':'No matching accounts found'})));
    else $.each(shown,function(_,row){$body.append(row);});
    if(exportControls)exportControls.refresh();
    if($.blueActionMenu)$.blueActionMenu.enhance($body.find('td.blue-actions-cell'));
@@ -310,7 +310,7 @@ $(function(){
  }
  $(document).on('bm:account-refresh',function(){reloadRows();});
  var exportControls=$.blueModernDirectoryTools&&$.blueModernDirectoryTools.mount({
-   card:$card,table:$table,title:kind==='head'?'Main Accounts':kind==='subhead'?'Party Accounts':kind==='joint'?'Joint Accounts':kind==='lead-approvals'?'Lead Assignment Requests':kind==='permission'?'Permissions':kind==='user'?'Users':'Accountants List',
+   card:$card,table:$table,title:kind==='head'?'Main Accounts':kind==='subhead'?'Party Accounts':kind==='joint'?'Joint Accounts':kind==='lead-approvals'?'Lead Assignment Requests':kind==='permission'?'Permissions':kind==='user'?'Users':kind==='plot'?'Plots List':'Accountants List',
    getRows:function(){
      return visibleRows().map(function(row){
        return $(row).children('td').map(function(){return $.trim($(this).text()).replace(/\s+/g,' ');}).get();
