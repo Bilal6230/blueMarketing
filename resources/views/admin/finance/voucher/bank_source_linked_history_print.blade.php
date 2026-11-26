@@ -28,6 +28,7 @@ footer{margin-top:22px;border-top:1px solid #dce4ed;padding-top:10px;color:#6474
 <body>
 <div class="toolbar"><button type="button" onclick="window.print()">Print history</button></div>
 <main class="sheet">
+@include('admin.partials.project_print_identity', ['brandingProjectId' => $projectId])
 <header>
   <div><h1>Linked Voucher Allocation History</h1><div class="sub">{{ ucfirst($method) }} Management — {{ $sourceLabel }}</div></div>
   <div style="text-align:right"><b>Project #{{ $projectId }}</b><div class="sub">Source #{{ $sourceId }}</div></div>
