@@ -102,8 +102,8 @@ final class SystemSettingS4ContractTest extends TestCase
         $setting = file_get_contents(app_path('Http/Controllers/SettingController.php'));
         $view = file_get_contents(resource_path('views/admin/finance/settings-voucher-display.blade.php'));
 
-        $this->assertStringContainsString("'BO'=>'Bank Online Voucher'", $availability);
-        $this->assertStringContainsString("'BR'=>'Bank Receipt/Clearance Voucher'", $availability);
+        $this->assertStringContainsString("'BO'=>'BO Voucher'", $availability);
+        $this->assertStringContainsString("'BR'=>'BR Voucher'", $availability);
         $this->assertStringContainsString("['BO','BR']", $allocator);
         $this->assertStringContainsString('VoucherAvailability::enforce($projectId, $series)', $allocator);
         foreach (['DR','BD','BW','PP','BO','BR'] as $series) {
