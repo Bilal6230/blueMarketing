@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class ProjectBankAccount extends Model
 {
     protected $fillable = [
-        'project_id', 'account_mapping_id', 'bank_name', 'account_title', 'branch', 'account_number',
+        'project_id', 'account_mapping_id', 'bank_name', 'account_title', 'display_title', 'branch', 'account_number',
         'is_active', 'created_by', 'updated_by',
     ];
 
