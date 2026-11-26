@@ -27,11 +27,18 @@ final class VoucherAvailability
     public static function enabled(int $projectId, string $series): bool
     {
         if ($projectId < 1 || !array_key_exists($series,self::FAMILIES)) return false;
-        // Older databases remain operational until the additive S4 migration.
-        if (!Schema::hasTable('project_voucher_availability')) return true;
-        return (int)(DB::table('project_voucher_availability')
-            ->where('project_id',$projectId)->where('series',$series)
-            ->value('is_active') ?? 1) === 1;
+        // One project-scoped lookup per HTTP request, even for large sidebars.
+        // Request attributes avoid stale state across tests and subsequent requests.
+        $key='s4.voucher.availability.'.$projectId;
+        $flags=request()->attributes->get($key);
+        if (!is_array($flags)) {
+            $flags=Schema::hasTable('project_voucher_availability')
+                ? DB::table('project_voucher_availability')->where('project_id',$projectId)
+                    ->pluck('is_active','series')->all()
+                : [];
+            request()->attributes->set($key,$flags);
+        }
+        return (int)($flags[$series] ?? 1)===1;
     }
 
     public static function enforce(int $projectId, string $series): void
