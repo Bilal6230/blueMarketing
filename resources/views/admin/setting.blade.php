@@ -292,7 +292,7 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
             let nextModal = 0;
             function modalizeSettingsForms(root=document){
                 const $root=$(root);
-                $root.find('form[method="POST"]:not([data-settings-modalized]):not(#settings-information-form):not(#settings-receipt-header-form)').each(function(){
+                $root.find('form[method="POST"]:not([data-settings-modalized]):not(#settings-information-form):not(#settings-receipt-header-form):not(#as-device-form):not(#as-mapping-form)').each(function(){
                     const $form=$(this),$pane=$form.closest('.settings-screen .tab-pane');
                     if(!$pane.length)return;
                     const id='settingsEditor'+(++nextModal),action=$form.attr('action')||'';
