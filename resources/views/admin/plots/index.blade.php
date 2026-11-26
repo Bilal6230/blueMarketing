@@ -24,7 +24,8 @@
 
 .bm-plot-directory .bm-account-table tbody td{height:53px!important}
 .bm-plot-directory .bm-account-table thead th{position:sticky;top:0;z-index:3}
-.bm-plot-directory .bm-modern-export-toolbar .bm-plot-toolbar-actions{margin-left:auto!important;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bm-plot-directory .bm-plot-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:6px 12px}
+.bm-plot-directory .bm-modern-export-toolbar .bm-plot-toolbar-actions{margin-left:auto!important;padding:0;justify-content:flex-end}
 .bm-plot-directory .bm-modern-export-toolbar .bm-plot-toolbar-actions .btn{font-size:12px!important;border-radius:6px;padding:7px 12px;font-weight:650}
 .bm-plot-directory .bm-account-table td:last-child{text-align:center;min-width:85px}
 .bm-plot-directory .bm-account-table .btn-edit,.bm-plot-directory .bm-account-table .btn-delete{font-size:12px}
@@ -69,11 +70,13 @@
                                 <button type="button" class="bm-modern-export-btn" disabled>PDF</button>
                                 <button type="button" class="bm-modern-export-btn" disabled>Print</button>
                                 <button type="button" class="bm-modern-export-btn bm-modern-col-toggle" disabled>Column Visibility</button>
-                                <div class="bm-plot-toolbar-actions">
-                                    @can('create plot')
-                                    <a href="#" class="btn btn-sm btn-success btn-add-plot" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i class="fas fa-plus"></i> Add</a>
-                                    @endcan
-                                </div>
+                            </div>
+                            {{-- Keep actions outside the replaceable placeholder. Old cached
+                                 toolbar scripts must never delete an authorized Add button. --}}
+                            <div class="bm-plot-toolbar-actions">
+                                @can('create plot')
+                                <a href="#" class="btn btn-sm btn-success btn-add-plot" data-toggle="modal" data-target="#modal-tambah" data-backdrop="static" data-keyboard="false"><i class="fas fa-plus"></i> Add</a>
+                                @endcan
                             </div>
                             <!-- /.card-header -->
                             <div class="card-body table-responsive bm-account-table-wrap">
