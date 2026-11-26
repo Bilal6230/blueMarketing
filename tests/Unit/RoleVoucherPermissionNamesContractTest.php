@@ -47,6 +47,16 @@ final class RoleVoucherPermissionNamesContractTest extends TestCase
         self::assertStringContainsString('names:[p.name]', $view);
     }
 
+    public function test_role_modal_has_wider_finance_navigation_and_14px_editor_text(): void
+    {
+        $view=file_get_contents(dirname(__DIR__,2).'/resources/views/admin/role.blade.php');
+        self::assertStringContainsString('max-width:1080px', $view);
+        self::assertStringContainsString('grid-template-columns:310px minmax(0,1fr)', $view);
+        self::assertStringContainsString('margin-bottom:3px;font-size:14px', $view);
+        self::assertStringContainsString('.role-permission-item{font-size:14px', $view);
+        self::assertStringContainsString('.role-permission-content,.role-editor .role-selected,.role-editor .modal-footer{font-size:14px}', $view);
+    }
+
     public function test_ec_and_ecp_keep_distinct_access_rights_and_existing_grants(): void
     {
         $catalog = file_get_contents(dirname(__DIR__,2).'/app/Support/Finance/RolePermissionCatalog.php');
