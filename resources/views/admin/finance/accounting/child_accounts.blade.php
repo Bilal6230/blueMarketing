@@ -91,7 +91,7 @@
                                                             </div>
                                                             <input type="text"
                                                                 class="form-control @error('cnic') is-invalid @enderror"
-                                                                placeholder="CNIC Number Here" name="cnic"
+                                                                placeholder="13 digits (optional)" name="cnic" inputmode="numeric" maxlength="13" minlength="13" pattern="[0-9]{13}" title="Enter exactly 13 digits, or leave blank"
                                                                 value="{{ old('cnic') }}">
                                                             @error('cnic')
                                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -111,12 +111,26 @@
                                                             </div>
                                                             <input type="text"
                                                                 class="form-control @error('phone') is-invalid @enderror"
-                                                                placeholder="Phone Number" name="phone"
+                                                                placeholder="Phone Number" name="phone" required maxlength="30"
                                                                 value="{{ old('phone') }}">
                                                             @error('phone')
                                                                 <div class="invalid-feedback">{{ $message }}</div>
                                                             @enderror
                                                         </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-sm-12">
+                                                    <div class="input-group">
+                                                        <label for="party-create-head" class="fbox">Head Account (optional)</label>
+                                                        <select id="party-create-head" name="head_accounting_id" class="party-head-select" aria-label="Optional Head Account">
+                                                            <option value="">No Head Account — join later</option>
+                                                            @foreach($headaccounts as $head)
+                                                                <option value="{{ $head->id }}">{{ $head->name }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        <small class="text-muted">Selecting a Head automatically creates the Joint Account for the current project.</small>
                                                     </div>
                                                 </div>
                                             </div>
@@ -277,6 +291,8 @@
         });
     </script>
     <script src="{{ asset('js/modern-account-directory.js') }}"></script>
+    <script src="{{ asset('js/party-account-inputs.js') }}?v=1"></script>
+
 @endsection
 
 @section('modal')
@@ -387,7 +403,7 @@
                                     <div class="input-group">
                                         <input id="cnic" type="text"
                                             class="form-control @error('cnic') is-invalid @enderror"
-                                            placeholder="CNIC Number" name="cnic" value="{{ old('cnic') }}">
+                                            placeholder="13 digits (optional)" name="cnic" inputmode="numeric" maxlength="13" minlength="13" pattern="[0-9]{13}" title="Enter exactly 13 digits, or leave blank" value="{{ old('cnic') }}">
                                         @error('cnic')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -400,7 +416,7 @@
                                     <div class="input-group">
                                         <input id="phone" type="text"
                                             class="form-control @error('phone') is-invalid @enderror"
-                                            placeholder="Phone Number" name="phone" value="{{ old('phone') }}">
+                                            placeholder="Phone Number" name="phone" required maxlength="30" value="{{ old('phone') }}">
                                         @error('phone')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
