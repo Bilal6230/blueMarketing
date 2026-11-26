@@ -24,9 +24,9 @@ class SettingController extends Controller
         $x['category']  = Setting::where('type', '!=', 'toggle')->select('category')->groupBy('category')->get();
         $categoryNames = $x['category']->pluck('category')->all();
         $requestedTab = (string) request()->query('tab', '');
-        $x['activeSettingsTab'] = $requestedTab === ''
-            ? ($categoryNames[0] ?? null)
-            : (in_array($requestedTab, $categoryNames, true) ? $requestedTab : null);
+        $x['activeSettingsTab'] = in_array($requestedTab, ['','information','contact'], true)
+            ? 'information'
+            : (in_array($requestedTab, $categoryNames, true) ? 'information' : null);
         $x['attendanceTabActive'] = $requestedTab === 'attendance-machine';
         $x['financeSettingsTabActive'] = $requestedTab === 'bank-accounts';
         $x['voucherSettingsTabActive'] = $requestedTab === 'voucher-settings';
