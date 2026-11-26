@@ -399,7 +399,11 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
                 }else uploadError($drop,'Drag and drop is unsupported in this browser. Click to browse.');
             });
             $('.settings-upload-input').on('change',function(){
-                if(this.files&&this.files.length)showSelectedFile($(this).closest('.settings-dropzone'),this.files[0]);
+                if(!this.files||!this.files.length)return;
+                if(!showSelectedFile($(this).closest('.settings-dropzone'),this.files[0])){
+                    // Invalid file cannot be submitted accidentally.
+                    $(this).val('');
+                }
             });
             $('.settings-upload-preview').on('error',function(){
                 $(this).hide();
