@@ -69,7 +69,7 @@
 <div class="modal fade" id="s3-account-modal" tabindex="-1" role="dialog" aria-hidden="true">
  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
   <div class="modal-header bg-light"><h5 class="modal-title" id="s3-account-title">Configure Account</h5><button class="close" type="button" data-dismiss="modal">&times;</button></div>
-  <form id="s3-account-form" method="POST" data-ajax="off">@csrf
+  <form id="s3-account-form" method="POST" data-ajax="off" data-bank-url="{{ route('setting.bank-account.save') }}" data-cash-url="{{ route('setting.cash-account.save') }}">@csrf
   <input type="hidden" name="bank_account_id" disabled><input type="hidden" name="cash_account_id" disabled>
   <div class="modal-body"><div class="s3-form-grid">
    <div class="s3-span"><label>Display Title *</label><input class="form-control" name="display_title" maxlength="120" required placeholder="Title shown in voucher pickers"></div>
