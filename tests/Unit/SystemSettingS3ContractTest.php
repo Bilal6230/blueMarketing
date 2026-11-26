@@ -80,7 +80,7 @@ final class SystemSettingS3ContractTest extends TestCase
         $this->assertStringContainsString("selectMapping(account.account_mapping_id)", $script);
         $this->assertStringContainsString("headTs=new TomSelect", $script);
         $this->assertStringContainsString("subheadTs=new TomSelect", $script);
-        $this->assertStringContainsString("$mapping.val($subhead.val()||'')", $script);
+        $this->assertStringContainsString("$mapping.val(requested)", $script);
         $this->assertStringContainsString("if(!$mapping.val())", $script);
     }
 
