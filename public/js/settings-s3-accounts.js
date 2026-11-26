@@ -244,9 +244,7 @@ $(function(){
   }
   $size.on('change',function(){pageSize=Number($(this).val())||25;page=1;render();});
   $reset.on('click',function(){filters={};sort=-1;desc=false;page=1;pageSize=25;$size.val('25');if(widget)widget.close();render();});
-  if($.blueModernDirectoryTools)exports=$.blueModernDirectoryTools.mount({card:$card,table:$table,title:type==='bank'?'Bank Accounts':'Cash Accounts',
-   getRows:function(){return selectedRows().map(function(row){return $(row).children('td').map(function(){return $.trim($(this).text());}).get();});}});
-  $(document).on('s3:table-updated',function(_,updated){if(updated===type){page=1;render();}});
+    $(document).on('s3:table-updated',function(_,updated){if(updated===type){page=1;render();}});
   render();
  }
  directory('bank');directory('cash');
