@@ -41,7 +41,7 @@ final class SystemSettingS3ContractTest extends TestCase
         $this->assertStringContainsString('public function saveProjectCashAccount(', $controller);
         $this->assertStringContainsString('public function changeProjectAccountStatus(', $controller);
         $this->assertStringContainsString('public function accountSettingsDetail(', $controller);
-        $this->assertStringContainsString('where(\'project_id\',$projectId)', str_replace("where('project_id', $projectId)", "where('project_id',$projectId)", $controller));
+        $this->assertStringContainsString('where(\'project_id\', $projectId)', $controller);
         $this->assertStringContainsString('project_cash_account_audits', $controller);
         $this->assertStringContainsString('project_bank_account_audits', $controller);
         $this->assertStringContainsString('account_number_last4', $controller);
