@@ -49,6 +49,23 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
 .settings-screen .settings-s1-modal .modal-header{background:#f1f7fc}
 @media(max-width:800px){.settings-screen .settings-info-grid{grid-template-columns:1fr}.settings-screen .settings-media-canvas{height:86px;width:105px;min-width:105px}}
 
+.settings-screen .settings-upload-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:12px 0 18px}
+.settings-screen .settings-upload-item{min-width:0}
+.settings-screen .settings-upload-item>label{display:block;color:#25425e;margin-bottom:6px}
+.settings-screen .settings-dropzone{min-height:137px;border:2px dashed #9bbddb;background:#f7fbff;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;padding:10px;cursor:pointer;transition:border-color .15s,background .15s;position:relative;outline:none}
+.settings-screen .settings-dropzone:hover,.settings-screen .settings-dropzone.is-dragover,.settings-screen .settings-dropzone:focus-visible{border-color:#1976d2;background:#e8f4ff}
+.settings-screen .settings-dropzone.is-invalid{border-color:#db5353;background:#fff5f5}
+.settings-screen .settings-upload-input{position:absolute!important;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.settings-screen .settings-drop-preview{height:80px;width:100%;display:flex;justify-content:center;align-items:center}
+.settings-screen .settings-upload-preview{max-width:100%;max-height:80px;object-fit:contain}
+.settings-screen .settings-drop-empty{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;color:#6586a4;font-size:13px}
+.settings-screen .settings-drop-empty i{font-size:26px;color:#5b98d0}
+.settings-screen .settings-drop-caption{font-size:12px;font-weight:600;color:#36709d}
+.settings-screen .settings-upload-status{display:block;margin-top:5px;color:#6b7c8e;font-size:12px}
+.settings-screen .settings-upload-error{display:block}
+@media(max-width:767px){.settings-screen .settings-upload-grid{grid-template-columns:1fr}}
+@media(min-width:768px) and (max-width:1050px){.settings-screen .settings-upload-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.settings-screen .settings-dropzone{min-height:120px}}
+
 .settings-screen .settings-info-form .form-group{margin-bottom:12px}
 .settings-screen .settings-receipt-table{max-width:900px}
 .settings-screen .settings-receipt-table td{vertical-align:middle;padding:8px 11px}
@@ -161,31 +178,39 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
                                                 @if($groupSettings->isNotEmpty())
                                                     <h4 class="settings-section-title">{{ $groupTitle }}</h4>
                                                     <div class="settings-info-grid">
-                                                    @foreach($groupSettings as $set)
-                                                        @php($isWide = $set->type === 'textarea' || str_contains(strtolower((string)$set->key), 'map') || str_contains(strtolower((string)$set->name), 'location'))
-                                                        <div class="settings-info-field {{ $isWide ? 'is-wide' : '' }}">
-                                                            <label for="setting-{{ $set->key }}">{{ str_replace('Application ', '', $set->name) }}</label>
-                                                            <input type="hidden" name="key[]" value="{{ $set->key }}">
-                                                            @if($set->type === 'text')
-                                                                <input id="setting-{{ $set->key }}" class="form-control" type="text" name="value[]" value="{{ $set->value }}" required>
-                                                            @elseif($set->type === 'textarea')
-                                                                <textarea id="setting-{{ $set->key }}" class="form-control" rows="3" name="value[]" required>{{ $set->value }}</textarea>
-                                                            @elseif($set->type === 'file')
-                                                                <div class="settings-media-field">
-                                                                    <div class="settings-media-canvas" data-preview-for="{{ $set->key }}">
-                                                                        <img id="{{ $set->key }}-image" src="{{ $set->value ? asset($set->value) : '' }}" alt="{{ $set->name }} preview" @if(!$set->value) style="display:none" @endif>
-                                                                        <span class="settings-media-empty" @if($set->value) style="display:none" @endif><i class="far fa-image fa-lg"></i> Image Preview</span>
-                                                                    </div>
-                                                                    <div class="settings-media-controls">
-                                                                        <input id="{{ $set->key }}" name="value[]" value="{{ $set->value }}" class="form-control" readonly data-settings-file="1" title="Choose from File Manager">
-                                                                        <small class="text-primary">Click to select an image from File Manager</small>
-                                                                    </div>
-                                                                </div>
-                                                            @endif
-                                                            <small class="text-danger settings-input-error" data-error-key="{{ $set->key }}"></small>
-                                                        </div>
-                                                    @endforeach
+                                                        @foreach($groupSettings->where('type','!=','file') as $set)
+                                                            @php($isWide = $set->type === 'textarea' || str_contains(strtolower((string)$set->key), 'map') || str_contains(strtolower((string)$set->name), 'location'))
+                                                            <div class="settings-info-field {{ $isWide ? 'is-wide' : '' }}">
+                                                                <label for="setting-{{ $set->key }}">{{ str_replace('Application ', '', $set->name) }}</label>
+                                                                <input type="hidden" name="key[]" value="{{ $set->key }}">
+                                                                @if($set->type === 'text')
+                                                                    <input id="setting-{{ $set->key }}" class="form-control" type="text" name="value[]" value="{{ $set->value }}" required>
+                                                                @elseif($set->type === 'textarea')
+                                                                    <textarea id="setting-{{ $set->key }}" class="form-control" rows="3" name="value[]" required>{{ $set->value }}</textarea>
+                                                                @endif
+                                                                <small class="text-danger settings-input-error" data-error-key="{{ $set->key }}"></small>
+                                                            </div>
+                                                        @endforeach
                                                     </div>
+                                                    @if($groupSettings->where('type','file')->isNotEmpty())
+                                                        <div class="settings-upload-grid" aria-label="Application image uploads">
+                                                            @foreach($groupSettings->where('type','file') as $set)
+                                                                <div class="settings-upload-item">
+                                                                    <label for="settings-upload-{{ $set->key }}">{{ str_replace('Application ', '', $set->name) }}</label>
+                                                                    <div class="settings-dropzone" data-upload-key="{{ $set->key }}" role="button" tabindex="0" aria-label="Choose or drop {{ $set->name }} image">
+                                                                        <input type="file" id="settings-upload-{{ $set->key }}" name="setting_images[{{ $set->key }}]" accept="image/png,image/jpeg,image/webp,image/gif" class="settings-upload-input" tabindex="-1">
+                                                                        <div class="settings-drop-preview">
+                                                                            <img class="settings-upload-preview" src="{{ $set->value ? asset($set->value) : '' }}" alt="{{ $set->name }} preview" @if(!$set->value) style="display:none" @endif>
+                                                                            <div class="settings-drop-empty"><i class="far fa-image"></i><span>Drop image or click</span></div>
+                                                                        </div>
+                                                                        <span class="settings-drop-caption">Browse or drag image here</span>
+                                                                    </div>
+                                                                    <small class="settings-upload-status" aria-live="polite">{{ $set->value ? 'Saved image' : 'No image uploaded' }}</small>
+                                                                    <small class="text-danger settings-upload-error" aria-live="polite"></small>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
                                                 @endif
                                             @endforeach
                                             <div class="settings-s1-savebar">
@@ -322,25 +347,65 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
         })();
     </script>
     <script>
-        $(document).ready(function() {
-            // input
-            let inputId = '';
-
-            $('.settings-media-canvas img').on('error',function(){ $(this).hide().siblings('.settings-media-empty').show(); });
-
-            function fmSetLink($url) {
-                $(inputId).val($url.substring(1));
-                var $image=$(inputId + '-image');
-                $image.attr('src', "{{ asset(null) }}" + $url.substring(1)).show();
-                $image.siblings('.settings-media-empty').hide();
+        $(function(){
+            function uploadError($drop,message){
+                $drop.toggleClass('is-invalid',!!message);
+                $drop.closest('.settings-upload-item').find('.settings-upload-error').text(message||'');
             }
-
-            window.fmSetLink = fmSetLink;
-
-            $(document).on("click", '[data-settings-file="1"]', function(event) {
-                event.preventDefault();
-                inputId = '#' + this.id;
-                window.open('/file-manager/fm-button', 'fm', 'width=800,height=600');
+            function validateImage(file){
+                if(!file)return 'Select an image file.';
+                if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type))
+                    return 'Use JPG, PNG, WEBP or GIF only.';
+                if(file.size>4*1024*1024)return 'Image must be 4 MB or smaller.';
+                return '';
+            }
+            function showSelectedFile($drop,file){
+                var problem=validateImage(file);
+                uploadError($drop,problem);
+                if(problem)return false;
+                var $preview=$drop.find('.settings-upload-preview');
+                var reader=new FileReader();
+                reader.onload=function(event){
+                    $preview.attr('src',event.target.result).show();
+                    $drop.find('.settings-drop-empty').hide();
+                };
+                reader.readAsDataURL(file);
+                $drop.closest('.settings-upload-item').find('.settings-upload-status')
+                    .text(file.name+' • ready to save');
+                return true;
+            }
+            $('.settings-dropzone').on('click',function(event){
+                if($(event.target).is('input'))return;
+                $(this).find('.settings-upload-input').trigger('click');
+            }).on('keydown',function(event){
+                if(event.key==='Enter'||event.key===' '){event.preventDefault();$(this).trigger('click');}
+            }).on('dragenter dragover',function(event){
+                event.preventDefault();event.stopPropagation();$(this).addClass('is-dragover');
+            }).on('dragleave',function(event){
+                event.preventDefault();event.stopPropagation();$(this).removeClass('is-dragover');
+            }).on('drop',function(event){
+                event.preventDefault();event.stopPropagation();
+                var $drop=$(this).removeClass('is-dragover');
+                var files=event.originalEvent&&event.originalEvent.dataTransfer&&event.originalEvent.dataTransfer.files;
+                if(!files||!files.length)return;
+                if(validateImage(files[0])){uploadError($drop,validateImage(files[0]));return;}
+                var input=$drop.find('input[type=file]')[0];
+                // Assign a dropped file to the input; FormData then uploads it on Save.
+                if(typeof DataTransfer!=='undefined'){
+                    var transfer=new DataTransfer();
+                    transfer.items.add(files[0]);
+                    input.files=transfer.files;
+                    showSelectedFile($drop,files[0]);
+                }else uploadError($drop,'Drag and drop is unsupported in this browser. Click to browse.');
+            });
+            $('.settings-upload-input').on('change',function(){
+                if(this.files&&this.files.length)showSelectedFile($(this).closest('.settings-dropzone'),this.files[0]);
+            });
+            $('.settings-upload-preview').on('error',function(){
+                $(this).hide();
+                $(this).closest('.settings-dropzone').find('.settings-drop-empty').show();
+            }).each(function(){
+                if(this.getAttribute('src'))$(this).siblings('.settings-drop-empty').hide();
             });
         });
     </script>
@@ -380,15 +445,35 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
         }
         function sendInformationAjax(){
             var form=$form[0],formData=new FormData(form);
+            $('.settings-upload-error').text('');
+            $('.settings-dropzone').removeClass('is-invalid');
             var $button=$form.find('button[type=submit]');
             $button.prop('disabled',true);
             $('#information .settings-s1-busy').addClass('is-active');
             $.ajax({url:$form.attr('action'),type:'POST',data:formData,processData:false,contentType:false,
                 headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},dataType:'json'})
-            .done(function(response){alertUser(response.message||'Information saved.',false);})
+            .done(function(response){
+                alertUser(response.message||'Information saved.',false);
+                if(response.images){
+                    $.each(response.images,function(key,url){
+                        var $zone=$('.settings-dropzone').filter(function(){return $(this).attr('data-upload-key')===key;});
+                        $zone.find('.settings-upload-preview').attr('src',url).show();
+                        $zone.find('.settings-drop-empty').hide();
+                        $zone.find('input[type=file]').val('');
+                        $zone.closest('.settings-upload-item').find('.settings-upload-status').text('Saved image');
+                    });
+                }
+            })
             .fail(function(xhr){
                 var message=xhr.responseJSON&&xhr.responseJSON.message||'Unable to save information.';
-                if(xhr.responseJSON&&xhr.responseJSON.errors)$.each(xhr.responseJSON.errors,function(_,v){message=v[0]||message;return false;});
+                if(xhr.responseJSON&&xhr.responseJSON.errors)$.each(xhr.responseJSON.errors,function(field,issues){
+                    if(field.indexOf('setting_images.')===0){
+                        var key=field.substring('setting_images.'.length);
+                        var $drop=$('.settings-dropzone').filter(function(){return $(this).attr('data-upload-key')===key;});
+                        $drop.addClass('is-invalid').closest('.settings-upload-item').find('.settings-upload-error').text(issues[0]||'Invalid image.');
+                    }
+                    message=issues[0]||message;
+                });
                 alertUser(message,true);
             }).always(function(){
                 $('#information .settings-s1-busy').removeClass('is-active');
