@@ -220,7 +220,7 @@
     <script src="{{ asset('js/finance-voucher-feedback.js') }}?v=10"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
-    <script src="{{ asset('js/blue-modern-directory-tools.js') }}?v=1"></script>
+    <script src="{{ asset('js/blue-modern-directory-tools.js') }}?v=2"></script>
     @yield('js')
     @include('admin.layouts.script')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
