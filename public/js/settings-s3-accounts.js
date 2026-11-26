@@ -64,11 +64,11 @@ $(function(){
  if(window.TomSelect){
   headTs=new TomSelect($head[0],{
    create:false,allowEmptyOption:false,maxItems:1,placeholder:'Select Head Account',
-   dropdownParent:'body',onChange:headChanged
+   dropdownParent:'body',dropdownClass:'ts-dropdown s3-coa-dropdown',onChange:headChanged
   });
   subheadTs=new TomSelect($subhead[0],{
    create:false,allowEmptyOption:false,maxItems:1,placeholder:'Select Subhead Account',
-   dropdownParent:'body',onChange:subheadChanged
+   dropdownParent:'body',dropdownClass:'ts-dropdown s3-coa-dropdown',onChange:subheadChanged
   });
  }else{
   $head.on('change',function(){headChanged($(this).val());});
