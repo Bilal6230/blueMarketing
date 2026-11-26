@@ -366,7 +366,7 @@
                                                             <option value="">Select project bank account</option>
                                                             @foreach(($bankSettlementAccounts ?? collect()) as $bankOption)
                                                                 <option value="{{ $bankOption->id }}">
-                                                                    {{ $bankOption->bank_name }} / {{ $bankOption->account_title }}
+                                                                    {{ $bankOption->display_title ?: ($bankOption->bank_name.' / '.$bankOption->account_title) }}
                                                                 </option>
                                                             @endforeach
                                                         </select>
@@ -382,12 +382,18 @@
                                                         <select id="voucher_counter_account" name="counter_account_id"
                                                             class="js-tomselect" required>
                                                             <option value="">Select opposite posting account</option>
+                                                            @if(in_array($displaySeries ?? '', ['CCR','CDR'], true))
+                                                                @foreach(($cashSettlementAccounts ?? collect()) as $cashOption)
+                                                                    <option value="{{ $cashOption->account_mapping_id }}">{{ $cashOption->display_title }}</option>
+                                                                @endforeach
+                                                            @else
                                                             @foreach(($partyaccounts ?? collect()) as $accountOption)
                                                                 <option value="{{ $accountOption->id }}">
                                                                     {{ $accountOption->headAccounting?->name ?? '' }} /
                                                                     {{ $accountOption->subheadAccounting?->name ?? '' }}
                                                                 </option>
                                                             @endforeach
+                                                            @endif
                                                         </select>
                                                     </div>
                                                     @endif
