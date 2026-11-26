@@ -48,6 +48,20 @@ final class EnforceVoucherAvailability
             $series='SV';
         } elseif (in_array($name,['commision.voucher.index','commision.voucher.create','commision.voucher.store','commision.voucher.edit','commision.voucher.update'],true)) {
             $series='CV';
+        } elseif ($name==='payment_schedule.cash') {
+            $series='PPR';
+        } elseif ($name==='booking.customer.deposit') {
+            // Existing bank clearances remain possible for historical ECP;
+            // only new EC/ECP/PPR creation is blocked.
+            $series=match((string)$request->input('action')) {
+                'extra_charge'=>'EC',
+                'extra_charge_payment'=>'ECP',
+                'deposit'=>'PPR',
+                default=>null,
+            };
+        } elseif ($name==='payment_schedule.extra_charge') {
+            if (!VoucherAvailability::enabled($project,'EC')
+                && !VoucherAvailability::enabled($project,'ECP')) abort(403,'Extra Charge vouchers are inactive.');
         } elseif (in_array($name,['finance.voucher.cash-only.store','finance.voucher.cash-only.draft'],true)) {
             $series=strtoupper((string)$request->input('display_series',''));
         } elseif (in_array($name,['ledger.store','ledger.store.fixed_method','ledger.save_as_draft','ledger.save_as_draft.fixed_method'],true)) {
