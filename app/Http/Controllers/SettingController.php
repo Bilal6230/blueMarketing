@@ -145,6 +145,9 @@ class SettingController extends Controller
                 'prefix.required' => 'Enter a voucher prefix.',
             ]);
         if ($validator->fails()) {
+            if ($request->expectsJson()) {
+                throw new \Illuminate\Validation\ValidationException($validator);
+            }
             return redirect()->route('setting.index', ['tab' => 'voucher-settings'])
                 ->withErrors($validator)->withInput();
         }
