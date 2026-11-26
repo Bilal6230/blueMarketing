@@ -189,6 +189,14 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="settingsVoucherToggleConfirm" tabindex="-1" role="dialog" aria-labelledby="settingsVoucherToggleConfirmTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document"><div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="settingsVoucherToggleConfirmTitle">Confirm Voucher Setting</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button></div>
+            <div class="modal-body" id="settingsVoucherToggleConfirmBody"></div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" id="settingsVoucherToggleConfirmYes">Yes, Apply</button></div>
+        </div></div>
+    </div>
 @endsection
 @section('js')
     <script>
@@ -397,23 +405,25 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
             sendInformationAjax();
         });
         $receipt.on('change','.settings-receipt-toggle',function(){
-            var $input=$(this),old=!this.checked,key=$input.attr('name');
-            if($input.data('busy'))return;
-            var apply=function(){
+            var $input=$(this),old=!this.checked,next=this.checked,key=$input.attr('name');
+            if($input.data('busy')){$input.prop('checked',old);return;}
+            // Keep the saved state until the user confirms.
+            $input.prop('checked',old);
+            var $dialog=$('#settingsVoucherToggleConfirm');
+            $('#settingsVoucherToggleConfirmTitle').text('Update Print Header?');
+            $('#settingsVoucherToggleConfirmBody').text('Turn Print Header '+(next?'ON':'OFF')+' for this voucher?');
+            $('#settingsVoucherToggleConfirmYes').off('click.voucherToggle').one('click.voucherToggle',function(){
+                $dialog.modal('hide');
                 var payload={_token:$receipt.find('[name=_token]').val(),_method:'PUT'};
-                payload[key]=$input.prop('checked')?'1':'0';
+                payload[key]=next?'1':'0';
                 $input.data('busy',true).prop('disabled',true);
                 putSettings($receipt,payload,function(ok){
-                    if(!ok)$input.prop('checked',old);
+                    $input.prop('checked',ok?next:old);
                     $input.siblings('label').text($input.prop('checked')?'ON':'OFF');
                     $input.prop('disabled',false).data('busy',false);
                 });
-            };
-            if(window.Swal)Swal.fire({icon:'question',title:'Update Print Header?',showCancelButton:true,
-                confirmButtonText:'Yes, Apply',cancelButtonText:'No'})
-                .then(function(result){if(result.isConfirmed)apply();else $input.prop('checked',old);});
-            else if(window.confirm('Update print header?'))apply();
-            else $input.prop('checked',old);
+            });
+            $dialog.modal('show');
         });
     });
     </script>
