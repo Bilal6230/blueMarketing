@@ -29,7 +29,11 @@
 #s3-account-modal select.s3-coa-subhead.tomselected,
 #s3-account-modal select.s3-coa-head.ts-hidden-accessible,
 #s3-account-modal select.s3-coa-subhead.ts-hidden-accessible{display:none!important;visibility:hidden!important}
-#s3-account-modal .s3-form-grid .ts-wrapper{width:100%}
+/* Tom Select copies source select classes onto its wrapper. Do not use
+   Bootstrap form-control on the source: it creates a second input border. */
+#s3-account-modal select.s3-coa-head:not(.tomselected):not(.ts-hidden-accessible),
+#s3-account-modal select.s3-coa-subhead:not(.tomselected):not(.ts-hidden-accessible){display:block;width:100%;min-height:38px;padding:7px 11px;border:1px solid #b6c9da;border-radius:6px;background:#fff;font-size:14px}
+#s3-account-modal .s3-form-grid .ts-wrapper{width:100%;border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important;min-height:0!important;height:auto!important}
 #s3-account-modal .s3-form-grid .ts-control{min-height:38px;border:1px solid #b6c9da;border-radius:6px;font-size:14px;padding:8px 11px}
 #s3-account-modal .s3-form-grid .ts-wrapper.focus .ts-control{border-color:#2580d8;box-shadow:0 0 0 3px #2580d81c}
 .s3-coa-dropdown{z-index:1100!important;font-size:14px}
@@ -89,8 +93,8 @@
    <div class="s3-bank-only"><label>Account Title *</label><input class="form-control" name="account_title" maxlength="120"></div>
    <div class="s3-bank-only"><label>Branch</label><input class="form-control" name="branch" maxlength="120"></div>
    <div class="s3-bank-only"><label>Account Number (optional)</label><input class="form-control" name="account_number" autocomplete="off" maxlength="255"><small class="s3-note" id="s3-bank-number-note">Encrypted. Leave blank on edit to preserve.</small></div>
-   <div><label for="s3-head-account">Head Account *</label><select id="s3-head-account" class="form-control s3-coa-head"><option value="">Select Head Account</option>@foreach($projectBankMappings->unique('head_accounting_id')->sortBy(fn($mapping) => $mapping->headAccounting->name ?? '') as $mapping)<option value="{{ $mapping->head_accounting_id }}">{{ $mapping->headAccounting->name ?? 'Head' }}</option>@endforeach</select></div>
-   <div><label for="s3-subhead-account">Subhead Account *</label><select id="s3-subhead-account" class="form-control s3-coa-subhead"><option value="">Select Subhead Account</option>@foreach($projectBankMappings as $mapping)<option value="{{ $mapping->id }}" data-head-id="{{ $mapping->head_accounting_id }}" data-subhead-id="{{ $mapping->subhead_accounting_id }}">{{ $mapping->subheadAccounting->name ?? 'Account' }}</option>@endforeach</select></div>
+   <div><label for="s3-head-account">Head Account *</label><select id="s3-head-account" class="s3-coa-head"><option value="">Select Head Account</option>@foreach($projectBankMappings->unique('head_accounting_id')->sortBy(fn($mapping) => $mapping->headAccounting->name ?? '') as $mapping)<option value="{{ $mapping->head_accounting_id }}">{{ $mapping->headAccounting->name ?? 'Head' }}</option>@endforeach</select></div>
+   <div><label for="s3-subhead-account">Subhead Account *</label><select id="s3-subhead-account" class="s3-coa-subhead"><option value="">Select Subhead Account</option>@foreach($projectBankMappings as $mapping)<option value="{{ $mapping->id }}" data-head-id="{{ $mapping->head_accounting_id }}" data-subhead-id="{{ $mapping->subhead_accounting_id }}">{{ $mapping->subheadAccounting->name ?? 'Account' }}</option>@endforeach</select></div>
    <input type="hidden" name="account_mapping_id" value="">
    <div class="s3-span"><small class="text-muted">Select a Head to filter Subheads, or select a Subhead first to auto-select its Head. Only this project's COA mappings are available.</small></div>
    <div><label>Status</label><select name="is_active" class="form-control"><option value="1">Active</option><option value="0">Inactive</option></select></div>
@@ -105,5 +109,5 @@
 <link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}?v=2">
 @endpush
 @push('script')
-<script src="{{ asset('js/settings-s3-accounts.js') }}?v=3"></script>
+<script src="{{ asset('js/settings-s3-accounts.js') }}?v=4"></script>
 @endpush
