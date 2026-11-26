@@ -37,7 +37,8 @@ final class RoleVoucherPermissionNamesContractTest extends TestCase
         $view=file_get_contents(dirname(__DIR__,2).'/resources/views/admin/role.blade.php');
         self::assertIsString($view);
 
-        self::assertStringContainsString("if(m.module==='ppr')return;", $view);
+        self::assertStringContainsString("if(m.module==='ppr'||m.module==='cp')return;", $view);
+        self::assertStringContainsString("m.module==='dr'?['dr','cp']", $view);
         self::assertStringContainsString("['plot-receipt','ppr']", $view);
         self::assertStringContainsString("byAction[action].names.push(permissionName)", $view);
         self::assertStringContainsString("p.names.every(function(n){return selected.has(n);})", $view);
