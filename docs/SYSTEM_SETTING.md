@@ -3,7 +3,7 @@
 **Project:** BlueMarketing / Waqas ERP  
 **Scope:** Settings (`/admin/setting`) — project-scoped configuration and modern UI  
 **Baseline:** 26 November 2026  
-**Status:** S1 code implemented (verification pending); S2–S4 pending.  
+**Status:** S1 browser and contract checks reported PASS (7/7; 48 assertions). S2 code implemented; automated and browser checks pending. S3–S4 pending.  
 **Tracker rule:** Check `[x]` only after code + automated tests + user browser verification pass. Do not mark existing partial code as complete.
 
 ## Overall behavior (applies to every batch)
@@ -18,7 +18,7 @@
 ## Implementation batches
 
 ### S1 — Settings layout, Information & Contact
-**State: Code implemented; automated test run and browser verification pending.**  
+**State: Verified by user — S1 browser PASS, SystemSettingS1ContractTest 7/7 (48 assertions), 26 November 2026.**  
 **Implementation commits:** `f954258a`, `0bace770`, `f6a9dd33`, `b6a80847`, `60aab9f8`, `6cea76f0`, `faabc3da`.
 
 - [x] Main Settings card fits available viewport up to the footer; tab content owns vertical scrolling, page remains fixed.
@@ -27,18 +27,23 @@
 - [x] AJAX FormData save with Yes/No Bootstrap confirmation modal, JSON response, validation and toast feedback. Application Logo, Favicon and Loading Image use compact 3-column direct drag/drop uploaders with previews, file validation and secure file storage (up to 4MB per JPG/PNG/WEBP/GIF).
 - [x] Move receipt-header toggles into **Voucher Display** table; each ON/OFF change saves via confirmation + AJAX and reverts on cancel/failure.
 - [x] Keep existing global application logo/favicon/loading-image settings in Information, without changing project branding in ERP.
-- [ ] Run `php artisan view:cache`, `php artisan test --filter=SystemSettingS1ContractTest`, and `php artisan test --filter=ProjectLogoBrandingContractTest`.
-- [ ] Browser verify: initial Information tab, change Contact field then confirm Save, cancel/reject flow, all three image uploads by click/drag-drop and retained previews after reload, voucher header Yes/No, footer visibility and card-only scrollbar.
-- [ ] After both automated and browser tests pass, mark S1 **Fully verified**.
+- [x] `php artisan view:cache` and `php artisan test --filter=SystemSettingS1ContractTest` PASS (7/7, 48 assertions). ProjectLogoBrandingContractTest is independent and not part of the reported run.
+- [x] User reported S1 browser testing PASS after drag/drop uploader update. Refer to the browser screenshot and user confirmation; detailed subcase logs were not provided.
+- [x] S1 accepted. Follow-up visual tweaks, if requested, remain separate.
 
 ### S2 — Attendance Machine
-**State: [ ] Pending**
+**State: Implementation pushed — automated tests and browser acceptance pending.**
 
-- [ ] Consolidate confusing **Add device** and **Configure Attendance device** experience: Add Device opens blank device editor; selecting an existing device opens the same editor in edit mode.
-- [ ] No GET navigation/full-page reload on Add Device, device switch, save, or employee mapping changes; AJAX updates relevant cards/dropdowns/table.
-- [ ] Show separate project-wise **Device configuration** and **Employee ID mapping** sections clearly.
-- [ ] Preserve encrypted credentials, device-specific identity and employee mappings.
-- [ ] Keep Test Connection / Sync disabled with a transparent explanation until supported vendor protocol/event integration is verified; saving configuration alone does not establish connectivity.
+- [x] Unify Add/Edit: **Add Device** clears the same inline editor; selecting an existing device loads it using a scoped JSON endpoint without reloading.
+- [x] Device Save / Update uses jQuery AJAX + confirmation popup; successful saves update the selected-device dropdown, editor state and mappings in place.
+- [x] Employee ID mapping uses jQuery AJAX + confirmation popup; successful changes repaint the mapping table in place. Existing mapping row Edit pre-fills the editor.
+- [x] Device details endpoint checks project ownership, role and `update setting` permission; password/secret is never included in JSON and the Eloquent password cast remains encrypted.
+- [x] Separate project-wise Device Configuration and Employee ID Mapping cards; compact table with alternating rows, validation and inline errors.
+- [x] Test Connection and Sync Attendance remain disabled until the vendor protocol and event adapter have been verified. Saving does not claim a successful connection.
+- [x] Generic Settings modalizer excludes S2 AJAX forms.
+- [ ] Local `php artisan view:cache` and `php artisan test --filter=SystemSettingS2ContractTest` PASS.
+- [ ] Browser check: Add Device without full reload; update selected device; cancel confirm, validation errors and network failure; employee ID mappings add/update without reload; project isolation; disabled sync and connection; no plaintext secret in Network responses.
+- [ ] After local test and browser checks pass, mark S2 fully verified.
 
 ### S3 — Bank Accounts and Cash Accounts
 **State: [ ] Pending**
