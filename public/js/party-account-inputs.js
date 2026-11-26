@@ -8,7 +8,7 @@ $(function(){
   var input=document.getElementById('party-create-head');
   if(!input || input.tomselect || !window.TomSelect)return;
   new TomSelect(input,{create:false,maxItems:1,allowEmptyOption:true,
-   placeholder:'Select Head Account (optional)',dropdownParent:'body'});
+   placeholder:'Select Head Account (optional)',dropdownParent:'body',dropdownClass:'ts-dropdown party-head-dropdown'});
  }
  // Modern account directory moves the source form into its Bootstrap modal.
  initHead();
