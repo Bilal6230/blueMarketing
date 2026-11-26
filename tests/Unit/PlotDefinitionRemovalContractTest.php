@@ -45,6 +45,22 @@ final class PlotDefinitionRemovalContractTest extends TestCase
         $this->assertFileDoesNotExist(resource_path('views/admin/plots/definitions.blade.php'));
     }
 
+    public function test_finance_plot_purchase_does_not_depend_on_retired_definitions(): void
+    {
+        $writer=file_get_contents(app_path('Services/Finance/PlotEntryWriter.php'));
+        $editor=file_get_contents(app_path('Services/Finance/PlotVoucherEditor.php'));
+        $controller=file_get_contents(app_path('Http/Controllers/Finance/VoucherController.php'));
+        $view=file_get_contents(resource_path('views/admin/finance/voucher/plot_purchase_workspace.blade.php'));
+        foreach ([$writer,$editor,$controller,$view] as $source) {
+            $this->assertStringNotContainsString('plot_definitions', $source);
+            $this->assertStringNotContainsString('plot_category_definition_id', $source);
+            $this->assertStringNotContainsString('plot_size_definition_id', $source);
+        }
+        $this->assertStringContainsString("Rule::in([1, 2, 3])", $controller);
+        $this->assertStringContainsString('<option value="3">Others</option>', $view);
+        $this->assertStringContainsString('finance_plot_purchase_items', $writer);
+    }
+
     public function test_cleanup_migration_only_drops_definition_data_and_link_columns(): void
     {
         $migration = file_get_contents(database_path('migrations/2026_11_26_235000_retire_plot_definition_masters.php'));
