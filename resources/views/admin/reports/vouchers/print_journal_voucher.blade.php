@@ -66,6 +66,7 @@
                 : 'JV-' . get_jv_number($voucher->voucher_number)));
     @endphp
     <div class="voucher-container">
+        @include('admin.partials.project_print_identity', ['brandingProjectId' => $voucher->project_id ?? null])
         <!-- Voucher Header -->
         <div class="voucher-header">
             <h2>{{ $voucherTitle }}</h2>
