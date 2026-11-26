@@ -55,23 +55,37 @@ $(function(){
  });
  // Availability is a project-scoped control; never hide history or re-number vouchers.
  $tab.on('change','.s4-availability-toggle',function(){
-  var $toggle=$(this),next=$toggle.prop('checked'),series=String($toggle.attr('data-s4-availability')||''),
+  var $toggle=$(this),next=this.checked,old=!next,
+      series=String($toggle.attr('data-s4-availability')||''),
       $label=$toggle.siblings('.s4-availability-label');
-  if($toggle.data('busy'))return;
-  $toggle.prop('disabled',true).data('busy',true);
-  $.ajax({
-   url:$tab.find('.s4-shell').attr('data-s4-status-url'),method:'POST',
-   data:{_token:$tab.find('.s4-shell').attr('data-s4-token'),series:series,is_active:next?'1':'0'},
-   dataType:'json',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}
-  }).done(function(data){
-   $label.text(data.is_active?'Active':'Inactive');
-   notify(data.message||'Voucher availability updated.',false);
-  }).fail(function(xhr){
-   $toggle.prop('checked',!next);
-   var data=xhr.responseJSON||{},message=data.message||'Unable to change voucher availability.';
-   if(data.errors)$.each(data.errors,function(_,messages){message=messages[0]||message;return false;});
-   notify(message,true);
-  }).always(function(){$toggle.prop('disabled',false).data('busy',false);});
+  if($toggle.data('busy')){$toggle.prop('checked',old);return;}
+  // Cancel and closing the dialog must leave the persisted switch unchanged.
+  $toggle.prop('checked',old);
+  var $dialog=$('#settingsVoucherToggleConfirm');
+  $('#settingsVoucherToggleConfirmTitle').text(next?'Activate Voucher?':'Deactivate Voucher?');
+  $('#settingsVoucherToggleConfirmBody').text(
+   (next?'Activate ':'Deactivate ')+series+' for the selected project?'+
+   (next?' It will become available for new entries.':' New-entry links will be hidden and protected entry URLs will return 403.')
+  );
+  $('#settingsVoucherToggleConfirmYes').off('click.voucherToggle').one('click.voucherToggle',function(){
+   $dialog.modal('hide');
+   $toggle.prop('disabled',true).data('busy',true);
+   $.ajax({
+    url:$tab.find('.s4-shell').attr('data-s4-status-url'),method:'POST',
+    data:{_token:$tab.find('.s4-shell').attr('data-s4-token'),series:series,is_active:next?'1':'0'},
+    dataType:'json',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}
+   }).done(function(data){
+    $toggle.prop('checked',!!data.is_active);
+    $label.text(data.is_active?'Active':'Inactive');
+    notify(data.message||'Voucher availability updated.',false);
+   }).fail(function(xhr){
+    $toggle.prop('checked',old);
+    var data=xhr.responseJSON||{},message=data.message||'Unable to change voucher availability.';
+    if(data.errors)$.each(data.errors,function(_,messages){message=messages[0]||message;return false;});
+    notify(message,true);
+   }).always(function(){$toggle.prop('disabled',false).data('busy',false);});
+  });
+  $dialog.modal('show');
  });
  // Users-style directory actions, exports, sortable column popovers and pagination.
  (function directory(){
