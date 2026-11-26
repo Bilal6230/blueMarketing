@@ -42,7 +42,7 @@ final class SystemSettingS2ContractTest extends TestCase
         $this->assertStringContainsString('as-delete-mapping', $view);
         $this->assertStringContainsString('AttendanceDeviceUserMapping::updateOrCreate(', $controller);
         $this->assertStringContainsString('public function deleteMapping(', $controller);
-        $this->assertStringContainsString("where('project_id', $projectId)", $controller);
+        $this->assertStringContainsString('->where(\'project_id\', $projectId)', $controller);
     }
 
     public function test_device_deletion_is_guarded_against_mapping_loss(): void
