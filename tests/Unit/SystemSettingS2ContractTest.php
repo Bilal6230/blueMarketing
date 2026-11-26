@@ -27,8 +27,8 @@ final class SystemSettingS2ContractTest extends TestCase
         $this->assertStringContainsString('id="as-mapping-rows"', $view);
         $this->assertStringContainsString('renderMappings(device.mappings||[])', $view);
         $this->assertStringContainsString('id="as-mapping-form"', $view);
-        $this->assertStringContainsString("where('project_id', $projectId)", $controller);
-        $this->assertStringContainsString("'device' => $this->devicePayload($device)", $controller);
+        $this->assertStringContainsString('where(\'project_id\', $projectId)', $controller);
+        $this->assertStringContainsString('\'device\' => $this->devicePayload($device)', $controller);
         $this->assertStringContainsString('AttendanceDeviceUserMapping::updateOrCreate(', $controller);
     }
 
