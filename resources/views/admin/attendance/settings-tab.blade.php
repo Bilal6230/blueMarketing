@@ -85,7 +85,6 @@
                 <select class="form-control" id="as-connection-filter" aria-label="Filter by connection"><option value="">All connections</option><option value="network">Network</option><option value="cloud">Cloud</option><option value="webhook">Webhook</option><option value="sdk">SDK</option><option value="other">Other</option></select>
                 <span class="as-filter-count" id="as-device-visible-count"></span>
             </div>
-            <div class="bm-modern-export-toolbar bm-export-placeholder"><button type="button" class="bm-modern-export-btn" disabled>Column Visibility</button><button type="button" class="bm-modern-export-btn" disabled>Copy</button><button type="button" class="bm-modern-export-btn" disabled>CSV</button><button type="button" class="bm-modern-export-btn" disabled>Excel</button><button type="button" class="bm-modern-export-btn" disabled>PDF</button><button type="button" class="bm-modern-export-btn" disabled>Print</button></div>
             <div class="as-table-scroll settings-fill-scroll bm-account-table-wrap">
                 <table id="as-device-table" class="table table-bordered as-table bm-account-table">
                     <thead><tr><th>Device</th><th>Connection</th><th>Status</th><th>Actions</th></tr></thead>
@@ -134,7 +133,6 @@
                     <div class="as-search-wrap"><i class="fas fa-search" aria-hidden="true"></i><input type="search" class="form-control as-search" id="as-mapping-search" placeholder="Search employees or IDs..." aria-label="Search employee mappings"></div>
                     <span class="as-filter-count" id="as-mapping-visible-count"></span>
                 </div>
-                <div class="bm-modern-export-toolbar bm-export-placeholder"><button type="button" class="bm-modern-export-btn" disabled>Column Visibility</button><button type="button" class="bm-modern-export-btn" disabled>Copy</button><button type="button" class="bm-modern-export-btn" disabled>CSV</button><button type="button" class="bm-modern-export-btn" disabled>Excel</button><button type="button" class="bm-modern-export-btn" disabled>PDF</button><button type="button" class="bm-modern-export-btn" disabled>Print</button></div>
                 <div class="as-table-scroll settings-fill-scroll bm-account-table-wrap">
                     <table id="as-mapping-table" class="table table-bordered as-table bm-account-table">
                         <thead><tr><th>Employee</th><th>Device ID</th><th>Action</th></tr></thead>
