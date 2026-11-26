@@ -81,6 +81,7 @@ class AttendanceController extends Controller
             'protocol' => (string) ($device->protocol ?? ''),
             'username' => (string) ($device->username ?? ''),
             'has_password' => $device->password !== null && $device->password !== '',
+            'mapping_count' => $device->mappings->count(),
             'mappings' => $device->mappings->map(fn ($mapping) => [
                 'user_id' => (int) $mapping->user_id,
                 'user_name' => (string) ($mapping->user?->name ?? 'Employee unavailable'),
@@ -127,6 +128,27 @@ class AttendanceController extends Controller
         }
         return redirect()->route('setting.index', ['device_id' => $device->id, 'tab' => 'attendance-machine'])
             ->with('success', 'Device settings saved. Connection and sync will be enabled after the terminal is available for verification.');
+    }
+
+    /**
+     * Remove only unused setup records. Mapping removal is deliberately
+     * separate from a device delete to prevent accidental data loss.
+     */
+    public function deleteDevice(Request $request, AttendanceDevice $device)
+    {
+        abort_unless($this->canManage() && $request->user()->can('update setting'), 403);
+        $projectId = $this->projectId();
+        abort_unless((int) $device->project_id === $projectId, 404);
+        abort_if($device->mappings()->exists(), 409,
+            'This device has employee mappings. Remove its mappings before deleting the device.');
+        $deviceId = (int) $device->id;
+        $device->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Unused device removed.',
+            'device_id' => $deviceId,
+        ]);
     }
 
     public function saveMapping(Request $request)
