@@ -82,8 +82,8 @@
                                         <tr>
                                             <th>#</th>
                                             
-                                            <th>Unit Type</th>
-                                            <th>Unit Name</th>
+                                            <th>Plot Type</th>
+                                            <th>Plot Number</th>
                                             <th>Size</th>
                                             <th>Amount</th>
                                             <th>Road</th>
@@ -97,7 +97,7 @@
                                     <tbody>
                                         @for($skeletonIndex = 0; $skeletonIndex < 6; $skeletonIndex++)
                                         <tr class="bm-cell-skeleton-row" aria-hidden="true">
-                                            @for($column = 0; $column < 9; $column++)<td><span class="bm-cell-skeleton"></span></td>@endfor
+                                            @for($column = 0; $column < 8; $column++)<td><span class="bm-cell-skeleton"></span></td>@endfor
                                             @canany(['update plot','delete plot'])<td><span class="bm-cell-skeleton"></span></td>@endcanany
                                         </tr>
                                         @endfor
@@ -295,10 +295,10 @@
                         <div class="row">
                             <div class="col-sm-3">
                                 <div class="input-group">
-                                    <label class="fbox">Unit Name</label>
+                                    <label class="fbox">Plot Number</label>
                                     <div class="input-group">
                                         <input type="text" class="form-control @error('name') is-invalid @enderror"
-                                            placeholder="Unit Name" name="name" value="{{ old('name') }}">
+                                            placeholder="e.g. A-10" name="name" value="{{ old('name') }}">
                                         @error('name')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -309,10 +309,10 @@
                             <div class="col-sm-3">
 
                                 <div class="input-group">
-                                    <label class="fbox">Unit Size</label>
+                                    <label class="fbox">Plot Size</label>
                                     <div class="input-group">
                                         <input type="text" class="form-control @error('size') is-invalid @enderror"
-                                            placeholder="Unit Size" name="size" value="{{ old('size') }}">
+                                            placeholder="e.g. 5" name="size" inputmode="decimal" value="{{ old('size') }}">
                                         
                                         @error('size')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -323,7 +323,7 @@
                             <div class="col-sm-3">
 
                                 <div class="input-group">
-                                    <label class="fbox">Unit Value</label>
+                                    <label class="fbox">Size Unit</label>
                                     <div class="input-group">
                                         <select class="form-control" name="unit">
                                             
@@ -493,11 +493,11 @@
                         <div class="row">
                             <div class="col-sm-3">
                                 <div class="input-group">
-                                    <label class="fbox">Unit Name</label>
+                                    <label class="fbox">Plot Number</label>
                                     <div class="input-group">
                                         <input readonly id="name" type="text"
                                             class="form-control @error('name') is-invalid @enderror"
-                                            placeholder="Unit Name" name="name" value="{{ old('name') }}">
+                                            placeholder="e.g. A-10" name="name" value="{{ old('name') }}">
                                         @error('name')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -508,11 +508,11 @@
                             <div class="col-sm-3">
 
                                 <div class="input-group">
-                                    <label class="fbox">Unit Size</label>
+                                    <label class="fbox">Plot Size</label>
                                     <div class="input-group">
                                         <input id="size" type="text"
                                             class="form-control @error('size') is-invalid @enderror"
-                                            placeholder="Unit Size" name="size" value="{{ old('size') }}">
+                                            placeholder="e.g. 5" name="size" value="{{ old('size') }}">
                                         
                                         @error('size')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -523,7 +523,7 @@
                             <div class="col-sm-3">
 
                                 <div class="input-group">
-                                    <label class="fbox">Unit Value</label>
+                                    <label class="fbox">Size Unit</label>
                                     <div class="input-group">
                                         <select class="form-control" name="unit" id="unit">
                                             
