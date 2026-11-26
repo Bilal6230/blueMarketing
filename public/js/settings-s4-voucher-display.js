@@ -47,6 +47,26 @@ $(function(){
    send();
   });
  });
+ // Availability is a project-scoped control; never hide history or re-number vouchers.
+ $tab.on('change','.s4-availability-toggle',function(){
+  var $toggle=$(this),next=$toggle.prop('checked'),series=String($toggle.attr('data-s4-availability')||''),
+      $label=$toggle.siblings('.s4-availability-label');
+  if($toggle.data('busy'))return;
+  $toggle.prop('disabled',true).data('busy',true);
+  $.ajax({
+   url:$tab.find('.s4-shell').attr('data-s4-status-url'),method:'POST',
+   data:{_token:$tab.find('.s4-shell').attr('data-s4-token'),series:series,is_active:next?'1':'0'},
+   dataType:'json',headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'}
+  }).done(function(data){
+   $label.text(data.is_active?'Active':'Inactive');
+   notify(data.message||'Voucher availability updated.',false);
+  }).fail(function(xhr){
+   $toggle.prop('checked',!next);
+   var data=xhr.responseJSON||{},message=data.message||'Unable to change voucher availability.';
+   if(data.errors)$.each(data.errors,function(_,messages){message=messages[0]||message;return false;});
+   notify(message,true);
+  }).always(function(){$toggle.prop('disabled',false).data('busy',false);});
+ });
  // Users-style directory actions, exports, sortable column popovers and pagination.
  (function directory(){
   var $table=$('#s4-directory-table'),$card=$table.closest('.s4-directory'),
