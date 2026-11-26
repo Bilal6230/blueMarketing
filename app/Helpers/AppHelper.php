@@ -13,12 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use function PHPUnit\Framework\isNull;
 
-/**
- * @developedBy Ali Waqas
- * @date Jan 1, 2024
- * @version Version 1.0
- * @author Ali Waqas <aliwaqas.sdk@hotmail.com>
- */
+
 
 
 

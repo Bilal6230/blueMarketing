@@ -1,6 +1,6 @@
 # System Setting — Implementation Tracker
 
-**Project:** BlueMarketing / Waqas ERP  
+**Project:** BlueMarketing / ERP  
 **Scope:** Settings (`/admin/setting`) — project-scoped configuration and modern UI  
 **Baseline:** 26 November 2026  
 **Status:** S1 browser and contract checks reported PASS (7/7; 48 assertions). S2 code implemented; automated and browser checks pending. S3 browser picker flow reported PASS; S4 UI batch implemented, numbering integration pending.  

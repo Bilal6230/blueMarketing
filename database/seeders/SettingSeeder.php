@@ -17,7 +17,7 @@ class SettingSeeder extends Seeder
     {
         Setting::create([
             'key'       => 'app_name',
-            'value'     => 'Waqas ERP System',
+            'value'     => 'ERP System',
             'name'      => 'Application Short Name',
             'type'      => 'text',
             'category'  => 'information'
