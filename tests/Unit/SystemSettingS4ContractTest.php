@@ -31,7 +31,7 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString('id="settings-receipt-header-form"', $view);
         $this->assertStringContainsString('settings-receipt-toggle', $view);
         $this->assertStringContainsString('name="toggles[{{ $keyType }}]"', $view);
-        $this->assertStringContainsString("putSettings($receipt,payload", $page);
+        $this->assertStringContainsString('putSettings($receipt,payload', $page);
         $this->assertStringContainsString('Update Print Header?', $page);
     }
 
@@ -46,8 +46,8 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString('data-ajax="off"', $view);
         $this->assertStringContainsString('id="s4-start-number"', $view);
         $this->assertStringContainsString('disabled', $view);
-        $this->assertStringContainsString("method:'POST',data:$form.serialize()", $script);
+        $this->assertStringContainsString('method:\'POST\',data:$form.serialize()', $script);
         $this->assertStringContainsString('Numbering of issued vouchers remains unchanged.', $controller);
-        $this->assertStringContainsString("return $series.'-'.$number;", $controller = file_get_contents(app_path('Services/Finance/ProjectVoucherDisplay.php')));
+        $this->assertStringContainsString('return $series.\'-\'.$number;', file_get_contents(app_path('Services/Finance/ProjectVoucherDisplay.php')));
     }
 }
