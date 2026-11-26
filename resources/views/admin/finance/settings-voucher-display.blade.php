@@ -107,6 +107,13 @@
  </div></div>
 </div>
 </div>
+<div class="modal fade" id="s4-prefix-confirm" tabindex="-1" role="dialog" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Save Prefix Configuration?</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
+  <div class="modal-body">Save the selected voucher's prefix? Existing voucher numbers and posted transactions will not change.</div>
+  <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" id="s4-prefix-confirm-yes">Yes, Save</button></div>
+ </div></div>
+</div>
 @push('script')
 <script src="{{ asset('js/settings-s4-voucher-display.js') }}?v=1"></script>
 @endpush
