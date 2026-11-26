@@ -10,14 +10,14 @@ use Tests\TestCase;
  */
 final class SystemSettingS1ContractTest extends TestCase
 {
-    private function view(): string
+    private function settingsBladeSource(): string
     {
         return file_get_contents(resource_path('views/admin/setting.blade.php'));
     }
 
     public function test_information_and_contact_are_one_inline_tab(): void
     {
-        $view = $this->view();
+        $view = $this->settingsBladeSource();
 
         $this->assertStringContainsString('Information &amp; Contact', $view);
         $this->assertStringContainsString('id="settings-information-form"', $view);
@@ -29,7 +29,7 @@ final class SystemSettingS1ContractTest extends TestCase
 
     public function test_receipt_header_settings_moved_to_voucher_display_with_ajax_confirmations(): void
     {
-        $view = $this->view();
+        $view = $this->settingsBladeSource();
 
         $this->assertStringContainsString('id="settings-receipt-header-form"', $view);
         $this->assertStringContainsString('Voucher Print Headers', $view);
@@ -42,7 +42,7 @@ final class SystemSettingS1ContractTest extends TestCase
 
     public function test_form_saving_is_ajax_without_full_page_redirect(): void
     {
-        $view = $this->view();
+        $view = $this->settingsBladeSource();
         $controller = file_get_contents(app_path('Http/Controllers/SettingController.php'));
 
         $this->assertStringContainsString("type:'POST',data:formData,processData:false", $view);
@@ -53,9 +53,19 @@ final class SystemSettingS1ContractTest extends TestCase
         $this->assertStringContainsString('DB::transaction(', $controller);
     }
 
+    public function test_file_manager_binding_does_not_depend_on_removed_setts_variable(): void
+    {
+        $view = $this->settingsBladeSource();
+
+        $this->assertStringNotContainsString('$setts', $view);
+        $this->assertStringNotContainsString('$setid', $view);
+        $this->assertStringContainsString('[data-settings-file="1"]', $view);
+        $this->assertStringContainsString('window.fmSetLink = fmSetLink', $view);
+    }
+
     public function test_card_scrolling_is_isolated_from_page_and_footer(): void
     {
-        $view = $this->view();
+        $view = $this->settingsBladeSource();
 
         $this->assertStringContainsString('.settings-main-card .tab-content{flex:1;min-height:0;overflow:auto', $view);
         $this->assertStringContainsString('settings-s1-viewport', $view);
