@@ -160,6 +160,12 @@ class SettingController extends Controller
                 'new_prefix' => $data['prefix'], 'actor_id' => $request->user()->id, 'created_at' => now(),
             ]);
         }, 3);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success'=>true, 'series'=>$data['series'], 'prefix'=>$data['prefix'],
+                'message'=>'Prefix configuration saved. Numbering of issued vouchers remains unchanged.',
+            ]);
+        }
         return redirect()->route('setting.index', ['tab' => 'voucher-settings'])->with('success', 'Voucher display prefix saved. Existing voucher IDs were not changed.');
     }
 

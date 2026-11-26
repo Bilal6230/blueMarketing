@@ -117,64 +117,7 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
                             </div>
                             <div class="card-body">
                                 <div class="tab-content">
-                                    <div class="tab-pane {{ $voucherSettingsTabActive ? 'active' : '' }}" id="voucher-settings">
-                                        <h4>Voucher display prefixes</h4>
-                                        <p class="text-muted">Financial year starts in January. Existing voucher IDs and posted entries stay intact.</p>
-                                        @if(!$voucherDisplaySettingsReady)
-                                            <div class="alert alert-warning">Voucher display settings migration is required.</div>
-                                        @else
-                                            <form data-ajax-form method="POST" action="{{ route('setting.voucher-display.save') }}" class="form-row align-items-end">@csrf
-                                                <div class="form-group col-md-3"><label>Voucher type</label><select name="series" class="form-control">@foreach(\App\Services\Finance\ProjectVoucherDisplay::SERIES as $series)<option value="{{ $series }}">{{ $series }}</option>@endforeach</select></div>
-                                                <div class="form-group col-md-3"><label>Prefix</label><input name="prefix" class="form-control" maxlength="12" placeholder="CR" required></div>
-                                                <div class="form-group col-md-3"><button class="btn btn-primary" @if(!$canManageFinanceSettings) disabled @endif>Save prefix</button></div>
-                                            </form>
-                                            @error('prefix')<div class="text-danger settings-form-error">{{ $message }}</div>@enderror
-                                            <table class="table table-sm"><thead><tr><th>Type</th><th>Prefix</th><th>Example</th></tr></thead><tbody>
-                                            @foreach(\App\Services\Finance\ProjectVoucherDisplay::SERIES as $series)
-                                                <tr><td>{{ $series }}</td><td>{{ $voucherDisplaySettings[$series] ?? $series }}</td><td>{{ $voucherDisplaySettings[$series] ?? $series }}-{{ now()->year }}-0001</td></tr>
-                                            @endforeach
-                                            </tbody></table>
-                                        @endif
-                                        <hr>
-                                        <h4 class="settings-section-title">Voucher Print Headers</h4>
-                                        <p class="text-muted">Choose which voucher families show the project-branded receipt header. These settings apply globally as before.</p>
-                                        <form id="settings-receipt-header-form" action="{{ route('setting.update') }}" method="POST">
-                                            @csrf
-                                            @method('PUT')
-                                            @php($receiptHeaderSettings = \App\Models\Setting::where('type','toggle')->whereIn('key',array_map(fn($type) => $type.'_Receipt_Header',$types))->get()->keyBy('key'))
-                                            <div class="table-responsive"><table class="table table-bordered table-sm settings-receipt-table">
-                                                <thead><tr><th>Voucher Name</th><th>Print Header</th></tr></thead><tbody>
-                                                @foreach($types as $type)
-                                                    @php($keyType = $type.'_Receipt_Header')
-                                                    <tr><td>{{ $type }} Receipt Header</td><td>
-                                                        <div class="custom-control custom-switch">
-                                                            <input type="hidden" name="toggles[{{ $keyType }}]" value="0">
-                                                            <input type="checkbox" class="custom-control-input settings-receipt-toggle" id="setting-receipt-{{ $type }}" name="toggles[{{ $keyType }}]" value="1" @checked((int)($receiptHeaderSettings->get($keyType)?->value ?? 0)===1) @cannot('update setting') disabled @endcannot>
-                                                            <label class="custom-control-label" for="setting-receipt-{{ $type }}">{{ (int)($receiptHeaderSettings->get($keyType)?->value ?? 0)===1 ? 'ON':'OFF' }}</label>
-                                                        </div>
-                                                    </td></tr>
-                                                @endforeach
-                                                </tbody></table></div>
-                                        </form>
-                                        <hr><h4>Custom payment methods</h4>
-                                        <p class="text-muted">Each custom name maps to Cash, Online or Cheque. Voucher forms will offer these methods after their posting integration is complete.</p>
-                                        @if(!$customPaymentMethodsReady)
-                                            <div class="alert alert-warning">Custom payment method migration is required.</div>
-                                        @else
-                                            <form data-ajax-form method="POST" action="{{ route('setting.custom-payment-method.save') }}" class="form-row align-items-end">@csrf
-                                                <div class="form-group col-md-2"><label>Code</label><input name="code" class="form-control" maxlength="20" required></div>
-                                                <div class="form-group col-md-3"><label>Name</label><input name="name" class="form-control" maxlength="80" required></div>
-                                                <div class="form-group col-md-3"><label>Behavior</label><select name="base_method_code" class="form-control"><option value="1">Cash</option><option value="2">Online</option><option value="3">Cheque</option></select></div>
-                                                <input type="hidden" name="is_active" value="1">
-                                                <div class="form-group col-md-2"><button class="btn btn-primary" @if(!$canManageFinanceSettings) disabled @endif>Add method</button></div>
-                                            </form>
-                                            <table class="table table-sm"><thead><tr><th>Code</th><th>Name</th><th>Behavior</th><th>Status</th></tr></thead><tbody>
-                                            @foreach($customPaymentMethods as $method)
-                                                <tr><td>{{ $method->code }}</td><td>{{ $method->name }}</td><td>{{ [1 => 'Cash', 2 => 'Online', 3 => 'Cheque'][$method->base_method_code] ?? '-' }}</td><td>{{ $method->is_active ? 'Active' : 'Inactive' }}</td></tr>
-                                            @endforeach
-                                            </tbody></table>
-                                        @endif
-                                    </div>
+                                    @include('admin.finance.settings-voucher-display')
                                     <div class="tab-pane {{ $activeSettingsTab === 'information' ? 'active' : '' }}" id="information" data-settings-direct="1" style="position:relative">
                                         <div class="settings-s1-busy" aria-live="polite"><div class="settings-s1-busy-card"><div class="settings-s1-busy-preview"><i class="far fa-image fa-lg"></i></div><div><strong>Saving settings</strong><div class="text-muted">Updating information without reloading...</div></div></div></div>
                                         <form id="settings-information-form" class="settings-info-form" action="{{ route('setting.update') }}" method="POST" enctype="multipart/form-data">
