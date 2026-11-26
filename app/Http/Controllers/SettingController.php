@@ -23,7 +23,8 @@ class SettingController extends Controller
     public function index()
     {
         $x['title']     = 'Settings';
-        $x['types'] = Ledger::distinct()->pluck('type')->toArray();
+        $x['types'] = collect(\App\Services\Finance\VoucherAvailability::FAMILIES)
+            ->keys()->merge(Ledger::distinct()->pluck('type'))->unique()->values()->all();
         $x['category']  = Setting::where('type', '!=', 'toggle')->select('category')->groupBy('category')->get();
         $categoryNames = $x['category']->pluck('category')->all();
         $requestedTab = (string) request()->query('tab', '');
@@ -59,6 +60,11 @@ class SettingController extends Controller
         $x['customPaymentMethodsReady'] = Schema::hasTable('project_custom_payment_methods') && Schema::hasTable('project_custom_payment_method_audits');
         $x['customPaymentMethods'] = $x['customPaymentMethodsReady'] && $projectId > 0
             ? DB::table('project_custom_payment_methods')->where('project_id', $projectId)->orderBy('name')->get()
+            : collect();
+        $x['voucherAvailabilityReady'] = Schema::hasTable('project_voucher_availability');
+        $x['voucherAvailability'] = $x['voucherAvailabilityReady'] && $projectId > 0
+            ? DB::table('project_voucher_availability')->where('project_id',$projectId)
+                ->pluck('is_active','series')
             : collect();
         $x['voucherDisplaySettings'] = $x['voucherDisplaySettingsReady'] && $projectId > 0
             ? DB::table('project_voucher_display_settings')->where('project_id', $projectId)->pluck('prefix', 'series')
@@ -167,6 +173,34 @@ class SettingController extends Controller
             ]);
         }
         return redirect()->route('setting.index', ['tab' => 'voucher-settings'])->with('success', 'Voucher display prefix saved. Existing voucher IDs were not changed.');
+    }
+
+    public function saveVoucherAvailability(Request $request)
+    {
+        abort_unless($request->user()->hasAnyRole(['admin','superadmin'])
+            && $request->user()->can('update setting'),403);
+        abort_unless(Schema::hasTable('project_voucher_availability'),409,'Voucher availability migration required.');
+        $projectId=(int)getSelectedTown();
+        abort_unless($projectId>0,400,'Select a project first.');
+        if (!$request->user()->hasRole('superadmin')) {
+            abort_unless((int)$request->user()->project_id===$projectId,403);
+        }
+        $data=$request->validate([
+            'series'=>['required',\Illuminate\Validation\Rule::in(array_keys(\App\Services\Finance\VoucherAvailability::FAMILIES))],
+            'is_active'=>['required','boolean'],
+        ]);
+        DB::transaction(function()use($projectId,$data,$request) {
+            DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
+            DB::table('project_voucher_availability')->updateOrInsert(
+                ['project_id'=>$projectId,'series'=>$data['series']],
+                ['is_active'=>(bool)$data['is_active'],'updated_by'=>(int)$request->user()->id,
+                    'updated_at'=>now(),'created_at'=>now()]
+            );
+        },3);
+        return response()->json([
+            'success'=>true,'series'=>$data['series'],'is_active'=>(bool)$data['is_active'],
+            'message'=>$data['series'].' is now '.($data['is_active']?'active':'inactive').'. Existing posted vouchers remain available in history.',
+        ]);
     }
 
     public function saveCustomPaymentMethod(Request $request)
@@ -512,8 +546,10 @@ class SettingController extends Controller
             ]);
         }
         $available = Setting::query()->where('type', '!=', 'toggle')->get()->keyBy('key');
-        $allowedReceiptTypes = Ledger::query()->distinct()->pluck('type')->filter()
-            ->map(fn ($type) => (string) $type.'_Receipt_Header')->all();
+        // Permit headers for supported voucher families before their first posting.
+        $allowedReceiptTypes = collect(array_keys(\App\Services\Finance\VoucherAvailability::FAMILIES))
+            ->merge(Ledger::query()->distinct()->pluck('type')->filter())
+            ->unique()->map(fn ($type) => (string) $type.'_Receipt_Header')->all();
         foreach ($keys as $key) {
             if (!$available->has($key)) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
