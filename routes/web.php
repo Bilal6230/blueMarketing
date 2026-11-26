@@ -41,7 +41,7 @@ Auth::routes([
 
 Route::middleware(['auth'])->get('/home', [DashboardController::class, 'index'])->name('home');
 
-Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action', \App\Http\Middleware\RecordActivityAudit::class])->group(function () {
+Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action', \App\Http\Middleware\EnforceVoucherAvailability::class, \App\Http\Middleware\RecordActivityAudit::class])->group(function () {
     Route::get('activity-audit', [\App\Http\Controllers\ActivityAuditController::class, 'index'])
         ->middleware('permission:read activity audit')->name('activity-audit.index');
     Route::get('activity-audit/{audit}', [\App\Http\Controllers\ActivityAuditController::class, 'show'])
