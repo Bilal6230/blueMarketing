@@ -75,7 +75,7 @@
 **Safety discovery:** Existing `ProjectVoucherDisplay::format()` still returns canonical `$series.'-'.$number` even if a prefix setting is present. Therefore saving a prefix in S4 remains *configuration only*, not a promise that new vouchers already use that prefix. Do not enable Start Number or show a next-issued-number promise without wiring all writer and print families.
 
 
-- [x] Replace Type codes in listing and editor with full **Voucher Name** (e.g. Credit Voucher, Debit Voucher, Cash Receipt Voucher, etc.), while retaining legacy internal series keys as immutable identities.
+- [ ] Replace Type codes in listing and editor with full **Voucher Name** (common series have labels; verify remaining legacy/finance families and remove generic fallbacks before S4 acceptance). (e.g. Credit Voucher, Debit Voucher, Cash Receipt Voucher, etc.), while retaining legacy internal series keys as immutable identities.
 - [x] Move receipt-header ON/OFF toggles from Information into each corresponding Voucher Display row; AJAX update.
 - [ ] Editor: **Voucher Name** selector, **Current Prefix** (editable), optional **Voucher Number** (start number). Do not confuse a display prefix with the immutable internal type code.
 - [ ] Expected future example: existing `CR` sequence has 850 entries. Set prefix `CRV`, optional number blank => next new displayed number `CRV-1`; set number `78` => next new displayed number `CRV-78`, then `CRV-79`. Source prompt also uses `CVR` as an example; prefix is user-configurable, not hardcoded.
