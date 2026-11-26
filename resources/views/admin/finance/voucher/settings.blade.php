@@ -2,14 +2,20 @@
 @section('title','Voucher Settings')
 @section('content')
 <style>
-.voucher-settings-page{background:#f3f7fb;min-height:calc(100vh - 140px);padding:12px}
+.vs-no-outer-scroll{overflow:hidden!important}
+.main-content:has(> .voucher-settings-page){overflow:hidden!important}
+.voucher-settings-page{background:#f3f7fb;min-height:0!important;padding:12px;height:calc(100dvh - 125px);overflow:hidden!important;display:flex;flex-direction:column;box-sizing:border-box}
+.voucher-settings-page>.container-fluid{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.voucher-settings-page .vs-head{flex:none}
+.voucher-settings-page .vs-panel{flex:1;min-height:0;display:flex;flex-direction:column}
+.voucher-settings-page .vs-panel-head{flex:none}
 .voucher-settings-page .vs-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#e9f7ed;border-bottom:2px solid #128044;border-radius:7px;padding:12px 16px;margin-bottom:12px}
 .voucher-settings-page h4{margin:0;color:#08763e;font-weight:700;font-size:21px}
 .voucher-settings-page .vs-panel{border:1px solid #b8d0c3;border-top:3px solid #168348;border-radius:8px;background:#fff;overflow:hidden}
 .voucher-settings-page .vs-panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #b8d0c3}
 .voucher-settings-page .vs-panel-head h5{margin:0;color:#12663d;font-size:15px;font-weight:700}
 .voucher-settings-page .vs-panel-head small{color:#68766e;font-size:12px}
-.voucher-settings-page .vs-table-wrap{overflow-x:auto;max-height:calc(100vh - 265px);min-height:220px;overflow-y:auto}
+.voucher-settings-page .vs-table-wrap{flex:1;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain}
 .voucher-settings-page .vs-table{width:100%;min-width:930px;margin:0;border-collapse:separate;border-spacing:0;font-size:13px}
 .voucher-settings-page .vs-table thead th{position:sticky;top:0;z-index:3;background:#eaf3ed;color:#235c40;border-bottom:2px solid #96bba6;padding:11px 12px;text-align:left;white-space:nowrap}
 .voucher-settings-page .vs-table tbody td{padding:9px 12px;vertical-align:middle;border-bottom:1px solid #c4d4ca}
@@ -32,7 +38,7 @@
 .voucher-settings-page .vs-table .vs-group-row:hover{background:#e3ede7}
 .voucher-settings-page .vs-table .vs-reversal-form,.voucher-settings-page .vs-table .vs-policy-form{margin:0}
 .voucher-settings-page .vs-disabled{opacity:.65}
-@media(max-width:767px){.voucher-settings-page{padding:8px}.voucher-settings-page .vs-head{padding:10px}.voucher-settings-page .vs-panel-head{align-items:flex-start;flex-direction:column}.voucher-settings-page .vs-table-wrap{max-height:calc(100vh - 245px)}}
+@media(max-width:767px){.voucher-settings-page{padding:8px}.voucher-settings-page .vs-head{padding:10px}.voucher-settings-page .vs-panel-head{align-items:flex-start;flex-direction:column}.voucher-settings-page .vs-table-wrap{max-height:none}}
 </style>
 <div class="content-wrapper voucher-settings-page">
  <div class="container-fluid">
@@ -139,6 +145,19 @@
 <script>
 $(function(){
  'use strict';
+ // Lock document scrolling only on this screen. The table remains the
+ // single vertical scroller, and its size follows the actual navbar offset.
+ $('html, body').addClass('vs-no-outer-scroll');
+ $(window).scrollTop(0);
+ function sizeVoucherSettings(){
+  var $page=$('.voucher-settings-page');
+  if(!$page.length)return;
+  var top=$page.offset().top;
+  var available=Math.max(280,$(window).height()-top-8);
+  $page.css('height',available+'px');
+ }
+ sizeVoucherSettings();
+ $(window).on('resize.voucherSettings',sizeVoucherSettings);
  $('.vs-approver').each(function(){
   if(typeof window.TomSelect!=='undefined'&&!this.tomselect)
    new TomSelect(this,{create:false,persist:false,maxItems:1,allowEmptyOption:true});
