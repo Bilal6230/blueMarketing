@@ -45,6 +45,8 @@
 .role-editor .role-nav-item.active{background:#dfeeff;color:#1459a7;font-weight:800}
 .role-editor .role-nav-item:hover{background:#eaf3ff}
 .role-editor .role-nav-count{font-size:10px;font-weight:700;color:#5e7ba0}
+.role-editor .role-nav-item>span:first-child{min-width:0;overflow-wrap:anywhere;line-height:1.35}
+.role-editor .role-nav-count{flex-shrink:0}
 .role-editor .role-nav-group{padding:12px 9px 5px;color:#72869f;font-size:10px;font-weight:800;letter-spacing:.055em}
 .role-editor .role-nav-group:first-child{padding-top:5px}
 .role-editor .role-permission-content{overflow:auto;padding:13px 15px}
@@ -263,7 +265,7 @@ $(function(){
       var module=p.module||'other';
       if(!grouped[module])grouped[module]={id:'general:'+module,title:p.module_label||module,
         subtitle:'Application modules',group:'application',items:[]};
-      grouped[module].items.push({name:p.name,label:p.name});
+      grouped[module].items.push({name:p.name,names:[p.name],label:p.name});
     });
     $.each(Object.keys(grouped).sort(function(a,b){
       return grouped[a].title.localeCompare(grouped[b].title);
