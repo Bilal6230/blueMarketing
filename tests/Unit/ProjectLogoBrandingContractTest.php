@@ -30,6 +30,24 @@ final class ProjectLogoBrandingContractTest extends TestCase
         $this->assertSame('images/logo/project-placeholder.svg', ProjectBranding::logoPath($project));
     }
 
+    public function test_no_admin_template_hardcodes_global_blue_marketing_logo(): void
+    {
+        $views = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(resource_path('views/admin'))
+        );
+        foreach ($views as $file) {
+            if (!$file->isFile() || !str_ends_with($file->getFilename(), '.blade.php')) {
+                continue;
+            }
+            $contents = file_get_contents($file->getPathname());
+            $this->assertStringNotContainsString(
+                'blue-marketing-logo.png',
+                $contents,
+                'Project-scoped admin page still hardcodes the global logo: '.$file->getPathname()
+            );
+        }
+    }
+
     public function test_authenticated_shell_and_shared_receipt_branding_use_project_logo(): void
     {
         $sidebar = file_get_contents(resource_path('views/admin/layouts/sidebar.blade.php'));
