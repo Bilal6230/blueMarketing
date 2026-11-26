@@ -30,6 +30,7 @@
 </head>
 <body>
 <main class="receipt">
+    @include('admin.partials.project_print_identity', ['brandingProjectId' => $receipt->project_id ?? null])
     <h1>Plot Payment Receipt</h1>
     <h2>{{ $allocation->plot_name }}</h2>
     <section class="grid">
