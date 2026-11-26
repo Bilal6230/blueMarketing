@@ -31,8 +31,11 @@ final class PlotDefinitionRemovalContractTest extends TestCase
     {
         $routes = file_get_contents(base_path('routes/web.php'));
         $view = file_get_contents(resource_path('views/admin/plots/index.blade.php'));
+        $sidebar = file_get_contents(resource_path('views/admin/layouts/sidebar-menu.blade.php'));
 
         $this->assertStringNotContainsString("Route::get('plot-definitions'", $routes);
+        $this->assertStringNotContainsString('project.plot-definitions.', $sidebar);
+        $this->assertStringNotContainsString('Plot Definitions', $sidebar);
         $this->assertStringNotContainsString("route('project.plot-definitions.index')", $view);
         $this->assertStringNotContainsString('plot-editor-modern.js', $view);
         $this->assertStringNotContainsString('plot_category_definition_id', $view);
