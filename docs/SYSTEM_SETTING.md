@@ -3,7 +3,7 @@
 **Project:** BlueMarketing / Waqas ERP  
 **Scope:** Settings (`/admin/setting`) — project-scoped configuration and modern UI  
 **Baseline:** 26 November 2026  
-**Status:** S1 browser and contract checks reported PASS (7/7; 48 assertions). S2 code implemented; automated and browser checks pending. S3 implementation in progress; S4 pending.  
+**Status:** S1 browser and contract checks reported PASS (7/7; 48 assertions). S2 code implemented; automated and browser checks pending. S3 browser picker flow reported PASS; S4 UI batch implemented, numbering integration pending.  
 **Tracker rule:** Check `[x]` only after code + automated tests + user browser verification pass. Do not mark existing partial code as complete.
 
 ## Overall behavior (applies to every batch)
@@ -68,17 +68,22 @@
 **Outstanding S3 verification:** Run picker and S3 contract tests, and browser-test BOR/BOP and CCR/CDR Create forms, disabled accounts, project switching, and recorded postings. Review existing historical voucher Edit / print display labels separately before marking all S3 consumers integrated. No historical postings should be relinked.
 
 ### S4 — Voucher Display / receipt headers
-**State: [ ] Pending**
+**State: UI batch pushed 26 November 2026. New numbering writer integration, automated and browser verification pending.**
 
-- [ ] Replace Type codes in listing and editor with full **Voucher Name** (e.g. Credit Voucher, Debit Voucher, Cash Receipt Voucher, etc.), while retaining legacy internal series keys as immutable identities.
-- [ ] Move receipt-header ON/OFF toggles from Information into each corresponding Voucher Display row; AJAX update.
+**Current S4 changes:** Voucher Name labels centralized in `ProjectVoucherDisplay::LABELS`, modern full-height Voucher Display directory, receipt-header switches inside matching listing rows (including legacy-only types), dedicated Add/Edit prefix modal with AJAX save and in-place listing update, and custom-payment-method configuration removed from this UI only. S4 regression contract `SystemSettingS4ContractTest` added. Underlying custom payment method records, voucher writer identities and historical receipts are untouched. The optional Start Number field is deliberately disabled until collision-safe versioned display numbering can be implemented end-to-end.
+
+**Safety discovery:** Existing `ProjectVoucherDisplay::format()` still returns canonical `$series.'-'.$number` even if a prefix setting is present. Therefore saving a prefix in S4 remains *configuration only*, not a promise that new vouchers already use that prefix. Do not enable Start Number or show a next-issued-number promise without wiring all writer and print families.
+
+
+- [x] Replace Type codes in listing and editor with full **Voucher Name** (e.g. Credit Voucher, Debit Voucher, Cash Receipt Voucher, etc.), while retaining legacy internal series keys as immutable identities.
+- [x] Move receipt-header ON/OFF toggles from Information into each corresponding Voucher Display row; AJAX update.
 - [ ] Editor: **Voucher Name** selector, **Current Prefix** (editable), optional **Voucher Number** (start number). Do not confuse a display prefix with the immutable internal type code.
 - [ ] Expected future example: existing `CR` sequence has 850 entries. Set prefix `CRV`, optional number blank => next new displayed number `CRV-1`; set number `78` => next new displayed number `CRV-78`, then `CRV-79`. Source prompt also uses `CVR` as an example; prefix is user-configurable, not hardcoded.
 - [ ] **Critical compatibility requirement:** Current `ProjectVoucherDisplay` uses a *display prefix* and year-formatted number; current `SettingController::saveVoucherDisplaySettings` changes display only. Implement a **new versioned display-series counter** scoped to project + voucher family + prefix (and define fiscal-year behavior explicitly before enabling); reserve number atomically on successful write, not merely opening a modal.
 - [ ] Detect/prevent collisions with existing historical voucher display numbers, including prefix reuse. Preserve original display identity for old vouchers, printed receipts, linked records, approval/audit entries and exported reports. No historical renumbering or accidental re-posting.
 - [ ] On Add Voucher modal show **next preview number**; after a successful create assign the reserved sequence. Parallel submissions, canceled drafts, retries, deletes, reactivations and approval flow must not duplicate numbers.
 - [ ] Apply new display semantics consistently across **all voucher families** that the application actually supports; do not implement only one voucher type.
-- [ ] Remove/hide **Custom payment methods / Configure payment method** from Voucher Display UI pending a separate integration decision. Existing custom payment method records must remain untouched; evaluate Cash/Online/Cheque consumers before final removal.
+- [x] Remove/hide **Custom payment methods / Configure payment method** from Voucher Display UI pending a separate integration decision. Existing custom payment method records must remain untouched; evaluate Cash/Online/Cheque consumers before final removal.
 - [ ] Test old/new numbering, start-number override, duplicate prefix, project isolation, receipts, linked vouchers, finance audits and all supported approval workflows.
 
 ## Priorities and release gates
