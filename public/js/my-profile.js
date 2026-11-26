@@ -59,7 +59,13 @@ $(function(){
     if(data.profile.avatar_url){
      oldPreview=data.profile.avatar_url;
      $preview.attr('src',oldPreview);
-     $('#my-profile-header-avatar').attr('src',oldPreview);
+     var $header=$('#my-profile-header-avatar');
+     if($header.length)$header.attr('src',oldPreview);
+     else{
+      $('#my-profile-header-placeholder').replaceWith(
+       $('<img>',{id:'my-profile-header-avatar','class':'profile-photo',src:oldPreview,alt:'Your profile picture'})
+      );
+     }
      $('.navbar .user-menu img.user-image,.navbar .user-header img').attr('src',oldPreview);
     }
     message(data.message||'Profile updated.',false);
