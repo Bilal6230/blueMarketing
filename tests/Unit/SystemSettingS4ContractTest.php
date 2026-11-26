@@ -35,6 +35,21 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString('Update Print Header?', $page);
     }
 
+    public function test_voucher_directory_reuses_shared_user_table_controls(): void
+    {
+        $view=file_get_contents(resource_path('views/admin/finance/settings-voucher-display.blade.php'));
+        $script=file_get_contents(public_path('js/settings-s4-voucher-display.js'));
+
+        $this->assertStringContainsString('id="s4-directory-table"', $view);
+        $this->assertStringContainsString('bm-modern-export-toolbar', $view);
+        $this->assertStringContainsString('blue-actions-cell', $view);
+        $this->assertStringContainsString('financeVoucherComponents.createFilter', $script);
+        $this->assertStringContainsString('blueModernDirectoryTools.mount', $script);
+        $this->assertStringContainsString('blueActionMenu.enhance', $script);
+        $this->assertStringContainsString('blueVoucherPagination', $script);
+        $this->assertStringContainsString('merge($types)->unique()', $view);
+    }
+
     public function test_modal_saves_prefix_without_pretending_start_number_is_ready(): void
     {
         $view=file_get_contents(resource_path('views/admin/finance/settings-voucher-display.blade.php'));
