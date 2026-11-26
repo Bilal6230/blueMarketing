@@ -255,16 +255,20 @@
                         :action.includes('custom-payment-method')?'Payment method':'Settings';
                     const $launcher=$('<div>',{'class':'settings-modal-trigger'});
                     const $open=$('<button>',{type:'button','class':'btn btn-sm btn-outline-primary',
-                        'data-toggle':'modal','data-target':'#'+id,text:'Configure '+label});
+                        'id':'settings-launcher-'+id,'data-toggle':'modal','data-target':'#'+id,text:'Configure '+label});
                     $launcher.append($open);
-                    const $modal=$('<div>',{'class':'modal fade',id,tabindex:-1});
+                    const $modal=$('<div>',{'class':'modal fade settings-editor-modal',id,tabindex:-1,'data-launcher':'settings-launcher-'+id});
                     $modal.html('<div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div><div class="modal-body"></div></div></div>');
                     $modal.find('.modal-title').text(label);
                     $form.before($launcher);
                     $modal.find('.modal-body').append($form);
-                    $pane.append($modal);
+                    // Place the actual modal outside hidden tabs/cards so Bootstrap's
+                    // backdrop and stacking contexts cannot cover an invisible modal.
+                    $('body').append($modal);
                     $form.attr('data-settings-modalized','1');
-                    if($form.find('[name="bank_account_id"]').length||$pane.find('.alert-danger,.settings-form-error').length)$modal.modal('show');
+                    // Do not auto-open on validation errors: several forms share
+                    // a tab and a single error previously opened ALL their modals.
+                    // Users open the exact form explicitly through its launcher.
                 });
                 $root.find('.alert-success,.alert-danger').each(function(){
                     const $alert=$(this);
@@ -281,7 +285,17 @@
                 });
             }
             $(modalizeSettingsForms);
-            $(document).on('ajax:panel-updated', (_event, detail) => modalizeSettingsForms(detail?.panel || document));
+            $(document).on('ajax:panel-updated', (_event, detail) => {
+                // AJAX may replace a tab and its launcher. Remove orphaned
+                // inactive modal shells rather than leaving stale overlays.
+                $('body > .settings-editor-modal').each(function(){
+                    const $modal=$(this);
+                    if (!$modal.hasClass('show') && !document.getElementById($modal.attr('data-launcher'))) {
+                        $modal.remove();
+                    }
+                });
+                modalizeSettingsForms(detail?.panel || document);
+            });
         })();
     </script>
     <script>
