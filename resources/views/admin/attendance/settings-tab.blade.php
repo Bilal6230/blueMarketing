@@ -9,18 +9,31 @@
 <style>
 #attendance-machine .as-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 #attendance-machine .as-toolbar h4{font-size:19px;font-weight:700;color:#204d78;margin:0}
-#attendance-machine .as-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px}
-#attendance-machine .as-card{border:1px solid #c2d3e2;border-top:3px solid #2082d7;border-radius:9px;background:#fff;min-width:0;overflow:hidden}
+#attendance-machine{height:100%;min-height:0;overflow:hidden}
+#attendance-machine #as-workspace{height:100%;min-height:0;display:flex;flex-direction:column}
+#attendance-machine .as-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;flex:1;min-height:0}
+#attendance-machine .as-card{border:1.5px solid #a9bfd2;border-top:3px solid #2082d7;border-radius:9px;background:#fff;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column}
 #attendance-machine .as-card-head{background:#f4f8fc;border-bottom:1px solid #c2d3e2;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
 #attendance-machine .as-card-head h5{font-size:15px;font-weight:700;color:#174c7b;margin:0}
-#attendance-machine .as-card-body{padding:12px}
-#attendance-machine .as-table-scroll{max-height:calc(100dvh - 385px);overflow:auto;min-height:130px;overscroll-behavior:contain}
+#attendance-machine .as-card-body{padding:12px;display:flex;flex-direction:column;min-height:0;flex:1}
+#attendance-machine .as-table-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
 #attendance-machine .as-table{width:100%;font-size:14px;margin:0}
 #attendance-machine .as-table th{position:sticky;top:0;z-index:1;background:#eaf2f9;border-bottom:2px solid #9abbd5;white-space:nowrap}
 #attendance-machine .as-table td,#attendance-machine .as-table th{padding:9px 8px;vertical-align:middle}
 #attendance-machine .as-table tbody tr:nth-child(even){background:#f1f6fa}
 #attendance-machine .as-table tbody tr:hover{background:#e6f2fb}
 #attendance-machine .as-actions{display:flex;gap:5px;flex-wrap:wrap}
+#attendance-machine .as-actions .btn{min-height:32px;padding:5px 9px;border-width:1.5px;font-weight:650}
+#attendance-machine .as-actions .btn i{margin-right:4px}
+#attendance-machine .as-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 10px;background:#f8fbfe;border-bottom:1px solid #bed0df}
+#attendance-machine .as-search-wrap{position:relative;flex:1;min-width:145px}
+#attendance-machine .as-search-wrap i{position:absolute;left:11px;top:11px;color:#6b829a}
+#attendance-machine .as-filters .as-search{padding-left:31px!important;min-height:35px;height:35px}
+#attendance-machine .as-filters select{width:auto;min-width:125px;max-width:175px;height:35px;min-height:35px}
+#attendance-machine .as-filter-count{font-size:12px;color:#526e87;white-space:nowrap}
+#attendance-machine .as-table td,#attendance-machine .as-table th{border-color:#bacbd9}
+#attendance-machine .as-no-results{display:none}
+#attendance-machine .as-no-results.is-visible{display:table-row}
 #attendance-machine .as-note{font-size:12px;color:#65798b}
 #attendance-machine .as-mapping-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:8px;align-items:end}
 #attendance-machine .as-mapping-grid label,#as-device-modal label{font-weight:650;font-size:14px;display:block;margin-bottom:5px}
@@ -33,7 +46,7 @@
 #as-device-modal .as-form-wide{grid-column:1/-1}
 #as-device-modal .as-form-grid input,#as-device-modal .as-form-grid select{width:100%;font-size:14px}
 #as-device-modal .as-readonly-note{font-size:12px;color:#697c90}
-@media(max-width:1100px){#attendance-machine .as-layout{grid-template-columns:1fr}}
+@media(max-width:1100px){#attendance-machine{height:auto;overflow:visible}#attendance-machine #as-workspace{height:auto}#attendance-machine .as-layout{grid-template-columns:1fr;min-height:0}#attendance-machine .as-card{min-height:300px}#attendance-machine .as-table-scroll{min-height:140px;max-height:400px}}
 @media(max-width:650px){#attendance-machine .as-mapping-grid,#as-device-modal .as-form-grid{grid-template-columns:1fr}#as-device-modal .as-form-wide{grid-column:auto}}
 </style>
 <div id="as-workspace"
@@ -47,6 +60,11 @@
     <div class="as-layout">
         <section class="as-card">
             <header class="as-card-head"><h5>Device Configuration</h5><small id="as-device-count" class="text-muted">{{ $attendanceDevices->count() }} devices</small></header>
+            <div class="as-filters" aria-label="Device table filters">
+                <div class="as-search-wrap"><i class="fas fa-search" aria-hidden="true"></i><input type="search" class="form-control as-search" id="as-device-search" placeholder="Search devices..." aria-label="Search devices"></div>
+                <select class="form-control" id="as-connection-filter" aria-label="Filter by connection"><option value="">All connections</option><option value="network">Network</option><option value="cloud">Cloud</option><option value="webhook">Webhook</option><option value="sdk">SDK</option><option value="other">Other</option></select>
+                <span class="as-filter-count" id="as-device-visible-count"></span>
+            </div>
             <div class="as-table-scroll">
                 <table class="table table-bordered as-table">
                     <thead><tr><th>Device</th><th>Connection</th><th>Status</th><th>Actions</th></tr></thead>
@@ -57,14 +75,15 @@
                             <td><span class="as-device-connection">{{ ucfirst($item->connection_type) }}</span><div class="as-note as-device-host">{{ $item->host ?: 'Not provided' }}</div></td>
                             <td><span class="badge badge-warning">Not connected</span></td>
                             <td><div class="as-actions">
-                                <button type="button" class="btn btn-sm btn-outline-primary as-edit-device" data-id="{{ $item->id }}" aria-label="Edit device">Edit</button>
-                                <button type="button" class="btn btn-sm btn-outline-info as-select-device" data-id="{{ $item->id }}">Map IDs</button>
-                                <button type="button" class="btn btn-sm btn-outline-danger as-delete-device" data-id="{{ $item->id }}">Delete</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary as-edit-device" data-id="{{ $item->id }}" aria-label="Edit device"><i class="fas fa-pen" aria-hidden="true"></i>Edit</button>
+                                <button type="button" class="btn btn-sm btn-outline-info as-select-device" data-id="{{ $item->id }}"><i class="fas fa-users" aria-hidden="true"></i>Map IDs</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger as-delete-device" data-id="{{ $item->id }}"><i class="fas fa-trash-alt" aria-hidden="true"></i>Delete</button>
                             </div></td>
                         </tr>
                     @empty
                         <tr class="as-empty-device"><td colspan="4" class="as-table-empty">No devices configured. Click Add Device to begin.</td></tr>
                     @endforelse
+                    <tr class="as-no-results as-device-no-results"><td colspan="4" class="as-table-empty">No matching devices found.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -90,7 +109,11 @@
                     </div>
                     <small class="as-input-error" data-field="device_user_id"></small>
                 </form>
-                <div class="as-table-scroll mt-3">
+                <div class="as-filters mt-3" aria-label="Employee mapping table filters">
+                    <div class="as-search-wrap"><i class="fas fa-search" aria-hidden="true"></i><input type="search" class="form-control as-search" id="as-mapping-search" placeholder="Search employees or IDs..." aria-label="Search employee mappings"></div>
+                    <span class="as-filter-count" id="as-mapping-visible-count"></span>
+                </div>
+                <div class="as-table-scroll">
                     <table class="table table-bordered as-table">
                         <thead><tr><th>Employee</th><th>Device ID</th><th>Action</th></tr></thead>
                         <tbody id="as-mapping-rows"><tr><td colspan="3" class="as-table-empty">Select a saved device to view employee mappings.</td></tr></tbody>
