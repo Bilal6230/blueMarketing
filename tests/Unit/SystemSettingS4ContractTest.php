@@ -80,6 +80,12 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString('finance.voucher.bank.workspace', $guard);
         $this->assertStringContainsString('journal.voucher.index', $guard);
         $this->assertStringContainsString('ledger.store', $guard);
+        $this->assertStringContainsString("query('series','CR')", $guard);
+        $this->assertStringContainsString("query('series','DR')", $guard);
+        $this->assertStringContainsString('booking.customer.deposit', $guard);
+        $this->assertStringContainsString('finance.voucher.cash-only.store', $guard);
+        $this->assertStringContainsString('finance.voucher.transfer.post', $guard);
+
         $this->assertStringNotContainsString('finance.voucher.bank.print', $guard);
         $this->assertStringContainsString('VoucherAvailability::enabled', $sidebar);
         $this->assertStringContainsString("Schema::create('project_voucher_availability'", $migration);
