@@ -52,7 +52,7 @@
      <tbody>
      @foreach($displayVoucherSeries as $series)
       @php($keyType = $series.'_Receipt_Header')
-      @php($hasHeader = in_array($series, array_keys(\App\Services\Finance\VoucherAvailability::FAMILIES), true) || $receiptHeaderSettings->has($keyType))
+      @php($hasHeader = in_array($series, \App\Services\Finance\ProjectVoucherDisplay::SERIES, true) || array_key_exists($series, \App\Services\Finance\VoucherAvailability::FAMILIES) || $receiptHeaderSettings->has($keyType))
       @php($seriesActive = (int)($voucherAvailability[$series] ?? 1)===1)
       <tr data-s4-series="{{ $series }}">
        <td><strong>{{ \App\Services\Finance\ProjectVoucherDisplay::label($series) }}</strong></td>
