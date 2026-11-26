@@ -53,14 +53,25 @@ final class SystemSettingS1ContractTest extends TestCase
         $this->assertStringContainsString('DB::transaction(', $controller);
     }
 
-    public function test_file_manager_binding_does_not_depend_on_removed_setts_variable(): void
+    public function test_image_fields_use_direct_drag_drop_uploads_without_file_manager(): void
     {
         $view = $this->settingsBladeSource();
+        $controller = file_get_contents(app_path('Http/Controllers/SettingController.php'));
 
-        $this->assertStringNotContainsString('$setts', $view);
-        $this->assertStringNotContainsString('$setid', $view);
-        $this->assertStringContainsString('[data-settings-file="1"]', $view);
-        $this->assertStringContainsString('window.fmSetLink = fmSetLink', $view);
+        $this->assertStringContainsString('settings-upload-grid', $view);
+        $this->assertStringContainsString('grid-template-columns:repeat(3,minmax(0,1fr))', $view);
+        $this->assertStringContainsString('class="settings-dropzone"', $view);
+        $this->assertStringContainsString('name="setting_images[{{ $set->key }}]"', $view);
+        $this->assertStringContainsString("'drop',function(event)", $view);
+        $this->assertStringContainsString('new DataTransfer()', $view);
+        $this->assertStringContainsString('new FormData(form)', $view);
+        $this->assertStringNotContainsString('window.fmSetLink', $view);
+        $this->assertStringNotContainsString('data-settings-file="1"', $view);
+        $this->assertStringContainsString("'setting_images.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:4096']", $controller);
+        $this->assertStringContainsString('storeAs(\'settings\', $filename, \'public\')', $controller);
+        $this->assertStringContainsString('if ($setting->type === \'file\') continue;', $controller);
+        $this->assertStringContainsString('Storage::disk', $controller);
+        $this->assertStringContainsString("'images' => collect($imageUrls)", $controller);
     }
 
     public function test_information_fields_use_responsive_columns_and_image_preview_canvas(): void
@@ -70,7 +81,7 @@ final class SystemSettingS1ContractTest extends TestCase
         $this->assertStringContainsString('settings-info-grid', $view);
         $this->assertStringContainsString('grid-template-columns:repeat(2,minmax(0,1fr))', $view);
         $this->assertStringContainsString('settings-info-field {{ $isWide', $view);
-        $this->assertStringContainsString('settings-media-canvas', $view);
+        $this->assertStringContainsString('settings-dropzone', $view);
         $this->assertStringContainsString('settings-s1-busy-preview', $view);
         $this->assertStringContainsString('settings-s1-busy', $view);
     }
