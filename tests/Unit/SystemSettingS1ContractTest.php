@@ -12,7 +12,9 @@ final class SystemSettingS1ContractTest extends TestCase
 {
     private function settingsBladeSource(): string
     {
-        return file_get_contents(resource_path('views/admin/setting.blade.php'));
+        // Voucher Display owns the receipt-header rows after S4 extraction.
+        return file_get_contents(resource_path('views/admin/setting.blade.php'))
+            .file_get_contents(resource_path('views/admin/finance/settings-voucher-display.blade.php'));
     }
 
     public function test_information_and_contact_are_one_inline_tab(): void
@@ -32,7 +34,7 @@ final class SystemSettingS1ContractTest extends TestCase
         $view = $this->settingsBladeSource();
 
         $this->assertStringContainsString('id="settings-receipt-header-form"', $view);
-        $this->assertStringContainsString('Voucher Print Headers', $view);
+        $this->assertStringContainsString('Print Header', $view);
         $this->assertStringContainsString('name="toggles[{{ $keyType }}]"', $view);
         $this->assertStringContainsString("change','.settings-receipt-toggle'", $view);
         $this->assertStringContainsString('Update Print Header?', $view);
