@@ -10,6 +10,7 @@
 </head>
 <body>
 <main class="sheet">
+    @include('admin.partials.project_print_identity', ['brandingProjectId' => $source->project_id ?? null])
     <div class="top"><div><h1 style="margin:0 0 6px">{{ $projectName }}</h1><div class="muted">Daily voucher source record</div></div><div style="text-align:right"><strong>{{ $displayNumber }}</strong><div class="muted">{{ $source->date }}</div></div></div>
     <section class="facts">
         <div class="fact"><strong>Type / status</strong>{{ $source->transaction_type }} / {{ (int) ($source->is_active ?? 0) === 1 ? ((int) ($source->is_approve ?? 0) === 1 ? 'Approved' : 'Posted') : 'Inactive' }}</div>
