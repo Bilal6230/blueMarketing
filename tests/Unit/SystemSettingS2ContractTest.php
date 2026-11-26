@@ -6,33 +6,56 @@ use Tests\TestCase;
 
 final class SystemSettingS2ContractTest extends TestCase
 {
-    public function test_device_tab_uses_ajax_editor_not_page_navigation(): void
+    public function test_device_list_and_modal_replace_inline_configuration(): void
     {
         $view = file_get_contents(resource_path('views/admin/attendance/settings-tab.blade.php'));
         $this->assertStringContainsString('id="as-new-device"', $view);
-        $this->assertStringContainsString('id="as-device-select"', $view);
+        $this->assertStringContainsString('id="as-device-rows"', $view);
+        $this->assertStringContainsString('id="as-device-modal"', $view);
         $this->assertStringContainsString('id="as-device-form"', $view);
-        $this->assertStringContainsString("method:'GET',dataType:'json'", $view);
-        $this->assertStringContainsString('$.ajax({url:$deviceForm.attr', $view);
-        $this->assertStringContainsString("event.preventDefault();event.stopImmediatePropagation();", $view);
+        $this->assertStringContainsString('as-edit-device', $view);
+        $this->assertStringContainsString('as-delete-device', $view);
+        $this->assertStringContainsString("'#as-device-modal-title').text('Add Attendance Device'", $view);
+        $this->assertStringContainsString("$('#as-device-modal-title').text('Edit Attendance Device')", $view);
+    }
+
+    public function test_scripts_load_after_jquery_and_global_form_interceptor_is_opted_out(): void
+    {
+        $view = file_get_contents(resource_path('views/admin/attendance/settings-tab.blade.php'));
+        $this->assertStringContainsString("@push('script')", $view);
+        $this->assertStringContainsString("@endpush", $view);
+        $this->assertStringContainsString('data-ajax="off"', $view);
+        $this->assertStringContainsString("e.preventDefault();e.stopImmediatePropagation();", $view);
+        $this->assertStringContainsString("headers:{Accept:'application/json'},dataType:'json'", $view);
         $this->assertStringNotContainsString('this.form.submit()', $view);
         $this->assertStringNotContainsString("'new_device'=>1", $view);
         $this->assertStringNotContainsString('data-ajax-form', $view);
     }
 
-    public function test_mappings_update_in_place_and_are_project_scoped(): void
+    public function test_mappings_add_edit_delete_are_ajax_and_project_scoped(): void
     {
         $view = file_get_contents(resource_path('views/admin/attendance/settings-tab.blade.php'));
         $controller = file_get_contents(app_path('Http/Controllers/AttendanceController.php'));
         $this->assertStringContainsString('id="as-mapping-rows"', $view);
-        $this->assertStringContainsString('renderMappings(device.mappings||[])', $view);
-        $this->assertStringContainsString('id="as-mapping-form"', $view);
-        $this->assertStringContainsString('where(\'project_id\', $projectId)', $controller);
-        $this->assertStringContainsString('\'device\' => $this->devicePayload($device)', $controller);
+        $this->assertStringContainsString('populateMappings(data.device.mappings||[],selectedId)', $view);
+        $this->assertStringContainsString('as-edit-mapping', $view);
+        $this->assertStringContainsString('as-delete-mapping', $view);
         $this->assertStringContainsString('AttendanceDeviceUserMapping::updateOrCreate(', $controller);
+        $this->assertStringContainsString('public function deleteMapping(', $controller);
+        $this->assertStringContainsString("where('project_id', $projectId)", $controller);
     }
 
-    public function test_sensitive_device_secret_is_not_exposed_and_sync_stays_disabled(): void
+    public function test_device_deletion_is_guarded_against_mapping_loss(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/AttendanceController.php'));
+        $this->assertStringContainsString('public function deleteDevice(', $controller);
+        $this->assertStringContainsString('$device->mappings()->exists()', $controller);
+        $this->assertStringContainsString('abort_if(', $controller);
+        $this->assertStringContainsString('public function deleteMapping(', $controller);
+        $this->assertStringContainsString('abort_unless((int) $device->project_id === $projectId, 404)', $controller);
+    }
+
+    public function test_device_credentials_remain_encrypted_and_off_the_wire(): void
     {
         $view = file_get_contents(resource_path('views/admin/attendance/settings-tab.blade.php'));
         $controller = file_get_contents(app_path('Http/Controllers/AttendanceController.php'));
@@ -40,21 +63,16 @@ final class SystemSettingS2ContractTest extends TestCase
         $this->assertStringContainsString("'has_password' =>", $controller);
         $this->assertStringNotContainsString("'password' => (string)", $controller);
         $this->assertStringContainsString("'password' => 'encrypted'", $model);
-        $this->assertStringContainsString('>Test Connection</button>', $view);
-        $this->assertStringContainsString('>Sync Attendance</button>', $view);
-        $this->assertStringContainsString('disabled title="A vendor integration must be verified first"', $view);
+        $this->assertStringContainsString('Saving does not connect to or synchronize the device', $view);
     }
 
-    public function test_generic_settings_modalizer_does_not_capture_ajax_forms(): void
-    {
-        $view = file_get_contents(resource_path('views/admin/setting.blade.php'));
-        $this->assertStringContainsString(':not(#as-device-form):not(#as-mapping-form)', $view);
-    }
-
-    public function test_attendance_device_json_route_is_authorized(): void
+    public function test_scoped_routes_require_settings_permissions(): void
     {
         $routes = file_get_contents(base_path('routes/web.php'));
-        $this->assertStringContainsString("'attendance.device.settings'", $routes);
-        $this->assertStringContainsString("->middleware('permission:update setting')->name('attendance.device.settings')", $routes);
+        foreach (['attendance.device.settings','attendance.device.delete','attendance.mapping.save','attendance.mapping.delete'] as $name) {
+            $this->assertStringContainsString("->name('".$name."')", $routes);
+        }
+        $this->assertStringContainsString("->middleware('permission:update setting')->name('attendance.device.delete')", $routes);
+        $this->assertStringContainsString("->middleware('permission:update setting')->name('attendance.mapping.delete')", $routes);
     }
 }
