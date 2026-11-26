@@ -124,5 +124,5 @@
  </div></div>
 </div>
 @push('script')
-<script src="{{ asset('js/settings-s4-voucher-display.js') }}?v=2"></script>
+<script src="{{ asset('js/settings-s4-voucher-display.js') }}?v=3"></script>
 @endpush
