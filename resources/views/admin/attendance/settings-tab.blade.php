@@ -191,7 +191,7 @@ $(function(){
                         $('<button>',{type:'button','class':'btn btn-sm btn-outline-primary as-edit-mapping'}).text('Edit')
                             .attr('data-user-id',item.user_id).attr('data-device-user-id',item.device_user_id),
                         $('<button>',{type:'button','class':'btn btn-sm btn-outline-danger ml-1 as-delete-mapping'}).text('Delete')
-                            .attr('data-id',item.id)))));
+                            .attr('data-id',item.id))));
         });
     }
     function deviceUrl(id,action){
