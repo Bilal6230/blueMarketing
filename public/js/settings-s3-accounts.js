@@ -14,41 +14,67 @@ $(function(){
   return {id:String(this.value),head:String($(this).attr('data-head-id')),
     subhead:String($(this).attr('data-subhead-id')),label:$(this).text()};
  }).get();
+ // Match voucher selectors: searchable Tom Select, with native-select fallback.
+ // Dropdowns live at body level so they are not clipped by the scrollable modal.
+ var headTs=null,subheadTs=null;
+ function setValue($select,value){
+  var ts=$select[0]&&$select[0].tomselect;
+  if(ts)ts.setValue(String(value||''),true);
+  else $select.val(String(value||''));
+ }
  function populateSubheads(headId,chosenMapping){
-  var requested=String(chosenMapping||''),head=String(headId||'');
-  $subhead.empty().append($('<option>',{value:'',text:'Select Subhead Account'}));
-  $.each(coaOptions,function(_,item){
-   if(head && item.head!==head)return;
-   $subhead.append($('<option>',{value:item.id,text:item.label,
-    'data-head-id':item.head,'data-subhead-id':item.subhead}));
-  });
-  $subhead.val(requested && $subhead.find('option').filter(function(){
-   return this.value===requested;
-  }).length?requested:'');
-  $mapping.val($subhead.val()||'');
+  var head=String(headId||''),requested=String(chosenMapping||'');
+  var options=coaOptions.filter(function(item){return !head||item.head===head;});
+  if(!options.some(function(item){return item.id===requested;}))requested='';
+  if(subheadTs){
+   subheadTs.clear(true);
+   subheadTs.clearOptions();
+   subheadTs.addOptions(options.map(function(item){
+    return {value:item.id,text:item.label,head:item.head,subhead:item.subhead};
+   }));
+   subheadTs.refreshOptions(false);
+   subheadTs.setValue(requested,true);
+  }else{
+   $subhead.empty().append($('<option>',{value:'',text:'Select Subhead Account'}));
+   $.each(options,function(_,item){
+    $subhead.append($('<option>',{value:item.id,text:item.label,
+     'data-head-id':item.head,'data-subhead-id':item.subhead}));
+   });
+   $subhead.val(requested);
+  }
+  $mapping.val(requested);
  }
  function selectMapping(mappingId){
   var id=String(mappingId||'');
   var item=coaOptions.find(function(option){return option.id===id;});
-  $head.val(item?item.head:'');
+  setValue($head,item?item.head:'');
   populateSubheads(item?item.head:'',item?item.id:'');
  }
- $head.on('change',function(){
-  var next=String($(this).val()||''),previous=String($subhead.val()||'');
+ function headChanged(value){
+  var next=String(value||''),previous=String($mapping.val()||'');
   populateSubheads(next,previous);
- });
- $subhead.on('change',function(){
-  var id=String($(this).val()||''),item=coaOptions.find(function(option){
-   return option.id===id;
-  });
+ }
+ function subheadChanged(value){
+  var id=String(value||''),item=coaOptions.find(function(option){return option.id===id;});
   if(item){
-   $head.val(item.head);
-   // A Subhead chosen before a Head must remain selected, not be reset.
+   setValue($head,item.head);
    populateSubheads(item.head,item.id);
-  }else{
-   $mapping.val('');
-  }
- });
+  }else $mapping.val('');
+ }
+ if(window.TomSelect){
+  headTs=new TomSelect($head[0],{
+   create:false,allowEmptyOption:false,maxItems:1,placeholder:'Select Head Account',
+   dropdownParent:'body',onChange:headChanged
+  });
+  subheadTs=new TomSelect($subhead[0],{
+   create:false,allowEmptyOption:false,maxItems:1,placeholder:'Select Subhead Account',
+   dropdownParent:'body',onChange:subheadChanged
+  });
+ }else{
+  $head.on('change',function(){headChanged($(this).val());});
+  $subhead.on('change',function(){subheadChanged($(this).val());});
+ }
+ populateSubheads('','');
 
  function notify(message,failed){
   if(window.toastr){failed?toastr.error(message):toastr.success(message);}
