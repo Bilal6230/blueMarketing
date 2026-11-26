@@ -22,6 +22,13 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
 .settings-screen .table thead{background:#eaf2f9;color:#304a6c}
 .settings-screen .table-responsive{max-height:calc(100dvh - 340px);overflow:auto}
 .settings-screen .tab-pane{min-height:0}
+/* Reusable full-height workspace convention for Settings tabs (S2 onward).
+   Individual tab sections opt in instead of stretching legacy form tabs. */
+.settings-screen .settings-main-card .tab-content>.tab-pane.settings-fill-tab{height:100%;min-height:0}
+.settings-screen .settings-fill-tab .settings-fill-card{min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.settings-screen .settings-fill-tab .settings-fill-scroll{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain}
+@media(max-width:1100px){.settings-screen .settings-main-card .tab-content>.tab-pane.settings-fill-tab{height:auto;min-height:100%}}
+
 .settings-screen .settings-modal-trigger{display:flex;justify-content:flex-end;margin:0 0 12px}
 .settings-screen .settings-field-image{max-width:96px;max-height:65px;object-fit:contain;margin:0 0 6px}
 .settings-screen .settings-section-title{border-bottom:1px solid #cad8e5;padding-bottom:8px;margin:8px 0 15px;font-size:17px;font-weight:700;color:#224b70}
