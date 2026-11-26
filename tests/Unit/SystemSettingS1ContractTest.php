@@ -71,7 +71,7 @@ final class SystemSettingS1ContractTest extends TestCase
         $this->assertStringContainsString('storeAs(\'settings\', $filename, \'public\')', $controller);
         $this->assertStringContainsString('if ($setting->type === \'file\') continue;', $controller);
         $this->assertStringContainsString('Storage::disk', $controller);
-        $this->assertStringContainsString("'images' => collect($imageUrls)", $controller);
+        $this->assertStringContainsString("'images' => collect(" . '$imageUrls' . ")", $controller);
     }
 
     public function test_information_fields_use_responsive_columns_and_image_preview_canvas(): void
