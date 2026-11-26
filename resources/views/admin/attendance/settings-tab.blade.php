@@ -1,3 +1,6 @@
+@push('style')
+<link rel="stylesheet" href="{{ asset('css/modern-account-directory.css') }}?v=2">
+@endpush
 <div class="tab-pane settings-fill-tab {{ $attendanceTabActive ? 'active' : '' }}" id="attendance-machine">
 @if(!$attendanceTablesAvailable)
     <div class="alert alert-warning">Attendance device tables are not installed. Contact your administrator.</div>
@@ -34,6 +37,23 @@
 #attendance-machine .as-table td,#attendance-machine .as-table th{border-color:#bacbd9}
 #attendance-machine .as-no-results{display:none}
 #attendance-machine .as-no-results.is-visible{display:table-row}
+#attendance-machine .bm-modern-export-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:46px;padding:7px 9px;border-bottom:1.5px solid #aebfd3;background:#f8fbfe}
+#attendance-machine .bm-modern-export-btn{padding:5px 9px;border:1px solid #b9cbe0;border-radius:5px;background:#fff;color:#174879;font-size:12px;font-weight:650;cursor:pointer}
+#attendance-machine .bm-modern-export-btn:hover{background:#e9f3ff;border-color:#347edb}
+#attendance-machine .bm-modern-column-menu{position:relative}
+#attendance-machine .bm-modern-column-options{position:absolute;left:0;top:100%;z-index:25;min-width:190px;padding:10px;background:white;border:1px solid #bccddf;box-shadow:0 8px 22px #203a5428}
+#attendance-machine .bm-modern-column-option{display:flex;align-items:center;gap:7px;margin:4px 0}
+#attendance-machine .bm-account-col{float:right;background:transparent;border:0;border-radius:5px;color:#4e6a8b;padding:3px 7px;cursor:pointer}
+#attendance-machine .bm-account-col:hover,#attendance-machine .bm-account-col.is-filtered{background:#d6e8fc;color:#185fc1}
+#attendance-machine .bm-account-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;min-height:45px;padding:7px 10px;border-top:1.5px solid #becfe0;background:white;flex:none}
+#attendance-machine .bm-account-footer-left{display:flex;align-items:center;gap:8px}
+#attendance-machine .bm-account-footer select{height:29px;border:1px solid #becfe0;border-radius:5px;font-size:12px}
+#attendance-machine .as-directory-footer .dv-page-btn{margin-left:3px}
+#attendance-machine .blue-actions-cell{text-align:center;min-width:58px}
+#attendance-machine .blue-actions-source{display:none!important}
+#attendance-machine .as-card .bm-account-table thead th{background:#eaf2fa;border-bottom:2px solid #2563eb}
+#attendance-machine .as-card .bm-account-table tbody tr:nth-child(even){background:#eaf1f8}
+#attendance-machine .as-card .bm-account-table tbody tr:nth-child(odd){background:#fff}
 #attendance-machine .as-note{font-size:12px;color:#65798b}
 #attendance-machine .as-mapping-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:8px;align-items:end}
 #attendance-machine .as-mapping-grid label,#as-device-modal label{font-weight:650;font-size:14px;display:block;margin-bottom:5px}
@@ -203,6 +223,7 @@ $(function(){
         applyMappingFilters();
         $mapForm[0].reset();$mapForm.find('[name=device_id]').val('');
         mappingEnabled(false);
+        $(document).trigger('attendance:tables-updated');
     }
     function applyDeviceFilters(){
         var query=$.trim($('#as-device-search').val()||'').toLowerCase(),kind=$('#as-connection-filter').val()||'',shown=0,total=0;
@@ -231,7 +252,7 @@ $(function(){
         $mapForm[0].reset();$mapForm.find('[name=device_id]').val(id);
         mappingEnabled(true);
         $('#as-mapping-count').text(items.length+' mappings');
-        if(!items.length){$rows.append($('<tr>').append($('<td>',{colspan:3,'class':'as-table-empty'}).text('No employee mappings for this device.')));applyMappingFilters();return;}
+        if(!items.length){$rows.append($('<tr>').append($('<td>',{colspan:3,'class':'as-table-empty'}).text('No employee mappings for this device.')));applyMappingFilters();$(document).trigger('attendance:tables-updated');return;}
         $.each(items,function(_,item){
             $rows.append($('<tr>').attr('data-mapping-id',item.id)
                 .append($('<td>').text(item.user_name),$('<td>').text(item.device_user_id),
@@ -243,6 +264,7 @@ $(function(){
         });
         $rows.append($('<tr>',{'class':'as-no-results as-mapping-no-results'}).append($('<td>',{colspan:3,'class':'as-table-empty'}).text('No matching employee mappings.')));
         applyMappingFilters();
+        $(document).trigger('attendance:tables-updated');
     }
     function deviceUrl(id,action){
         return $workspace.attr(action==='delete'?'data-delete-url':'data-device-url').replace('987654321',encodeURIComponent(id));
@@ -293,6 +315,7 @@ $(function(){
         $option.text(device.name);
         $('#as-device-count').text($rows.find('tr[data-id]').length+' devices');
         applyDeviceFilters();
+        $(document).trigger('attendance:tables-updated');
     }
     applyDeviceFilters();
     applyMappingFilters();
@@ -328,6 +351,7 @@ $(function(){
                   $('#as-device-count').text(n+' devices');
                   if(!n)$('#as-device-rows').append($('<tr>',{'class':'as-empty-device'}).append($('<td>',{colspan:4,'class':'as-table-empty'}).text('No devices configured. Click Add Device to begin.')));
                   applyDeviceFilters();
+                  $(document).trigger('attendance:tables-updated');
                   notify(data.message||'Device removed.',false);
               }).fail(function(xhr){notify(errorMessage(xhr),true);})
               .always(function(){setBusy(false);});
@@ -397,4 +421,5 @@ $(function(){
 });
 </script>
 @endif
+<script src="{{ asset('js/settings-attendance-directory.js') }}?v=1"></script>
 @endpush
