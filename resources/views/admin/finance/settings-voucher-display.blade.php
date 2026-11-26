@@ -40,7 +40,6 @@
   <div class="alert alert-warning">Voucher display settings migration is required.</div>
  @endif
  <section class="s4-directory settings-fill-card">
-  <div class="bm-modern-export-toolbar bm-export-placeholder"><button class="bm-modern-export-btn" disabled>Column Visibility</button><button class="bm-modern-export-btn" disabled>Copy</button><button class="bm-modern-export-btn" disabled>CSV</button><button class="bm-modern-export-btn" disabled>Excel</button><button class="bm-modern-export-btn" disabled>PDF</button><button class="bm-modern-export-btn" disabled>Print</button></div>
   <div class="s4-scroll settings-fill-scroll bm-account-table-wrap">
    <form id="settings-receipt-header-form" action="{{ route('setting.update') }}" method="POST" data-ajax="off">
     @csrf
@@ -91,7 +90,6 @@
    </form>
   </div>
   <div class="bm-account-footer s4-list-footer"></div>
-  <footer class="s4-footer">Disabling a voucher hides its new-entry links and returns 403 on protected entry URLs. Historical prints and approvals remain accessible. Prefix changes do not yet activate new numbering.</footer>
  </section>
 </div>
 <div class="modal fade" id="s4-display-modal" tabindex="-1" role="dialog" aria-hidden="true">
