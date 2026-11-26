@@ -1495,13 +1495,9 @@ class VoucherController extends Controller
             'items.*.legacy_plot_id'=>['nullable','integer','min:1'],
             'items.*.plot_code' => ['required', 'string', 'max:64'], 'items.*.description' => ['required', 'string', 'max:255'],
             'items.*.area' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,4})?$/D'],
-            'items.*.unit' => ['required', 'string', 'max:24'], 'items.*.type' => ['required', 'integer', \Illuminate\Validation\Rule::in([1, 2])],
+            'items.*.unit' => ['required', 'string', 'max:24'], 'items.*.type' => ['required', 'integer', \Illuminate\Validation\Rule::in([1, 2, 3])],
             'items.*.road_id' => ['required', 'integer', 'min:1'], 'items.*.facing_id' => ['required', 'integer', 'min:1'],
             'items.*.is_corner' => ['sometimes', 'boolean'],
-            'items.*.plot_category_definition_id' => ['nullable', 'integer', 'min:1'],
-            'items.*.plot_type_definition_id' => ['nullable', 'integer', 'min:1'],
-            'items.*.plot_size_definition_id' => ['nullable', 'integer', 'min:1'],
-            'items.*.plot_unit_definition_id' => ['nullable', 'integer', 'min:1'],
             'items.*.unit_rate' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,2})?$/D'],
             'items.*.inventory_account_id' => ['required', 'integer', 'min:1'],
 
@@ -1618,14 +1614,9 @@ class VoucherController extends Controller
         $projectId = (int) getSelectedTown();
         \App\Services\Finance\FinanceWorkflowAccess::authorizeRead($projectId);
         abort_unless(Schema::hasTable('finance_plot_purchases'), 409, 'Plot purchase storage is not installed.');
-        $definitions = Schema::hasTable('plot_definitions')
-            ? DB::table('plot_definitions')->where('project_id', $projectId)->where('is_active', 1)->orderBy('kind')->orderBy('name')
-                ->get(['id', 'kind', 'code', 'name', 'size_value', 'unit_code', 'unit_definition_id', 'legacy_value'])
-            : collect();
         return response()->json([
             'roads' => DB::table('roads')->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
             'facings' => DB::table('facings')->where('is_active', 1)->orderBy('name')->get(['id', 'name']),
-            'definitions' => $definitions,
         ]);
     }
 
@@ -1640,13 +1631,9 @@ class VoucherController extends Controller
             'items' => ['required', 'array', 'min:1', 'max:100'],
             'items.*.plot_code' => ['required', 'string', 'max:64'], 'items.*.description' => ['required', 'string', 'max:255'],
             'items.*.area' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,4})?$/D'],
-            'items.*.unit' => ['required', 'string', 'max:24'], 'items.*.type' => ['required', 'integer', \Illuminate\Validation\Rule::in([1, 2])],
+            'items.*.unit' => ['required', 'string', 'max:24'], 'items.*.type' => ['required', 'integer', \Illuminate\Validation\Rule::in([1, 2, 3])],
             'items.*.road_id' => ['required', 'integer', 'min:1'], 'items.*.facing_id' => ['required', 'integer', 'min:1'],
             'items.*.is_corner' => ['sometimes', 'boolean'],
-            'items.*.plot_category_definition_id' => ['nullable', 'integer', 'min:1'],
-            'items.*.plot_type_definition_id' => ['nullable', 'integer', 'min:1'],
-            'items.*.plot_size_definition_id' => ['nullable', 'integer', 'min:1'],
-            'items.*.plot_unit_definition_id' => ['nullable', 'integer', 'min:1'],
             'items.*.unit_rate' => ['required', 'regex:/^(0|[1-9][0-9]{0,13})(?:\\.[0-9]{1,2})?$/D'],
             'items.*.inventory_account_id' => ['required', 'integer', 'min:1'],
         ]);
@@ -1730,10 +1717,6 @@ class VoucherController extends Controller
         try { $details = (new \App\Services\Finance\PlotEntryWriter())->purchaseDetails($projectId, $purchaseId); }
         catch (\DomainException $error) { abort(404); }
         $plotFields=['item.*','plot.type','plot.road_id','plot.facing_id','plot.is_corner'];
-        foreach(['plot_category_definition_id','plot_type_definition_id',
-            'plot_size_definition_id','plot_unit_definition_id'] as $column) {
-            if (Schema::hasColumn('plots',$column)) $plotFields[]='plot.'.$column;
-        }
         $details['items'] = DB::table('finance_plot_purchase_items as item')
             ->join('plots as plot','plot.id','=','item.legacy_plot_id')
             ->where('item.purchase_id',$purchaseId)->where('plot.project_id',$projectId)
