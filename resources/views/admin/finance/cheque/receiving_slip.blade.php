@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Cheque Receiving Slip {{ $slipNumber }} - {{ Setting::getValue('app_name') }}</title>
+    <title>Cheque Receiving Slip {{ $slipNumber }} - {{ \App\Support\ProjectBranding::title($cheque->project_id ?? null) }}</title>
     <style>
         * {box-sizing:border-box}
         body {margin:0;background:#eef2f6;color:#243447;font:14px Arial,sans-serif}
@@ -55,7 +55,7 @@
     <div class="toolbar"><button type="button" id="cheque-print-slip">Print {{ request()->query('size') === 'pos80' ? 'POS 80mm' : 'A5' }} Slip</button></div>
     <main class="paper">
         <header class="company">
-            <img src="{{ asset('images/logo/blue-marketing-logo.png') }}" alt="Company logo">
+            <img src="{{ \App\Support\ProjectBranding::logoUrl($cheque->project_id ?? null) }}" alt="Company logo">
             <div>
                 <h1>{{ Setting::getValue('app_name') }}</h1>
                 <div>Official cheque receiving acknowledgement</div>
