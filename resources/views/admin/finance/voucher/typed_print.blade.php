@@ -2,6 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><title>{{ $voucherTitle }}</title>
 <style>body{font-family:Arial,sans-serif;margin:32px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:8px;text-align:left}</style></head>
 <body>
+    @include('admin.partials.project_print_identity', ['brandingProjectId' => $source->project_id ?? null])
     <h1>{{ $voucherTitle }}</h1>
     <h2>{{ $displayNumber }}</h2>
     <p>Document date: {{ $source->date }} · Reference: {{ $source->reference }}</p>
