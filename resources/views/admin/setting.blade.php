@@ -151,7 +151,8 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
                                             </tbody></table>
                                         @endif
                                     </div>
-                                    <div class="tab-pane {{ $activeSettingsTab === 'information' ? 'active' : '' }}" id="information" data-settings-direct="1" style="position:relative">\n                                        <div class="settings-s1-busy" aria-live="polite"><div class="settings-s1-busy-card"><div class="settings-s1-busy-preview"><i class="far fa-image fa-lg"></i></div><div><strong>Saving settings</strong><div class="text-muted">Updating information without reloading...</div></div></div></div>
+                                    <div class="tab-pane {{ $activeSettingsTab === 'information' ? 'active' : '' }}" id="information" data-settings-direct="1" style="position:relative">
+                                        <div class="settings-s1-busy" aria-live="polite"><div class="settings-s1-busy-card"><div class="settings-s1-busy-preview"><i class="far fa-image fa-lg"></i></div><div><strong>Saving settings</strong><div class="text-muted">Updating information without reloading...</div></div></div></div>
                                         <form id="settings-information-form" class="settings-info-form" action="{{ route('setting.update') }}" method="POST" enctype="multipart/form-data">
                                             @csrf
                                             @method('PUT')
