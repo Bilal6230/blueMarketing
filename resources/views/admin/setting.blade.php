@@ -284,7 +284,7 @@
                     $(this).remove();
                 });
             }
-            $(modalizeSettingsForms);
+            $(function(){ modalizeSettingsForms(document); });
             $(document).on('ajax:panel-updated', (_event, detail) => {
                 // AJAX may replace a tab and its launcher. Remove orphaned
                 // inactive modal shells rather than leaving stale overlays.
