@@ -401,6 +401,7 @@ class AccountingController extends Controller
 
         $x['title'] = 'Party Accounts';
         $x['data'] = SubheadAccounting::get();
+        $x['headaccounts'] = HeadAccounting::where('is_active', 1)->orderBy('name')->get(['id','name']);
         $x['role'] = Role::get();
         $x['users'] = User::get();
         $x['power'] = $power;
@@ -410,46 +411,69 @@ class AccountingController extends Controller
 
     public function subhead_store(Request $request)
     {
-        //dd($request->all());
-        $validator = Validator::make($request->all(), [
+        $data = $request->validate([
             'name' => ['required', 'string', 'max:25'],
+            'urdu_name' => ['nullable', 'string', 'max:255'],
             'is_active' => ['required', 'boolean'],
+            'cnic' => ['nullable', 'regex:/^\d{13}$/'],
+            'phone' => ['required', 'string', 'min:1', 'max:30'],
+            'head_accounting_id' => ['nullable', 'integer', 'exists:head_accountings,id'],
+        ], [
+            'cnic.regex' => 'NIC must contain exactly 13 digits if provided.',
+            'phone.required' => 'Phone Number is required.',
         ]);
-        if ($validator->fails()) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Please correct the account fields.', 'errors' => $validator->errors()], 422);
-            }
-            return back()->withErrors($validator)->withInput();
+        $projectId = (int) getSelectedTown();
+        if (!empty($data['head_accounting_id'])) {
+            abort_if($projectId < 1, 403, 'Select a project before assigning a Head Account.');
         }
-
 
         try {
-            $data = SubheadAccounting::create([
-                'name' => $request->name,
-                'urdu_name' => $request->urdu_name,
-                'is_active' => $request->is_active,
-                'cnic' => $request->cnic,
-                'phone' => $request->phone,
-                'create_by' => Auth::user()->id
-
-            ]);
-
+            $subhead = DB::transaction(function () use ($data, $projectId) {
+                if (!empty($data['head_accounting_id'])) {
+                    Project::whereKey($projectId)->lockForUpdate()->firstOrFail();
+                    $head = HeadAccounting::whereKey((int)$data['head_accounting_id'])->lockForUpdate()->firstOrFail();
+                    if ((int)$head->is_active !== 1 || (int)$data['is_active'] !== 1) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'head_accounting_id' => 'Both Head and Party Accounts must be active to create a Joint Account.',
+                        ]);
+                    }
+                }
+                $subhead = SubheadAccounting::create([
+                    'name' => $data['name'],
+                    'urdu_name' => $data['urdu_name'] ?? null,
+                    'is_active' => $data['is_active'],
+                    'cnic' => $data['cnic'] ?? null,
+                    'phone' => $data['phone'],
+                    'create_by' => Auth::id(),
+                ]);
+                if (!empty($data['head_accounting_id'])) {
+                    ProjectHeadSubhead::create([
+                        'project_id' => $projectId,
+                        'head_accounting_id' => (int)$data['head_accounting_id'],
+                        'subhead_accounting_id' => $subhead->id,
+                        'plot_id' => null,
+                        'customer_id' => null,
+                    ]);
+                }
+                return $subhead;
+            }, 3);
             if ($request->expectsJson()) {
-                return response()->json(['status' => 'success', 'message' => 'Account created successfully.', 'id' => $data->id], 201);
+                return response()->json([
+                    'status' => 'success', 'message' => 'Party Account created successfully.',
+                    'id' => $subhead->id,
+                ], 201);
             }
-            Alert::success('Notification', 'Data <b>' . $data->project . '</b> Save successfully ')->toToast()->toHtml();
-        } catch (\Throwable $th) {
+            return back()->with('success', 'Party Account created successfully.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            report($e);
             if ($request->expectsJson()) {
-                report($th);
-                return response()->json(['message' => 'Account could not be created. Please try again.'], 422);
+                return response()->json(['message' => 'Party Account could not be created.'], 422);
             }
-            report($th);
-            DB::rollback();
-            Alert::error('Notification', 'Data <b>' . $th->getMessage())->toToast()->toHtml();
+            return back()->withErrors(['name' => 'Party Account could not be created.'])->withInput();
         }
-        return back();
     }
-
 
 
     public function subhead_show(Request $request)
@@ -473,6 +497,8 @@ class AccountingController extends Controller
             'id' => ['required', 'integer', 'exists:subhead_accountings,id'],
             'name' => ['required', 'string', 'max:25'],
             'is_active' => ['required', 'boolean'],
+            'cnic' => ['nullable', 'regex:/^\d{13}$/'],
+            'phone' => ['required', 'string', 'min:1', 'max:30'],
             'status_change_reason' => ['nullable', 'string', 'max:500'],
         ];
 
