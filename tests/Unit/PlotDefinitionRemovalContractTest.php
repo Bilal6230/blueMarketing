@@ -18,6 +18,9 @@ final class PlotDefinitionRemovalContractTest extends TestCase
         $this->assertStringContainsString("'3'=>'Others'", $view);
         $this->assertStringContainsString('<th>Plot Type</th>', $view);
         $this->assertStringContainsString('<th>Plot Number</th>', $view);
+        $this->assertSame(2, substr_count($view, 'disabled aria-label="Selected Project"'));
+        $this->assertSame(2, substr_count($view, 'type="hidden" name="project_id"'));
+        $this->assertStringContainsString('<label class="fbox">Plot Size</label>', $view);
         $this->assertStringNotContainsString('plotDefinitionsReady', $controller);
         $this->assertStringNotContainsString('PlotDefinition', $controller);
         $this->assertStringNotContainsString('plot_definition', $view);
