@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Models\AttendanceDevice;
 use App\Models\User;
 use App\Models\ProjectBankAccount;
+use App\Models\ProjectCashAccount;
 use App\Models\ProjectHeadSubhead;
 use RealRashid\SweetAlert\Facades\Alert;
 use Symfony\Component\HttpFoundation\Response;
@@ -65,6 +66,7 @@ class SettingController extends Controller
         $x['canManageFinanceSettings'] = $isAttendanceAdmin && auth()->user()->can('update setting') && $projectId > 0;
         $financeSchemaReady = Schema::hasTable('project_bank_accounts') && Schema::hasTable('project_bank_account_audits');
         $x['financeSettingsSchemaReady'] = $financeSchemaReady;
+        $x['cashSettingsSchemaReady'] = Schema::hasTable('project_cash_accounts') && Schema::hasTable('project_cash_account_audits') && Schema::hasColumn('project_bank_accounts', 'display_title');
         $defaultPaymentLabels = [1 => 'Cash', 2 => 'Online', 3 => 'Check'];
         $x['projectPaymentMethodLabels'] = $projectId > 0 && Schema::hasTable('project_payment_method_labels')
             ? collect($defaultPaymentLabels)->map(fn ($label, $code) => DB::table('project_payment_method_labels')
@@ -79,6 +81,10 @@ class SettingController extends Controller
         $x['projectBankAccounts'] = $financeSchemaReady && $projectId > 0
             ? ProjectBankAccount::with(['accountMapping.headAccounting', 'accountMapping.subheadAccounting'])
                 ->where('project_id', $projectId)->orderByDesc('is_active')->orderBy('bank_name')->get()
+            : collect();
+        $x['projectCashAccounts'] = $x['cashSettingsSchemaReady'] && $projectId > 0
+            ? ProjectCashAccount::with(['accountMapping.headAccounting','accountMapping.subheadAccounting'])
+                ->where('project_id',$projectId)->orderByDesc('is_active')->orderBy('display_title')->get()
             : collect();
         $x['projectBankAccount'] = $financeSchemaReady && $projectId > 0
             ? ProjectBankAccount::where('project_id', $projectId)->when(request()->filled('bank_account_id'),
@@ -209,6 +215,7 @@ class SettingController extends Controller
             'account_mapping_id' => ['required', 'integer', 'min:1'],
             'bank_name' => ['required', 'string', 'max:120'],
             'account_title' => ['required', 'string', 'max:120'],
+            'display_title' => ['nullable', 'string', 'max:120'],
             'branch' => ['nullable', 'string', 'max:120'],
             'account_number' => ['nullable', 'string', 'max:255'],
             'is_active' => ['required', 'boolean'],
@@ -246,7 +253,7 @@ class SettingController extends Controller
                 $old = $account->exists ? $this->bankAccountAuditValues($account) : null;
                 $account->fill([
                     'account_mapping_id' => $mapping->id, 'bank_name' => trim($data['bank_name']),
-                    'account_title' => trim($data['account_title']), 'branch' => isset($data['branch']) ? trim($data['branch']) : null,
+                    'account_title' => trim($data['account_title']), 'display_title' => trim((string)($data['display_title'] ?? '')) ?: trim($data['account_title']), 'branch' => isset($data['branch']) ? trim($data['branch']) : null,
                     'is_active' => (bool) $data['is_active'], 'updated_by' => $request->user()->id,
                 ]);
                 if (!$account->exists || trim((string) ($data['account_number'] ?? '')) !== '') {
@@ -268,8 +275,116 @@ class SettingController extends Controller
             ]);
         }
 
+        if ($request->expectsJson()) {
+            return response()->json(['message'=>'Bank account saved. Existing transaction history was not changed.']);
+        }
         return redirect()->route('setting.index', ['tab' => 'bank-accounts'])
             ->with('success', 'Project bank account settings saved. Existing transaction history was not changed.');
+    }
+
+    /** Project-scoped bank/cash JSON for modal edit; never serialize encrypted bank numbers. */
+    public function accountSettingsDetail(Request $request, string $type, int $id)
+    {
+        $projectId = $this->s3ProjectId($request);
+        abort_unless(in_array($type,['bank','cash'],true),404);
+        if ($type === 'bank') {
+            $a = ProjectBankAccount::where('project_id',$projectId)->findOrFail($id);
+            return response()->json(['account'=>[
+                'id'=>$a->id,'display_title'=>$a->display_title ?: $a->account_title,
+                'bank_name'=>$a->bank_name,'account_title'=>$a->account_title,
+                'branch'=>$a->branch,'account_mapping_id'=>$a->account_mapping_id,
+                'account_number_last4'=>$a->account_number ? substr($a->account_number,-4) : null,
+                'is_active'=>(bool)$a->is_active,
+            ]]);
+        }
+        $a=ProjectCashAccount::where('project_id',$projectId)->findOrFail($id);
+        return response()->json(['account'=>[
+            'id'=>$a->id,'display_title'=>$a->display_title,'account_mapping_id'=>$a->account_mapping_id,
+            'is_active'=>(bool)$a->is_active,
+        ]]);
+    }
+
+    private function s3ProjectId(Request $request): int
+    {
+        abort_unless($request->user()->hasAnyRole(['admin','superadmin']) && $request->user()->can('update setting'),403);
+        $projectId=(int)getSelectedTown();
+        abort_unless($projectId>0,400,'Select a project first.');
+        if (!$request->user()->hasRole('superadmin')) abort_unless((int)$request->user()->project_id===$projectId,403);
+        return $projectId;
+    }
+
+    public function saveProjectCashAccount(Request $request)
+    {
+        $projectId=$this->s3ProjectId($request);
+        abort_unless(Schema::hasTable('project_cash_accounts') && Schema::hasTable('project_cash_account_audits'),409,'Cash account migration is required.');
+        $data=$request->validate([
+            'cash_account_id'=>['nullable','integer','min:1'],
+            'display_title'=>['required','string','max:120'],
+            'account_mapping_id'=>['required','integer','min:1'],
+            'is_active'=>['required','boolean'],
+        ]);
+        DB::transaction(function()use($projectId,$data,$request){
+            DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
+            $account=!empty($data['cash_account_id'])
+                ? ProjectCashAccount::where('project_id',$projectId)->lockForUpdate()->findOrFail((int)$data['cash_account_id'])
+                : new ProjectCashAccount(['project_id'=>$projectId,'created_by'=>$request->user()->id]);
+            $mapping=ProjectHeadSubhead::where('project_id',$projectId)->whereNull('plot_id')->whereNull('customer_id')
+                ->whereKey((int)$data['account_mapping_id'])
+                ->when((int)$data['is_active']===1,fn($q)=>$q->availableForPosting())
+                ->first();
+            if (!$mapping || ((int)$data['is_active']===0 && !$account->exists
+                && !ProjectHeadSubhead::availableForPosting()->whereKey($mapping->id)->exists())) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['account_mapping_id'=>'Select a valid active project accounting mapping.']);
+            }
+            if ($account->exists && (int)$account->account_mapping_id!==(int)$mapping->id) {
+                try { app(\App\Services\Finance\AccountMappingHistoryGuard::class)->assertNoFinancialHistory((int)$account->account_mapping_id); }
+                catch(\DomainException $e){
+                    throw \Illuminate\Validation\ValidationException::withMessages(['account_mapping_id'=>'Existing cash account mapping has financial history. Create a separate cash account instead.']);
+                }
+            }
+            if (ProjectCashAccount::where('project_id',$projectId)->where('account_mapping_id',$mapping->id)
+                ->when($account->exists,fn($q)=>$q->whereKeyNot($account->id))->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['account_mapping_id'=>'Mapping is already assigned to another cash account.']);
+            }
+            $old=$account->exists?$account->only(['display_title','account_mapping_id','is_active']):null;
+            $account->fill(['display_title'=>trim($data['display_title']),'account_mapping_id'=>$mapping->id,
+                'is_active'=>(bool)$data['is_active'],'updated_by'=>$request->user()->id]);
+            $account->save();
+            DB::table('project_cash_account_audits')->insert([
+                'project_id'=>$projectId,'cash_account_id'=>$account->id,'action'=>$old?'updated':'created',
+                'old_values'=>$old?json_encode($old,JSON_THROW_ON_ERROR):null,
+                'new_values'=>json_encode($account->only(['display_title','account_mapping_id','is_active']),JSON_THROW_ON_ERROR),
+                'actor_id'=>$request->user()->id,'created_at'=>now(),
+            ]);
+        },3);
+        return response()->json(['message'=>'Cash account saved; historical financial records remain unchanged.']);
+    }
+
+    public function changeProjectAccountStatus(Request $request,string $type,int $id)
+    {
+        $projectId=$this->s3ProjectId($request);
+        abort_unless(in_array($type,['bank','cash'],true),404);
+        $data=$request->validate(['is_active'=>['required','boolean']]);
+        DB::transaction(function()use($type,$id,$projectId,$data,$request){
+            $model=$type==='bank'?ProjectBankAccount::class:ProjectCashAccount::class;
+            $account=$model::where('project_id',$projectId)->lockForUpdate()->findOrFail($id);
+            $old=$type==='bank'?$this->bankAccountAuditValues($account):$account->only(['display_title','account_mapping_id','is_active']);
+            if ((int)$data['is_active']===1) {
+                $valid=ProjectHeadSubhead::availableForPosting()->where('project_id',$projectId)
+                    ->whereKey($account->account_mapping_id)->whereNull('plot_id')->whereNull('customer_id')->exists();
+                if (!$valid)throw \Illuminate\Validation\ValidationException::withMessages(['is_active'=>'The accounting mapping is inactive. Select an active mapping before activating this account.']);
+            }
+            $account->is_active=(bool)$data['is_active'];
+            $account->updated_by=$request->user()->id;$account->save();
+            $new=$type==='bank'?$this->bankAccountAuditValues($account):$account->only(['display_title','account_mapping_id','is_active']);
+            $table=$type==='bank'?'project_bank_account_audits':'project_cash_account_audits';
+            DB::table($table)->insert([
+                'project_id'=>$projectId,$type.'_account_id'=>$account->id,'action'=>$account->is_active?'activated':'deactivated',
+                'old_values'=>json_encode($old,JSON_THROW_ON_ERROR),'new_values'=>json_encode($new,JSON_THROW_ON_ERROR),
+                'actor_id'=>$request->user()->id,'created_at'=>now(),
+            ]);
+        },3);
+        return response()->json(['message'=>'Account status updated.']);
     }
 
     public function savePaymentMethodLabels(Request $request)
@@ -317,7 +432,7 @@ class SettingController extends Controller
         $number = (string) ($account->account_number ?? '');
         return [
             'account_mapping_id' => (int) $account->account_mapping_id, 'bank_name' => $account->bank_name,
-            'account_title' => $account->account_title, 'branch' => $account->branch,
+            'account_title' => $account->account_title, 'display_title' => $account->display_title, 'branch' => $account->branch,
             'account_number_last4' => $number === '' ? null : substr($number, -4), 'is_active' => (bool) $account->is_active,
         ];
     }
