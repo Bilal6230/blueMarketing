@@ -54,7 +54,7 @@ final class PlotModernDirectoryParityContractTest extends TestCase
         $this->assertLessThan($nextContainer,$actions);
         $this->assertStringContainsString("@can('create plot')", $plots);
         $this->assertStringContainsString('btn-add-plot', $plots);
-        $this->assertStringContainsString("$card.find('.bm-user-toolbar-actions,.bm-permission-toolbar-actions,.bm-plot-toolbar-actions')", $tools);
+        $this->assertStringContainsString(\'$card.find(\\'.bm-user-toolbar-actions,.bm-permission-toolbar-actions,.bm-plot-toolbar-actions\\')\', $tools);
         $this->assertStringContainsString('$placeholder.remove()', $tools);
     }
 
