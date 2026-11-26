@@ -46,7 +46,7 @@
     @csrf
     @method('PUT')
     @php($receiptHeaderSettings = \App\Models\Setting::where('type','toggle')->whereIn('key',array_map(fn($type) => $type.'_Receipt_Header',$types))->get()->keyBy('key'))
-    @php($displayVoucherSeries = collect(\App\Services\Finance\ProjectVoucherDisplay::SERIES)->merge($types)->unique()->values())
+    @php($displayVoucherSeries = collect(\App\Services\Finance\ProjectVoucherDisplay::SERIES)->merge(array_keys(\App\Services\Finance\VoucherAvailability::FAMILIES))->merge($types)->unique()->values())
     <table class="s4-table" id="s4-directory-table">
      <thead><tr><th>Voucher Name</th><th>Current Prefix</th><th>Legacy Series</th><th>Print Header</th><th>Active / Inactive</th><th>Action</th></tr></thead>
      <tbody>
