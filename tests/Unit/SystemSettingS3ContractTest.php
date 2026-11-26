@@ -24,11 +24,11 @@ final class SystemSettingS3ContractTest extends TestCase
     {
         $view=file_get_contents(resource_path('views/admin/finance/settings-accounts.blade.php'));
         $script=file_get_contents(public_path('js/settings-s3-accounts.js'));
-        $this->assertStringContainsString('bm-modern-export-toolbar', $view);
+        $this->assertStringNotContainsString('bm-modern-export-toolbar bm-export-placeholder', $view);
         $this->assertStringContainsString('blue-actions-cell', $view);
         $this->assertStringContainsString('financeVoucherComponents.createFilter', $script);
         $this->assertStringContainsString('blueActionMenu.enhance', $script);
-        $this->assertStringContainsString('blueModernDirectoryTools.mount', $script);
+        $this->assertStringNotContainsString('blueModernDirectoryTools.mount', $script);
         $this->assertStringContainsString('e.preventDefault()', str_replace('event.preventDefault()', 'e.preventDefault()', $script));
         $this->assertStringContainsString('data-ajax="off"', $view);
     }
