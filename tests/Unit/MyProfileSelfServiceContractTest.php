@@ -43,7 +43,7 @@ final class MyProfileSelfServiceContractTest extends TestCase
         $this->assertStringContainsString("'mimes:jpg,jpeg,png,webp'", $controller);
         $this->assertStringContainsString("'max:2048'", $controller);
         $this->assertStringContainsString("->store('avatar', 'public')", $controller);
-        $this->assertStringContainsString("Storage::disk('public')->delete($newAvatar)", $controller);
+        $this->assertStringContainsString('Storage::disk(\'public\')->delete($newAvatar)', $controller);
         $this->assertStringNotContainsString('$user->email =', $controller);
         $this->assertStringNotContainsString('$user->role =', $controller);
     }
