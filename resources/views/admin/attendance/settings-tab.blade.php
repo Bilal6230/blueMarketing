@@ -198,17 +198,40 @@ $(function(){
     function resetMappings(message){
         $('#as-mapping-rows').empty().append($('<tr>').append($('<td>',{colspan:3,'class':'as-table-empty'}).text(message)));
         $('#as-mapping-count').text('0 mappings');
+        applyMappingFilters();
         $mapForm[0].reset();$mapForm.find('[name=device_id]').val('');
         mappingEnabled(false);
     }
+    function applyDeviceFilters(){
+        var query=$.trim($('#as-device-search').val()||'').toLowerCase(),kind=$('#as-connection-filter').val()||'',shown=0,total=0;
+        $('#as-device-rows tr[data-id]').each(function(){
+            var $row=$(this),text=$row.text().toLowerCase(),
+                connection=$.trim($row.find('.as-device-connection').text()).toLowerCase(),
+                visible=text.indexOf(query)!==-1&&(!kind||connection===kind);
+            $row.toggle(visible);total++;if(visible)shown++;
+        });
+        $('#as-device-visible-count').text(shown+' / '+total);
+        $('.as-device-no-results').toggleClass('is-visible',total>0&&shown===0);
+    }
+    function applyMappingFilters(){
+        var query=$.trim($('#as-mapping-search').val()||'').toLowerCase(),shown=0,total=0;
+        $('#as-mapping-rows tr[data-mapping-id]').each(function(){
+            var visible=$(this).text().toLowerCase().indexOf(query)!==-1;
+            $(this).toggle(visible);total++;if(visible)shown++;
+        });
+        $('#as-mapping-visible-count').text(shown+' / '+total);
+        $('#as-mapping-rows .as-mapping-no-results').toggleClass('is-visible',total>0&&shown===0);
+    }
+    $('#as-device-search,#as-connection-filter').on('input change',applyDeviceFilters);
+    $('#as-mapping-search').on('input',applyMappingFilters);
     function populateMappings(items,id){
         var $rows=$('#as-mapping-rows').empty();
         $mapForm[0].reset();$mapForm.find('[name=device_id]').val(id);
         mappingEnabled(true);
         $('#as-mapping-count').text(items.length+' mappings');
-        if(!items.length){$rows.append($('<tr>').append($('<td>',{colspan:3,'class':'as-table-empty'}).text('No employee mappings for this device.')));return;}
+        if(!items.length){$rows.append($('<tr>').append($('<td>',{colspan:3,'class':'as-table-empty'}).text('No employee mappings for this device.')));applyMappingFilters();return;}
         $.each(items,function(_,item){
-            $rows.append($('<tr>')
+            $rows.append($('<tr>').attr('data-mapping-id',item.id)
                 .append($('<td>').text(item.user_name),$('<td>').text(item.device_user_id),
                     $('<td>').append(
                         $('<button>',{type:'button','class':'btn btn-sm btn-outline-primary as-edit-mapping'}).text('Edit')
@@ -216,6 +239,8 @@ $(function(){
                         $('<button>',{type:'button','class':'btn btn-sm btn-outline-danger ml-1 as-delete-mapping'}).text('Delete')
                             .attr('data-id',item.id))));
         });
+        $rows.append($('<tr>',{'class':'as-no-results as-mapping-no-results'}).append($('<td>',{colspan:3,'class':'as-table-empty'}).text('No matching employee mappings.')));
+        applyMappingFilters();
     }
     function deviceUrl(id,action){
         return $workspace.attr(action==='delete'?'data-delete-url':'data-device-url').replace('987654321',encodeURIComponent(id));
@@ -252,9 +277,9 @@ $(function(){
         var $rows=$('#as-device-rows'),$row=$rows.find('tr[data-id="'+device.id+'"]');
         var $new=$('<tr>').attr('data-id',device.id);
         var $actions=$('<div>',{'class':'as-actions'})
-          .append($('<button>',{type:'button','class':'btn btn-sm btn-outline-primary as-edit-device'}).text('Edit').attr('data-id',device.id),
-                  $('<button>',{type:'button','class':'btn btn-sm btn-outline-info as-select-device'}).text('Map IDs').attr('data-id',device.id),
-                  $('<button>',{type:'button','class':'btn btn-sm btn-outline-danger as-delete-device'}).text('Delete').attr('data-id',device.id));
+          .append($('<button>',{type:'button','class':'btn btn-sm btn-outline-primary as-edit-device'}).html('<i class="fas fa-pen" aria-hidden="true"></i>Edit').attr('data-id',device.id),
+                  $('<button>',{type:'button','class':'btn btn-sm btn-outline-info as-select-device'}).html('<i class="fas fa-users" aria-hidden="true"></i>Map IDs').attr('data-id',device.id),
+                  $('<button>',{type:'button','class':'btn btn-sm btn-outline-danger as-delete-device'}).html('<i class="fas fa-trash-alt" aria-hidden="true"></i>Delete').attr('data-id',device.id));
         $new.append($('<td>').append($('<strong>',{'class':'as-device-name'}).text(device.name),$('<div>',{'class':'as-note'}).text((device.vendor||'')+' '+(device.model||''))),
             $('<td>').append($('<span>').text(device.connection_type),$('<div>',{'class':'as-note'}).text(device.host||'Not provided')),
             $('<td>').append($('<span>',{'class':'badge badge-warning'}).text('Not connected')),
@@ -265,7 +290,10 @@ $(function(){
         if(!$option.length)$option=$('<option>').val(device.id).appendTo($mapSelect);
         $option.text(device.name);
         $('#as-device-count').text($rows.find('tr[data-id]').length+' devices');
+        applyDeviceFilters();
     }
+    applyDeviceFilters();
+    applyMappingFilters();
     $('#as-new-device').on('click',function(){
         $deviceForm[0].reset();
         $deviceForm.find('[name=device_id]').val('');
@@ -297,6 +325,7 @@ $(function(){
                   var n=$('#as-device-rows tr[data-id]').length;
                   $('#as-device-count').text(n+' devices');
                   if(!n)$('#as-device-rows').append($('<tr>',{'class':'as-empty-device'}).append($('<td>',{colspan:4,'class':'as-table-empty'}).text('No devices configured. Click Add Device to begin.')));
+                  applyDeviceFilters();
                   notify(data.message||'Device removed.',false);
               }).fail(function(xhr){notify(errorMessage(xhr),true);})
               .always(function(){setBusy(false);});
