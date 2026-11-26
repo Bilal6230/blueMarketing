@@ -40,6 +40,24 @@ final class PlotModernDirectoryParityContractTest extends TestCase
         $this->assertStringContainsString('bm-plot-toolbar-actions',$tools);
     }
 
+    public function test_plot_create_action_survives_loading_toolbar_replacement(): void
+    {
+        $plots=file_get_contents(resource_path('views/admin/plots/index.blade.php'));
+        $tools=file_get_contents(public_path('js/blue-modern-directory-tools.js'));
+        $placeholder=strpos($plots,'bm-modern-export-toolbar bm-export-placeholder');
+        $actions=strpos($plots,'<div class="bm-plot-toolbar-actions">');
+        $nextContainer=strpos($plots,'<div class="card-body table-responsive bm-account-table-wrap">');
+        $this->assertNotFalse($placeholder);
+        $this->assertNotFalse($actions);
+        $this->assertNotFalse($nextContainer);
+        $this->assertGreaterThan($placeholder,$actions);
+        $this->assertLessThan($nextContainer,$actions);
+        $this->assertStringContainsString("@can('create plot')", $plots);
+        $this->assertStringContainsString('btn-add-plot', $plots);
+        $this->assertStringContainsString("$card.find('.bm-user-toolbar-actions,.bm-permission-toolbar-actions,.bm-plot-toolbar-actions')", $tools);
+        $this->assertStringContainsString('$placeholder.remove()', $tools);
+    }
+
     public function test_plots_keep_existing_edit_and_delete_routes_and_sold_guards(): void
     {
         $plots=file_get_contents(resource_path('views/admin/plots/index.blade.php'));
