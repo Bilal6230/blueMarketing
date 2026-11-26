@@ -62,7 +62,7 @@
  @if($financeView('sv') && $voucherVisible('SV'))<li class="nav-item"><a href="{{ route('sales.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Sales Vouchers</p></a></li>@endif
  @if($financeView('cv') && $voucherVisible('CV'))<li class="nav-item"><a href="{{ route('commision.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Commission Vouchers</p></a></li>@endif
  @can('read slip')<li class="nav-item"><a href="{{ route('payment_schedule.cash') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Receive Payment</p></a></li>@endcan
- @if($financeView('extra-charge') && $voucherVisible('EC'))<li class="nav-item"><a href="{{ route('payment_schedule.extra_charge') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Extra Charge</p></a></li>@endif
+ @if($financeView('extra-charge') && ($voucherVisible('EC') || $voucherVisible('ECP')))<li class="nav-item"><a href="{{ route('payment_schedule.extra_charge') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Extra Charge</p></a></li>@endif
 </ul></li>
 @endif
 
