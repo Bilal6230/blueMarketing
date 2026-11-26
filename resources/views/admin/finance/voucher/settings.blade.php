@@ -2,126 +2,134 @@
 @section('title','Voucher Settings')
 @section('content')
 <style>
-.voucher-settings-page{background:#f3f7fb;min-height:calc(100vh - 140px);padding:14px}
-.voucher-settings-page .vs-head{background:#e9f7ed;border-bottom:2px solid #128044;border-radius:7px;padding:14px 17px;margin-bottom:12px}
-.voucher-settings-page h4{margin:0;color:#08763e;font-weight:700}
-.voucher-settings-page .vs-card{border:1px solid #c5e5d0;border-top:3px solid #168348;border-radius:9px;background:white;margin-bottom:12px}
-.voucher-settings-page .vs-card-body{padding:14px}
-.voucher-settings-page label{font-size:12px;font-weight:700}
-.voucher-settings-page .vs-status{font-size:11px;font-weight:700}
+.voucher-settings-page{background:#f3f7fb;min-height:calc(100vh - 140px);padding:12px}
+.voucher-settings-page .vs-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:#e9f7ed;border-bottom:2px solid #128044;border-radius:7px;padding:12px 16px;margin-bottom:12px}
+.voucher-settings-page h4{margin:0;color:#08763e;font-weight:700;font-size:21px}
+.voucher-settings-page .vs-panel{border:1px solid #b8d0c3;border-top:3px solid #168348;border-radius:8px;background:#fff;overflow:hidden}
+.voucher-settings-page .vs-panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #b8d0c3}
+.voucher-settings-page .vs-panel-head h5{margin:0;color:#12663d;font-size:15px;font-weight:700}
+.voucher-settings-page .vs-panel-head small{color:#68766e;font-size:12px}
+.voucher-settings-page .vs-table-wrap{overflow-x:auto;max-height:calc(100vh - 265px);min-height:220px;overflow-y:auto}
+.voucher-settings-page .vs-table{width:100%;min-width:930px;margin:0;border-collapse:separate;border-spacing:0;font-size:13px}
+.voucher-settings-page .vs-table thead th{position:sticky;top:0;z-index:3;background:#eaf3ed;color:#235c40;border-bottom:2px solid #96bba6;padding:11px 12px;text-align:left;white-space:nowrap}
+.voucher-settings-page .vs-table tbody td{padding:9px 12px;vertical-align:middle;border-bottom:1px solid #c4d4ca}
+.voucher-settings-page .vs-table tbody tr:nth-child(even){background:#f1f6f3}
+.voucher-settings-page .vs-table tbody tr:hover{background:#e5f3e9}
+.voucher-settings-page .vs-table tbody tr:last-child td{border-bottom:0}
+.voucher-settings-page .vs-voucher{font-size:13px;font-weight:700;color:#1c2b21}
+.voucher-settings-page .vs-code{font-size:11px;color:#5d7566;margin-left:4px;font-weight:600}
+.voucher-settings-page .vs-switch{display:inline-flex;align-items:center;min-width:55px;margin-left:2px}
+.voucher-settings-page .vs-switch label{cursor:pointer;font-size:12px;font-weight:600;margin:0}
+.voucher-settings-page .vs-approver{width:100%}
 .voucher-settings-page .ts-wrapper{width:100%}
-.voucher-settings-page .ts-control{min-height:34px;border-radius:4px;font-size:13px}
+.voucher-settings-page .ts-control{min-height:34px;border-radius:5px;font-size:13px}
 .voucher-settings-page select.tomselected{display:none!important}
-.voucher-settings-page .vs-disabled{opacity:.8;background:#f8f9fa}
-.voucher-settings-page .vs-disabled .vs-card-body{color:#5f6b76}
-.voucher-settings-page .vs-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.voucher-settings-page .vs-field-error{font-size:11px;line-height:1.25}
+.voucher-settings-page .vs-save,.voucher-settings-page .vs-reversal-save{white-space:nowrap;font-size:12px}
+.voucher-settings-page .vs-muted{color:#84938a;font-size:12px}
 .voucher-settings-page .vs-toast{position:fixed;right:18px;top:78px;z-index:2150;display:none;max-width:400px}
-.voucher-settings-page .vs-group{margin-bottom:22px}
-.voucher-settings-page .vs-group-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:9px 13px;margin-bottom:12px;border:1px solid #d9e6dc;border-left:4px solid #168348;border-radius:8px;background:#fff}
-.voucher-settings-page .vs-group-heading h5{font-size:15px;font-weight:700;color:#12663d;margin:0 0 2px}
-.voucher-settings-page .vs-group-heading p{font-size:12px;color:#596b62;margin:0}
-.voucher-settings-page .vs-group-count{font-size:12px;font-weight:700;color:#187345;background:#eaf7ef;padding:5px 10px;border-radius:999px}
-.voucher-settings-page .vs-group-approval .vs-group-heading{border-left-color:#4779ac}
-.voucher-settings-page .vs-group-approval .vs-group-heading h5{color:#305d8c}
-.voucher-settings-page .vs-group-approval .vs-group-count{color:#305d8c;background:#ecf3fb}
-.voucher-settings-page .vs-group .row>[class*="col-"]{display:flex}
-.voucher-settings-page .vs-group .vs-card{width:100%;height:100%}
+.voucher-settings-page .vs-table .vs-group-row td{background:#e3ede7!important;color:#2b6746;font-size:12px;font-weight:700;letter-spacing:.015em;padding:7px 12px;border-bottom:1px solid #bbd2c1}
+.voucher-settings-page .vs-table .vs-group-row:hover{background:#e3ede7}
+.voucher-settings-page .vs-table .vs-reversal-form,.voucher-settings-page .vs-table .vs-policy-form{margin:0}
+.voucher-settings-page .vs-disabled{opacity:.65}
+@media(max-width:767px){.voucher-settings-page{padding:8px}.voucher-settings-page .vs-head{padding:10px}.voucher-settings-page .vs-panel-head{align-items:flex-start;flex-direction:column}.voucher-settings-page .vs-table-wrap{max-height:calc(100vh - 245px)}}
 </style>
 <div class="content-wrapper voucher-settings-page">
  <div class="container-fluid">
-  <div class="vs-head vs-toolbar">
-   <div><h4>Voucher Settings</h4><small class="text-muted">Selected project · Approval settings and applicable reversal controls</small></div>
+  <div class="vs-head">
+   <div><h4>Voucher Settings</h4><small class="text-muted">Project-wise voucher approval and reversal controls</small></div>
    <a class="btn btn-outline-success btn-sm" href="{{ route('finance.daily-vouchers.approvals.index') }}">Approval Dashboard</a>
   </div>
-  <div class="alert alert-info small">
-   Approval policy applies to <strong>new vouchers only</strong>. CR, CP, CCR, CDR, BOR, BOP, JV and SV use the guarded approval engine. Approvers must have the <code>voucher approver</code> permission through their role or direct assignment. Super Admin has universal decision authority.
-   BOR and BOP have <strong>independent</strong> switches and do not inherit CR/CP approval settings. With approval OFF, new bank vouchers post directly; with approval ON, they remain inactive until approved. Existing Posted vouchers are unchanged.<br>
-   <strong>Reversal ON/OFF:</strong> Available only where a functional Reverse action exists: Cash Receipt/Payment, Bank Deposit/Withdrawal, Plot Receipt/Purchase. No reversal switch is shown for voucher types without that action. This does not change Approval, ordinary Edit/Delete or bank/cheque custody rules.<br>
-   <strong>Cheque Correction (CHQ_CORR)</strong> and <strong>Online Correction (ONL_CORR)</strong> are separate policies for existing confirmed/cleared management records: ON stages a proposed amount/voucher adjustment until the assigned finance approver decides; OFF allows users with the corresponding <code>finance cheque correct</code> or <code>finance online correct</code> permission to apply a reviewed same-ID correction immediately. Both paths preserve original voucher identities and change history.
-  </div>
-  {{-- Group only by real, functional browser Reverse actions. Keep all
-       approval-only cards and their saved project policy data unchanged. --}}
-  @foreach([
-   ['id'=>'reversal','title'=>'Approval + Reversal Settings','description'=>'Vouchers with a functional Reverse action. Approval and Reversal can be configured independently.','codes'=>$reversalTypes],
-   ['id'=>'approval','title'=>'Approval Settings Only','description'=>'Other voucher types: approval configuration only; no unused Reversal switches.','codes'=>array_values(array_diff(array_keys($types),$reversalTypes))]
-  ] as $group)
-  <section class="vs-group vs-group-{{ $group['id'] }}" aria-labelledby="vs-group-title-{{ $group['id'] }}">
-   <div class="vs-group-heading">
-    <div>
-     <h5 id="vs-group-title-{{ $group['id'] }}">{{ $group['title'] }}</h5>
-     <p>{{ $group['description'] }}</p>
-    </div>
-    <span class="vs-group-count">{{ count($group['codes']) }} voucher types</span>
+  <section class="vs-panel" aria-labelledby="vs-table-title">
+   <div class="vs-panel-head">
+    <h5 id="vs-table-title">Voucher Policies</h5>
+    <small>{{ count($types) }} voucher types · Changes apply to new approvals; reversal is independent</small>
    </div>
-   <div class="row">
-   @foreach($group['codes'] as $type)
-   @php($definition=$types[$type])
-   @php($policy=$policies->get($type))
-   <div class="col-xl-4 col-lg-6">
-    <div class="vs-card {{ $definition['supported'] ? '' : 'vs-disabled' }}">
-     <div class="vs-card-body">
-      <div class="vs-toolbar mb-2"><strong>{{ $definition['label'] }} ({{ $type }})</strong>
-       @if($definition['supported'])
-        <span class="badge badge-success vs-status">Approval supported</span>
-       @else
-        <span class="badge badge-secondary vs-status">Approval unavailable</span>
-       @endif
-      </div>
-      @if($definition['supported'])
-       <form method="post" class="vs-policy-form" action="{{ route('finance.voucher-settings.save') }}">@csrf
-        <input type="hidden" name="voucher_type" value="{{ $type }}">
-        <div class="custom-control custom-switch mb-3">
-         <input type="checkbox" class="custom-control-input vs-required" id="vs-required-{{ $type }}" name="approval_required" value="1" {{ $policy?->approval_required ? 'checked':'' }} {{ auth()->user()->can('update setting') ? '' : 'disabled' }}>
-         <label class="custom-control-label" for="vs-required-{{ $type }}">Approval Required</label>
-        </div>
-        <div class="form-group mb-2">
-         <label for="vs-approver-{{ $type }}">Authorized Approver</label>
-         <select id="vs-approver-{{ $type }}" name="approver_user_id" class="form-select form-select-sm vs-approver" {{ auth()->user()->can('update setting') ? '' : 'disabled' }}>
-          <option value="">Select project approver</option>
-          @foreach($approvers as $user)
-          <option value="{{ $user->id }}" {{ (int)($policy?->approver_user_id??0)===(int)$user->id?'selected':'' }}>{{ $user->name }}</option>
-          @endforeach
-         </select>
-         <small class="text-danger vs-field-error d-block" role="alert"></small>
-        </div>
-        <div class="vs-toolbar">
-         <small class="text-muted">{{ $policy?->approval_required ? 'ON · New vouchers require authorization' : 'OFF · Existing permission rules apply' }}</small>
-         @can('update setting')<button type="submit" class="btn btn-sm btn-success vs-save">Save Settings</button>@endcan
-        </div>
-       </form>
-
-      @else
-       <div class="small mb-2">Approval configuration is not supported for this voucher type.</div>
-       <div class="small text-muted">This does not enable voucher posting or approval. Verified source reversal can still be independently controlled where available.</div>
-      @endif
-      @if(in_array($type,$reversalTypes,true))
-       <form method="post" class="vs-reversal-form border-top pt-3 mt-3" action="{{ route('finance.voucher-settings.reversal.save') }}">@csrf
-        <input type="hidden" name="voucher_type" value="{{ $type }}">
-        <input type="hidden" name="reversal_enabled" value="0">
-        <div class="vs-toolbar">
-         <div>
-          <label class="d-block mb-1" for="vs-reversal-{{ $type }}">Reversal Enabled</label>
-          <small class="text-muted">Applies to verified posted-batch reversals only; ordinary Edit/Delete and linked bank custody stay separate.</small>
-         </div>
-         <div class="custom-control custom-switch">
-          <input type="checkbox" class="custom-control-input vs-reversal-enabled" id="vs-reversal-{{ $type }}" name="reversal_enabled" value="1"
-           {{ ($policy?->reversal_enabled ?? true) ? 'checked':'' }}
-           {{ auth()->user()->can('update setting') ? '' : 'disabled' }}>
-          <label class="custom-control-label" for="vs-reversal-{{ $type }}">{{ ($policy?->reversal_enabled ?? true) ? 'ON' : 'OFF' }}</label>
-         </div>
-        </div>
-        @can('update setting')
-         <button type="submit" class="btn btn-sm btn-outline-success mt-2 vs-reversal-save">Save Reversal Setting</button>
-        @endcan
-       </form>
-       @endif
-     </div>
-    </div>
-   </div>
-   @endforeach
+   <div class="vs-table-wrap">
+    <table class="vs-table">
+     <thead>
+      <tr>
+       <th style="width:27%">Voucher Type</th>
+       <th style="width:12%">Approval</th>
+       <th style="width:26%">Authorized Approver</th>
+       <th style="width:12%">Approval Action</th>
+       <th style="width:10%">Reversal</th>
+       <th style="width:13%">Reversal Action</th>
+      </tr>
+     </thead>
+     <tbody>
+      @foreach([
+       ['title'=>'Approval + Reversal','codes'=>$reversalTypes],
+       ['title'=>'Approval Only','codes'=>array_values(array_diff(array_keys($types),$reversalTypes))]
+      ] as $group)
+       <tr class="vs-group-row"><td colspan="6">{{ $group['title'] }} · {{ count($group['codes']) }} voucher types</td></tr>
+       @foreach($group['codes'] as $type)
+        @php($definition=$types[$type])
+        @php($policy=$policies->get($type))
+        @php($editable=auth()->user()->can('update setting'))
+        <tr class="vs-policy-row {{ $definition['supported'] ? '' : 'vs-disabled' }}" data-voucher-type="{{ $type }}">
+         <td>
+          <div class="vs-voucher">{{ $definition['label'] }} <span class="vs-code">({{ $type }})</span></div>
+          @if($definition['supported'])
+           <form id="vs-policy-form-{{ $type }}" method="post" class="vs-policy-form" action="{{ route('finance.voucher-settings.save') }}">
+            @csrf
+            <input type="hidden" name="voucher_type" value="{{ $type }}">
+           </form>
+          @endif
+          @if(in_array($type,$reversalTypes,true))
+           <form id="vs-reversal-form-{{ $type }}" method="post" class="vs-reversal-form" action="{{ route('finance.voucher-settings.reversal.save') }}">
+            @csrf
+            <input type="hidden" name="voucher_type" value="{{ $type }}">
+           </form>
+          @endif
+         </td>
+         <td>
+          @if($definition['supported'])
+           <div class="custom-control custom-switch vs-switch">
+            <input type="checkbox" class="custom-control-input vs-required" id="vs-required-{{ $type }}" form="vs-policy-form-{{ $type }}" name="approval_required" value="1"
+             {{ $policy?->approval_required ? 'checked':'' }} {{ $editable ? '' : 'disabled' }}>
+            <label class="custom-control-label" for="vs-required-{{ $type }}">{{ $policy?->approval_required ? 'ON':'OFF' }}</label>
+           </div>
+          @else <span class="vs-muted">Unavailable</span> @endif
+         </td>
+         <td>
+          @if($definition['supported'])
+           <select id="vs-approver-{{ $type }}" name="approver_user_id" form="vs-policy-form-{{ $type }}" class="form-select form-select-sm vs-approver"
+            {{ $editable ? '' : 'disabled' }}>
+            <option value="">Select project approver</option>
+            @foreach($approvers as $user)
+             <option value="{{ $user->id }}" {{ (int)($policy?->approver_user_id??0)===(int)$user->id?'selected':'' }}>{{ $user->name }}</option>
+            @endforeach
+           </select>
+           <small class="text-danger vs-field-error d-block" role="alert"></small>
+          @else <span class="vs-muted">—</span> @endif
+         </td>
+         <td>
+          @if($definition['supported'] && $editable)
+           <button type="submit" form="vs-policy-form-{{ $type }}" class="btn btn-sm btn-success vs-save">Save</button>
+          @else <span class="vs-muted">—</span> @endif
+         </td>
+         <td>
+          @if(in_array($type,$reversalTypes,true))
+           <div class="custom-control custom-switch vs-switch">
+            <input type="checkbox" class="custom-control-input vs-reversal-enabled" id="vs-reversal-{{ $type }}" form="vs-reversal-form-{{ $type }}" name="reversal_enabled" value="1"
+             {{ ($policy?->reversal_enabled ?? true) ? 'checked':'' }} {{ $editable ? '' : 'disabled' }}>
+            <label class="custom-control-label" for="vs-reversal-{{ $type }}">{{ ($policy?->reversal_enabled ?? true) ? 'ON':'OFF' }}</label>
+           </div>
+          @else <span class="vs-muted">Not available</span> @endif
+         </td>
+         <td>
+          @if(in_array($type,$reversalTypes,true) && $editable)
+           <button type="submit" form="vs-reversal-form-{{ $type }}" class="btn btn-sm btn-outline-success vs-reversal-save">Save</button>
+          @else <span class="vs-muted">—</span> @endif
+         </td>
+        </tr>
+       @endforeach
+      @endforeach
+     </tbody>
+    </table>
    </div>
   </section>
-  @endforeach
  </div>
 </div>
 <div class="alert vs-toast" role="status" id="vs-toast"></div>
@@ -144,7 +152,7 @@ $(function(){
  }
  $('.vs-reversal-form').on('submit',function(event){
   event.preventDefault();
-  var $form=$(this),$checkbox=$form.find('.vs-reversal-enabled');
+  var $form=$(this),$row=$form.closest('tr'),$checkbox=$row.find('.vs-reversal-enabled');
   var enabled=$checkbox.prop('checked'),type=$form.find('[name=voucher_type]').val();
   if(!window.Swal||!$.isFunction(window.Swal.fire)){toast('Confirmation popup unavailable.',true);return;}
   window.Swal.fire({icon:'question',title:'Change Reversal Setting?',
@@ -152,12 +160,12 @@ $(function(){
    showCancelButton:true,confirmButtonText:'Save Reversal Setting',cancelButtonText:'Cancel'
   }).then(function(answer){
    if(!answer.isConfirmed)return;
-   var $button=$form.find('.vs-reversal-save').prop('disabled',true);
+   var $button=$row.find('.vs-reversal-save').prop('disabled',true);
    $.ajax({url:$form.attr('action'),method:'POST',
-    data:$form.serializeArray().filter(function(x){return x.name!=='reversal_enabled';}).concat([{name:'reversal_enabled',value:enabled?'1':'0'}]),
+    data:{_token:$form.find('[name=_token]').val(),voucher_type:type,reversal_enabled:enabled?'1':'0'},
     headers:{Accept:'application/json'},dataType:'json'})
     .done(function(response){
-     $form.find('.custom-control-label').text(enabled?'ON':'OFF');
+     $row.find('.vs-reversal-enabled').siblings('.custom-control-label').text(enabled?'ON':'OFF');
      toast(response.message||'Reversal setting saved.',false);
     }).fail(function(xhr){
      var message=xhr.responseJSON&&xhr.responseJSON.message||'Unable to save reversal setting.';
@@ -168,8 +176,8 @@ $(function(){
  });
  $('.vs-policy-form').on('submit',function(event){
   event.preventDefault();
-  var $form=$(this),type=$form.find('[name=voucher_type]').val(),enabled=$form.find('.vs-required').prop('checked');
-  var $select=$form.find('.vs-approver'),userId=$select.val(),$error=$form.find('.vs-field-error');
+  var $form=$(this),$row=$form.closest('tr'),type=$form.find('[name=voucher_type]').val(),enabled=$row.find('.vs-required').prop('checked');
+  var $select=$row.find('.vs-approver'),userId=$select.val(),$error=$row.find('.vs-field-error');
   $error.text('');$select.next('.ts-wrapper').removeClass('is-invalid');
   if(enabled&&!userId){
    $error.text('Select an authorized project approver.');
@@ -183,13 +191,13 @@ $(function(){
    confirmButtonColor:'#168348'
   }).then(function(answer){
    if(!answer.isConfirmed)return;
-   var $btn=$form.find('.vs-save').prop('disabled',true);
-   $.ajax({url:$form.attr('action'),method:'POST',data:$form.serialize(),
+   var $btn=$row.find('.vs-save').prop('disabled',true);
+   $.ajax({url:$form.attr('action'),method:'POST',
+    data:{_token:$form.find('[name=_token]').val(),voucher_type:type,approval_required:enabled?'1':'0',approver_user_id:userId},
     headers:{Accept:'application/json'},dataType:'json'})
     .done(function(resp){
      toast(resp.message||'Approval policy saved.',false);
-     $form.find('.vs-toolbar small').text(enabled
-      ?'ON · New vouchers require authorization':'OFF · Existing permission rules apply');
+     $row.find('.vs-required').siblings('.custom-control-label').text(enabled?'ON':'OFF');
      window.Swal.fire({icon:'success',title:'Settings Saved',text:resp.message||'Saved.'});
     }).fail(function(xhr){
      var msg=xhr.responseJSON&&xhr.responseJSON.message?xhr.responseJSON.message:'Unable to save policy.';
