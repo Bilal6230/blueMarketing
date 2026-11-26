@@ -42,7 +42,7 @@ $(function(){
   if(window.Swal)Swal.fire({icon:'question',title:'Save prefix configuration?',
     text:'This does not yet activate new voucher numbering. Existing vouchers are unchanged.',
     showCancelButton:true,confirmButtonText:'Yes, Save'}).then(function(res){if(res.isConfirmed)send();});
-  else if(window.confirm('Save prefix configuration without changing voucher numbering?'))send();
+  else notify('Confirmation dialog is unavailable. Refresh the page and try again.',true);
  });
  // Users-style directory actions, exports, sortable column popovers and pagination.
  (function directory(){
