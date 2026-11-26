@@ -94,6 +94,26 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString("Schema::create('project_voucher_availability'", $migration);
     }
 
+    public function test_bo_br_toggle_and_remaining_voucher_prefix_editors_are_available(): void
+    {
+        $display = file_get_contents(app_path('Services/Finance/ProjectVoucherDisplay.php'));
+        $availability = file_get_contents(app_path('Services/Finance/VoucherAvailability.php'));
+        $allocator = file_get_contents(app_path('Services/Finance/ProjectVoucherAllocator.php'));
+        $setting = file_get_contents(app_path('Http/Controllers/SettingController.php'));
+        $view = file_get_contents(resource_path('views/admin/finance/settings-voucher-display.blade.php'));
+
+        $this->assertStringContainsString("'BO'=>'Bank Online Voucher'", $availability);
+        $this->assertStringContainsString("'BR'=>'Bank Receipt/Clearance Voucher'", $availability);
+        $this->assertStringContainsString("['BO','BR']", $allocator);
+        $this->assertStringContainsString('VoucherAvailability::enforce($projectId, $series)', $allocator);
+        foreach (['DR','BD','BW','PP','BO','BR'] as $series) {
+            $this->assertContains($series, \App\Services\Finance\ProjectVoucherDisplay::SERIES);
+        }
+        $this->assertStringContainsString('BD,BW,PP', $setting);
+        $this->assertStringContainsString('ProjectVoucherDisplay::SERIES as $series', $view);
+        $this->assertStringContainsString('data-s4-edit="{{ $series }}"', $view);
+    }
+
     public function test_settings_export_toolbars_removed_and_switches_require_confirmation(): void
     {
         $page=file_get_contents(resource_path('views/admin/setting.blade.php'));
