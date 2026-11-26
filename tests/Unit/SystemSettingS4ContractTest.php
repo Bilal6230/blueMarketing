@@ -64,7 +64,7 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString('project_voucher_availability', $controller);
         $this->assertStringContainsString('allowedReceiptTypes', $controller);
         $this->assertStringContainsString('_Receipt_Header', $controller);
-        $this->assertStringContainsString("url:$tab.find('.s4-shell').attr('data-s4-status-url')", $script);
+        $this->assertStringContainsString('url:$tab.find(\'.s4-shell\').attr(\'data-s4-status-url\')', $script);
     }
 
     public function test_disabled_voucher_entry_routes_are_blocked_without_blocking_history(): void
