@@ -26,7 +26,7 @@
 .plot-editor .ts-wrapper{width:100%;border:0!important;background:transparent!important;padding:0!important;box-shadow:none!important}
 .plot-editor .ts-control{min-height:40px;border-color:#b6c9dd!important;border-radius:6px;font-size:14px}
 .plot-definition-dropdown{z-index:1100!important}
-@media(max-width:700px){.plot-editor .modal-dialog{width:calc(100% - 16px);margin:8px auto}.plot-editor .modal-content{max-height:calc(100vh - 16px)}.plot-editor .modal-body{padding:14px}.plot-list-page .plot-list-card{height:calc(100vh - 180px)}}
+@media(max-width:700px){.plot-editor .modal-dialog{width:calc(100% - 16px);margin:8px auto}.plot-editor .modal-content{max-height:calc(100vh - 16px)}.plot-editor .modal-body{padding:14px}}
 
 .bm-plot-directory .bm-account-table tbody td{height:53px!important}
 .bm-plot-directory .bm-account-table thead th{position:sticky;top:0;z-index:3}
