@@ -25,7 +25,30 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
 .settings-screen .settings-modal-trigger{display:flex;justify-content:flex-end;margin:0 0 12px}
 .settings-screen .settings-field-image{max-width:96px;max-height:65px;object-fit:contain;margin:0 0 6px}
 .settings-screen .settings-section-title{border-bottom:1px solid #cad8e5;padding-bottom:8px;margin:8px 0 15px;font-size:17px;font-weight:700;color:#224b70}
-.settings-screen .settings-info-form{max-width:1200px}
+.settings-screen .settings-info-form{max-width:none;width:100%}
+.settings-screen .settings-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px}
+.settings-screen .settings-info-field{min-width:0}
+.settings-screen .settings-info-field.is-wide{grid-column:1/-1}
+.settings-screen .settings-info-field>label{display:block;font-weight:700;color:#25425e;margin-bottom:6px}
+.settings-screen .settings-info-field textarea{min-height:94px;resize:vertical}
+.settings-screen .settings-media-field{display:flex;align-items:center;gap:12px;min-width:0}
+.settings-screen .settings-media-canvas{height:98px;width:120px;min-width:120px;border:1.5px dashed #9ebbd4;border-radius:10px;background:repeating-linear-gradient(45deg,#f4f9fd,#f4f9fd 10px,#ebf2f8 10px,#ebf2f8 20px);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.settings-screen .settings-media-canvas img{width:100%;height:100%;object-fit:contain;padding:7px}
+.settings-screen .settings-media-empty{font-size:12px;font-weight:600;color:#64819b;display:flex;align-items:center;flex-direction:column;gap:4px;text-align:center}
+.settings-screen .settings-media-controls{flex:1;min-width:0}
+.settings-screen .settings-media-controls input{width:100%;cursor:pointer}
+.settings-screen .settings-s1-savebar{display:flex;justify-content:flex-end;position:sticky;bottom:0;padding:11px 0 4px;background:#fff;border-top:1px solid #ccd8e5;z-index:2;margin-top:14px}
+.settings-screen .settings-s1-busy{display:none;position:absolute;inset:0;z-index:6;background:#f6f9fce8;align-items:center;justify-content:center}
+.settings-screen .settings-s1-busy.is-active{display:flex}
+.settings-screen .settings-s1-busy-card{background:#fff;border:1px solid #c8daea;border-radius:14px;box-shadow:0 10px 35px #1d3c5c22;padding:22px;display:flex;align-items:center;gap:16px}
+.settings-screen .settings-s1-busy-preview{width:58px;height:58px;position:relative;border-radius:12px;background:#eef5fa;display:flex;align-items:center;justify-content:center;color:#2473b4}
+.settings-screen .settings-s1-busy-preview:before{content:'';position:absolute;inset:-5px;border:3px solid #bed7e8;border-top-color:#0a78d5;border-radius:15px;animation:settingsS1Spin 1s linear infinite}
+.settings-screen .settings-s1-busy-preview img{max-width:38px;max-height:38px;object-fit:contain}
+@keyframes settingsS1Spin{to{transform:rotate(360deg)}}
+.settings-screen .settings-s1-modal .modal-content{border-radius:12px;border:0;overflow:hidden}
+.settings-screen .settings-s1-modal .modal-header{background:#f1f7fc}
+@media(max-width:800px){.settings-screen .settings-info-grid{grid-template-columns:1fr}.settings-screen .settings-media-canvas{height:86px;width:105px;min-width:105px}}
+
 .settings-screen .settings-info-form .form-group{margin-bottom:12px}
 .settings-screen .settings-receipt-table{max-width:900px}
 .settings-screen .settings-receipt-table td{vertical-align:middle;padding:8px 11px}
@@ -128,35 +151,43 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
                                             </tbody></table>
                                         @endif
                                     </div>
-                                    <div class="tab-pane {{ $activeSettingsTab === 'information' ? 'active' : '' }}" id="information" data-settings-direct="1">
+                                    <div class="tab-pane {{ $activeSettingsTab === 'information' ? 'active' : '' }}" id="information" data-settings-direct="1" style="position:relative">\n                                        <div class="settings-s1-busy" aria-live="polite"><div class="settings-s1-busy-card"><div class="settings-s1-busy-preview"><i class="far fa-image fa-lg"></i></div><div><strong>Saving settings</strong><div class="text-muted">Updating information without reloading...</div></div></div></div>
                                         <form id="settings-information-form" class="settings-info-form" action="{{ route('setting.update') }}" method="POST" enctype="multipart/form-data">
                                             @csrf
                                             @method('PUT')
                                             @foreach(['information'=>'Application Information','contact'=>'Contact Details'] as $groupName=>$groupTitle)
                                                 @php($groupSettings = \App\Models\Setting::where('type','!=','toggle')->where('category',$groupName)->get())
                                                 @if($groupSettings->isNotEmpty())
-                                                <h4 class="settings-section-title">{{ $groupTitle }}</h4>
-                                                @foreach($groupSettings as $set)
-                                                <div class="form-group row">
-                                                    <label class="col-md-3 col-form-label" for="setting-{{ $set->key }}">{{ str_replace('Application ', '', $set->name) }}</label>
-                                                    <div class="col-md-9">
-                                                        <input type="hidden" name="key[]" value="{{ $set->key }}">
-                                                        @if($set->type === 'text')
-                                                            <input id="setting-{{ $set->key }}" class="form-control" type="text" name="value[]" value="{{ $set->value }}" required>
-                                                        @elseif($set->type === 'textarea')
-                                                            <textarea id="setting-{{ $set->key }}" class="form-control" rows="3" name="value[]" required>{{ $set->value }}</textarea>
-                                                        @elseif($set->type === 'file')
-                                                            <img class="settings-field-image" id="{{ $set->key }}-image" src="{{ $set->value ? asset($set->value) : '' }}" alt="{{ $set->name }}" @if(!$set->value) style="display:none" @endif>
-                                                            <input id="{{ $set->key }}" name="value[]" value="{{ $set->value }}" class="form-control" readonly data-settings-file="1">
-                                                            <small class="text-primary">Click the path to select a file from File Manager</small>
-                                                        @endif
-                                                        <small class="text-danger settings-input-error" data-error-key="{{ $set->key }}"></small>
+                                                    <h4 class="settings-section-title">{{ $groupTitle }}</h4>
+                                                    <div class="settings-info-grid">
+                                                    @foreach($groupSettings as $set)
+                                                        @php($isWide = $set->type === 'textarea' || str_contains(strtolower((string)$set->key), 'map') || str_contains(strtolower((string)$set->name), 'location'))
+                                                        <div class="settings-info-field {{ $isWide ? 'is-wide' : '' }}">
+                                                            <label for="setting-{{ $set->key }}">{{ str_replace('Application ', '', $set->name) }}</label>
+                                                            <input type="hidden" name="key[]" value="{{ $set->key }}">
+                                                            @if($set->type === 'text')
+                                                                <input id="setting-{{ $set->key }}" class="form-control" type="text" name="value[]" value="{{ $set->value }}" required>
+                                                            @elseif($set->type === 'textarea')
+                                                                <textarea id="setting-{{ $set->key }}" class="form-control" rows="3" name="value[]" required>{{ $set->value }}</textarea>
+                                                            @elseif($set->type === 'file')
+                                                                <div class="settings-media-field">
+                                                                    <div class="settings-media-canvas" data-preview-for="{{ $set->key }}">
+                                                                        <img id="{{ $set->key }}-image" src="{{ $set->value ? asset($set->value) : '' }}" alt="{{ $set->name }} preview" @if(!$set->value) style="display:none" @endif>
+                                                                        <span class="settings-media-empty" @if($set->value) style="display:none" @endif><i class="far fa-image fa-lg"></i> Image Preview</span>
+                                                                    </div>
+                                                                    <div class="settings-media-controls">
+                                                                        <input id="{{ $set->key }}" name="value[]" value="{{ $set->value }}" class="form-control" readonly data-settings-file="1" title="Choose from File Manager">
+                                                                        <small class="text-primary">Click to select an image from File Manager</small>
+                                                                    </div>
+                                                                </div>
+                                                            @endif
+                                                            <small class="text-danger settings-input-error" data-error-key="{{ $set->key }}"></small>
+                                                        </div>
+                                                    @endforeach
                                                     </div>
-                                                </div>
-                                                @endforeach
                                                 @endif
                                             @endforeach
-                                            <div class="d-flex justify-content-end pt-2 border-top">
+                                            <div class="settings-s1-savebar">
                                                 <button type="submit" class="btn btn-primary" @cannot('update setting') disabled @endcannot>Save Information &amp; Contact</button>
                                             </div>
                                         </form>
@@ -218,6 +249,15 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
             </div><!-- /.container-fluid -->
         </section>
         <!-- /.content -->
+    </div>
+    <div class="modal fade settings-s1-modal" id="settingsS1Confirm" tabindex="-1" role="dialog" aria-labelledby="settingsS1ConfirmTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title" id="settingsS1ConfirmTitle"><i class="far fa-save text-primary mr-2"></i>Confirm Settings</h5><button type="button" class="close" data-dismiss="modal" aria-label="Close">&times;</button></div>
+                <div class="modal-body">Save updated Information &amp; Contact details?</div>
+                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">No, Cancel</button><button type="button" class="btn btn-primary" id="settingsS1ConfirmYes"><i class="fas fa-check mr-1"></i>Yes, Save</button></div>
+            </div>
+        </div>
     </div>
 @endsection
 @section('js')
@@ -285,11 +325,13 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
             // input
             let inputId = '';
 
-            $('.settings-field-image').on('error',function(){ $(this).hide(); });
+            $('.settings-media-canvas img').on('error',function(){ $(this).hide().siblings('.settings-media-empty').show(); });
 
             function fmSetLink($url) {
                 $(inputId).val($url.substring(1));
-                $(inputId + '-image').attr("src", "{{ asset(null) }}" + $url.substring(1)).show();
+                var $image=$(inputId + '-image');
+                $image.attr('src', "{{ asset(null) }}" + $url.substring(1)).show();
+                $image.siblings('.settings-media-empty').hide();
             }
 
             window.fmSetLink = fmSetLink;
@@ -335,24 +377,30 @@ body.settings-s1-viewport .main-footer{position:fixed;bottom:0;left:0;right:0;z-
                 alertUser(message,true);if(callback)callback(false);
             }).always(function(){$btn.prop('disabled',false);});
         }
+        function sendInformationAjax(){
+            var form=$form[0],formData=new FormData(form);
+            var $button=$form.find('button[type=submit]');
+            $button.prop('disabled',true);
+            $('#information .settings-s1-busy').addClass('is-active');
+            $.ajax({url:$form.attr('action'),type:'POST',data:formData,processData:false,contentType:false,
+                headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},dataType:'json'})
+            .done(function(response){alertUser(response.message||'Information saved.',false);})
+            .fail(function(xhr){
+                var message=xhr.responseJSON&&xhr.responseJSON.message||'Unable to save information.';
+                if(xhr.responseJSON&&xhr.responseJSON.errors)$.each(xhr.responseJSON.errors,function(_,v){message=v[0]||message;return false;});
+                alertUser(message,true);
+            }).always(function(){
+                $('#information .settings-s1-busy').removeClass('is-active');
+                $button.prop('disabled',false);
+            });
+        }
         $form.on('submit',function(e){
             e.preventDefault();e.stopImmediatePropagation();
-            var form=this,send=function(){
-                // The hidden PUT method is passed through FormData for Laravel.
-                var formData=new FormData(form);
-                var $button=$form.find('button[type=submit]').prop('disabled',true);
-                $.ajax({url:$form.attr('action'),type:'POST',data:formData,processData:false,contentType:false,
-                    headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest'},dataType:'json'})
-                .done(function(response){alertUser(response.message||'Information saved.',false);})
-                .fail(function(xhr){
-                    var message=xhr.responseJSON&&xhr.responseJSON.message||'Unable to save information.';
-                    if(xhr.responseJSON&&xhr.responseJSON.errors)$.each(xhr.responseJSON.errors,function(_,v){message=v[0]||message;return false;});
-                    alertUser(message,true);
-                }).always(function(){$button.prop('disabled',false);});
-            };
-            if(window.Swal)Swal.fire({icon:'question',title:'Save Information & Contact?',showCancelButton:true,
-                confirmButtonText:'Yes, Save',cancelButtonText:'No'}).then(function(result){if(result.isConfirmed)send();});
-            else if(window.confirm('Save information and contact?'))send();
+            $('#settingsS1Confirm').modal('show');
+        });
+        $('#settingsS1ConfirmYes').on('click',function(){
+            $('#settingsS1Confirm').modal('hide');
+            sendInformationAjax();
         });
         $receipt.on('change','.settings-receipt-toggle',function(){
             var $input=$(this),old=!this.checked,key=$input.attr('name');
