@@ -322,6 +322,8 @@ class VoucherController extends Controller
     private function cashVoucherDisplaySeries(Request $request, bool $incoming, ?int $paymentType): ?string
     {
         $series = strtoupper((string) $request->query('series', ''));
+        // A CP link is an older URL to today's DR (Debit Voucher) form.
+        if (!$incoming && $series === 'CP') $series = 'DR';
         if ($series === '') {
             return $paymentType === null ? null : match ([$incoming, $paymentType]) {
                 [true, 1] => 'CCR', [false, 1] => 'CDR',
