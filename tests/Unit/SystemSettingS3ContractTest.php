@@ -74,9 +74,12 @@ final class SystemSettingS3ContractTest extends TestCase
         $this->assertStringContainsString('value="{{ $mapping->id }}"', $view);
         $this->assertStringContainsString('type="hidden" name="account_mapping_id"', $view);
         $this->assertStringContainsString('function populateSubheads(headId,chosenMapping)', $script);
+        $this->assertStringContainsString("dropdownParent:'body'", $script);
+        $this->assertStringContainsString('subheadTs.addOptions(', $script);
+        $this->assertStringContainsString('subheadTs.setValue(requested,true)', $script);
         $this->assertStringContainsString("selectMapping(account.account_mapping_id)", $script);
-        $this->assertStringContainsString("$head.on('change'", $script);
-        $this->assertStringContainsString("$subhead.on('change'", $script);
+        $this->assertStringContainsString("headTs=new TomSelect", $script);
+        $this->assertStringContainsString("subheadTs=new TomSelect", $script);
         $this->assertStringContainsString("$mapping.val($subhead.val()||'')", $script);
         $this->assertStringContainsString("if(!$mapping.val())", $script);
     }
