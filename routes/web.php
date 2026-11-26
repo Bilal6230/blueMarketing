@@ -144,6 +144,9 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::post('setting/show', 'show')->middleware(['permission:read setting'])->name('setting.show');
         Route::put('setting', 'update')->middleware(['permission:update setting'])->name('setting.update');
         Route::post('setting/bank-account', 'saveProjectBankAccount')->middleware(['permission:update setting'])->name('setting.bank-account.save');
+        Route::post('setting/cash-account', 'saveProjectCashAccount')->middleware(['permission:update setting'])->name('setting.cash-account.save');
+        Route::get('setting/account/{type}/{id}', 'accountSettingsDetail')->where(['type'=>'bank|cash','id'=>'[0-9]+'])->middleware(['permission:update setting'])->name('setting.account.detail');
+        Route::post('setting/account/{type}/{id}/status', 'changeProjectAccountStatus')->where(['type'=>'bank|cash','id'=>'[0-9]+'])->middleware(['permission:update setting'])->name('setting.account.status');
         Route::post('setting/payment-method-labels', 'savePaymentMethodLabels')->middleware(['permission:update setting'])->name('setting.payment-method-labels.save');
         Route::post('setting/voucher-display', 'saveVoucherDisplaySettings')->middleware(['permission:update setting'])->name('setting.voucher-display.save');
         Route::post('setting/custom-payment-method', 'saveCustomPaymentMethod')->middleware(['permission:update setting'])->name('setting.custom-payment-method.save');
