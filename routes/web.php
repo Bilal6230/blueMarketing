@@ -42,6 +42,10 @@ Auth::routes([
 Route::middleware(['auth'])->get('/home', [DashboardController::class, 'index'])->name('home');
 
 Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action', \App\Http\Middleware\EnforceVoucherAvailability::class, \App\Http\Middleware\RecordActivityAudit::class])->group(function () {
+    // Every authenticated user may edit only their own basic profile. No
+    // user-management permission, role assignment or project change involved.
+    Route::get('my-profile', [\App\Http\Controllers\MyProfileController::class, 'edit'])->name('my-profile.edit');
+    Route::post('my-profile', [\App\Http\Controllers\MyProfileController::class, 'update'])->middleware('throttle:12,1')->name('my-profile.update');
     Route::get('activity-audit', [\App\Http\Controllers\ActivityAuditController::class, 'index'])
         ->middleware('permission:read activity audit')->name('activity-audit.index');
     Route::get('activity-audit/{audit}', [\App\Http\Controllers\ActivityAuditController::class, 'show'])
