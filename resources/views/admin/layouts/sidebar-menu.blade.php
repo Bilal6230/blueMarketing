@@ -27,6 +27,7 @@
 
 @php
  $financeView = fn(string $module) => auth()->user()->can(\App\Support\Finance\FinanceActionPermission::name($module,'view'));
+ $voucherVisible = fn(string $series) => \App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),$series);
  $dailyVoucherLinks = [
   'CR' => ['Credit Voucher (CR)','cr'],
   'DR' => ['Debit Voucher (DR)','dr'],
@@ -38,7 +39,7 @@
  $hasDailyMenu = collect(['online','cheque','directory','bank-deposit','bank-withdrawal',
    'plot-receipt','plot-purchase','draft','jv','sv','cv','extra-charge'])
    ->contains(fn($module) => $financeView($module))
-   || collect($dailyVoucherLinks)->contains(fn($item) => $financeView($item[1]))
+   || collect($dailyVoucherLinks)->contains(fn($item,$series) => $financeView($item[1]) && $voucherVisible($series))
    || auth()->user()->can('read slip');
 @endphp
 @if($hasDailyMenu)
@@ -47,21 +48,21 @@
  @if($financeView('cheque'))<li class="nav-item"><a href="{{ route('finance.cheques.index') }}" class="nav-link {{ request()->routeIs('finance.cheques.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Cheque Management</p></a></li>@endif
  @if($financeView('directory'))<li class="nav-item"><a href="{{ route('finance.daily-vouchers.index') }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.index') && !request()->filled('type')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Voucher Directory</p></a></li>@endif
  @foreach($dailyVoucherLinks as $voucherType=>$voucherInfo)
-  @if($financeView($voucherInfo[1]))
+  @if($financeView($voucherInfo[1]) && $voucherVisible($voucherType))
   <li class="nav-item"><a href="{{ route('finance.daily-vouchers.index',['type'=>$voucherType]) }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.index') && request()->query('type')===$voucherType?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>{{ $voucherInfo[0] }}</p></a></li>
   @endif
  @endforeach
  @if($canFinanceApprovals && $financeView('directory'))<li class="nav-item"><a href="{{ route('finance.daily-vouchers.approvals.index') }}" class="nav-link {{ request()->routeIs('finance.daily-vouchers.approvals.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Voucher Approvals</p></a></li>@endif
- @if($financeView('bank-deposit'))<li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace',['kind'=>'deposit']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind')==='deposit'?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Bank Deposit</p></a></li>@endif
- @if($financeView('bank-withdrawal'))<li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace',['kind'=>'withdrawal']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind')==='withdrawal'?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Bank Withdrawal</p></a></li>@endif
- @if($financeView('plot-receipt'))<li class="nav-item"><a href="{{ route('finance.voucher.plot-receipt.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-receipt.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Plot Receive Payment</p></a></li>@endif
- @if($financeView('plot-purchase'))<li class="nav-item"><a href="{{ route('finance.voucher.plot-purchase.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-purchase.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Plot Purchase Voucher</p></a></li>@endif
+ @if($financeView('bank-deposit') && $voucherVisible('BD'))<li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace',['kind'=>'deposit']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind')==='deposit'?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Bank Deposit</p></a></li>@endif
+ @if($financeView('bank-withdrawal') && $voucherVisible('BW'))<li class="nav-item"><a href="{{ route('finance.voucher.transfer.workspace',['kind'=>'withdrawal']) }}" class="nav-link {{ request()->routeIs('finance.voucher.transfer.workspace') && request()->route('kind')==='withdrawal'?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Bank Withdrawal</p></a></li>@endif
+ @if($financeView('plot-receipt') && $voucherVisible('PPR'))<li class="nav-item"><a href="{{ route('finance.voucher.plot-receipt.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-receipt.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Plot Receive Payment</p></a></li>@endif
+ @if($financeView('plot-purchase') && $voucherVisible('PP'))<li class="nav-item"><a href="{{ route('finance.voucher.plot-purchase.workspace') }}" class="nav-link {{ request()->routeIs('finance.voucher.plot-purchase.*')?'active':'' }}"><i class="far fa-circle nav-icon"></i><p>Plot Purchase Voucher</p></a></li>@endif
  @if($financeView('draft'))<li class="nav-item"><a href="{{ route('finance.voucher.draft') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Draft Vouchers</p></a></li>@endif
- @if($financeView('jv'))<li class="nav-item"><a href="{{ route('journal.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Journal Vouchers</p></a></li>@endif
- @if($financeView('sv'))<li class="nav-item"><a href="{{ route('sales.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Sales Vouchers</p></a></li>@endif
- @if($financeView('cv'))<li class="nav-item"><a href="{{ route('commision.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Commission Vouchers</p></a></li>@endif
+ @if($financeView('jv') && $voucherVisible('JV'))<li class="nav-item"><a href="{{ route('journal.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Journal Vouchers</p></a></li>@endif
+ @if($financeView('sv') && $voucherVisible('SV'))<li class="nav-item"><a href="{{ route('sales.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Sales Vouchers</p></a></li>@endif
+ @if($financeView('cv') && $voucherVisible('CV'))<li class="nav-item"><a href="{{ route('commision.voucher.index') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Commission Vouchers</p></a></li>@endif
  @can('read slip')<li class="nav-item"><a href="{{ route('payment_schedule.cash') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Receive Payment</p></a></li>@endcan
- @if($financeView('extra-charge'))<li class="nav-item"><a href="{{ route('payment_schedule.extra_charge') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Extra Charge</p></a></li>@endif
+ @if($financeView('extra-charge') && $voucherVisible('EC'))<li class="nav-item"><a href="{{ route('payment_schedule.extra_charge') }}" class="nav-link"><i class="far fa-circle nav-icon"></i><p>Extra Charge</p></a></li>@endif
 </ul></li>
 @endif
 
