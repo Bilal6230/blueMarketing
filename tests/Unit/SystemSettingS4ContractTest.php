@@ -41,10 +41,10 @@ final class SystemSettingS4ContractTest extends TestCase
         $script=file_get_contents(public_path('js/settings-s4-voucher-display.js'));
 
         $this->assertStringContainsString('id="s4-directory-table"', $view);
-        $this->assertStringContainsString('bm-modern-export-toolbar', $view);
+        $this->assertStringNotContainsString('bm-modern-export-toolbar bm-export-placeholder', $view);
         $this->assertStringContainsString('blue-actions-cell', $view);
         $this->assertStringContainsString('financeVoucherComponents.createFilter', $script);
-        $this->assertStringContainsString('blueModernDirectoryTools.mount', $script);
+        $this->assertStringNotContainsString('blueModernDirectoryTools.mount', $script);
         $this->assertStringContainsString('blueActionMenu.enhance', $script);
         $this->assertStringContainsString('blueVoucherPagination', $script);
         $this->assertStringContainsString('merge($types)->unique()', $view);
@@ -92,6 +92,25 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringNotContainsString('finance.voucher.bank.print', $guard);
         $this->assertStringContainsString('VoucherAvailability::enabled', $sidebar);
         $this->assertStringContainsString("Schema::create('project_voucher_availability'", $migration);
+    }
+
+    public function test_settings_export_toolbars_removed_and_switches_require_confirmation(): void
+    {
+        $page=file_get_contents(resource_path('views/admin/setting.blade.php'));
+        $s2=file_get_contents(resource_path('views/admin/attendance/settings-tab.blade.php'));
+        $s3=file_get_contents(resource_path('views/admin/finance/settings-accounts.blade.php'));
+        $s4=file_get_contents(resource_path('views/admin/finance/settings-voucher-display.blade.php'));
+        $script=file_get_contents(public_path('js/settings-s4-voucher-display.js'));
+        $this->assertStringNotContainsString('bm-export-placeholder', $s2);
+        $this->assertStringNotContainsString('bm-export-placeholder', $s3);
+        $this->assertStringNotContainsString('bm-export-placeholder', $s4);
+        $this->assertStringNotContainsString('Disabling a voucher hides its new-entry links', $s4);
+        $this->assertStringContainsString('id="settingsVoucherToggleConfirm"', $page);
+        $this->assertStringContainsString('id="settingsVoucherToggleConfirmYes"', $page);
+        $this->assertStringContainsString('settingsVoucherToggleConfirmTitle', $script);
+        $this->assertStringContainsString('Update Print Header?', $page);
+        $this->assertStringContainsString('Deactivate Voucher?', $script);
+        $this->assertStringContainsString('$toggle.prop(\'checked\',old)', $script);
     }
 
     public function test_s4_prefix_confirmation_no_longer_requires_sweetalert(): void
