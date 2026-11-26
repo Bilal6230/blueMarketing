@@ -62,6 +62,11 @@ final class CashOnlyVoucherController extends Controller
             ->whereKey((int)$data['counter_account_id'])->first();
         abort_unless($counterAccount && (int)$counterAccount->id!==(int)$account->id,422,
             'Select a different active project account for the opposite posting leg.');
+        // CCR/CDR counter leg must be one of the project's configured active cash profiles.
+        abort_unless(Schema::hasTable('project_cash_accounts')
+            && DB::table('project_cash_accounts')->where('project_id',$projectId)
+                ->where('is_active',1)->where('account_mapping_id',$counterAccount->id)->exists(),
+            422,'Select an active configured Cash Account in Settings.');
         $amount=round((float)str_replace(',','',(string)$data['amount']),2);
         $requestedNumber=(int)substr($data['voucher'],strlen($series)+1);
         $uploadedPath=null;
@@ -85,6 +90,9 @@ final class CashOnlyVoucherController extends Controller
                     ->lockForUpdate()->exists()
                     || !ProjectHeadSubhead::availableForPosting()
                         ->where('project_id',$projectId)->whereKey($counterAccount->id)
+                        ->lockForUpdate()->exists()
+                    || !DB::table('project_cash_accounts')->where('project_id',$projectId)
+                        ->where('account_mapping_id',$counterAccount->id)->where('is_active',1)
                         ->lockForUpdate()->exists()
                     || (int)$account->id===(int)$counterAccount->id) {
                     throw new \DomainException('Project posting accounts changed. Refresh and reselect.');
