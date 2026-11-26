@@ -44,5 +44,94 @@ $(function(){
     showCancelButton:true,confirmButtonText:'Yes, Save'}).then(function(res){if(res.isConfirmed)send();});
   else if(window.confirm('Save prefix configuration without changing voucher numbering?'))send();
  });
+ // Users-style directory actions, exports, sortable column popovers and pagination.
+ (function directory(){
+  var $table=$('#s4-directory-table'),$card=$table.closest('.s4-directory'),
+      $body=$table.find('tbody'),$footer=$card.find('.s4-list-footer');
+  if(!$table.length)return;
+  var rows=$body.find('tr[data-s4-series]').toArray(),filters={},sortCol=-1,descending=false,
+      page=1,pageSize=25,cols=$table.find('thead th').length,widget=null,active=-1,exporter=null;
+  var $summary=$('<small>',{'class':'text-muted'}),$size=$('<select>',{'aria-label':'Rows per page'}),
+      $reset=$('<button>',{type:'button','class':'btn btn-outline-secondary btn-sm',text:'Reset filters'}),
+      $pages=$('<div>',{'class':'bm-account-pages'});
+  [10,25,50,100].forEach(function(n){$size.append($('<option>',{value:n,text:n,selected:n===25}));});
+  $footer.append($('<div>',{'class':'bm-account-footer-left'}).append($summary,$size,$reset),$pages);
+  function textAt(row,col){return $.trim($(row).children('td').eq(col).text()).replace(/\s+/g,' ');}
+  function matches(){
+   return rows.filter(function(row){
+    return Object.keys(filters).every(function(col){
+     return textAt(row,Number(col)).toLowerCase().indexOf(filters[col].toLowerCase())!==-1;
+    });
+   }).sort(function(a,b){
+    if(sortCol<0)return 0;
+    var result=textAt(a,sortCol).localeCompare(textAt(b,sortCol),undefined,{numeric:true,sensitivity:'base'});
+    return descending?-result:result;
+   });
+  }
+  function render(){
+   if($.blueActionMenu)$.blueActionMenu.close();
+   var items=matches(),total=items.length;
+   page=Math.max(1,Math.min(page,Math.max(1,Math.ceil(total/pageSize))));
+   var start=(page-1)*pageSize,visible=items.slice(start,start+pageSize);
+   rows.forEach(function(row){$(row).toggle(visible.indexOf(row)!==-1);});
+   $body.children('.s4-empty').remove();
+   if(!total)$body.append($('<tr>',{'class':'s4-empty'})
+    .append($('<td>',{colspan:cols,'class':'text-muted text-center py-3',text:'No matching vouchers found.'})));
+   if($.blueActionMenu)$.blueActionMenu.enhance($body.find('.blue-actions-cell'));
+   if(exporter)exporter.refresh();
+   $summary.text('Showing '+(total?start+1:0)+'–'+Math.min(total,start+pageSize)+' of '+total+' records');
+   if($.blueVoucherPagination)$.blueVoucherPagination.render({
+    container:$pages,summary:$summary,total:total,length:pageSize,start:start,buttonClass:'dv-page-btn',
+    onPage:function(n){page=Math.floor(n/pageSize)+1;render();}
+   });
+   $table.find('.bm-account-col').each(function(){
+    var n=Number($(this).attr('data-col'));
+    $(this).toggleClass('is-filtered',!!filters[n]||sortCol===n);
+   });
+  }
+  $table.find('thead th').each(function(col){
+   if(col===cols-1)return;
+   var title=$.trim($(this).text());
+   $(this).append($('<button>',{type:'button','class':'bm-account-col','data-col':col,
+    'aria-haspopup':'dialog','aria-label':'Sort or filter '+title})
+    .append($('<i>',{'class':'fas fa-caret-down','aria-hidden':'true'})));
+  });
+  widget=$.financeVoucherComponents&&$.financeVoucherComponents.createFilter
+    ?$.financeVoucherComponents.createFilter({kind:'heading',accent:'#2563eb'}):null;
+  $table.on('click','.bm-account-col',function(event){
+   event.preventDefault();event.stopPropagation();
+   if(!widget)return;
+   active=Number($(this).attr('data-col'));
+   var label=$.trim($(this).closest('th').text());
+   widget.setTitle(label);
+   widget.search(filters[active]||'',function(value){
+    if(value)filters[active]=value;else delete filters[active];
+    page=1;render();
+   },'Search '+label+'...');
+   widget.position($(this));
+  });
+  if(widget){
+   widget.$popup.find('.bm-col-asc,.bm-col-desc').on('click',function(){
+    if(active<0)return;
+    sortCol=active;descending=$(this).hasClass('bm-col-desc');page=1;widget.close();render();
+   });
+   widget.$popup.find('.bm-col-clear').on('click',function(){
+    if(active<0)return;delete filters[active];if(sortCol===active)sortCol=-1;
+    page=1;widget.close();render();
+   });
+  }
+  $size.on('change',function(){pageSize=Number($(this).val())||25;page=1;render();});
+  $reset.on('click',function(){
+   filters={};sortCol=-1;descending=false;page=1;pageSize=25;$size.val('25');
+   if(widget)widget.close();render();
+  });
+  if($.blueModernDirectoryTools)exporter=$.blueModernDirectoryTools.mount({
+   card:$card,table:$table,title:'Voucher Display',
+   getRows:function(){return matches().map(function(row){
+    return $(row).children('td').map(function(){return $.trim($(this).text()).replace(/\s+/g,' ');}).get();
+   });}
+  });
+  render();
+ })();
 });
 })(window.jQuery);
