@@ -50,6 +50,52 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString('merge($types)->unique()', $view);
     }
 
+    public function test_all_supported_voucher_header_toggles_and_active_switches_exist(): void
+    {
+        $view=file_get_contents(resource_path('views/admin/finance/settings-voucher-display.blade.php'));
+        $controller=file_get_contents(app_path('Http/Controllers/SettingController.php'));
+        $script=file_get_contents(public_path('js/settings-s4-voucher-display.js'));
+
+        $this->assertStringContainsString('VoucherAvailability::FAMILIES', $view);
+        $this->assertStringContainsString('settings-receipt-toggle', $view);
+        $this->assertStringContainsString('s4-availability-toggle', $view);
+        $this->assertStringContainsString('data-s4-availability=', $view);
+        $this->assertStringContainsString('saveVoucherAvailability(Request $request)', $controller);
+        $this->assertStringContainsString('project_voucher_availability', $controller);
+        $this->assertStringContainsString('allowedReceiptTypes', $controller);
+        $this->assertStringContainsString("'.'_Receipt_Header'", $controller);
+        $this->assertStringContainsString("url:$tab.find('.s4-shell').attr('data-s4-status-url')", $script);
+    }
+
+    public function test_disabled_voucher_entry_routes_are_blocked_without_blocking_history(): void
+    {
+        $guard=file_get_contents(app_path('Http/Middleware/EnforceVoucherAvailability.php'));
+        $routes=file_get_contents(base_path('routes/web.php'));
+        $sidebar=file_get_contents(resource_path('views/admin/layouts/sidebar-menu.blade.php'));
+        $migration=file_get_contents(database_path('migrations/2026_11_26_220000_create_project_voucher_availability.php'));
+
+        $this->assertStringContainsString('EnforceVoucherAvailability::class', $routes);
+        $this->assertStringContainsString('VoucherAvailability::enforce($project,$series)', $guard);
+        $this->assertStringContainsString('finance.daily-vouchers.index', $guard);
+        $this->assertStringContainsString('finance.voucher.bank.workspace', $guard);
+        $this->assertStringContainsString('journal.voucher.index', $guard);
+        $this->assertStringContainsString('ledger.store', $guard);
+        $this->assertStringNotContainsString('finance.voucher.bank.print', $guard);
+        $this->assertStringContainsString('VoucherAvailability::enabled', $sidebar);
+        $this->assertStringContainsString("Schema::create('project_voucher_availability'", $migration);
+    }
+
+    public function test_s4_prefix_confirmation_no_longer_requires_sweetalert(): void
+    {
+        $view=file_get_contents(resource_path('views/admin/finance/settings-voucher-display.blade.php'));
+        $script=file_get_contents(public_path('js/settings-s4-voucher-display.js'));
+
+        $this->assertStringContainsString('id="s4-prefix-confirm"', $view);
+        $this->assertStringContainsString('id="s4-prefix-confirm-yes"', $view);
+        $this->assertStringContainsString("one('hidden.bs.modal'", $script);
+        $this->assertStringNotContainsString('Confirmation dialog is unavailable', $script);
+    }
+
     public function test_modal_saves_prefix_without_pretending_start_number_is_ready(): void
     {
         $view=file_get_contents(resource_path('views/admin/finance/settings-voucher-display.blade.php'));
