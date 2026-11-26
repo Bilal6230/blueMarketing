@@ -31,58 +31,12 @@ final class PlotEntryWriter
         $type = (int) $item['type'];
         $road = DB::table('roads')->where('id', (int) $item['road_id'])->where('is_active', 1)->exists();
         $facing = DB::table('facings')->where('id', (int) $item['facing_id'])->where('is_active', 1)->exists();
-        if (!$road || !$facing || !in_array($type, [1, 2], true)) {
+        if (!$road || !$facing || !in_array($type, [1, 2, 3], true)) {
             throw new \DomainException('V2_PLOT_PURCHASE_DEFINITION_INVALID');
         }
         $name = trim((string) $item['plot_code']);
         if (DB::table('plots')->where('project_id', $project)->where('name', $name)->lockForUpdate()->exists()) {
             throw new \DomainException('V2_PLOT_CODE_ALREADY_EXISTS');
-        }
-
-        $definitionIds = [];
-        foreach (['category', 'type', 'size', 'unit'] as $kind) {
-            $column = 'plot_'.$kind.'_definition_id';
-            if (!Schema::hasColumn('plots', $column)) continue;
-            $definitionId = (int) ($item[$column] ?? 0);
-            if (!Schema::hasTable('plot_definitions')) {
-                if ($definitionId > 0) throw new \DomainException('V2_PLOT_PURCHASE_DEFINITION_INVALID');
-                $definitionIds[$column] = null;
-                continue;
-            }
-            $hasDefinitions = DB::table('plot_definitions')
-                ->where('project_id', $project)->where('kind', $kind)->where('is_active', 1)->exists();
-            if ($definitionId < 1) {
-                if ($hasDefinitions) throw new \DomainException('V2_PLOT_PURCHASE_DEFINITION_REQUIRED');
-                $definitionIds[$column] = null;
-                continue;
-            }
-            $definition = DB::table('plot_definitions')->where('id', $definitionId)->where('project_id', $project)
-                ->where('kind', $kind)->where('is_active', 1)->first();
-            if (!$definition) throw new \DomainException('V2_PLOT_PURCHASE_DEFINITION_INVALID');
-            $definitionIds[$column] = $definitionId;
-            if ($kind === 'type' && (int) $definition->legacy_value !== $type) {
-                throw new \DomainException('V2_PLOT_PURCHASE_DEFINITION_INVALID');
-            }
-            if ($kind === 'size' && abs((float) $definition->size_value - (float) $item['area']) > 0.0001) {
-                throw new \DomainException('V2_PLOT_PURCHASE_DEFINITION_INVALID');
-            }
-            if ($kind === 'unit' && !empty($item['plot_size_definition_id'])) {
-                $size = DB::table('plot_definitions')->where('id', (int) $item['plot_size_definition_id'])
-                    ->where('project_id', $project)->where('kind', 'size')->where('is_active', 1)->first();
-                if (!$size || (int) $size->unit_definition_id !== $definitionId) {
-                    throw new \DomainException('V2_PLOT_PURCHASE_DEFINITION_INVALID');
-                }
-            }
-            if ($kind === 'unit') {
-                $expectedUnit = (string) ($definition->legacy_value ?: $definition->unit_code);
-                if ($expectedUnit !== '' && strcasecmp(trim((string) $item['unit']), $expectedUnit) !== 0) {
-                    throw new \DomainException('V2_PLOT_PURCHASE_DEFINITION_INVALID');
-                }
-            }
-        }
-        if (!empty($item['plot_size_definition_id']) && !empty($item['plot_unit_definition_id'])
-            && (int) DB::table('plot_definitions')->where('id', $item['plot_size_definition_id'])->value('unit_definition_id') !== (int) $item['plot_unit_definition_id']) {
-            throw new \DomainException('V2_PLOT_PURCHASE_DEFINITION_INVALID');
         }
 
         $plot = [
@@ -96,7 +50,6 @@ final class PlotEntryWriter
         // never copy it into the legacy sale-price field.
         if (Schema::hasColumn('plots', 'amount')) $plot['amount'] = '0.00';
         if (Schema::hasColumn('plots', 'plot_history')) $plot['plot_history'] = null;
-        foreach ($definitionIds as $column => $id) $plot[$column] = $id;
         return (int) DB::table('plots')->insertGetId($plot);
     }
     private function existingReplay(int $project, string $key, string $kind, string $hash): ?array
@@ -275,10 +228,7 @@ final class PlotEntryWriter
                 $codes[strtolower($code)]=true;$total+=$cents;$amount=$this->money($cents);
                 $items[]=['plot_code'=>$code,'description'=>trim($item['description']),'area'=>number_format($area4/10000,4,'.',''),'unit'=>$item['unit'],'unit_rate'=>$this->money($rate),'amount'=>$amount,'inventory_account_id'=>$account,
                     'type'=>(int)$item['type'],'road_id'=>(int)$item['road_id'],'facing_id'=>(int)$item['facing_id'],'is_corner'=>(int)($item['is_corner']??0),
-                    'plot_category_definition_id'=>isset($item['plot_category_definition_id'])?(int)$item['plot_category_definition_id']:null,
-                    'plot_type_definition_id'=>isset($item['plot_type_definition_id'])?(int)$item['plot_type_definition_id']:null,
-                    'plot_size_definition_id'=>isset($item['plot_size_definition_id'])?(int)$item['plot_size_definition_id']:null,
-                    'plot_unit_definition_id'=>isset($item['plot_unit_definition_id'])?(int)$item['plot_unit_definition_id']:null];
+];
                 $lines[]=['account_id'=>$account,'debit'=>$amount,'credit'=>'0.00','description'=>'Plot purchase '.$code.' · '.$item['description']];
             }
             $lines[]=['account_id'=>$seller,'debit'=>'0.00','credit'=>$this->money($total),'description'=>$data['narration']];
