@@ -5,9 +5,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ trim($__env->yieldContent('title', $title ?? 'Dashboard')) . ' - ' . Setting::getValue('app_name') }}</title>
-    <link rel="icon" href="{{ asset(Setting::getValue('app_favicon')) }}" type="image/png" />
+    <link rel="icon" href="{{ \App\Support\ProjectBranding::logoUrl() }}" type="image/png" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <link rel="icon" type="image/png" href="{{ asset('images/logo/blue-marketing-logo.png') }}">
+    
 
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet"
