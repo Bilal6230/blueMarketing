@@ -1,4 +1,4 @@
-<div class="tab-pane {{ $attendanceTabActive ? 'active' : '' }}" id="attendance-machine">
+<div class="tab-pane settings-fill-tab {{ $attendanceTabActive ? 'active' : '' }}" id="attendance-machine">
 @if(!$attendanceTablesAvailable)
     <div class="alert alert-warning">Attendance device tables are not installed. Contact your administrator.</div>
 @elseif(!$canManageAttendanceDevice || !auth()->user()->can('update setting'))
@@ -58,14 +58,14 @@
         <button type="button" class="btn btn-primary" id="as-new-device"><i class="fas fa-plus mr-1"></i> Add Device</button>
     </div>
     <div class="as-layout">
-        <section class="as-card">
+        <section class="as-card settings-fill-card">
             <header class="as-card-head"><h5>Device Configuration</h5><small id="as-device-count" class="text-muted">{{ $attendanceDevices->count() }} devices</small></header>
             <div class="as-filters" aria-label="Device table filters">
                 <div class="as-search-wrap"><i class="fas fa-search" aria-hidden="true"></i><input type="search" class="form-control as-search" id="as-device-search" placeholder="Search devices..." aria-label="Search devices"></div>
                 <select class="form-control" id="as-connection-filter" aria-label="Filter by connection"><option value="">All connections</option><option value="network">Network</option><option value="cloud">Cloud</option><option value="webhook">Webhook</option><option value="sdk">SDK</option><option value="other">Other</option></select>
                 <span class="as-filter-count" id="as-device-visible-count"></span>
             </div>
-            <div class="as-table-scroll">
+            <div class="as-table-scroll settings-fill-scroll">
                 <table class="table table-bordered as-table">
                     <thead><tr><th>Device</th><th>Connection</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody id="as-device-rows">
@@ -89,7 +89,7 @@
             </div>
             <div class="p-2 border-top as-note">Deletion is blocked when employee mappings exist. No attendance sync happens until integration is verified.</div>
         </section>
-        <section class="as-card">
+        <section class="as-card settings-fill-card">
             <header class="as-card-head"><h5>Employee ID Mapping</h5><small class="text-muted" id="as-mapping-count">0 mappings</small></header>
             <div class="as-card-body">
                 <label for="as-map-device" style="font-weight:650;font-size:14px">Select device</label>
@@ -113,7 +113,7 @@
                     <div class="as-search-wrap"><i class="fas fa-search" aria-hidden="true"></i><input type="search" class="form-control as-search" id="as-mapping-search" placeholder="Search employees or IDs..." aria-label="Search employee mappings"></div>
                     <span class="as-filter-count" id="as-mapping-visible-count"></span>
                 </div>
-                <div class="as-table-scroll">
+                <div class="as-table-scroll settings-fill-scroll">
                     <table class="table table-bordered as-table">
                         <thead><tr><th>Employee</th><th>Device ID</th><th>Action</th></tr></thead>
                         <tbody id="as-mapping-rows"><tr><td colspan="3" class="as-table-empty">Select a saved device to view employee mappings.</td></tr></tbody>
