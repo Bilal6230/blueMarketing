@@ -47,7 +47,7 @@
     <main class="sheet">
         <header class="heading">
             @include('admin.partials.project_print_identity', ['brandingProjectId' => $source->project_id ?? null])
-            <h1>{{ \App\Support\ProjectBranding::title($source->project_id ?? null) }}</h1>
+            
             <h2>{{ $kind === 'deposit' ? 'Bank Deposit Voucher' : 'Bank Withdrawal Voucher' }}</h2>
         </header>
         <section class="meta">
