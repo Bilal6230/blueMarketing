@@ -20,6 +20,7 @@ final class VoucherAvailability
         'CV'=>'Commission Voucher', 'SV'=>'Sales Voucher',
         'PPR'=>'Plot Receive Payment', 'PP'=>'Plot Purchase Voucher',
         'EC'=>'Extra Charge Voucher','ECP'=>'Extra Charge Payment Voucher',
+        'BO'=>'Bank Online Voucher', 'BR'=>'Bank Receipt/Clearance Voucher',
     ];
 
     public static function enabled(int $projectId, string $series): bool
