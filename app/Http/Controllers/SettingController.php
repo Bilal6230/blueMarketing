@@ -358,72 +358,65 @@ class SettingController extends Controller
 
     public function update(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'key' => ['nullable'],
-            'toggles' => ['nullable', 'array'],
+        // Existing HTML routes still work, but the direct Settings S1 editor
+        // saves via JSON/AJAX without redirecting or reloading the page.
+        $validated = $request->validate([
+            'key' => ['sometimes', 'array'],
+            'key.*' => ['required', 'string', 'max:191'],
+            'value' => ['sometimes', 'array'],
+            'value.*' => ['nullable', 'string', 'max:10000'],
+            'toggles' => ['sometimes', 'array'],
+            'toggles.*' => ['required', 'in:0,1'],
         ]);
-
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+        $keys = array_values($validated['key'] ?? []);
+        $values = array_values($validated['value'] ?? []);
+        if (count($keys) !== count($values)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'value' => ['Every setting must have a corresponding value.'],
+            ]);
         }
+        $allowedKeys = Setting::query()->where('type', '!=', 'toggle')->pluck('key')->all();
+        $allowedReceiptTypes = Ledger::query()->distinct()->pluck('type')->filter()
+            ->map(fn ($type) => (string) $type.'_Receipt_Header')->all();
 
-        try {
-            /**
-             * Normal settings (text, textarea, file)
-             */
-            if ($request->filled('key')) {
-                foreach ($request->key as $i => $key) {
-                    $keyValue = str_replace('_', ' ', $key);
-                    $value = $request->value[$i] ?? null;
-
-                    $setting = Setting::firstOrNew(['key' => $key]);
-
-                    if ($setting->exists) {
-                        $setting->update([
-                            'value' => $value
-                        ]);
-                    } else {
-                        $setting->fill([
-                            'key'      => $key,
-                            'value'    => $value,
-                            'name'     => $keyValue,
-                            'type'     => 'text',
-                            'category' => 'information',
-                        ])->save();
-                    }
+        foreach ($keys as $key) {
+            if (!in_array($key, $allowedKeys, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'key' => ['Unknown or protected setting: '.$key],
+                ]);
+            }
+        }
+        foreach (array_keys($validated['toggles'] ?? []) as $key) {
+            if (!in_array((string) $key, $allowedReceiptTypes, true)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'toggles' => ['Unknown receipt-header setting.'],
+                ]);
+            }
+        }
+        DB::transaction(function () use ($keys, $values, $validated): void {
+            foreach ($keys as $index => $key) {
+                Setting::query()->where('key', $key)->where('type', '!=', 'toggle')
+                    ->update(['value' => $values[$index]]);
+            }
+            foreach (($validated['toggles'] ?? []) as $key => $value) {
+                $existing = Setting::query()->where('key', $key)->first();
+                if ($existing) {
+                    $existing->update(['value' => (string) $value]);
+                } else {
+                    Setting::query()->create([
+                        'key' => $key,
+                        'value' => (string) $value,
+                        'name' => str_replace('_', ' ', $key),
+                        'type' => 'toggle',
+                        'category' => 'information',
+                    ]);
                 }
             }
-
-            /**
-             * Toggle settings
-             */
-            if ($request->filled('toggles')) {
-                foreach ($request->toggles as $key => $value) {
-                    $keyValue = str_replace('_', ' ', $key);
-
-                    $setting = Setting::firstOrNew(['key' => $key]);
-
-                    if ($setting->exists) {
-                        $setting->update([
-                            'value' => $value
-                        ]);
-                    } else {
-                        $setting->fill([
-                            'key'      => $key,
-                            'value'    => $value,
-                            'name'     => $keyValue,
-                            'type'     => 'toggle',
-                            'category' => 'information',
-                        ])->save();
-                    }
-                }
-            }
-
-            Alert::success('Notification', 'Settings saved successfully')->toToast()->toHtml();
-        } catch (\Throwable $th) {
-            Alert::error('Notification', 'Settings failed to save : ' . $th->getMessage())->toToast()->toHtml();
+        }, 3);
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Settings saved successfully.']);
         }
-
+        Alert::success('Notification', 'Settings saved successfully')->toToast()->toHtml();
         return back();
     }
 
