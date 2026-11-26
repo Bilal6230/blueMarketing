@@ -108,6 +108,19 @@ class SettingController extends Controller
                 ->where('project_id', $projectId)->whereKey($x['projectBankAccount']->account_mapping_id)->first();
             if ($legacyMapping) $x['projectBankMappings']->prepend($legacyMapping);
         }
+        // Keep inactive historical COA links selectable in existing S3 edits.
+        // New active profiles still require active mappings in the writer.
+        if ($x['cashSettingsSchemaReady'] && $projectId > 0) {
+            $existingIds = $x['projectBankAccounts']->pluck('account_mapping_id')
+                ->merge($x['projectCashAccounts']->pluck('account_mapping_id'))
+                ->unique()->filter();
+            $missingIds = $existingIds->diff($x['projectBankMappings']->pluck('id'));
+            if ($missingIds->isNotEmpty()) {
+                $legacy = ProjectHeadSubhead::with(['headAccounting:id,name','subheadAccounting:id,name'])
+                    ->where('project_id',$projectId)->whereIn('id',$missingIds->all())->get();
+                $x['projectBankMappings'] = $x['projectBankMappings']->concat($legacy);
+            }
+        }
         return view('admin.setting', $x);
     }
 
