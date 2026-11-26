@@ -154,13 +154,7 @@ $(function(){
    filters={};sortCol=-1;descending=false;page=1;pageSize=25;$size.val('25');
    if(widget)widget.close();render();
   });
-  if($.blueModernDirectoryTools)exporter=$.blueModernDirectoryTools.mount({
-   card:$card,table:$table,title:'Voucher Display',
-   getRows:function(){return matches().map(function(row){
-    return $(row).children('td').map(function(){return $.trim($(this).text()).replace(/\s+/g,' ');}).get();
-   });}
-  });
-  render();
+    render();
  })();
 });
 })(window.jQuery);
