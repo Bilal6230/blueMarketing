@@ -48,6 +48,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         ->whereNumber('audit')->middleware('permission:read activity audit')->name('activity-audit.show');
     Route::get('attendance', [AttendanceController::class, 'index'])->middleware('permission:read attendance')->name('attendance.index');
     Route::post('attendance/device', [AttendanceController::class, 'saveDevice'])->middleware('permission:update setting')->name('attendance.device.save');
+    Route::get('attendance/device/{device}/settings', [AttendanceController::class, 'deviceSettings'])->whereNumber('device')->middleware('permission:update setting')->name('attendance.device.settings');
     Route::post('attendance/mapping', [AttendanceController::class, 'saveMapping'])->middleware('permission:update setting')->name('attendance.mapping.save');
     Route::get('employee-tasks', [EmployeeTaskController::class, 'index'])->middleware('permission:read employee task')->name('employee-tasks.index');
     Route::post('employee-tasks', [EmployeeTaskController::class, 'store'])->middleware('permission:create employee task')->name('employee-tasks.store');
