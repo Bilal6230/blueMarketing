@@ -67,11 +67,15 @@ final class ProjectVoucherPrefixCounter
         $row=DB::table('project_voucher_prefix_counters')
             ->where('project_id',$projectId)->where('series',$series)
             ->where('prefix',$prefix)->first();
-        $next=max((int)($row->next_number??1),$this->baseline($projectId,$series,$prefix));
+        $historical=$this->historicalMax($projectId,$prefix);
+        // Once a series exists, NEVER inspect the new internal source type_id
+        // again: it continues advancing while other display prefixes are active.
+        $next=$row ? max((int)$row->next_number,$historical+1)
+            : $this->baseline($projectId,$series,$prefix);
         $exists=($row && (int)$row->issued_count>0)
-            || $this->historicalMax($projectId,$prefix)>0
-            || ($prefix===$series && $this->baseline($projectId,$series,$prefix)>1)
-            || ($series==='DR' && $prefix==='DR' && $this->baseline($projectId,$series,$prefix)>1);
+            || $historical>0
+            || (($prefix===$series || ($series==='DR' && $prefix==='DR'))
+                && ($row!==null || $next>1));
         // Legacy CP and current DR are one voucher family.
         $aliases=in_array($series,['CP','DR'],true)?['CP','DR']:[$series];
         $conflict=DB::table('project_voucher_prefix_counters')
