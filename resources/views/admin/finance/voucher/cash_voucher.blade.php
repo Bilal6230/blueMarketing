@@ -477,7 +477,7 @@
                                                     @if(in_array($displaySeries ?? '', ['CR','DR','CP','CCR','CDR'], true))
                                                     <div class="col-12 col-md-6 col-lg-4 standard-counter-account">
                                                         <label class="fbox mb-1" for="voucher_counter_account">
-                                                            {{ in_array($displaySeries, ['CR','CCR'], true) ? 'Credit Account' : 'Debit Account' }}
+                                                            {{ ['CR'=>'Debit Account','DR'=>'Credit Account','CP'=>'Credit Account','CCR'=>'Debit Account (Cash)','CDR'=>'Credit Account (Cash)'][$displaySeries] ?? 'Opposite Posting Account' }}
                                                             <span class="text-danger">*</span>
                                                         </label>
                                                         <select id="voucher_counter_account" name="counter_account_id"
@@ -2572,7 +2572,7 @@
                                 });
                             }
                             $('#edit_counter_account_label').text(
-                                ['CR','CCR'].includes(displaySeries) ? 'Credit Account' : 'Debit Account'
+                                ({CR:'Debit Account',DR:'Credit Account',CP:'Credit Account',CCR:'Debit Account (Cash)',CDR:'Credit Account (Cash)'})[displaySeries] || 'Opposite Posting Account'
                             );
                             $counterRow.show();
                             $counterField.prop('disabled',false).prop('required',true);
