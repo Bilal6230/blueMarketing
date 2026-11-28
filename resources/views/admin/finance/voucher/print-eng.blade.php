@@ -100,8 +100,8 @@
         $voucherBadge = '';
         $voucherNames = [
             'CR'=>'Credit Voucher', 'DR'=>'Debit Voucher',
-            'CP'=>'Payment Voucher', 'CCR'=>'Cash Credit Voucher',
-            'CDR'=>'Cash Debit Voucher', 'BOR'=>'Bank Receipt Voucher',
+            'CP'=>'Payment Voucher', 'CCR'=>'Cash Receive Voucher',
+            'CDR'=>'Cash Payment Voucher', 'BOR'=>'Bank Receipt Voucher',
             'BOP'=>'Bank Payment Voucher', 'EC'=>'Extra Charge',
             'ECP'=>'Extra Charge Payment', 'PPR'=>'Plot Receive Payment',
         ];
