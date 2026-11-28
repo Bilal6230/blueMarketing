@@ -50,6 +50,9 @@ body{overflow:auto!important}
 .cr-revise.add-matched-edit #cash-revision-form label{display:block;margin-bottom:5px}
 .cr-revise.add-matched-edit #cash-revision-form .form-control{width:100%;min-width:0}
 .cr-revise.add-matched-edit #cr-revise-amount-words{background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1}
+.cr-revise.add-matched-edit .ts-wrapper{width:100%;min-width:0}
+.cr-revise.add-matched-edit .ts-control{min-height:35px;border-radius:5px;font-size:14px}
+.cr-revise.add-matched-edit .ts-dropdown{font-size:14px;z-index:1100}
 @media(max-width:767px){.cr-revise.add-matched-edit #cash-revision-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.cr-revise.add-matched-edit #cash-revision-form{grid-template-columns:1fr}}
 @endif
@@ -74,17 +77,17 @@ body{overflow:auto!important}
 @endphp
 <div class="fields">
 <div class="form-group"><label for="cr-revise-type">Account Type *</label>
-<select id="cr-revise-type" class="form-control" required>
+<select id="cr-revise-type" class="form-control js-tomselect" required>
 <option value="">Select account type</option>
 @foreach($accountTypes as $accountType)<option value="{{ $accountType->id }}" @selected($currentType === (int)$accountType->id)>{{ $accountType->name }}</option>@endforeach
 </select></div>
 <div class="form-group"><label for="cr-revise-head">Accounts *</label>
-<select id="cr-revise-head" class="form-control" required><option value="">Select account</option>
+<select id="cr-revise-head" class="form-control js-tomselect" required><option value="">Select account</option>
 @foreach($accounts->unique('head_accounting_id') as $account)
 <option value="{{ $account->head_accounting_id }}" data-acct-type="{{ $account->acct_type }}" @selected($currentHead === (int)$account->head_accounting_id)>{{ $account->head_name }}</option>
 @endforeach
 </select></div>
-<div class="form-group"><label for="cr-revise-account">Child Account *</label><select class="form-control" id="cr-revise-account" name="account_id" required>
+<div class="form-group"><label for="cr-revise-account">Child Account *</label><select class="form-control js-tomselect" id="cr-revise-account" name="account_id" required>
 <option value="">Select child account</option>
 @foreach($accounts as $account)
 <option value="{{ $account->id }}" data-head-id="{{ $account->head_accounting_id }}" data-acct-type="{{ $account->acct_type }}" @selected((int)($leg?->project_head_subheads_id ?? 0)===(int)$account->id)>{{ $account->sub_name }}</option>
@@ -95,7 +98,7 @@ body{overflow:auto!important}
 <div class="fields">
  <div class="form-group cr-revise-counter-field">
   <label for="cr-revise-counter-account">{{ in_array((string)$source->transaction_type,['CR','CCR'],true) ? 'Credit Account' : 'Debit Account' }} *</label>
-  <select id="cr-revise-counter-account" name="counter_account_id" class="form-control" required>
+  <select id="cr-revise-counter-account" name="counter_account_id" class="form-control js-tomselect" required>
    <option value="">Select opposite posting account</option>
    @foreach($accounts as $counterOption)
     <option value="{{ $counterOption->id }}"
@@ -175,23 +178,38 @@ Bank/cheque revision requires verified instrument allocation and a supported vou
 $(function(){
  var $form=$('#cash-revision-form');
  var $type=$('#cr-revise-type'),$head=$('#cr-revise-head'),$child=$('#cr-revise-account');
- function filterHeads(){
-   var type=String($type.val()||''),previous=String($head.val()||'');
-   $head.find('option').each(function(){
-     var $option=$(this),visible=!$option.val()||String($option.attr('data-acct-type'))===type;
-     $option.prop('disabled',!visible).prop('hidden',!visible);
-   });
-   if($head.find('option:selected').prop('disabled'))$head.val('');
-   filterChildren();
+ // Keep the source option metadata for cascading Tom Select dropdowns.
+ var allHeads=$head.find('option').map(function(){return {
+  value:String(this.value),text:$(this).text().trim(),
+  type:String($(this).attr('data-acct-type')||'')
+ };}).get();
+ var allChildren=$child.find('option').map(function(){return {
+  value:String(this.value),text:$(this).text().trim(),
+  type:String($(this).attr('data-acct-type')||''),
+  head:String($(this).attr('data-head-id')||'')
+ };}).get();
+ function setFiltered($select,choices,selected){
+  var ts=$select[0]&&$select[0].tomselect,value=String(selected||'');
+  if(ts){
+   ts.clear(true);ts.clearOptions();
+   choices.forEach(function(o){ts.addOption({value:o.value,text:o.text});});
+   ts.refreshOptions(false);
+   if(value&&choices.some(function(o){return o.value===value;}))ts.setValue(value,true);
+  }else{
+   $select.empty();
+   choices.forEach(function(o){$select.append(new Option(o.text,o.value));});
+   $select.val(value&&choices.some(function(o){return o.value===value;})?value:'');
+  }
  }
- function filterChildren(){
-   var type=String($type.val()||''),head=String($head.val()||'');
-   $child.find('option').each(function(){
-     var $option=$(this),visible=!$option.val()||
-       (String($option.attr('data-acct-type'))===type && String($option.attr('data-head-id'))===head);
-     $option.prop('disabled',!visible).prop('hidden',!visible);
-   });
-   if($child.find('option:selected').prop('disabled'))$child.val('');
+ function filterHeads(preserve){
+  var type=String($type.val()||''),selected=preserve?String($head.val()||''):'';
+  setFiltered($head,allHeads.filter(function(o){return !o.value||o.type===type;}),selected);
+  filterChildren(preserve);
+ }
+ function filterChildren(preserve){
+  var type=String($type.val()||''),head=String($head.val()||'');
+  var selected=preserve?String($child.val()||''):'';
+  setFiltered($child,allChildren.filter(function(o){return !o.value||(o.type===type&&o.head===head);}),selected);
  }
  // Keep the main party account distinct from the opposite posting leg.
  var $opposite=$('#cr-revise-counter-account');
@@ -207,9 +225,19 @@ $(function(){
  }
  $child.on('change',validateOppositeAccount);
  $opposite.on('change',validateOppositeAccount);
- $type.on('change',function(){$head.val('');filterHeads();});
- $head.on('change',function(){$child.val('');filterChildren();});
- filterHeads();
+ // Initialize the same Tom Select controls as Add while retaining prefilled values.
+ if(typeof window.TomSelect==='function'){
+  $form.find('select.js-tomselect').each(function(){
+   if(this.tomselect)return;
+   new TomSelect(this,{
+    create:false,persist:false,maxItems:1,allowEmptyOption:true,
+    onChange:function(){$(this.input).trigger('change');}
+   });
+  });
+ }
+ $type.on('change',function(){filterHeads(false);validateOppositeAccount();});
+ $head.on('change',function(){filterChildren(false);validateOppositeAccount();});
+ filterHeads(true);
 
  @if($matchAddLayout)
  function revisionWords(raw) {
