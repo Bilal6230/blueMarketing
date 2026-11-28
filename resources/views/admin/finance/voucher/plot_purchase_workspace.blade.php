@@ -14,6 +14,7 @@
 #plotPurchaseCreateModal #ppItems{max-height:350px;overflow:auto}
 @media(max-width:900px){#plotPurchaseCreateModal .pp-item-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}}
 @media(max-width:560px){#plotPurchaseCreateModal .pp-item-grid{grid-template-columns:1fr}#plotPurchaseCreateModal .pp-item .wide{grid-column:auto}}
+#ppTotalWords:disabled{background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1}
 </style>
 <main class="container-fluid bm-ui bm-voucher-directory bm-voucher-workspace pp-page" id="plotPurchaseApp"
  style="--voucher-accent:#1769e0;--voucher-tint:#eaf2ff"
@@ -67,7 +68,7 @@
    <div class="form-group"><label>Credit Account (Seller / Payable)</label><select id="ppSeller" class="form-control"><option value="">Select project account</option>@foreach($accounts as $account)<option value="{{ $account->id }}">{{ $account->headAccounting?->name }}{{ $account->subheadAccounting?->name ? ' / '.$account->subheadAccounting->name : '' }}</option>@endforeach</select></div>
    <div class="form-group"><label>Narration</label><textarea id="ppNarration" class="form-control" rows="2" maxlength="2000" placeholder="Purchase agreement, seller reference, or notes"></textarea></div>
    <div class="d-flex justify-content-between align-items-center mb-2"><b>Purchased plots</b><button type="button" id="ppAdd" class="btn btn-sm btn-outline-primary">+ Add plot</button></div>
-   <div id="ppItems"></div><div class="d-flex justify-content-between align-items-center border-top pt-3 mb-3"><span>Total purchase cost</span><span class="pp-total" id="ppTotal">0.00</span></div>
+   <div id="ppItems"></div><div class="d-flex justify-content-between align-items-center border-top pt-3 mb-3"><span>Total purchase cost</span><span class="pp-total" id="ppTotal">0.00</span></div><div class="form-group mt-2"><label for="ppTotalWords">Amount in Words</label><input id="ppTotalWords" type="text" class="form-control voucher-words-output" placeholder="Total in words" disabled readonly></div>
    <small class="d-block pp-muted mt-2">Posts plot inventory debit and seller credit. Edit can add/remove purchased plots. Removed rows remain archived; booking/sale history is protected.</small>
 
   </div>
@@ -161,7 +162,7 @@
  };
  function fillSelect(select,items,label){select.innerHTML=`<option value="">Select ${label}</option>`+items.map(x=>`<option value="${x.id}" data-legacy="${esc(x.legacy_value??'')}" data-size="${esc(x.size_value??'')}" data-unit="${esc(x.unit_code??'')}">${esc(x.code?x.code+' · ':'')}${esc(x.name)}</option>`).join('')}
  function row(){const node=byId('ppItemTemplate').content.firstElementChild.cloneNode(true);for(const kind of ['road_id','facing_id'])fillSelect($(node).find(`[data-field="${kind}"]`)[0],options[kind==='road_id'?'roads':'facings'],kind==='road_id'?'road':'facing');$(node).find('input,select').toArray().forEach(el=>$(el).on('input',recalc));$(node).find('.pp-remove').on('click',()=>{if(byId('ppItems').children.length>1)node.remove();recalc()});byId('ppItems').append(node);$(node).find('.pp-item-title')[0].textContent=`Plot ${byId('ppItems').children.length}`;recalc()}
-  function recalc(){let total=0,valid=!!byId('ppNumber').value.trim()&&!!byId('ppDate').value&&!!byId('ppSeller').value&&!!byId('ppNarration').value.trim();$('.pp-item').each((_,el)=>{const get=k=>$(el).find(`[data-field="${k}"]`)[0],area=Number(get('area').value),rate=Number(get('unit_rate').value);total+=area*rate;for(const k of ['plot_code','description','area','unit','road_id','facing_id','inventory_account_id','unit_rate'])valid=valid&&!!get(k).value;valid=valid&&area>0&&rate>0;});byId('ppTotal').textContent=money(total);byId('ppPost').disabled=!valid||busy||total<=0}
+  function recalc(){let total=0,valid=!!byId('ppNumber').value.trim()&&!!byId('ppDate').value&&!!byId('ppSeller').value&&!!byId('ppNarration').value.trim();$('.pp-item').each((_,el)=>{const get=k=>$(el).find(`[data-field="${k}"]`)[0],area=Number(get('area').value),rate=Number(get('unit_rate').value);total+=area*rate;for(const k of ['plot_code','description','area','unit','road_id','facing_id','inventory_account_id','unit_rate'])valid=valid&&!!get(k).value;valid=valid&&area>0&&rate>0;});byId('ppTotal').textContent=money(total);if (window.numberToWords&&typeof numberToWords.toWords==='function')$('#ppTotalWords').val(total>0?numberToWords.toWords(total):'');byId('ppPost').disabled=!valid||busy||total<=0}
  let history=[],historyPage=1,historySort='date',historyDirection='desc';
  let applied={from:'',to:'',seller:'',search:''},purchaseColumns=null;
  function historyValue(x,field){
