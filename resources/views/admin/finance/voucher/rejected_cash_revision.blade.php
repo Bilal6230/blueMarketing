@@ -141,7 +141,7 @@ body{overflow:auto!important}
 @if($counterLeg && !$isBankRevision)
 <div class="fields">
  <div class="form-group cr-revise-counter-field">
-  <label for="cr-revise-counter-account">{{ in_array((string)$source->transaction_type,['CR','CCR'],true) ? 'Credit Account' : 'Debit Account' }} *</label>
+  <label for="cr-revise-counter-account">{{ ['CR'=>'Debit Account','DR'=>'Credit Account','CP'=>'Credit Account','CCR'=>'Debit Account (Cash)','CDR'=>'Credit Account (Cash)'][$editLayoutSeries] ?? 'Opposite Posting Account' }} *</label>
   <select id="cr-revise-counter-account" name="counter_account_id" class="js-tomselect" required>
    <option value="">Select opposite posting account</option>
    @foreach($accounts as $counterOption)
@@ -167,7 +167,7 @@ body{overflow:auto!important}
 @elseif(!$counterLeg)
 <div class="fields">
  <div class="form-group">
-  <label for="cr-revise-legacy-counter">Opposite Posting Account</label>
+  <label for="cr-revise-legacy-counter">{{ ['CR'=>'Debit Account','DR'=>'Credit Account','CCR'=>'Debit Account (Cash)','CDR'=>'Credit Account (Cash)'][$editLayoutSeries] ?? 'Opposite Posting Account' }}</label>
   <input id="cr-revise-legacy-counter" class="form-control" type="text"
     value="Legacy voucher — no linked counter-account" readonly>
   <small class="text-muted">This historical single-leg voucher is preserved; Edit cannot silently invent a second posting.</small>
