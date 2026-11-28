@@ -1,7 +1,10 @@
 @extends('admin.layouts.master')
-@section('title', $presetType ? $presetType.' Vouchers' : 'Voucher Directory')
+@section('title', $presetType
+    ? app(\App\Services\Finance\ProjectVoucherPrefixCounter::class)->currentPrefix((int)getSelectedTown(),$presetType).' Vouchers'
+    : 'Voucher Directory')
 
 @section('content')
+@php($currentVoucherPrefix = $presetType ? app(\App\Services\Finance\ProjectVoucherPrefixCounter::class)->currentPrefix((int)getSelectedTown(),$presetType) : null)
 <style>
     html.daily-voucher-directory-active,body.daily-voucher-directory-active{height:100%;overflow:hidden!important}
     body.daily-voucher-directory-active .main-footer{display:none!important}
@@ -204,7 +207,7 @@
         <div>
             <h1 class="h3 mb-1">
                 @if($presetType)
-                    {{ ['BOR'=>'Bank Receipt Voucher (BOR)','BOP'=>'Bank Payment Voucher (BOP)'][$presetType] ?? $presetType.' Vouchers' }}
+                    {{ ['CR'=>'Credit Voucher','DR'=>'Debit Voucher','BOR'=>'Bank Receipt Voucher','BOP'=>'Bank Payment Voucher'][$presetType] ?? $presetType.' Vouchers' }} ({{ $currentVoucherPrefix }})
                 @else
                     Voucher Directory
                 @endif
@@ -312,10 +315,10 @@
                     <select id="dv-entry-type" class="form-control" aria-label="Choose a voucher to create">
                         <option value="">Select voucher type</option>
                         @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'CR'))
-                        <option value="CR">Credit Voucher (CR)</option>
+                        <option value="CR">Credit Voucher ({{ app(\App\Services\Finance\ProjectVoucherPrefixCounter::class)->currentPrefix((int)getSelectedTown(),'CR') }})</option>
                         @endif
                         @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'DR'))
-                        <option value="DR">Debit Voucher (DR)</option>
+                        <option value="DR">Debit Voucher ({{ app(\App\Services\Finance\ProjectVoucherPrefixCounter::class)->currentPrefix((int)getSelectedTown(),'DR') }})</option>
                         @endif
                         @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'CCR'))
                         <option value="CCR">Cash Credit (CCR)</option>
