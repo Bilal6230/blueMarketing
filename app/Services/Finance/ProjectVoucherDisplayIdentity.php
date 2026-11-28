@@ -12,24 +12,8 @@ final class ProjectVoucherDisplayIdentity
         if ($projectId < 1 || $sourceId < 1 || !Schema::hasTable('project_voucher_display_numbers')) return null;
         $identity = DB::table('project_voucher_display_numbers')->where('project_id', $projectId)
             ->where('source_kind', $sourceKind)->where('source_id', $sourceId)->first(['series','display_number']);
-        // For the real CR and legacy CP-as-DR voucher form, the stored source
-        // type_id is the visible voucher number, not a configurable fiscal
-        // prefix. Other voucher families keep their historical identity rules.
-        if ($sourceKind === 'customer_ledger' && in_array((string) ($identity->series ?? ''), ['CR','DR','CP','CCR','CDR'], true)) {
-            $source = DB::table('customer_ledger')->where('id',$sourceId)
-                ->where('project_id',$projectId)->first(['transaction_type','type_id']);
-            if ($source && (int)$source->type_id > 0) {
-                // Retain DR only for an explicitly DR-labelled old CP source.
-                // New CP and DR are independent voucher families.
-                $label = ($source->transaction_type === 'CP' && $identity->series === 'DR')
-                    ? 'DR' : $source->transaction_type;
-                return $label.'-'.$source->type_id;
-            }
-        }
-        $number = $identity->display_number ?? null;
-        // A retained DR label is authoritative only for an old DR display
-        // identity. Do not relabel a newly created CP voucher as DR.
-        return $number ? (string)$number : null;
+        // Issued display numbers never change when the active prefix changes.
+        return $identity ? (string)$identity->display_number : null;
     }
 
     public function series(int $projectId, string $sourceKind, int $sourceId): ?string
@@ -53,6 +37,23 @@ final class ProjectVoucherDisplayIdentity
         if ($existing) {
             if ($existing->series !== $series) throw new \DomainException('VOUCHER_DISPLAY_SOURCE_CONFLICT');
             return (string) $existing->display_number;
+        }
+
+        // Retain the source/series integrity gates below, but allocate the
+        // human-facing number from the project/prefix counter, not type_id.
+        // Existing mappings above are always returned unchanged.
+        if (Schema::hasTable('project_voucher_prefix_counters')) {
+            if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP','CCR','CDR','BOR','BOP'], true)) {
+                $source = DB::table('customer_ledger')->where('id',$sourceId)
+                    ->where('project_id',$projectId)->lockForUpdate()->first(['transaction_type','type_id']);
+                if (!$source || (int)$source->type_id<1
+                    || !((string)$source->transaction_type===$series
+                        || ($series==='DR' && (string)$source->transaction_type==='CP'))) {
+                    throw new \DomainException('VOUCHER_SOURCE_IDENTITY_MISMATCH');
+                }
+            }
+            return app(ProjectVoucherPrefixCounter::class)
+                ->issue($projectId,$series,$sourceKind,$sourceId,$date);
         }
 
         if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP','CCR','CDR'], true)) {
