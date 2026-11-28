@@ -36,6 +36,11 @@ final class LedgerVoucherDisplayService
                         ->first(['transaction_type','type_id']);
                     if ($source && (int)$source->type_id > 0
                         && $type === (string)$source->transaction_type) {
+                        // Immutable source mapping overrides the old canonical
+                        // ledger label, without altering accounting rows.
+                        $display=app(ProjectVoucherDisplayIdentity::class)
+                            ->lookup($projectId,'customer_ledger',(int)$owned->customer_ledger_id);
+                        if ($display !== null) return $display;
                         if ($type === 'PPR' && Schema::hasTable('booking_vouchers')) {
                             $booking = DB::table('booking_vouchers')
                                 ->where('project_id',$projectId)
@@ -59,7 +64,9 @@ final class LedgerVoucherDisplayService
                     if ($source && $type === 'CP'
                         && (string)$source->transaction_type === 'CP'
                         && (int)$source->type_id > 0) {
-                        return 'DR-'.(int)$source->type_id;
+                        $display=app(ProjectVoucherDisplayIdentity::class)
+                            ->lookup($projectId,'customer_ledger',(int)$owned->customer_ledger_id);
+                        return $display ?: 'DR-'.(int)$source->type_id;
                     }
                 }
                 if (in_array($type,['JV','SV'],true) && (int)$owned->journal_voucher_detail_id > 0
