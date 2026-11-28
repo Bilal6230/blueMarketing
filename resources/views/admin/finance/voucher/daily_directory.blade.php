@@ -207,7 +207,7 @@
         <div>
             <h1 class="h3 mb-1">
                 @if($presetType)
-                    {{ ['CR'=>'Credit Voucher','DR'=>'Debit Voucher','BOR'=>'Bank Receipt Voucher','BOP'=>'Bank Payment Voucher'][$presetType] ?? $presetType.' Vouchers' }} ({{ $currentVoucherPrefix }})
+                    {{ ['CR'=>'Credit Voucher','DR'=>'Debit Voucher','BOR'=>'Bank Receipt Voucher','BOP'=>'Bank Payment Voucher','CCR'=>'Cash Receive Voucher','CDR'=>'Cash Payment Voucher'][$presetType] ?? $presetType.' Vouchers' }} ({{ $currentVoucherPrefix }})
                 @else
                     Voucher Directory
                 @endif
@@ -230,8 +230,8 @@
                 @foreach([
                     'CR' => ['Credit Voucher (CR)', route('finance.voucher.in', ['series'=>'CR','embed'=>1])],
                     'DR' => ['Debit Voucher (DR)', route('finance.voucher.out', ['series'=>'DR','embed'=>1])],
-                    'CCR' => ['Cash Credit (CCR)', route('finance.voucher.in.method', ['method'=>'cash','series'=>'CCR','embed'=>1])],
-                    'CDR' => ['Cash Debit (CDR)', route('finance.voucher.out.method', ['method'=>'cash','series'=>'CDR','embed'=>1])],
+                    'CCR' => ['Cash Receive Voucher (CCR)', route('finance.voucher.in.method', ['method'=>'cash','series'=>'CCR','embed'=>1])],
+                    'CDR' => ['Cash Payment Voucher (CDR)', route('finance.voucher.out.method', ['method'=>'cash','series'=>'CDR','embed'=>1])],
                     'BOR' => ['Bank Receipt Voucher (BOR)', route('finance.voucher.in', ['series'=>'BOR','embed'=>1])],
                     'BOP' => ['Bank Payment Voucher (BOP)', route('finance.voucher.out', ['series'=>'BOP','embed'=>1])],
                 ] as $series => [$label, $url])
@@ -321,10 +321,10 @@
                         <option value="DR">Debit Voucher ({{ app(\App\Services\Finance\ProjectVoucherPrefixCounter::class)->currentPrefix((int)getSelectedTown(),'DR') }})</option>
                         @endif
                         @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'CCR'))
-                        <option value="CCR">Cash Credit (CCR)</option>
+                        <option value="CCR">Cash Receive Voucher (CCR)</option>
                         @endif
                         @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'CDR'))
-                        <option value="CDR">Cash Debit (CDR)</option>
+                        <option value="CDR">Cash Payment Voucher (CDR)</option>
                         @endif
                         @if(\App\Services\Finance\VoucherAvailability::enabled((int)getSelectedTown(),'BOR'))
                         <option value="BOR">Bank Receipt Voucher (BOR)</option>
@@ -460,7 +460,7 @@
     const fallback=$('#dv-entry-fallback')[0];
     const entryLoading=$('#dv-entry-loading')[0];
     const dvPage=$('#dv-page')[0];
-    const voucherTypeLabels={CR:'Credit Voucher (CR)',DR:'Debit Voucher (DR)',CCR:'Cash Credit (CCR)',CDR:'Cash Debit (CDR)',BOR:'Bank Receipt Voucher (BOR)',BOP:'Bank Payment Voucher (BOP)'};
+    const voucherTypeLabels={CR:'Credit Voucher (CR)',DR:'Debit Voucher (DR)',CCR:'Cash Receive Voucher (CCR)',CDR:'Cash Payment Voucher (CDR)',BOR:'Bank Receipt Voucher (BOR)',BOP:'Bank Payment Voucher (BOP)'};
     function updateDirectoryTheme(type){
         $(dvPage).toggleClass('dv-theme-credit',['CR','CCR','BOR'].includes(type));
         $(dvPage).toggleClass('dv-theme-debit',['DR','CDR','BOP','CP'].includes(type));
