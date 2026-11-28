@@ -207,7 +207,9 @@ Bank/cheque revision requires verified instrument allocation and a supported vou
 <div class="form-group">
  <label for="cr-revise-attachment">Attachment / File Uploader (optional)</label>
  <input type="file" name="attachment" id="cr-revise-attachment" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp">
+ @unless($isCashCounterLayout)
  <small class="text-muted">PDF/image up to 5 MB. If approval is enabled, uploaded file becomes visible only after approval.</small>
+ @endunless
  @if($currentAttachment)
  <div class="mt-1">Current attachment: <a target="_blank" rel="noopener noreferrer" href="{{ route('finance.voucher.cash-only.attachment',['attachment'=>$currentAttachment->id]) }}">{{ $currentAttachment->original_name }}</a></div>
  @endif
