@@ -397,6 +397,19 @@
                                                         @enderror
                                                     </div>
 
+                                                    @if($displaySeries!=='BOR')
+                                                    {{-- Keep existing top-row Amount position for every other voucher. --}}
+                                                    <div class="col-6 col-md-3 col-lg-2">
+                                                        <label class="fbox mb-1">Amount</label>
+                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
+                                                            class="form-control form-control-sm @error('amount') is-invalid @enderror"
+                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
+                                                        @error('amount')
+                                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                                        @enderror
+                                                    </div>
+                                                    @endif
+
                                                     @if($isBankVoucherSeries)
                                                     <div class="col-12 col-md-6 col-lg-4 bank-posting-account">
                                                         <label class="fbox mb-1" for="voucher_bank_counter_account">
@@ -432,17 +445,6 @@
                                                             class="form-control form-control-sm"
                                                             placeholder="Amount in words will appear automatically"
                                                             value="" disabled readonly>
-                                                    </div>
-                                                    @else
-                                                    {{-- Amount (small) -- original layout for other vouchers --}}
-                                                    <div class="col-6 col-md-3 col-lg-2">
-                                                        <label class="fbox mb-1">Amount</label>
-                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
-                                                            class="form-control form-control-sm @error('amount') is-invalid @enderror"
-                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
-                                                        @error('amount')
-                                                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                        @enderror
                                                     </div>
                                                     @endif
 
