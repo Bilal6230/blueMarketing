@@ -411,6 +411,7 @@ $(function () {
             feedback.enhanceSelects($('#bankTransferApp select.fvc-tom-select, #bankTransferCreateModal select.fvc-tom-select'));
     };
     var valid = function () {
+        updateBtAmountWords();
         var amount = Number($('#voucherAmount').val());
         var verified=!!btBankMethod()&&!editingBatch;
         var ok = !busy && !chequeLoading && !!$('#voucherDate').val()
