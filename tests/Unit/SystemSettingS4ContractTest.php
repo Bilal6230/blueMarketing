@@ -16,7 +16,7 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString('settings-fill-tab', $view);
         $this->assertStringContainsString('settings-fill-scroll', $view);
         $this->assertStringContainsString('ProjectVoucherDisplay::label($series)', $view);
-        $this->assertStringContainsString("'CR'=>'Cash Receipt Voucher'", $definition);
+        $this->assertStringContainsString("'CR'=>'Credit Voucher'", $definition);
         $this->assertStringContainsString("'BOR'=>'Bank Receipt Voucher'", $definition);
         $this->assertStringContainsString("'CCR'=>'Cash Credit Voucher'", $definition);
         $this->assertStringContainsString('data-s4-series=', $view);
