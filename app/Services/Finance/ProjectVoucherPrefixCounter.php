@@ -91,7 +91,7 @@ final class ProjectVoucherPrefixCounter
         if (Schema::hasTable('project_voucher_display_settings')) {
             $conflict=$conflict||DB::table('project_voucher_display_settings')
                 ->where('project_id',$projectId)->where('prefix',$prefix)
-                ->where('series','!=',$series)->exists();
+                ->whereNotIn('series',$aliases)->exists();
         }
         return ['prefix'=>$prefix,'next_number'=>$next,'existing'=>(bool)$exists,
             'conflict'=>(bool)$conflict];
