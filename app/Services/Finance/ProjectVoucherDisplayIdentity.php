@@ -39,19 +39,6 @@ final class ProjectVoucherDisplayIdentity
             return (string) $existing->display_number;
         }
 
-        if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP','CCR','CDR','BOR','BOP'], true)) {
-                $source = DB::table('customer_ledger')->where('id',$sourceId)
-                    ->where('project_id',$projectId)->lockForUpdate()->first(['transaction_type','type_id']);
-                if (!$source || (int)$source->type_id<1
-                    || !((string)$source->transaction_type===$series
-                        || ($series==='DR' && (string)$source->transaction_type==='CP'))) {
-                    throw new \DomainException('VOUCHER_SOURCE_IDENTITY_MISMATCH');
-                }
-            }
-            return app(ProjectVoucherPrefixCounter::class)
-                ->issue($projectId,$series,$sourceKind,$sourceId,$date,$display);
-        }
-
         if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP','CCR','CDR'], true)) {
             $source = DB::table('customer_ledger')->where('id', $sourceId)
                 ->where('project_id', $projectId)->lockForUpdate()
@@ -109,7 +96,7 @@ final class ProjectVoucherDisplayIdentity
         // the legacy integrity branches above, then issue a separate display ID.
         if (Schema::hasTable('project_voucher_prefix_counters')) {
             return app(ProjectVoucherPrefixCounter::class)
-                ->issue($projectId,$series,$sourceKind,$sourceId,$date);
+                ->issue($projectId,$series,$sourceKind,$sourceId,$date,$display);
         }
         DB::table('project_voucher_display_numbers')->insert([
             'project_id' => $projectId, 'source_kind' => $sourceKind, 'source_id' => $sourceId,
