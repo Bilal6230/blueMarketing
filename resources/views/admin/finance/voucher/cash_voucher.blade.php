@@ -124,6 +124,19 @@
             #voucherForm .voucher-amount-words-layout > .voucher-amount-words { grid-column:1; }
         }
 
+        #edit-voucher-form .voucher-edit-words-field .voucher-words-output {
+            background:#f1f5f9;
+            color:#20364d;
+            font-size:15px;
+            font-weight:600;
+            opacity:1;
+        }
+        #voucherForm .voucher-amount-words-layout > .standard-counter-account {
+            grid-column:span 1;
+        }
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .voucher-amount-words-layout > .standard-counter-account {
+            grid-column:span 1 !important;
+        }
         /* Override the embedded modal's generic .col-12 full-row selector. */
         body.daily-voucher-embedded #voucherForm > .row > .col-10 > .voucher-amount-words-layout > .bank-posting-account,
         body.daily-voucher-embedded #voucherForm > .row > .col-10 > .voucher-amount-words-layout > .voucher-amount-field {
@@ -2468,7 +2481,7 @@
                         setDateInputValue('#edit_date', d.date);
                         $("#edit_amount").val(amount);
                         $("#edit_detail").val(d.detail ?? '');
-                        $('#eWordingAmount').text(numberToWords.toWords(amount));
+                        updateEditVoucherAmountWords();
 
                         const $counterField = $('#edit_counter_account');
                         const counterTs = $counterField[0]?.tomselect;
@@ -2997,15 +3010,15 @@
             wordingTarget.innerText = wordingAmount;
         }
 
-        function eConvertToWords() {
-            var numberInput = $('#edit_amount')[0].value;
-
-            var numericValue = numberInput.replace(/,/g, '');
-
-            var wordingAmount = numberToWords.toWords(numericValue);
-
-            $('#eWordingAmount')[0].innerText = wordingAmount;
+        function updateEditVoucherAmountWords() {
+            var raw=String($('#edit-voucher-form #edit_amount').val()||'').replace(/,/g,'').trim();
+            var amount=Number(raw), words='';
+            if(raw && Number.isFinite(amount) && amount>0 && window.numberToWords
+                && typeof numberToWords.toWords==='function') words=numberToWords.toWords(amount);
+            $('#edit_amount_words').val(words);
         }
+        function eConvertToWords() { updateEditVoucherAmountWords(); }
+        $(document).on('input change', '#edit-voucher-form #edit_amount', updateEditVoucherAmountWords);
 
         // Display-only Amount in Words, not submitted to backend.
         function updateVoucherAmountWords() {
@@ -4218,7 +4231,7 @@
                             </div>
                             <div class="col-sm-12">
                                 <div class="row">
-                                    <div class="col-sm-8">
+                                    <div class="col-sm-12">
                                         <div class="input-group">
                                             <label class="fbox">Child Account</label>
                                             <div class="input-group">
@@ -4259,6 +4272,11 @@
                                                 @enderror
                                             </div>
                                         </div>
+                                    </div>
+                                    <div class="col-sm-8 voucher-edit-words-field">
+                                        <label for="edit_amount_words" class="fbox">Amount in Words</label>
+                                        <input id="edit_amount_words" class="form-control voucher-words-output"
+                                            type="text" value="" placeholder="Amount in words will appear automatically" disabled readonly>
                                     </div>
 
                                 </div>
@@ -4396,9 +4414,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="mb-3 col-sm-12">
-                            <div id="eWordingAmount"></div>
-                        </div>
+
                         <div class="row">
                             <div class="col-sm-12">
                                 <div class="input-group">
