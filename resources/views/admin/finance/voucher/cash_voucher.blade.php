@@ -118,6 +118,19 @@
             #voucherForm .bor-add-layout > .bor-amount-words { grid-column:1; }
         }
 
+        /* Embedded shared grid has a more specific .col-12 rule; keep BOR words 2 cells wide. */
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bor-amount-words {
+            grid-column:span 2;
+        }
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bor-amount-field {
+            grid-column:span 1;
+        }
+        @media (max-width:767px) {
+            body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bor-amount-words {
+                grid-column:span 1;
+            }
+        }
+
         @if($embeddedVoucher ?? false)
         /* Embedded correction editor is displayed directly within the parent modal;
            no nested overlay or old voucher listing is visible. */
@@ -402,28 +415,7 @@
                                                     </div>
                                                     @endif
                                                     @if($displaySeries==='BOR')
-                                                        {{-- BOR design approval pilot: amount and words share the second row. --}}
-                                                        {{-- Amount (small) --}}
-                                                                                                            <div class="col-12 col-md-6 col-lg-4 bor-amount-field">
-                                                                                                                <label class="fbox mb-1">Amount</label>
-                                                                                                                <input id="numberInput" oninput="formatAmount(this)" type="text"
-                                                                                                                    class="form-control form-control-sm @error('amount') is-invalid @enderror"
-                                                                                                                    placeholder="Amount" name="amount" value="{{ old('amount') }}">
-                                                                                                                @error('amount')
-                                                                                                                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                                                                                @enderror
-                                                                                                            </div>
-                                                        
-                                                        
-                                                        <div class="col-12 col-md-6 col-lg-8 bor-amount-words">
-                                                            <label for="bor_amount_words" class="fbox mb-1">Amount in Words</label>
-                                                            <input id="bor_amount_words" type="text"
-                                                                class="form-control form-control-sm"
-                                                                placeholder="Amount in words will appear automatically"
-                                                                value="" disabled readonly aria-live="polite">
-                                                        </div>
-                                                    @else
-                                                    {{-- Amount (small) --}}
+                                                    {{-- BOR design approval pilot: amount and words share the second row. --}}
                                                     <div class="col-12 col-md-6 col-lg-4 bor-amount-field">
                                                         <label class="fbox mb-1">Amount</label>
                                                         <input id="numberInput" oninput="formatAmount(this)" type="text"
@@ -433,9 +425,25 @@
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
-
+                                                    <div class="col-12 col-md-6 col-lg-8 bor-amount-words">
+                                                        <label for="bor_amount_words" class="fbox mb-1">Amount in Words</label>
+                                                        <input id="bor_amount_words" type="text"
+                                                            class="form-control form-control-sm"
+                                                            placeholder="Amount in words will appear automatically"
+                                                            value="" disabled readonly>
+                                                    </div>
+                                                    @else
+                                                    {{-- Amount (small) -- original layout for other vouchers --}}
+                                                    <div class="col-6 col-md-3 col-lg-2">
+                                                        <label class="fbox mb-1">Amount</label>
+                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
+                                                            class="form-control form-control-sm @error('amount') is-invalid @enderror"
+                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
+                                                        @error('amount')
+                                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                                        @enderror
+                                                    </div>
                                                     @endif
-
 
                                                     @if(in_array($displaySeries ?? '', ['CR','DR','CP','CCR','CDR'], true))
                                                     <div class="col-12 col-md-6 col-lg-4 standard-counter-account">
