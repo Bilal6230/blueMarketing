@@ -171,11 +171,17 @@ class SettingController extends Controller
         $result=DB::transaction(function()use($projectId,$data,$request) {
             DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
             $service=app(\App\Services\Finance\ProjectVoucherPrefixCounter::class);
-            $state=$service->configure($projectId,$data['series'],$data['prefix'],
-                isset($data['start_number'])?(int)$data['start_number']:null);
             $query=DB::table('project_voucher_display_settings')
                 ->where('project_id',$projectId)->where('series',$data['series']);
             $old=$query->lockForUpdate()->value('prefix');
+            $previous=$old ?: ($data['series']==='CP'?'DR':$data['series']);
+            // Snapshot the old prefix BEFORE enabling another one. Source type_id
+            // keeps advancing even while the old display counter is dormant.
+            if ($previous!==$data['prefix']) {
+                $service->configure($projectId,$data['series'],$previous,null);
+            }
+            $state=$service->configure($projectId,$data['series'],$data['prefix'],
+                isset($data['start_number'])?(int)$data['start_number']:null);
             if ($old===$data['prefix']) return $state;
             if ($old===null) {
                 $query->insert(['project_id'=>$projectId,'series'=>$data['series'],
