@@ -80,8 +80,8 @@
             animation:passedBankAmountShake .38s ease-in-out;
         }
 
-        /* BOR Add-only layout pilot; the edit form and all other vouchers are unchanged. */
-        #voucherForm .bor-add-layout {
+        /* Shared Cash / Bank Add voucher layout. */
+        #voucherForm .voucher-amount-words-layout {
             display:grid;
             grid-template-columns:repeat(3,minmax(0,1fr));
             gap:14px 16px;
@@ -89,7 +89,7 @@
             align-items:end;
             width:100%;
         }
-        #voucherForm .bor-add-layout > [class*="col-"] {
+        #voucherForm .voucher-amount-words-layout > [class*="col-"] {
             width:auto;
             max-width:none;
             min-width:0;
@@ -97,41 +97,43 @@
             padding:0;
             margin:0 !important;
         }
-        #voucherForm .bor-add-layout > .col-12:not(.bank-posting-account):not(.bor-amount-field):not(.bor-amount-words) {
+        #voucherForm .voucher-amount-words-layout > .col-12:not(.bank-posting-account):not(.standard-counter-account):not(.voucher-amount-field):not(.voucher-amount-words) {
             grid-column:1 / -1;
         }
-        #voucherForm .bor-add-layout > .bank-posting-account,
-        #voucherForm .bor-add-layout > .bor-amount-field {
+        #voucherForm .voucher-amount-words-layout > .bank-posting-account,
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-field {
             grid-column:span 1;
         }
-        #voucherForm .bor-add-layout > .bor-amount-words {
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-words {
             grid-column:span 2;
         }
-        #voucherForm .bor-add-layout > .bor-amount-words input:disabled {
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-words input:disabled {
             background:#f1f5f9;
-            color:#34465a;
+            color:#20364d;
+            font-size:15px;
+            font-weight:600;
             opacity:1;
             cursor:default;
         }
         @media (max-width:767px) {
-            #voucherForm .bor-add-layout { grid-template-columns:repeat(2,minmax(0,1fr)); }
-            #voucherForm .bor-add-layout > .bor-amount-words { grid-column:span 1; }
+            #voucherForm .voucher-amount-words-layout { grid-template-columns:repeat(2,minmax(0,1fr)); }
+            #voucherForm .voucher-amount-words-layout > .voucher-amount-words { grid-column:span 1; }
         }
         @media (max-width:480px) {
-            #voucherForm .bor-add-layout { grid-template-columns:minmax(0,1fr); }
-            #voucherForm .bor-add-layout > .bor-amount-words { grid-column:1; }
+            #voucherForm .voucher-amount-words-layout { grid-template-columns:minmax(0,1fr); }
+            #voucherForm .voucher-amount-words-layout > .voucher-amount-words { grid-column:1; }
         }
 
         /* Override the embedded modal's generic .col-12 full-row selector. */
-        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bank-posting-account,
-        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bor-amount-field {
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .voucher-amount-words-layout > .bank-posting-account,
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .voucher-amount-words-layout > .voucher-amount-field {
             grid-column:span 1 !important;
         }
-        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bor-amount-words {
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .voucher-amount-words-layout > .voucher-amount-words {
             grid-column:span 2 !important;
         }
         @media (max-width:767px) {
-            body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bor-amount-words {
+            body.daily-voucher-embedded #voucherForm > .row > .col-10 > .voucher-amount-words-layout > .voucher-amount-words {
                 grid-column:span 1 !important;
             }
         }
@@ -349,7 +351,7 @@
  @include('admin.finance.voucher.typed_posting_fields')
                                         <div class="row">
                                             <div class="col-10">
-                                                <div class="row g-2 align-items-end{{ $displaySeries==='BOR' ? ' bor-add-layout' : '' }}">
+                                                <div class="row g-2 align-items-end voucher-amount-words-layout">
 
                                                     {{-- Serial No (hidden) --}}
                                                     <div class="col-12 d-none">
@@ -401,19 +403,6 @@
                                                         @enderror
                                                     </div>
 
-                                                    @if($displaySeries!=='BOR')
-                                                    {{-- Keep existing top-row Amount position for every other voucher. --}}
-                                                    <div class="col-6 col-md-3 col-lg-2">
-                                                        <label class="fbox mb-1">Amount</label>
-                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
-                                                            class="form-control form-control-sm @error('amount') is-invalid @enderror"
-                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
-                                                        @error('amount')
-                                                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                    @endif
-
                                                     @if($isBankVoucherSeries)
                                                     <div class="col-12 col-md-6 col-lg-4 bank-posting-account">
                                                         <label class="fbox mb-1" for="voucher_bank_counter_account">
@@ -432,26 +421,6 @@
                                                         </select>
                                                     </div>
                                                     @endif
-                                                    @if($displaySeries==='BOR')
-                                                    {{-- BOR design approval pilot: amount and words share the second row. --}}
-                                                    <div class="col-12 col-md-6 col-lg-4 bor-amount-field">
-                                                        <label class="fbox mb-1">Amount</label>
-                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
-                                                            class="form-control form-control-sm @error('amount') is-invalid @enderror"
-                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
-                                                        @error('amount')
-                                                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-                                                    <div class="col-12 col-md-6 col-lg-8 bor-amount-words">
-                                                        <label for="bor_amount_words" class="fbox mb-1">Amount in Words</label>
-                                                        <input id="bor_amount_words" type="text"
-                                                            class="form-control form-control-sm"
-                                                            placeholder="Amount in words will appear automatically"
-                                                            value="" disabled readonly>
-                                                    </div>
-                                                    @endif
-
                                                     @if(in_array($displaySeries ?? '', ['CR','DR','CP','CCR','CDR'], true))
                                                     <div class="col-12 col-md-6 col-lg-4 standard-counter-account">
                                                         <label class="fbox mb-1" for="voucher_counter_account">
@@ -476,6 +445,24 @@
                                                         </select>
                                                     </div>
                                                     @endif
+
+                                                    {{-- Shared Add voucher amount / words row --}}
+                                                    <div class="col-12 col-md-6 col-lg-4 voucher-amount-field">
+                                                        <label class="fbox mb-1" for="numberInput">Amount</label>
+                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
+                                                            class="form-control form-control-sm @error('amount') is-invalid @enderror"
+                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
+                                                        @error('amount')
+                                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                                        @enderror
+                                                    </div>
+                                                    <div class="col-12 col-md-6 col-lg-8 voucher-amount-words">
+                                                        <label for="voucher_amount_words" class="fbox mb-1">Amount in Words</label>
+                                                        <input id="voucher_amount_words" type="text"
+                                                            class="form-control form-control-sm voucher-words-output"
+                                                            placeholder="Amount in words will appear automatically"
+                                                            value="" disabled readonly>
+                                                    </div>
 
                                                     {{-- Account Type (small) --}}
                                                     <div class="col-6 col-md-3 col-lg-2">
@@ -3020,21 +3007,16 @@
             $('#eWordingAmount')[0].innerText = wordingAmount;
         }
 
-        @if($displaySeries==='BOR')
-        // Amount in Words is intentionally a read-only visual aid, not a posted field.
-        function updateBorAmountWords() {
-            var raw=String($('#numberInput').val() || '').replace(/,/g,'').trim();
-            var amount=Number(raw);
-            var wording='';
+        // Display-only Amount in Words, not submitted to backend.
+        function updateVoucherAmountWords() {
+            var raw=String($('#voucherForm #numberInput').val() || '').replace(/,/g,'').trim();
+            var amount=Number(raw), words='';
             if (raw && Number.isFinite(amount) && amount>0 && window.numberToWords
-                && typeof numberToWords.toWords==='function') {
-                wording=numberToWords.toWords(amount);
-            }
-            $('#bor_amount_words').val(wording);
+                && typeof numberToWords.toWords==='function') words=numberToWords.toWords(amount);
+            $('#voucher_amount_words').val(words);
         }
-        $(document).on('input change', '#voucherForm #numberInput', updateBorAmountWords);
-        $(updateBorAmountWords);
-        @endif
+        $(document).on('input change', '#voucherForm #numberInput', updateVoucherAmountWords);
+        $(updateVoucherAmountWords);
 
         function formatAmount(input) {
             let value = input.value.replace(/[^0-9]/g, '').replace(/^0+/, '');
