@@ -30,8 +30,8 @@
  $dailyVoucherLinks = [
   'CR' => ['Credit Voucher (CR)','cr'],
   'DR' => ['Debit Voucher (DR)','dr'],
-  'CCR' => ['Cash Credit (CCR)','ccr'],
-  'CDR' => ['Cash Debit (CDR)','cdr'],
+  'CCR' => ['Cash Receive Voucher (CCR)','ccr'],
+  'CDR' => ['Cash Payment Voucher (CDR)','cdr'],
   'BOR' => ['Bank Receipt Voucher (BOR)','bor'],
   'BOP' => ['Bank Payment Voucher (BOP)','bop'],
  ];
