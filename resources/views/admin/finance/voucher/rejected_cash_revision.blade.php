@@ -3,6 +3,7 @@
 @section('content')
 @php
     $editStatus = $approval?->status ?? 'posted';
+    $matchAddLayout = in_array((string)$revisionPolicyType, ['CR','DR','BOR','BOP'], true);
     $usesApproval = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
         ->policy((int)getSelectedTown(),$revisionPolicyType) !== null;
 @endphp
@@ -20,8 +21,40 @@ body{overflow:auto!important}
 .cr-revise .form-control{font-size:14px;min-height:34px;border-radius:5px}
 .cr-revise .fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:8px}.cr-revise .fields>.cr-revise-counter-field{grid-column:1/-1}.cr-revise .fields>.form-group{min-width:0}.cr-revise .form-group{margin-bottom:10px}.cr-revise textarea.form-control{min-height:72px}.cr-revise .alert{padding:10px 12px}.cr-revise button[type=submit]{background:{{ $editStatus === 'approved' ? '#18824a' : '#cf911a' }};border-color:transparent}.cr-revise .reason-label{font-weight:700}
 @media(max-width:650px){.cr-revise .fields{grid-template-columns:1fr}}
+
+@if($matchAddLayout)
+.cr-revise.add-matched-edit #cash-revision-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 14px;align-items:start}
+.cr-revise.add-matched-edit #cash-revision-form>.fields{display:contents!important}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group{grid-column:span 1!important;min-width:0;margin:0!important}
+.cr-revise.add-matched-edit #cash-revision-form>.fields:first-of-type>.form-group:first-child{order:1}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.cr-revise-words-field{order:5}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-date){order:2}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-amount){order:4}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-payment-type){order:6}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-type){order:7}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-head){order:8}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-account){order:9}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-number){order:10}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-bank){order:11}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-passing-date){order:12}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-counter-account){order:3}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-bank-counter){order:3}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-legacy-counter){order:3}
+.cr-revise.add-matched-edit #cash-revision-form>.form-group:has(#cr-revise-cheque-purpose){order:13}
+.cr-revise.add-matched-edit #cash-revision-form>.alert{grid-column:1/-1;order:14;margin:0}
+.cr-revise.add-matched-edit #cash-revision-form>.form-group:has(#cr-revise-description){grid-column:1/-1;order:15;margin:0}
+.cr-revise.add-matched-edit #cash-revision-form>.form-group:has(#cr-revise-attachment){grid-column:1/-1;order:16;margin:0}
+.cr-revise.add-matched-edit #cash-revision-form>.form-group:has(#cr-revise-reason){grid-column:1/-1;order:17;margin:0}
+.cr-revise.add-matched-edit #cash-revision-form>#cash-revision-error{grid-column:1/-1;order:18;margin:0}
+.cr-revise.add-matched-edit #cash-revision-form>.text-right{grid-column:1/-1;order:19}
+.cr-revise.add-matched-edit #cash-revision-form label{display:block;margin-bottom:5px}
+.cr-revise.add-matched-edit #cash-revision-form .form-control{width:100%;min-width:0}
+.cr-revise.add-matched-edit #cr-revise-amount-words{background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1}
+@media(max-width:767px){.cr-revise.add-matched-edit #cash-revision-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.cr-revise.add-matched-edit #cash-revision-form{grid-template-columns:1fr}}
+@endif
 </style>
-<div class="content-wrapper" style="margin:0!important;min-height:0!important;"><div class="cr-revise">
+<div class="content-wrapper" style="margin:0!important;min-height:0!important;"><div class="cr-revise {{ $matchAddLayout ? 'add-matched-edit' : '' }}">
 <h4>{{ $editStatus === 'rejected' ? 'Revise Rejected' : 'Edit' }} {{ $voucherDisplay }} Voucher</h4>
 <div class="alert alert-warning">
 @if($editStatus === 'rejected')
@@ -39,6 +72,9 @@ Voucher {{ $voucherDisplay }} will keep the same database ID and voucher number.
 <div class="form-group"><label>Voucher No</label><input class="form-control" value="{{ $voucherDisplay }}" readonly></div>
 <div class="form-group"><label for="cr-revise-date">Date *</label><input id="cr-revise-date" name="date" class="form-control" type="date" value="{{ substr((string)$source->date,0,10) }}" required></div>
 <div class="form-group"><label for="cr-revise-amount">Amount *</label><input id="cr-revise-amount" name="amount" class="form-control" type="number" min="0.01" step="0.01" value="{{ max((float)$source->amount_in,(float)$source->amount_out) }}" {{ $isBankRevision ? 'readonly' : '' }} required></div>
+@if($matchAddLayout)
+<div class="form-group cr-revise-words-field"><label for="cr-revise-amount-words">Amount in Words</label><input id="cr-revise-amount-words" class="form-control" type="text" disabled readonly placeholder="Amount in words will appear automatically"></div>
+@endif
 </div>
 @php
     $currentAccount = $accounts->firstWhere('id', (int) ($leg?->project_head_subheads_id ?? 0));
@@ -99,7 +135,7 @@ Voucher {{ $voucherDisplay }} will keep the same database ID and voucher number.
  </div>
 </div>
 @endif
-<div class="fields"><div class="form-group"><label>Payment Type</label><input class="form-control" value="{{ [1=>'Cash',2=>'Online',3=>'Cheque'][(int)$source->payment_type] ?? 'Unknown' }}" readonly></div></div>
+<div class="fields"><div class="form-group"><label for="cr-revise-payment-type">Payment Type</label><input id="cr-revise-payment-type" class="form-control" value="{{ [1=>'Cash',2=>'Online',3=>'Cheque'][(int)$source->payment_type] ?? 'Unknown' }}" readonly></div></div>
 @if((int)$source->payment_type !== 1)
 <div class="fields">
 <div class="form-group"><label for="cr-revise-number">{{ (int)$source->payment_type === 3 ? 'Cheque Number' : 'Transaction Reference' }} *</label>
@@ -182,6 +218,23 @@ $(function(){
  $type.on('change',function(){$head.val('');filterHeads();});
  $head.on('change',function(){$child.val('');filterChildren();});
  filterHeads();
+
+ @if($matchAddLayout)
+ function revisionWords(raw) {
+  const n=Number(String(raw||'').replace(/,/g,''));
+  if(!Number.isFinite(n)||n<0||n>999999999999.99)return '';
+  const u=['Zero','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+  const t=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+  function chunk(n){let a=[];if(n>=100){a.push(u[Math.floor(n/100)]+' Hundred');n%=100;}if(n>=20){a.push(t[Math.floor(n/10)]);n%=10;}if(n)a.push(u[n]);return a.join(' ');}
+  let whole=Math.floor(n),paisa=Math.round((n-whole)*100),parts=[];
+  [['Billion',1e9],['Million',1e6],['Thousand',1e3]].forEach(function(p){const c=Math.floor(whole/p[1]);if(c){parts.push(chunk(c)+' '+p[0]);whole%=p[1];}});
+  if(whole)parts.push(chunk(whole));
+  return (parts.join(' ')||'Zero')+(paisa?' and '+chunk(paisa)+' Paisa':'');
+ }
+ function updateRevisionWords(){$('#cr-revise-amount-words').val(revisionWords($('#cr-revise-amount').val()));}
+ $('#cr-revise-amount').on('input change',updateRevisionWords);
+ updateRevisionWords();
+ @endif
  if(window.parent!==window)window.parent.postMessage({type:'daily-voucher-edit-ready'},window.location.origin);
  $form.on('submit',function(event){
   event.preventDefault();var $button=$('#cash-revision-save');
