@@ -2974,8 +2974,8 @@
                 $('#display_voucher_number').val(displayNumber || (DISPLAY_PREFIX+'-'+safeNumber));
             }
             function refreshDisplayPreview() {
-                $.post(@json(route('check_new_voucher_number')),{
-                    type:VOUCHER_TYPE,_token:@json(csrf_token())
+                $.post("{{ route('check_new_voucher_number') }}",{
+                    type:VOUCHER_TYPE,_token:"{{ csrf_token() }}"
                 }).done(function(data){
                     if(data.latest_voucher_number){
                         setVoucherNumber(data.latest_voucher_number,data.display_voucher_number);
