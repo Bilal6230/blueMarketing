@@ -131,52 +131,73 @@ class SettingController extends Controller
         return view('admin.setting', $x);
     }
 
+    public function previewVoucherPrefix(Request $request)
+    {
+        abort_unless($request->user()->hasAnyRole(['admin','superadmin'])
+            && $request->user()->can('update setting'),403);
+        $projectId=(int)getSelectedTown();
+        abort_unless($projectId>0,400,'Select a project first.');
+        if (!$request->user()->hasRole('superadmin')) {
+            abort_unless((int)$request->user()->project_id===$projectId,403);
+        }
+        $data=$request->validate([
+            'series'=>['required',\Illuminate\Validation\Rule::in(\App\Services\Finance\ProjectVoucherDisplay::SERIES)],
+            'prefix'=>['required','regex:/^[A-Z][A-Z0-9]{1,11}$/D'],
+        ]);
+        return response()->json(app(\App\Services\Finance\ProjectVoucherPrefixCounter::class)
+            ->status($projectId,$data['series'],$data['prefix']));
+    }
+
     public function saveVoucherDisplaySettings(Request $request)
     {
-        abort_unless($request->user()->hasAnyRole(['admin', 'superadmin']) && $request->user()->can('update setting'), 403);
-        abort_unless(Schema::hasTable('project_voucher_display_settings') && Schema::hasTable('project_voucher_display_setting_audits'), 409,
-            'Voucher display settings migration is required.');
-        $projectId = (int) getSelectedTown();
-        abort_unless($projectId > 0, 400, 'Select a project first.');
-        if (!$request->user()->hasRole('superadmin')) abort_unless((int) $request->user()->project_id === $projectId, 403);
-        $validator = Validator::make($request->all(), ['series' => ['required', 'in:CR,DR,CP,CCR,CDR,BOR,BOP,CHR,CHP,JV,CV,BO,BR,PPR,SV,EC,ECP,BD,BW,PP'],
-            'prefix' => ['required', 'regex:/^[A-Z][A-Z0-9]{1,11}$/D']], [
-                'series.in' => 'Select a supported voucher type.',
-                'prefix.regex' => 'The voucher prefix format is invalid. Use 2–12 uppercase letters or numbers, starting with a letter.',
-                'prefix.required' => 'Enter a voucher prefix.',
-            ]);
-        if ($validator->fails()) {
-            if ($request->expectsJson()) {
-                throw new \Illuminate\Validation\ValidationException($validator);
-            }
-            return redirect()->route('setting.index', ['tab' => 'voucher-settings'])
-                ->withErrors($validator)->withInput();
+        abort_unless($request->user()->hasAnyRole(['admin','superadmin'])
+            && $request->user()->can('update setting'),403);
+        abort_unless(Schema::hasTable('project_voucher_display_settings')
+            && Schema::hasTable('project_voucher_display_setting_audits')
+            && Schema::hasTable('project_voucher_prefix_counters'),409,
+            'Voucher prefix counter migration is required.');
+        $projectId=(int)getSelectedTown();
+        abort_unless($projectId>0,400,'Select a project first.');
+        if (!$request->user()->hasRole('superadmin')) {
+            abort_unless((int)$request->user()->project_id===$projectId,403);
         }
-        $data = $validator->validated();
-        DB::transaction(function () use ($projectId, $data, $request): void {
-            DB::table('projects')->where('id', $projectId)->lockForUpdate()->firstOrFail();
-            $query = DB::table('project_voucher_display_settings')->where('project_id', $projectId)->where('series', $data['series']);
-            $old = $query->lockForUpdate()->value('prefix');
-            if ($old === $data['prefix']) return;
-            if ($old === null) {
-                $query->insert(['project_id' => $projectId, 'series' => $data['series'],
-                    'prefix' => $data['prefix'], 'financial_year_start_month' => 1,
-                    'updated_by' => $request->user()->id, 'created_at' => now(), 'updated_at' => now()]);
+        $data=$request->validate([
+            'series'=>['required',\Illuminate\Validation\Rule::in(\App\Services\Finance\ProjectVoucherDisplay::SERIES)],
+            'prefix'=>['required','regex:/^[A-Z][A-Z0-9]{1,11}$/D'],
+            'start_number'=>['nullable','integer','min:1','max:999999999'],
+        ],[
+            'prefix.regex'=>'Use 2–12 uppercase letters or numbers, beginning with a letter.',
+        ]);
+        $result=DB::transaction(function()use($projectId,$data,$request) {
+            DB::table('projects')->where('id',$projectId)->lockForUpdate()->firstOrFail();
+            $service=app(\App\Services\Finance\ProjectVoucherPrefixCounter::class);
+            $state=$service->configure($projectId,$data['series'],$data['prefix'],
+                isset($data['start_number'])?(int)$data['start_number']:null);
+            $query=DB::table('project_voucher_display_settings')
+                ->where('project_id',$projectId)->where('series',$data['series']);
+            $old=$query->lockForUpdate()->value('prefix');
+            if ($old===$data['prefix']) return $state;
+            if ($old===null) {
+                $query->insert(['project_id'=>$projectId,'series'=>$data['series'],
+                    'prefix'=>$data['prefix'],'financial_year_start_month'=>1,
+                    'updated_by'=>$request->user()->id,'created_at'=>now(),'updated_at'=>now()]);
             } else {
-                $query->update(['prefix' => $data['prefix'], 'updated_by' => $request->user()->id, 'updated_at' => now()]);
+                $query->update(['prefix'=>$data['prefix'],'updated_by'=>$request->user()->id,
+                    'updated_at'=>now()]);
             }
             DB::table('project_voucher_display_setting_audits')->insert([
-                'project_id' => $projectId, 'series' => $data['series'], 'old_prefix' => $old,
-                'new_prefix' => $data['prefix'], 'actor_id' => $request->user()->id, 'created_at' => now(),
+                'project_id'=>$projectId,'series'=>$data['series'],'old_prefix'=>$old,
+                'new_prefix'=>$data['prefix'],'actor_id'=>$request->user()->id,'created_at'=>now(),
             ]);
-        }, 3);
+            return $state;
+        },3);
+        $message='Prefix saved. The next newly issued voucher will use '.$data['prefix'].'-'.$result['next_number'].'. Existing voucher identities remain unchanged.';
         if ($request->expectsJson()) {
-            return response()->json([
-                'success'=>true, 'series'=>$data['series'], 'prefix'=>$data['prefix'],
-                'message'=>'Prefix configuration saved. Numbering of issued vouchers remains unchanged.',
-            ]);
+            return response()->json(['success'=>true,'series'=>$data['series'],
+                'prefix'=>$data['prefix'],'next_number'=>$result['next_number'],
+                'message'=>$message]);
         }
-        return redirect()->route('setting.index', ['tab' => 'voucher-settings'])->with('success', 'Voucher display prefix saved. Existing voucher IDs were not changed.');
+        return redirect()->route('setting.index',['tab'=>'voucher-settings'])->with('success',$message);
     }
 
     public function saveVoucherAvailability(Request $request)
