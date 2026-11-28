@@ -169,6 +169,28 @@
         #voucherForm .voucher-amount-words-layout > :not(.bank_group):not(.voucher-amount-field):not(.voucher-amount-words):not(.voucher-payment-type-field):not(.bank-posting-account):not(.standard-counter-account):not(:has(#display_voucher_number)):not(:has(.voucher-date)):not(:has(#acct_type)):not(:has(#accounts_id)):not(:has(#subaccounts_id)){order:11}
         @endif
 
+
+        /* CCR/CDR Add: account row above equal-width amount, words, attachment. */
+        @if(in_array($displaySeries ?? '', ['CCR','CDR'], true))
+        #voucherForm .voucher-amount-words-layout > :has(#display_voucher_number){order:1}
+        #voucherForm .voucher-amount-words-layout > :has(.voucher-date){order:2}
+        #voucherForm .voucher-amount-words-layout > .standard-counter-account{order:3}
+        #voucherForm .voucher-amount-words-layout > :has(#acct_type){order:4}
+        #voucherForm .voucher-amount-words-layout > :has(#accounts_id){order:5}
+        #voucherForm .voucher-amount-words-layout > :has(#subaccounts_id){order:6}
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-field{order:7}
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-words{order:8}
+        #voucherForm .voucher-amount-words-layout > .voucher-attachment-field{order:9}
+        #voucherForm .voucher-amount-words-layout > :has(#detail){order:10}
+        #voucherForm .voucher-amount-words-layout > :not(.standard-counter-account):not(.voucher-amount-field):not(.voucher-amount-words):not(.voucher-attachment-field):not(:has(#display_voucher_number)):not(:has(.voucher-date)):not(:has(#acct_type)):not(:has(#accounts_id)):not(:has(#subaccounts_id)):not(:has(#detail)){order:11}
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-words,
+        #voucherForm .voucher-amount-words-layout > .voucher-attachment-field,
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .voucher-amount-words-layout > .voucher-amount-words,
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .voucher-amount-words-layout > .voucher-attachment-field{
+            grid-column:span 1!important
+        }
+        @endif
+
         @if($embeddedVoucher ?? false)
         /* Embedded correction editor is displayed directly within the parent modal;
            no nested overlay or old voucher listing is visible. */
@@ -658,7 +680,7 @@
                                                             <div class="error-message">{{ $message }}</div>
                                                         @enderror
                                                     </div>
-                                                    <div class="col-12 col-md-6 col-lg-4">
+                                                    <div class="col-12 col-md-6 col-lg-4 voucher-attachment-field">
                                                             <label for="cash-voucher-attachment" class="fbox mb-1">Attachment / File Uploader (optional)</label>
                                                             <input type="file" class="form-control form-control-sm" id="cash-voucher-attachment"
                                                                 name="attachment" accept=".pdf,.jpg,.jpeg,.png,.webp">
