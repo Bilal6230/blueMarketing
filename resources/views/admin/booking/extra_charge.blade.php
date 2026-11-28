@@ -185,7 +185,10 @@
                                             </div>
                                             <div class="row">
                                                 <div class="col-sm-12">
-                                                    <div id="wordingAmount"></div>
+                                                    <label for="extraAmountWords" class="fbox">Amount in Words</label>
+                                                    <input id="extraAmountWords" type="text" class="form-control"
+                                                        placeholder="Amount in words will appear automatically" disabled readonly
+                                                        style="background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1">
                                                 </div>
                                             </div>
 
@@ -1664,7 +1667,7 @@
             var wordingAmount = numberToWords.toWords(numericValue);
 
             // Display the English wording amount in the container
-            $('#wordingAmount').text(wordingAmount);
+            $('#extraAmountWords').val(wordingAmount);
         }
 
         function formatAmount(input) {
