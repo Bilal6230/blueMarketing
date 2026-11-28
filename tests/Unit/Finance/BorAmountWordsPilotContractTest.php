@@ -6,35 +6,30 @@ use Tests\TestCase;
 
 final class BorAmountWordsPilotContractTest extends TestCase
 {
-    public function test_bor_add_modal_places_bank_account_before_amount_and_words(): void
+    public function test_approved_layout_is_shared_by_cash_and_bank_add_forms(): void
     {
         $view=file_get_contents(resource_path('views/admin/finance/voucher/cash_voucher.blade.php'));
-        $start=strpos($view, "@if(\$isBankVoucherSeries)");
-        $end=strpos($view, "@if(in_array(\$displaySeries ?? '', ['CR','DR','CP','CCR','CDR'], true))", $start);
-        $this->assertNotFalse($start);
-        $this->assertNotFalse($end);
-        $add=substr($view,$start,$end-$start);
-
-        $this->assertStringContainsString("@if(\$displaySeries==='BOR')", $add);
-        $this->assertStringContainsString('Debit Account (Bank)', $add);
-        $this->assertStringContainsString('id="bor_amount_words"', $add);
-        $this->assertStringContainsString('disabled readonly', $add);
-        $this->assertStringNotContainsString('name="amount_words"', $add);
-        $this->assertLessThan(strpos($add, 'bor-amount-field'), strpos($add, 'bank-posting-account'));
-        $this->assertLessThan(strpos($add, 'bor-amount-words'), strpos($add, 'bor-amount-field'));
+        $this->assertStringContainsString('row g-2 align-items-end voucher-amount-words-layout', $view);
+        $this->assertStringContainsString('class="col-12 col-md-6 col-lg-4 voucher-amount-field"', $view);
+        $this->assertStringContainsString('id="voucher_amount_words"', $view);
+        $this->assertStringContainsString('disabled readonly', $view);
+        $this->assertStringContainsString('bank-posting-account', $view);
+        $this->assertStringContainsString('standard-counter-account', $view);
+        $this->assertSame(1,substr_count($view,'id="numberInput"'));
+        $this->assertLessThan(strpos($view, 'voucher-amount-field', strpos($view,'<form id="voucherForm"')),
+            strpos($view,'bank-posting-account',strpos($view,'<form id="voucherForm"')));
     }
 
-    public function test_only_bor_add_has_the_special_grid_and_live_read_only_word_display(): void
+    public function test_live_words_are_read_only_emphasized_in_add_and_edit(): void
     {
         $view=file_get_contents(resource_path('views/admin/finance/voucher/cash_voucher.blade.php'));
-        $this->assertStringContainsString("{{ \$displaySeries==='BOR' ? ' bor-add-layout' : '' }}", $view);
-        $this->assertStringContainsString('grid-template-columns:repeat(3,minmax(0,1fr))', $view);
-        $this->assertStringContainsString('.bor-amount-words {', $view);
-        $this->assertStringContainsString("function updateBorAmountWords()", $view);
-        $this->assertStringContainsString("numberToWords.toWords(amount)", $view);
-        $this->assertStringContainsString("on('input change', '#voucherForm #numberInput', updateBorAmountWords)", $view);
-        $this->assertStringContainsString("@if(\$displaySeries!=='BOR')", $view);
-        $this->assertStringContainsString('Keep existing top-row Amount position for every other voucher.', $view);
-        $this->assertStringContainsString('id="edit_amount"', $view);
+        $this->assertStringContainsString('id="edit_amount_words"', $view);
+        $this->assertStringContainsString('function updateVoucherAmountWords()', $view);
+        $this->assertStringContainsString('function updateEditVoucherAmountWords()', $view);
+        $this->assertStringContainsString("on('input change', '#voucherForm #numberInput', updateVoucherAmountWords)", $view);
+        $this->assertStringContainsString("on('input change', '#edit-voucher-form #edit_amount', updateEditVoucherAmountWords)", $view);
+        $this->assertStringContainsString('font-size:15px;', $view);
+        $this->assertStringContainsString('font-weight:600;', $view);
+        $this->assertStringNotContainsString('id="eWordingAmount"', $view);
     }
 }
