@@ -31,7 +31,7 @@
 #s4-display-modal .s4-full{grid-column:1/-1}
 @media(max-width:700px){#s4-display-modal .s4-editor-grid{grid-template-columns:1fr}#s4-display-modal .s4-full{grid-column:auto}#voucher-settings .s4-table{min-width:650px}}
 </style>
-<div class="s4-shell" data-s4-status-url="{{ route('setting.voucher-availability.save') }}" data-s4-token="{{ csrf_token() }}">
+<div class="s4-shell" data-s4-prefix-preview-url="{{ route('setting.voucher-prefix.preview') }}" data-s4-status-url="{{ route('setting.voucher-availability.save') }}" data-s4-token="{{ csrf_token() }}">
  <header class="s4-heading">
   <div><h4>Voucher Display</h4><small class="text-muted">Voucher names, configured prefixes and receipt headers</small></div>
   <button type="button" id="s4-configure" class="btn btn-primary" @if(!$canManageFinanceSettings || !$voucherDisplaySettingsReady) disabled @endif><i class="fas fa-edit mr-1"></i> Configure Voucher Display</button>
@@ -108,11 +108,11 @@
       </select>
      </div>
      <div><label for="s4-prefix">Current Prefix *</label><input id="s4-prefix" class="form-control" name="prefix" maxlength="12" required></div>
-     <div><label for="s4-start-number">Voucher Number (start)</label><input id="s4-start-number" class="form-control" placeholder="Pending safe numbering integration" type="number" min="1" disabled></div>
+     <div><label for="s4-start-number">Voucher Number (start)</label><input id="s4-start-number" class="form-control" name="start_number" type="number" min="1" max="999999999" value="1" required></div>
     </div>
-    <div class="alert alert-info mt-3 mb-0 small">This batch saves prefix configuration only. Actual new voucher numbering, start numbers and previews remain disabled until all voucher writers and historical collision checks are integrated.</div>
+    <div id="s4-prefix-state" class="alert alert-info mt-3 mb-0 small" role="status">Checking existing voucher prefixes...</div>
    </div>
-   <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Save Prefix Configuration</button></div>
+   <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Save Voucher Series</button></div>
   </form>
  </div></div>
 </div>
@@ -120,10 +120,10 @@
 <div class="modal fade" id="s4-prefix-confirm" tabindex="-1" role="dialog" aria-hidden="true">
  <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
   <div class="modal-header"><h5 class="modal-title">Save Prefix Configuration?</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
-  <div class="modal-body">Save the selected voucher's prefix? Existing voucher numbers and posted transactions will not change.</div>
+  <div class="modal-body">Save the selected voucher prefix and next number? Existing voucher numbers and posted transactions will not change.</div>
   <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" id="s4-prefix-confirm-yes">Yes, Save</button></div>
  </div></div>
 </div>
 @push('script')
-<script src="{{ asset('js/settings-s4-voucher-display.js') }}?v=3"></script>
+<script src="{{ asset('js/settings-s4-voucher-display.js') }}?v=4"></script>
 @endpush
