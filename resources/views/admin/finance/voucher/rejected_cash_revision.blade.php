@@ -6,7 +6,8 @@
     // The displayed DR voucher is historically stored as CP in customer_ledger.
     // Keep the original type for persistence/approval; normalize only the Edit UI layout.
     $editLayoutSeries = (string) $revisionPolicyType === 'CP' ? 'DR' : (string) $revisionPolicyType;
-    $matchAddLayout = in_array($editLayoutSeries, ['CR','DR','BOR','BOP'], true);
+    $matchAddLayout = in_array($editLayoutSeries, ['CR','DR','BOR','BOP','CCR','CDR'], true);
+    $isCashCounterLayout = in_array($editLayoutSeries, ['CCR','CDR'], true);
     $usesApproval = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
         ->policy((int)getSelectedTown(),$revisionPolicyType) !== null;
 @endphp
@@ -55,6 +56,23 @@ body{overflow:auto!important}
 .cr-revise.add-matched-edit #cr-revise-amount-words{background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1}
 .cr-revise.add-matched-edit select.js-tomselect{display:block;width:100%;min-height:35px;border:1px solid #ced4da;border-radius:5px;background:#fff;padding:6px 10px;font-size:14px}
 .cr-revise.add-matched-edit select.js-tomselect.tomselected{display:none!important}
+@if($isCashCounterLayout)
+/* CCR/CDR Edit mirrors Add: identity/counter, account hierarchy, amount/words/file. */
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-type){order:4}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-head){order:5}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-account){order:6}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-amount){order:7}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.cr-revise-words-field{order:8}
+.cr-revise.add-matched-edit #cash-revision-form>.form-group:has(#cr-revise-attachment){
+    grid-column:span 1;order:9;margin:0;min-width:0
+}
+.cr-revise.add-matched-edit #cash-revision-form>.form-group:has(#cr-revise-description){order:10}
+.cr-revise.add-matched-edit #cash-revision-form>.form-group:has(#cr-revise-reason){order:11}
+.cr-revise.add-matched-edit #cash-revision-form>#cash-revision-error{order:12}
+.cr-revise.add-matched-edit #cash-revision-form>.text-right{order:13}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-payment-type){display:none}
+.cr-revise.add-matched-edit #cash-revision-form>.form-group:has(#cr-revise-attachment) .text-muted{display:block}
+@endif
 /* Tom Select copies the original select's form-control class to its wrapper.
    Reset Bootstrap's outer input box; only .ts-control draws the field border. */
 .cr-revise.add-matched-edit #cash-revision-form .ts-wrapper,
