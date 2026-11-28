@@ -49,7 +49,7 @@ final class ProjectVoucherDisplayIdentity
                 }
             }
             return app(ProjectVoucherPrefixCounter::class)
-                ->issue($projectId,$series,$sourceKind,$sourceId,$date);
+                ->issue($projectId,$series,$sourceKind,$sourceId,$date,$display);
         }
 
         if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP','CCR','CDR'], true)) {
