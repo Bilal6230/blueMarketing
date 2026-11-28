@@ -76,11 +76,14 @@ final class LedgerVoucherDisplayService
                         ->join('journal_vouchers as h','h.id','=','d.journal_voucher_id')
                         ->where('d.id',(int)$owned->journal_voucher_detail_id)
                         ->where('h.project_id',$projectId)->where('h.type',$type)
-                        ->where('h.id',(int)$owned->type_id)->value('h.voucher_number');
-                    if ((int)$header > 0) {
+                        ->where('h.id',(int)$owned->type_id)->first(['h.id','h.voucher_number']);
+                    if ($header && (int)$header->voucher_number > 0) {
+                        $display=app(ProjectVoucherDisplayIdentity::class)
+                            ->lookup($projectId,'journal_voucher',(int)$header->id);
+                        if ($display !== null) return $display;
                         return $type === 'JV'
-                            ? 'JV-'.str_pad((string)(int)$header,7,'0',STR_PAD_LEFT)
-                            : 'SV-'.(int)$header;
+                            ? 'JV-'.str_pad((string)(int)$header->voucher_number,7,'0',STR_PAD_LEFT)
+                            : 'SV-'.(int)$header->voucher_number;
                     }
                 }
                 if ($type === 'CV' && (int)$owned->commision_voucher_detail_id > 0
@@ -90,9 +93,11 @@ final class LedgerVoucherDisplayService
                         ->join('commision_vouchers as h','h.id','=','d.commision_voucher_id')
                         ->where('d.id',(int)$owned->commision_voucher_detail_id)
                         ->where('h.project_id',$projectId)
-                        ->where('h.id',(int)$owned->type_id)->value('h.voucher_number');
-                    if ($header !== null && (string)$header !== '') {
-                        return CommissionVoucherNumber::display($header);
+                        ->where('h.id',(int)$owned->type_id)->first(['h.id','h.voucher_number']);
+                    if ($header && (string)$header->voucher_number !== '') {
+                        $display=app(ProjectVoucherDisplayIdentity::class)
+                            ->lookup($projectId,'commission_voucher',(int)$header->id);
+                        return $display ?: CommissionVoucherNumber::display($header->voucher_number);
                     }
                 }
             }
@@ -135,6 +140,9 @@ final class LedgerVoucherDisplayService
             return $original;
         }
 
+        $display=app(ProjectVoucherDisplayIdentity::class)->lookup(
+            $projectId,$attribution->source_kind,(int)$attribution->source_id);
+        if ($display !== null) return $display;
         $prefix = $attribution->source_kind === 'journal_voucher' ? 'JV' : 'CV';
         return $prefix . '-' . $header->voucher_number;
     }
