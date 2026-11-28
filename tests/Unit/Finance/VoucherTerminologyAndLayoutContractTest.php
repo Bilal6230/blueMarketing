@@ -13,6 +13,7 @@ final class VoucherTerminologyAndLayoutContractTest extends TestCase
             resource_path('views/admin/finance/voucher/daily_directory.blade.php'),
             app_path('Http/Controllers/Finance/VoucherController.php'),
             resource_path('views/admin/finance/voucher/print-eng.blade.php'),
+            resource_path('views/admin/finance/voucher/daily_source_print.blade.php'),
         ];
         foreach ($paths as $path) {
             $text = file_get_contents($path);
@@ -42,5 +43,8 @@ final class VoucherTerminologyAndLayoutContractTest extends TestCase
         $this->assertStringContainsString(':has(#cr-revise-amount){order:7}', $edit);
         $this->assertStringContainsString('CCR', $edit);
         $this->assertStringContainsString('CDR', $edit);
+        $printed = file_get_contents(resource_path('views/admin/finance/voucher/daily_source_print.blade.php'));
+        $this->assertStringContainsString('Cash Receive Voucher (CCR)', $printed);
+        $this->assertStringContainsString('Cash Payment Voucher (CDR)', $printed);
     }
 }
