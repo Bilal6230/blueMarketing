@@ -13,7 +13,7 @@ final class ProjectVoucherDisplay
 
     /** Human-facing names; canonical series keys remain stable. */
     public const LABELS = [
-        'CR'=>'Cash Receipt Voucher',
+        'CR'=>'Credit Voucher',
         'DR'=>'Debit Voucher',
         'CP'=>'Cash Payment Voucher',
         'CCR'=>'Cash Credit Voucher',
