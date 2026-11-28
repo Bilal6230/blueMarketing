@@ -97,8 +97,12 @@
             padding:0;
             margin:0 !important;
         }
-        #voucherForm .bor-add-layout > .col-12:not(.bor-amount-field):not(.bor-amount-words) {
+        #voucherForm .bor-add-layout > .col-12:not(.bank-posting-account):not(.bor-amount-field):not(.bor-amount-words) {
             grid-column:1 / -1;
+        }
+        #voucherForm .bor-add-layout > .bank-posting-account,
+        #voucherForm .bor-add-layout > .bor-amount-field {
+            grid-column:span 1;
         }
         #voucherForm .bor-add-layout > .bor-amount-words {
             grid-column:span 2;
