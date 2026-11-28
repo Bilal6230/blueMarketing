@@ -71,14 +71,3 @@
    <button type="button" class="btn btn-primary" id="prApplyPassed" disabled>Apply selected source</button></div>
  </div></div>
 </div>
-<script>
-jQuery(function($){
-  function updatePprAmountWords(){
-    var n=Number($('#prOriginalAmount').val()), words='';
-    if(Number.isFinite(n)&&n>0&&window.numberToWords&&typeof numberToWords.toWords==='function') words=numberToWords.toWords(n);
-    $('#prOriginalAmountWords').val(words);
-  }
-  $(document).on('input change','#prOriginalAmount',updatePprAmountWords);
-  updatePprAmountWords();
-});
-</script>
