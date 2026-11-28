@@ -31,7 +31,7 @@ final class ProjectVoucherPrefixCounter
             ->where('project_id',$projectId)
             ->where('display_number','like',$prefix.'-%')
             ->pluck('display_number') as $display) {
-            if (preg_match('/^'.preg_quote($prefix,'/').'-([1-9][0-9]*)$/D',(string)$display,$m)) {
+            if (preg_match('/^'.preg_quote($prefix,'/').'-0*([1-9][0-9]*)$/D',(string)$display,$m)) {
                 $max = max($max,(int)$m[1]);
             }
         }
@@ -162,7 +162,11 @@ final class ProjectVoucherPrefixCounter
             && preg_match('/^'.preg_quote($prefix,'/').'-0*([1-9][0-9]*)$/D',$canonicalDisplay,$parts)) {
             $next=max($this->historicalMax($projectId,$prefix)+1,(int)$parts[1]);
         }
-        $display=$prefix.'-'.$next;
+        $display=($prefix===$series && $series==='JV')
+            ? 'JV-'.str_pad((string)$next,7,'0',STR_PAD_LEFT)
+            : (($prefix===$series && $series==='CV')
+                ? CommissionVoucherNumber::display($next)
+                : $prefix.'-'.$next);
         if (DB::table('project_voucher_display_numbers')->where('project_id',$projectId)
             ->where('display_number',$display)->exists()) {
             throw new \DomainException('VOUCHER_DISPLAY_NUMBER_COLLISION');
