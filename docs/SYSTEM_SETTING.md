@@ -67,6 +67,19 @@
 
 **Outstanding S3 verification:** Run picker and S3 contract tests, and browser-test BOR/BOP and CCR/CDR Create forms, disabled accounts, project switching, and recorded postings. Review existing historical voucher Edit / print display labels separately before marking all S3 consumers integrated. No historical postings should be relinked.
 
+## S4 versioned voucher numbering — implementation handoff (28 November 2026)
+
+**Implementation pushed; OWNER TERMINAL AND BROWSER GATES PENDING.** The earlier prefix-only stage is superseded for new voucher sources that call `ProjectVoucherDisplayIdentity::assign()`. Do not report full family acceptance or deploy this to live without tests. Existing historical source rows and financial ledgers are not rewritten.
+
+- New additive `project_voucher_prefix_counters` table, one row per project + immutable family + prefix; fields `next_number`, `issued_count`, `has_history`. No new ledger prefix column. The original `project_voucher_display_settings` continues to identify the active prefix, and `project_voucher_display_numbers` stores immutable issued labels.
+- S4 AJAX prefix lookup shows next number. Existing/historical prefixes auto-resume with Start Number disabled; new/unused prefixes accept a starting number. Project transaction lock freezes the departing prefix counter before activating another prefix.
+- `ProjectVoucherDisplayIdentity::assign()` validates its original source, then allocates the active display number within the posting transaction. Its `lookup()` returns the saved immutable identity instead of recomputing labels from a changed setting. Explicitly preserve canonical padding for JV/CV. Source table `type_id` / posting allocations are untouched.
+- Credit/Debit Voucher create modal previews now render a distinct visible display number, while submitting the canonical hidden accounting number. CR/DR and existing bank/cash settings use the new preview API. Directory search matches persisted display numbers and its heading/selection label uses the active prefix.
+- **CR browser gate first:** Default historical CR-831; change to CRV starting 1, save new voucher, verify CRV-1 in history, print, Edit and ledger; switch CRVS with start 50, then CRV resume at 2, CR resume at 832. Cancelled/failed writes must not consume numbers. `ProjectVoucherPrefixLifecycleTest` contains matching SQLite scenarios.
+- **Remaining integration audit before full S4 acceptance:** Review each voucher family (JV, CV, BO/BR, PPR, PP, BD/BW, EC/ECP, SV, CCR/CDR, BOR/BOP) for new source creation, draft/approval, PDF/print, edit and exports; not all families use the same `assign()` path. Missing source mappings must be wired before claiming global numbering end-to-end. Do not overwrite source sequence or use the preview as an authoritative reservation.
+- Before local migration: back up the test database. Then `php artisan migrate`, `php artisan optimize:clear`, `php artisan view:cache`, `php artisan test --filter=ProjectVoucherPrefixLifecycleTest`, `php artisan test --filter=SystemSettingS4ContractTest`, `php artisan test --filter=CashPostingWriterTest`, and `php artisan test --filter=CashOnlyVoucherControllerTest` if available. Do not deploy until the owner verifies.
+- The previously documented year-reset/start-number hold is now implemented for the mapped issue path; numbering is **continuous across years** (no automatic fiscal reset), because counters key by project + family + prefix, not year.
+
 ### S4 — Voucher Display / receipt headers
 **State: UI, receipt-header expansion, prefix-save confirmation, and project voucher Active/Inactive route guard pushed 26 November 2026. New numbering writer integration, automated and browser verification pending.**
 
