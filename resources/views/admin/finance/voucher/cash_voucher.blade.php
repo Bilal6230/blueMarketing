@@ -159,12 +159,12 @@
         #voucherForm .voucher-amount-words-layout > :has(.voucher-date){order:2}
         #voucherForm .voucher-amount-words-layout > .bank-posting-account,
         #voucherForm .voucher-amount-words-layout > .standard-counter-account{order:3}
-        #voucherForm .voucher-amount-words-layout > .voucher-amount-field{order:4}
-        #voucherForm .voucher-amount-words-layout > .voucher-amount-words{order:5}
-        #voucherForm .voucher-amount-words-layout > .voucher-payment-type-field{order:6}
-        #voucherForm .voucher-amount-words-layout > :has(#acct_type){order:7}
-        #voucherForm .voucher-amount-words-layout > :has(#accounts_id){order:8}
-        #voucherForm .voucher-amount-words-layout > :has(#subaccounts_id){order:9}
+        #voucherForm .voucher-amount-words-layout > :has(#acct_type){order:4}
+        #voucherForm .voucher-amount-words-layout > :has(#accounts_id){order:5}
+        #voucherForm .voucher-amount-words-layout > :has(#subaccounts_id){order:6}
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-field{order:7}
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-words{order:8}
+        #voucherForm .voucher-amount-words-layout > .voucher-payment-type-field{order:9}
         #voucherForm .voucher-amount-words-layout > .bank_group{order:10}
         #voucherForm .voucher-amount-words-layout > :not(.bank_group):not(.voucher-amount-field):not(.voucher-amount-words):not(.voucher-payment-type-field):not(.bank-posting-account):not(.standard-counter-account):not(:has(#display_voucher_number)):not(:has(.voucher-date)):not(:has(#acct_type)):not(:has(#accounts_id)):not(:has(#subaccounts_id)){order:11}
         @endif
@@ -4195,12 +4195,12 @@
       #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_date){order:2}
       #edit-voucher-form > .counter-edit-field,
       #edit-voucher-form > .bank-counter-edit-field{order:3}
-      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_amount){order:4}
-      #edit-voucher-form > .row > .col-sm-12 > .row > .voucher-edit-words-field{order:5}
-      #edit-voucher-form > .customer-detail > :has(#edit_payment_type){order:6}
-      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_acct_type){order:7}
-      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_accounts_id){order:8}
-      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_subaccounts_id){order:9}
+      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_acct_type){order:4}
+      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_accounts_id){order:5}
+      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_subaccounts_id){order:6}
+      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_amount){order:7}
+      #edit-voucher-form > .row > .col-sm-12 > .row > .voucher-edit-words-field{order:8}
+      #edit-voucher-form > .customer-detail > :has(#edit_payment_type){order:9}
       #edit-voucher-form > .customer-detail > :has(#edit_t_number){order:10}
       #edit-voucher-form > .customer-detail > :has(#edit_bank_id){order:11}
       #edit-voucher-form > .customer-detail > :has(#edit_passing_date){order:12}
