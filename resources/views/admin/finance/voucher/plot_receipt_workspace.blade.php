@@ -186,6 +186,13 @@
  var selected=function(){
   return $('.pr-check:checked').map(function(){var id=Number($(this).val());return bookings.find(function(b){return b.booking_id===id;})||null;}).get().filter(Boolean);
  };
+ var updateOriginalPprWords=function(){
+  var n=Number($('#prOriginalAmount').val()),words='';
+  if(n>0&&Number.isFinite(n)&&window.numberToWords&&typeof numberToWords.toWords==='function')words=numberToWords.toWords(n);
+  $('#prOriginalAmountWords').val(words);
+ };
+ $(document).on('input change','#prOriginalAmount',updateOriginalPprWords);
+ $(document).on('shown.bs.modal','#prOriginalCreateModal',updateOriginalPprWords);
  var recalc=function(){
   var rows=selected(),sum=0,valid=rows.length>=1;
   rows.forEach(function(b){var amount=Number($('.pr-amount[data-amount="'+b.booking_id+'"]').val())||0;sum+=amount;if(amount<=0)valid=false;});
