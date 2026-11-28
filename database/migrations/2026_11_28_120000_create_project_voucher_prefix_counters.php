@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->string('prefix', 12);
             $table->unsignedBigInteger('next_number')->default(1);
             $table->unsignedBigInteger('issued_count')->default(0);
+            $table->boolean('has_history')->default(false);
             $table->timestamps();
             $table->unique(['project_id','series','prefix'], 'voucher_prefix_series_uq');
             $table->index(['project_id','prefix'], 'voucher_prefix_project_idx');
