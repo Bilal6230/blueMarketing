@@ -203,6 +203,12 @@ html body .main-content.page-content > .content-wrapper .card-body{
                                         </tr>
                                     </tfoot>
                                 </table>
+                            <div class="form-group mt-2">
+                                <label for="journalAmountWords" class="fbox">Amount in Words</label>
+                                <input id="journalAmountWords" class="form-control" type="text"
+                                    placeholder="Amount in words will appear automatically" disabled readonly
+                                    style="background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1">
+                            </div>
                             </div>
 
                             <!-- Submit Button -->
@@ -282,9 +288,14 @@ html body .main-content.page-content > .content-wrapper .card-body{
 
                 $('#totalDebit').val(totalDebit.toFixed(2));
                 $('#totalCredit').val(totalCredit.toFixed(2));
+                var wordingAmount=totalDebit>0 ? totalDebit : totalCredit;
+                $('#journalAmountWords').val(wordingAmount>0 && window.numberToWords
+                    && typeof numberToWords.toWords==='function' ? numberToWords.toWords(wordingAmount) : '');
             }
 
             calculateTotals();
+
+            $(function(){ calculateTotals(); });
 
             // Trigger Submission Confirmation Modal
             $('#journalForm').on('submit', function(e) {
