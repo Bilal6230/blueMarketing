@@ -449,6 +449,20 @@ class VoucherController extends Controller
         $nextNumber = $this->previewCanonicalCashNumber((int) $selectedProjectId, $displaySeries === 'CCR' ? 'CCR' : ($displaySeries === 'BOR' ? 'BOR' : 'CR'));
 
         $x['latest_voucher_number'] = $nextNumber;
+        $x['displayVoucherPrefix'] = $displaySeries === 'CCR' || $displaySeries === 'CDR'
+            || $displaySeries === 'BOR' || $displaySeries === 'BOP'
+            ? $displaySeries : ($displaySeries === 'DR' ? 'DR' : 'CR');
+        if (\Illuminate\Support\Facades\Schema::hasTable('project_voucher_prefix_counters')) {
+            $counter=app(\App\Services\Finance\ProjectVoucherPrefixCounter::class);
+            $x['displayVoucherPrefix']=$counter->currentPrefix((int)$selectedProjectId,$x['displayVoucherPrefix']);
+            $state=$counter->status((int)$selectedProjectId,
+                $displaySeries === 'CCR' || $displaySeries === 'CDR' || $displaySeries === 'BOR' || $displaySeries === 'BOP'
+                    ? $displaySeries : ($displaySeries === 'DR' ? 'DR' : 'CR'),
+                $x['displayVoucherPrefix']);
+            $x['latestDisplayVoucherNumber'] = $x['displayVoucherPrefix'].'-'.$state['next_number'];
+        } else {
+            $x['latestDisplayVoucherNumber'] = $x['displayVoucherPrefix'].'-'.$nextNumber;
+        }
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
@@ -753,6 +767,20 @@ class VoucherController extends Controller
         $nextNumber = $this->previewCanonicalCashNumber((int) $selectedProjectId, $displaySeries === 'CDR' ? 'CDR' : ($displaySeries === 'BOP' ? 'BOP' : 'DR'));
 
         $x['latest_voucher_number'] = $nextNumber;
+        $x['displayVoucherPrefix'] = $displaySeries === 'CCR' || $displaySeries === 'CDR'
+            || $displaySeries === 'BOR' || $displaySeries === 'BOP'
+            ? $displaySeries : ($displaySeries === 'DR' ? 'DR' : 'CR');
+        if (\Illuminate\Support\Facades\Schema::hasTable('project_voucher_prefix_counters')) {
+            $counter=app(\App\Services\Finance\ProjectVoucherPrefixCounter::class);
+            $x['displayVoucherPrefix']=$counter->currentPrefix((int)$selectedProjectId,$x['displayVoucherPrefix']);
+            $state=$counter->status((int)$selectedProjectId,
+                $displaySeries === 'CCR' || $displaySeries === 'CDR' || $displaySeries === 'BOR' || $displaySeries === 'BOP'
+                    ? $displaySeries : ($displaySeries === 'DR' ? 'DR' : 'CR'),
+                $x['displayVoucherPrefix']);
+            $x['latestDisplayVoucherNumber'] = $x['displayVoucherPrefix'].'-'.$state['next_number'];
+        } else {
+            $x['latestDisplayVoucherNumber'] = $x['displayVoucherPrefix'].'-'.$nextNumber;
+        }
 
         return view('admin.finance.voucher.cash_voucher', $x);
     }
@@ -2739,9 +2767,17 @@ class VoucherController extends Controller
         ]);
         $projectId = (int) getSelectedTown();
         abort_unless($projectId > 0,403);
+        $canonical=$this->previewCanonicalCashNumber($projectId,$data['type']);
+        $display=$data['type'].'-'.$canonical;
+        if (\Illuminate\Support\Facades\Schema::hasTable('project_voucher_prefix_counters')) {
+            $counter=app(\App\Services\Finance\ProjectVoucherPrefixCounter::class);
+            $prefix=$counter->currentPrefix($projectId,$data['type']);
+            $state=$counter->status($projectId,$data['type'],$prefix);
+            $display=$prefix.'-'.$state['next_number'];
+        }
         return response()->json([
-            'latest_voucher_number' => $this->previewCanonicalCashNumber($projectId,
-                $data['type']),
+            'latest_voucher_number'=>$canonical,
+            'display_voucher_number'=>$display,
         ]);
     }
     public function updateVoucherNumber()
