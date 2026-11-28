@@ -72,10 +72,10 @@ final class ProjectVoucherPrefixCounter
         // again: it continues advancing while other display prefixes are active.
         $next=$row ? max((int)$row->next_number,$historical+1)
             : $this->baseline($projectId,$series,$prefix);
-        $exists=($row && (int)$row->issued_count>0)
+        $exists=($row && ((int)$row->issued_count>0 || (bool)$row->has_history))
             || $historical>0
-            || (($prefix===$series || ($series==='DR' && $prefix==='DR'))
-                && ($row!==null || $next>1));
+            || ($row===null && ($prefix===$series || ($series==='DR' && $prefix==='DR'))
+                && $next>1);
         // Legacy CP and current DR are one voucher family.
         $aliases=in_array($series,['CP','DR'],true)?['CP','DR']:[$series];
         $reserved=in_array($prefix,ProjectVoucherDisplay::SERIES,true)
@@ -134,7 +134,7 @@ final class ProjectVoucherPrefixCounter
             }
         } else {
             $query->insert(['project_id'=>$projectId,'series'=>$series,'prefix'=>$prefix,
-                'next_number'=>$next,'issued_count'=>0,'created_at'=>now(),'updated_at'=>now()]);
+                'next_number'=>$next,'issued_count'=>0,'has_history'=>$state['existing'],'created_at'=>now(),'updated_at'=>now()]);
         }
         return ['prefix'=>$prefix,'next_number'=>$next,'existing'=>$state['existing']];
     }
@@ -174,7 +174,7 @@ final class ProjectVoucherPrefixCounter
         ]);
         if ($row) $counter->update(['next_number'=>$next+1,'issued_count'=>(int)$row->issued_count+1,'updated_at'=>now()]);
         else $counter->insert(['project_id'=>$projectId,'series'=>$series,'prefix'=>$prefix,
-            'next_number'=>$next+1,'issued_count'=>1,'created_at'=>now(),'updated_at'=>now()]);
+            'next_number'=>$next+1,'issued_count'=>1,'has_history'=>true,'created_at'=>now(),'updated_at'=>now()]);
         return $display;
     }
 }
