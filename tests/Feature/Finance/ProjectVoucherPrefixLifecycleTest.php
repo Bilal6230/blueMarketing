@@ -91,6 +91,15 @@ final class ProjectVoucherPrefixLifecycleTest extends TestCase
         self::assertSame(6,DB::table('customer_ledger')->count());
     }
 
+    public function test_default_cr_first_issuance_does_not_skip_source_number(): void
+    {
+        self::assertSame('CR-832',$this->makeSource(101,832));
+        self::assertSame(833,app(ProjectVoucherPrefixCounter::class)
+            ->status(3,'CR','CR')['next_number']);
+        self::assertSame('CR-832',app(ProjectVoucherDisplayIdentity::class)
+            ->lookup(3,'customer_ledger',101));
+    }
+
     public function test_existing_prefix_start_number_cannot_be_rewound(): void
     {
         $this->setPrefix('CRV',50);
