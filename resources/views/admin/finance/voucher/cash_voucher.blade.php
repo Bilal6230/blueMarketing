@@ -80,6 +80,44 @@
             animation:passedBankAmountShake .38s ease-in-out;
         }
 
+        /* BOR Add-only layout pilot; the edit form and all other vouchers are unchanged. */
+        #voucherForm .bor-add-layout {
+            display:grid;
+            grid-template-columns:repeat(3,minmax(0,1fr));
+            gap:14px 16px;
+            margin:0;
+            align-items:end;
+            width:100%;
+        }
+        #voucherForm .bor-add-layout > [class*="col-"] {
+            width:auto;
+            max-width:none;
+            min-width:0;
+            flex:none;
+            padding:0;
+            margin:0 !important;
+        }
+        #voucherForm .bor-add-layout > .col-12:not(.bor-amount-field):not(.bor-amount-words) {
+            grid-column:1 / -1;
+        }
+        #voucherForm .bor-add-layout > .bor-amount-words {
+            grid-column:span 2;
+        }
+        #voucherForm .bor-add-layout > .bor-amount-words input:disabled {
+            background:#f1f5f9;
+            color:#34465a;
+            opacity:1;
+            cursor:default;
+        }
+        @media (max-width:767px) {
+            #voucherForm .bor-add-layout { grid-template-columns:repeat(2,minmax(0,1fr)); }
+            #voucherForm .bor-add-layout > .bor-amount-words { grid-column:span 1; }
+        }
+        @media (max-width:480px) {
+            #voucherForm .bor-add-layout { grid-template-columns:minmax(0,1fr); }
+            #voucherForm .bor-add-layout > .bor-amount-words { grid-column:1; }
+        }
+
         @if($embeddedVoucher ?? false)
         /* Embedded correction editor is displayed directly within the parent modal;
            no nested overlay or old voucher listing is visible. */
@@ -293,7 +331,7 @@
  @include('admin.finance.voucher.typed_posting_fields')
                                         <div class="row">
                                             <div class="col-10">
-                                                <div class="row g-2 align-items-end">
+                                                <div class="row g-2 align-items-end{{ $displaySeries==='BOR' ? ' bor-add-layout' : '' }}">
 
                                                     {{-- Serial No (hidden) --}}
                                                     <div class="col-12 d-none">
@@ -345,17 +383,6 @@
                                                         @enderror
                                                     </div>
 
-                                                    {{-- Amount (small) --}}
-                                                    <div class="col-6 col-md-3 col-lg-2">
-                                                        <label class="fbox mb-1">Amount</label>
-                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
-                                                            class="form-control form-control-sm @error('amount') is-invalid @enderror"
-                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
-                                                        @error('amount')
-                                                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                                                        @enderror
-                                                    </div>
-
                                                     @if($isBankVoucherSeries)
                                                     <div class="col-12 col-md-6 col-lg-4 bank-posting-account">
                                                         <label class="fbox mb-1" for="voucher_bank_counter_account">
@@ -374,6 +401,41 @@
                                                         </select>
                                                     </div>
                                                     @endif
+                                                    @if($displaySeries==='BOR')
+                                                        {{-- BOR design approval pilot: amount and words share the second row. --}}
+                                                        {{-- Amount (small) --}}
+                                                                                                            <div class="col-12 col-md-6 col-lg-4 bor-amount-field">
+                                                                                                                <label class="fbox mb-1">Amount</label>
+                                                                                                                <input id="numberInput" oninput="formatAmount(this)" type="text"
+                                                                                                                    class="form-control form-control-sm @error('amount') is-invalid @enderror"
+                                                                                                                    placeholder="Amount" name="amount" value="{{ old('amount') }}">
+                                                                                                                @error('amount')
+                                                                                                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                                                                                                @enderror
+                                                                                                            </div>
+                                                        
+                                                        
+                                                        <div class="col-12 col-md-6 col-lg-8 bor-amount-words">
+                                                            <label for="bor_amount_words" class="fbox mb-1">Amount in Words</label>
+                                                            <input id="bor_amount_words" type="text"
+                                                                class="form-control form-control-sm"
+                                                                placeholder="Amount in words will appear automatically"
+                                                                value="" disabled readonly aria-live="polite">
+                                                        </div>
+                                                    @else
+                                                    {{-- Amount (small) --}}
+                                                    <div class="col-12 col-md-6 col-lg-4 bor-amount-field">
+                                                        <label class="fbox mb-1">Amount</label>
+                                                        <input id="numberInput" oninput="formatAmount(this)" type="text"
+                                                            class="form-control form-control-sm @error('amount') is-invalid @enderror"
+                                                            placeholder="Amount" name="amount" value="{{ old('amount') }}">
+                                                        @error('amount')
+                                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                                        @enderror
+                                                    </div>
+
+                                                    @endif
+
 
                                                     @if(in_array($displaySeries ?? '', ['CR','DR','CP','CCR','CDR'], true))
                                                     <div class="col-12 col-md-6 col-lg-4 standard-counter-account">
@@ -2942,6 +3004,22 @@
 
             $('#eWordingAmount')[0].innerText = wordingAmount;
         }
+
+        @if($displaySeries==='BOR')
+        // Amount in Words is intentionally a read-only visual aid, not a posted field.
+        function updateBorAmountWords() {
+            var raw=String($('#numberInput').val() || '').replace(/,/g,'').trim();
+            var amount=Number(raw);
+            var wording='';
+            if (raw && Number.isFinite(amount) && amount>0 && window.numberToWords
+                && typeof numberToWords.toWords==='function') {
+                wording=numberToWords.toWords(amount);
+            }
+            $('#bor_amount_words').val(wording);
+        }
+        $(document).on('input change', '#voucherForm #numberInput', updateBorAmountWords);
+        $(updateBorAmountWords);
+        @endif
 
         function formatAmount(input) {
             let value = input.value.replace(/[^0-9]/g, '').replace(/^0+/, '');
