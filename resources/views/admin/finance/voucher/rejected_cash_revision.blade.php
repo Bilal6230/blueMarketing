@@ -31,13 +31,13 @@ body{overflow:auto!important}
 .cr-revise.add-matched-edit #cash-revision-form>.fields{display:contents!important}
 .cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group{grid-column:span 1!important;min-width:0;margin:0!important}
 .cr-revise.add-matched-edit #cash-revision-form>.fields:first-of-type>.form-group:first-child{order:1}
-.cr-revise.add-matched-edit #cash-revision-form>.fields>.cr-revise-words-field{order:5}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.cr-revise-words-field{order:8}
 .cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-date){order:2}
-.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-amount){order:4}
-.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-payment-type){order:6}
-.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-type){order:7}
-.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-head){order:8}
-.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-account){order:9}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-amount){order:7}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-payment-type){order:9}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-type){order:4}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-head){order:5}
+.cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-account){order:6}
 .cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-number){order:10}
 .cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-bank){order:11}
 .cr-revise.add-matched-edit #cash-revision-form>.fields>.form-group:has(#cr-revise-passing-date){order:12}
