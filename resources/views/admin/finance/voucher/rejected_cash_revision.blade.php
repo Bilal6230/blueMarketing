@@ -56,16 +56,7 @@ body{overflow:auto!important}
 </style>
 <div class="content-wrapper" style="margin:0!important;min-height:0!important;"><div class="cr-revise {{ $matchAddLayout ? 'add-matched-edit' : '' }}">
 <h4>{{ $editStatus === 'rejected' ? 'Revise Rejected' : 'Edit' }} {{ $voucherDisplay }} Voucher</h4>
-<div class="alert alert-warning">
-@if($editStatus === 'rejected')
-Voucher {{ $voucherDisplay }} was rejected. Rejection Reason: {{ $approval?->rejection_reason ?? 'Not recorded' }}. Revision keeps the same ID and voucher number.
-@elseif($editStatus === 'approved')
-Voucher {{ $voucherDisplay }} will keep the same database ID and voucher number. No replacement voucher will be created.
-@else
-Voucher {{ $voucherDisplay }} will keep the same database ID and voucher number. Changes are audited against this record.
-@endif
-{{ $usesApproval ? 'Approval ON: changes stay pending as an audit snapshot; current posted accounting stays unchanged until approved.' : 'Approval OFF: same voucher and ledger will be updated directly with an audit snapshot.' }}
-</div>
+
 <form id="cash-revision-form" action="{{ route('finance.daily-vouchers.revise.store',$source->id) }}" method="post" enctype="multipart/form-data">
 @csrf
 <div class="fields">
@@ -113,7 +104,8 @@ Voucher {{ $voucherDisplay }} will keep the same database ID and voucher number.
     </option>
    @endforeach
   </select>
-  <small class="text-muted">Opposite Debit/Credit account linked to this voucher. It must differ from Child Account.</small>
+
+
  </div>
 </div>
 @elseif($isBankRevision && $counterLeg)
