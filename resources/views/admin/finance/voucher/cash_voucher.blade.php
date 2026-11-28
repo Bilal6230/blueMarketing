@@ -558,14 +558,13 @@
                                                     </div>
 
                                                     @if(in_array($voucherType,['CCR','CDR'],true))<input type="hidden" id="payment_type" name="payment_type" value="1">@else
-                                                    <div class="col-6 col-md-3 col-lg-2 voucher-payment-type-field $1">
+                                                    <div class="col-6 col-md-3 col-lg-2 voucher-payment-type-field {{ $fixedPaymentType !== null ? 'd-none' : '' }}">
 
                                                         <label class="fbox mb-1">Payment Type</label>
                                                         <select class="js-tomselect form-select form-select-sm"
                                                             placeholder=" " name="payment_type" id="payment_type">
                                                             <option value="" {{ $fixedPaymentType === null ? 'selected' : '' }}>Select Payment Type</option>
                                                             @unless($isBankVoucherSeries)<option value="1" {{ $fixedPaymentType === 1 ? 'selected' : '' }}>Cash</option>@endunless
-                                                            @endif
                                                             <option value="2" {{ $fixedPaymentType === 2 ? 'selected' : '' }}>Online</option>
                                                             <option value="3" {{ $fixedPaymentType === 3 ? 'selected' : '' }}>Cheque</option>
                                                         </select>
@@ -576,7 +575,9 @@
 
                                                     @endif
                                                     @if($isBankVoucherSeries && $fixedPaymentType !== null)
-                                                    <div class="col-6 col-md-3 col-lg-2 voucher-payment-type-field">$2
+                                                    <div class="col-6 col-md-3 col-lg-2 voucher-payment-type-field">
+                                                        <label class="fbox mb-1">Payment Type</label>
+                                                        <input class="form-control form-control-sm" readonly
                                                             value="{{ $fixedPaymentType === 3 ? 'Cheque' : 'Online' }}"
                                                             aria-label="Bank voucher payment method">
                                                     </div>
