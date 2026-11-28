@@ -160,7 +160,7 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringContainsString('id="s4-start-number"', $view);
         $this->assertStringContainsString('name="start_number"', $view);
         $this->assertStringContainsString('data-s4-prefix-preview-url=', $view);
-        $this->assertStringContainsString("method:'POST',data:$form.serialize()", $script);
+        $this->assertStringContainsString("method:'POST',data:\$form.serialize()", $script);
         $this->assertStringContainsString('lookupPrefix()', $script);
         $this->assertStringContainsString("prop('disabled',!!data.existing)", $script);
         $this->assertStringContainsString('function previewVoucherPrefix(Request $request)', $controller);
