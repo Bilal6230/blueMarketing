@@ -6,7 +6,48 @@ $(function(){
  if(!$tab.length||!$modal.length||!$form.length)return;
  $modal.appendTo('body');
  $('#s4-prefix-confirm').appendTo('body');
- var $series=$form.find('[name=series]'),$prefix=$form.find('[name=prefix]'),busy=false;
+ var $series=$form.find('[name=series]'),$prefix=$form.find('[name=prefix]'),
+     $start=$form.find('[name=start_number]'),$state=$('#s4-prefix-state'),
+     $previewUrl=$tab.find('.s4-shell').attr('data-s4-prefix-preview-url'),
+     busy=false,ready=false,serial=0,prefixTimer=null,prefixRequest=null;
+ function lookupPrefix(){
+  ready=false;
+  var series=$series.val(),prefix=$.trim($prefix.val()).toUpperCase(),version=++serial;
+  $start.prop('disabled',true);
+  if(!/^[A-Z][A-Z0-9]{1,11}$/.test(prefix)){
+   $state.removeClass('alert-success alert-info').addClass('alert-warning').text('Use 2–12 uppercase characters, beginning with a letter.');
+   return;
+  }
+  $state.removeClass('alert-success alert-warning').addClass('alert-info').text('Checking saved voucher numbers...');
+  if(prefixRequest)prefixRequest.abort();
+  prefixRequest=$.ajax({url:$previewUrl,method:'GET',data:{series:series,prefix:prefix},dataType:'json'});
+  prefixRequest.done(function(data){
+   if(version!==serial)return;
+   if(data.conflict){
+    $state.removeClass('alert-info alert-success').addClass('alert-warning')
+      .text('This prefix belongs to another voucher type in this project.');
+    return;
+   }
+   ready=true;
+   $start.val(data.next_number).prop('disabled',!!data.existing);
+   $state.removeClass('alert-warning alert-info').addClass('alert-success')
+     .text(data.existing
+      ?'Existing prefix: next voucher '+prefix+'-'+data.next_number+'. Starting number cannot be changed.'
+      :'New prefix: next voucher '+prefix+'-'+data.next_number+'. You can choose a starting number.');
+  }).fail(function(xhr,status){
+   if(status==='abort'||version!==serial)return;
+   $state.removeClass('alert-info alert-success').addClass('alert-warning')
+    .text(xhr.responseJSON?.message||'Unable to verify the voucher prefix. Save is disabled.');
+  });
+ }
+ $prefix.on('input',function(){
+  var normalized=String($(this).val()||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12);
+  $(this).val(normalized);
+  if(prefixTimer)clearTimeout(prefixTimer);
+  ready=false;$start.prop('disabled',true);
+  prefixTimer=setTimeout(lookupPrefix,300);
+ });
+
  function notify(message,failed){
   if(window.toastr){failed?toastr.error(message):toastr.success(message);}
   else if(window.Swal)Swal.fire({icon:failed?'error':'success',text:message});
@@ -14,6 +55,8 @@ $(function(){
  function fillSeries(series){
   $series.val(series||$series.find('option').first().val());
   $prefix.val($series.find('option:selected').attr('data-prefix')||$series.val());
+  if(prefixTimer)clearTimeout(prefixTimer);
+  lookupPrefix();
  }
  $series.on('change',function(){fillSeries($(this).val());});
  $tab.on('click','#s4-configure',function(){fillSeries();$modal.modal('show');});
@@ -21,6 +64,7 @@ $(function(){
  $form.on('submit',function(e){
   e.preventDefault();e.stopImmediatePropagation();
   if(busy)return;
+  if(!ready){notify('Wait until the prefix has been verified.',true);return;}
   if(!this.checkValidity()){this.reportValidity();return;}
   function send(){
    busy=true;var $button=$form.find('button[type=submit]').prop('disabled',true);
@@ -32,6 +76,7 @@ $(function(){
     $tab.find('tr[data-s4-series]').filter(function(){return $(this).attr('data-s4-series')===series;})
      .find('.s4-current-prefix').text(prefix);
     $series.find('option:selected').attr('data-prefix',prefix);
+    $start.val(data.next_number||$start.val());
     $modal.modal('hide');
     notify(data.message||'Prefix configuration saved.',false);
    }).fail(function(xhr){
