@@ -87,9 +87,13 @@ class VoucherController extends Controller
         $source = CustomerLedger::query()->whereKey($customerLedger)->where('project_id', $project)->firstOrFail();
         $incoming = in_array((string) $source->transaction_type, ['CR', 'PPR', 'ECP'], true);
         $paymentType = (int) $source->payment_type;
-        $voucherTitle = in_array($paymentType, [1, 2, 3], true)
-            ? $this->cashVoucherTitle($incoming, $paymentType)
-            : ($incoming ? 'Cash Receipt Voucher' : 'Cash Payment Voucher');
+        $voucherTitle = match ((string) $source->transaction_type) {
+            'CCR' => 'Cash Receive Voucher',
+            'CDR' => 'Cash Payment Voucher',
+            default => in_array($paymentType, [1, 2, 3], true)
+                ? $this->cashVoucherTitle($incoming, $paymentType)
+                : ($incoming ? 'Cash Receipt Voucher' : 'Cash Payment Voucher'),
+        };
         $displayNumber = app(\App\Services\Finance\ProjectVoucherDisplayIdentity::class)
             ->lookup($project, 'customer_ledger', (int) $source->id)
             ?: ($source->transaction_type . '-' . $source->type_id);
