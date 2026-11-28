@@ -11,6 +11,7 @@
 #plotReceiptCreateModal .pr-total{font-size:1.3rem;font-weight:700;color:var(--voucher-accent)}
 #plotReceiptCreateModal .pr-stat{background:#f4f8fd;border:1px solid #dce6f2;border-radius:8px;padding:9px}
 #plotReceiptCreateModal .pr-muted{color:#64748b}
+#prTotalWords:disabled{background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1}
 </style>
 <div class="container-fluid bm-ui bm-voucher-directory bm-voucher-workspace pr-page" id="plotReceiptApp"
  style="--voucher-accent:#1769e0;--voucher-tint:#eaf2ff"
@@ -90,7 +91,7 @@
    </div>
    <div class="d-flex align-items-center justify-content-between mb-2"><label for="prSearch" class="mb-0">Allocate to one or more active plot bookings</label><input id="prSearch" class="form-control form-control-sm" style="max-width:240px" placeholder="Search plots"></div>
    <div class="table-responsive pr-bookings"><table class="table table-bordered table-hover table-sm mb-0"><thead><tr><th style="width:45px">Select</th><th>Plot / Booking</th><th>Customer</th><th>Receivable account</th><th style="width:150px">Allocate amount</th></tr></thead><tbody id="prBookingRows"><tr><td colspan="5" class="text-center text-muted p-3">Select customer to load bookings.</td></tr></tbody></table></div>
-   <div class="pr-stat mt-3"><small>Receipt total (allocated): </small><span class="pr-total" id="prTotal">0.00</span><div class="small text-muted"><span id="prSelected">0</span> plots selected · choose at least 1</div></div>
+   <div class="pr-stat mt-3"><small>Receipt total (allocated): </small><span class="pr-total" id="prTotal">0.00</span><div class="form-group mt-2 mb-1"><label for="prTotalWords">Amount in Words</label><input id="prTotalWords" type="text" class="form-control voucher-words-output" placeholder="Total in words" disabled readonly></div><div class="small text-muted"><span id="prSelected">0</span> plots selected · choose at least 1</div></div>
    <small class="d-block text-muted mt-2">Each plot allocation updates its mapped account. Current Edit retains the original allocation count.</small>
   </div>
   <div class="modal-footer"><button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancel</button><button id="prPost" type="button" class="btn btn-primary btn-sm" disabled><i class="fas fa-check-circle mr-1"></i> Post receipt</button></div>
@@ -188,7 +189,7 @@
  var recalc=function(){
   var rows=selected(),sum=0,valid=rows.length>=1;
   rows.forEach(function(b){var amount=Number($('.pr-amount[data-amount="'+b.booking_id+'"]').val())||0;sum+=amount;if(amount<=0)valid=false;});
-  $('#prTotal').text(money(sum));$('#prSelected').text(rows.length);
+  $('#prTotal').text(money(sum));if (window.numberToWords&&typeof numberToWords.toWords==='function')$('#prTotalWords').val(sum>0?numberToWords.toWords(sum):'');$('#prSelected').text(rows.length);
   valid=valid&&$.trim($('#prNumber').val())!==''&&$('#prDate').val()
    &&$('#prCustomer').val()&&$('#prAccount').val()
    &&$.trim($('#prNarration').val())!=='';
