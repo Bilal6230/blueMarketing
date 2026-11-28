@@ -13,7 +13,7 @@
     @include('admin.partials.project_print_identity', ['brandingProjectId' => $source->project_id ?? null])
     <div class="top"><div><h1 style="margin:0 0 6px">{{ $projectName }}</h1><div class="muted">Daily voucher source record</div></div><div style="text-align:right"><strong>{{ $displayNumber }}</strong><div class="muted">{{ $source->date }}</div></div></div>
     <section class="facts">
-        <div class="fact"><strong>Type / status</strong>{{ $source->transaction_type }} / {{ (int) ($source->is_active ?? 0) === 1 ? ((int) ($source->is_approve ?? 0) === 1 ? 'Approved' : 'Posted') : 'Inactive' }}</div>
+        <div class="fact"><strong>Type / status</strong>{{ ['CCR'=>'Cash Receive Voucher (CCR)', 'CDR'=>'Cash Payment Voucher (CDR)'][(string) $source->transaction_type] ?? $source->transaction_type }} / {{ (int) ($source->is_active ?? 0) === 1 ? ((int) ($source->is_approve ?? 0) === 1 ? 'Approved' : 'Posted') : 'Inactive' }}</div>
         <div class="fact"><strong>Customer</strong>{{ $customerName ?: '—' }}</div>
         <div class="fact"><strong>Reference</strong>{{ $source->reference ?: '—' }}</div>
         <div class="fact"><strong>Amount</strong>{{ number_format(max((float) $source->amount_in, (float) $source->amount_out), 2) }}</div>
