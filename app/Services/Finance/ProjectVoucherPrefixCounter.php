@@ -72,12 +72,14 @@ final class ProjectVoucherPrefixCounter
             || $this->historicalMax($projectId,$prefix)>0
             || ($prefix===$series && $this->baseline($projectId,$series,$prefix)>1)
             || ($series==='DR' && $prefix==='DR' && $this->baseline($projectId,$series,$prefix)>1);
+        // Legacy CP and current DR are one voucher family.
+        $aliases=in_array($series,['CP','DR'],true)?['CP','DR']:[$series];
         $conflict=DB::table('project_voucher_prefix_counters')
             ->where('project_id',$projectId)->where('prefix',$prefix)
-            ->where('series','!=',$series)->exists();
+            ->whereNotIn('series',$aliases)->exists();
         if (Schema::hasTable('project_voucher_display_numbers')) {
             $conflict=$conflict||DB::table('project_voucher_display_numbers')
-                ->where('project_id',$projectId)->where('series','!=',$series)
+                ->where('project_id',$projectId)->whereNotIn('series',$aliases)
                 ->where('display_number','like',$prefix.'-%')->exists();
         }
         if (Schema::hasTable('project_voucher_display_settings')) {
