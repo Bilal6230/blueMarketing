@@ -311,8 +311,8 @@
                                                     {{-- Voucher No (small) --}}
                                                     <div class="col-6 col-md-3 col-lg-1">
                                                         <label class="fbox mb-1">Voucher No</label>
-                                                        <input type="text" class="form-control form-control-sm"
-                                                            name="voucher_number" id="voucher_number" type="hidden"
+                                                        <input type="hidden"
+                                                            name="voucher_number" id="voucher_number"
                                                             value="{{ $voucherType }}-{{ $latest_voucher_number ?? '' }}">
                                                         <input type="text" id="display_voucher_number" class="form-control form-control-sm"
                                                             value="{{ $latestDisplayVoucherNumber ?? ($voucherType.'-'.($latest_voucher_number ?? 1)) }}"
