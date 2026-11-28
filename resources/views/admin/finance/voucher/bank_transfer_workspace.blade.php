@@ -168,6 +168,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                         <div class="form-group col-md-8"><label for="btAmountWords">Amount in Words</label>
                             <input id="btAmountWords" type="text" class="form-control voucher-words-output"
                                 placeholder="Amount in words will appear automatically" disabled readonly></div>
+                    </div>
                     <div class="form-group"><label for="voucherReference">Reference number</label><input id="voucherReference" class="form-control" maxlength="120" placeholder="Optional reference"></div>
                     <div class="form-group"><label for="voucherDescription">Description / Narration <span class="text-danger">*</span></label>
                         <textarea id="voucherDescription" class="form-control" rows="3" maxlength="2000" required></textarea></div>
