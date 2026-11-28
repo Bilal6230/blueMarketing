@@ -1104,15 +1104,13 @@
 
 
         function convertToWords() {
-            var numberInput = $('#numberInput')[0].value;
-
-            var numericValue = numberInput.replace(/,/g, '');
-
-            var wordingAmount = numberToWords.toWords(numericValue);
-
-            $('#wordingAmount')[0].innerText = wordingAmount;
+            var amount=Number(String($('#e_amount').val()||'').replace(/,/g,'')),words='';
+            if(Number.isFinite(amount)&&amount>0&&window.numberToWords&&typeof numberToWords.toWords==='function')
+                words=numberToWords.toWords(amount);
+            $('#draftAmountWords').val(words);
         }
-
+        $(document).on('input change','#e_amount',convertToWords);
+        $(document).on('shown.bs.modal','#modal-edit',convertToWords);
         function formatAmount(input) {
             let value = input.value.replace(/[^0-9]/g, '').replace(/^0+/, '');
 
@@ -1279,7 +1277,10 @@
                             <div class="col-sm-12">
                                 <div class="row">
                                     <div class="mb-3 col-sm-12">
-                                        <div id="wordingAmount"></div>
+                                        <label for="draftAmountWords" class="fbox">Amount in Words</label>
+                                        <input id="draftAmountWords" class="form-control" type="text"
+                                            placeholder="Amount in words will appear automatically" disabled readonly
+                                            style="background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1">
                                     </div>
                                     <div class="mb-3 col-sm-6">
                                         <div class="input-group">
