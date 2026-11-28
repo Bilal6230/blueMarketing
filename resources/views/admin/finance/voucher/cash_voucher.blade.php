@@ -151,6 +151,24 @@
             }
         }
 
+
+        @if(in_array($displaySeries ?? '', ['CR','DR','BOR','BOP'], true))
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-words,
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .voucher-amount-words-layout > .voucher-amount-words{grid-column:span 1!important}
+        #voucherForm .voucher-amount-words-layout > :has(#display_voucher_number){order:1}
+        #voucherForm .voucher-amount-words-layout > :has(.voucher-date){order:2}
+        #voucherForm .voucher-amount-words-layout > .bank-posting-account,
+        #voucherForm .voucher-amount-words-layout > .standard-counter-account{order:3}
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-field{order:4}
+        #voucherForm .voucher-amount-words-layout > .voucher-amount-words{order:5}
+        #voucherForm .voucher-amount-words-layout > .voucher-payment-type-field{order:6}
+        #voucherForm .voucher-amount-words-layout > :has(#acct_type){order:7}
+        #voucherForm .voucher-amount-words-layout > :has(#accounts_id){order:8}
+        #voucherForm .voucher-amount-words-layout > :has(#subaccounts_id){order:9}
+        #voucherForm .voucher-amount-words-layout > .bank_group{order:10}
+        #voucherForm .voucher-amount-words-layout > :not(.bank_group):not(.voucher-amount-field):not(.voucher-amount-words):not(.voucher-payment-type-field):not(.bank-posting-account):not(.standard-counter-account):not(:has(#display_voucher_number)):not(:has(.voucher-date)):not(:has(#acct_type)):not(:has(#accounts_id)):not(:has(#subaccounts_id)){order:11}
+        @endif
+
         @if($embeddedVoucher ?? false)
         /* Embedded correction editor is displayed directly within the parent modal;
            no nested overlay or old voucher listing is visible. */
@@ -469,7 +487,7 @@
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
                                                         @enderror
                                                     </div>
-                                                    <div class="col-12 col-md-6 col-lg-8 voucher-amount-words">
+                                                    <div class="col-12 col-md-6 col-lg-4 voucher-amount-words">
                                                         <label for="voucher_amount_words" class="fbox mb-1">Amount in Words</label>
                                                         <input id="voucher_amount_words" type="text"
                                                             class="form-control form-control-sm voucher-words-output"
@@ -540,13 +558,13 @@
                                                     </div>
 
                                                     @if(in_array($voucherType,['CCR','CDR'],true))<input type="hidden" id="payment_type" name="payment_type" value="1">@else
-                                                    <div class="col-6 col-md-3 col-lg-2 {{ $fixedPaymentType !== null ? 'd-none' : '' }}">
+                                                    <div class="col-6 col-md-3 col-lg-2 voucher-payment-type-field $1">
 
                                                         <label class="fbox mb-1">Payment Type</label>
                                                         <select class="js-tomselect form-select form-select-sm"
                                                             placeholder=" " name="payment_type" id="payment_type">
-                                                            @if($isBankVoucherSeries)<option value="" selected>Select Online or Cheque</option>@else
-                                                            <option value="1" {{ $fixedPaymentType === 1 ? 'selected' : '' }}>Cash</option>
+                                                            <option value="" {{ $fixedPaymentType === null ? 'selected' : '' }}>Select Payment Type</option>
+                                                            @unless($isBankVoucherSeries)<option value="1" {{ $fixedPaymentType === 1 ? 'selected' : '' }}>Cash</option>@endunless
                                                             @endif
                                                             <option value="2" {{ $fixedPaymentType === 2 ? 'selected' : '' }}>Online</option>
                                                             <option value="3" {{ $fixedPaymentType === 3 ? 'selected' : '' }}>Cheque</option>
@@ -558,9 +576,7 @@
 
                                                     @endif
                                                     @if($isBankVoucherSeries && $fixedPaymentType !== null)
-                                                    <div class="col-6 col-md-3 col-lg-2">
-                                                        <label class="fbox mb-1">Payment Type</label>
-                                                        <input class="form-control form-control-sm" readonly
+                                                    <div class="col-6 col-md-3 col-lg-2 voucher-payment-type-field">$2
                                                             value="{{ $fixedPaymentType === 3 ? 'Cheque' : 'Online' }}"
                                                             aria-label="Bank voucher payment method">
                                                     </div>
@@ -1920,6 +1936,16 @@
                     }
                 @endif
             });
+
+            @if(in_array($displaySeries ?? '', ['CR','DR','BOR','BOP'], true))
+            function syncFourVoucherBankFields() {
+                const method = String($('#voucherForm #payment_type').val() || '');
+                $('#voucherForm .bank_group').toggle(method === '2' || method === '3');
+                $('#voucherForm #t_number').attr('placeholder', method === '3' ? 'Cheque Number' : 'Transaction Number');
+            }
+            $('#voucherForm #payment_type').on('change.voucherVisibility', syncFourVoucherBankFields);
+            syncFourVoucherBankFields();
+            @endif
             $('#custom_payment_method_id').on('change', function() {
                 const baseCode = $(this).find(':selected').data('base-code');
                 if (!baseCode) return;
@@ -4117,6 +4143,16 @@
       #edit-voucher-form #edit_detail{height:85px!important}
       #edit-voucher-form .voucher-edit-reason{grid-column:1/-1;order:22}
       #edit-voucher-form .modal-footer{grid-column:1/-1;order:23;margin:0;padding:12px 0 0}
+      @if(in_array($displaySeries ?? '', ['CR','DR','BOR','BOP'], true))
+      #edit-voucher-form .counter-edit-field,#edit-voucher-form .bank-counter-edit-field{order:3}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_amount){order:4}
+      #edit-voucher-form .voucher-edit-words-field{order:5}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_payment_type){order:6}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_acct_type){order:7}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_accounts_id){order:8}
+      #edit-voucher-form [class*="col-sm-"]:has(#edit_subaccounts_id){order:9}
+      @endif
+
       @media(max-width:760px){#edit-voucher-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
       @media(max-width:530px){#edit-voucher-form{grid-template-columns:minmax(0,1fr)}}
     </style>
@@ -4273,7 +4309,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="col-sm-8 voucher-edit-words-field">
+                                    <div class="col-sm-4 voucher-edit-words-field">
                                         <label for="edit_amount_words" class="fbox">Amount in Words</label>
                                         <input id="edit_amount_words" class="form-control voucher-words-output"
                                             type="text" value="" placeholder="Amount in words will appear automatically" disabled readonly>
@@ -4342,9 +4378,10 @@
                                     <div class="input-group">
                                         <select class="js-tomselect" placeholder=" " name="payment_type"
                                             id="edit_payment_type">
-                                            <option value="1">Cash</option>
-                                            <option value="2">Online</option>
-                                            <option value="3">Check</option>
+                                            <option value="">Select Payment Type</option>
+                                             @unless($isBankVoucherSeries)<option value="1">Cash</option>@endunless
+                                             <option value="2">Online</option>
+                                             <option value="3">Cheque</option>
                                         </select>
                                         @error('payment_type')
                                             <div class="invalid-feedback">{{ $message }}</div>
