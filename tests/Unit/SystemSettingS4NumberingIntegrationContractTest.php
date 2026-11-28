@@ -24,7 +24,7 @@ final class SystemSettingS4NumberingIntegrationContractTest extends TestCase
         $script=file_get_contents(public_path('js/settings-s4-voucher-display.js'));
         $service=file_get_contents(app_path('Services/Finance/ProjectVoucherPrefixCounter.php'));
         $this->assertStringContainsString('function previewVoucherPrefix(Request $request)', $controller);
-        $this->assertStringContainsString("DB::table('projects')->where('id',$projectId)->lockForUpdate()", $controller);
+        $this->assertStringContainsString("DB::table('projects')->where('id',\$projectId)->lockForUpdate()", $controller);
         $this->assertStringContainsString('$service->configure($projectId,$data[', $controller);
         $this->assertStringContainsString('project_voucher_prefix_counters', $service);
         $this->assertStringContainsString("'issued_count'", $service);
@@ -44,10 +44,10 @@ final class SystemSettingS4NumberingIntegrationContractTest extends TestCase
         $directory=file_get_contents(app_path('Http/Controllers/Finance/DailyVoucherDirectoryController.php'));
         $this->assertStringContainsString('return $identity ? (string)$identity->display_number : null;', $identity);
         $this->assertStringContainsString('->issue($projectId,$series,$sourceKind,$sourceId,$date,$display)', $identity);
-        $this->assertStringContainsString("'display_voucher_number'=>$display", $controller);
+        $this->assertStringContainsString("'display_voucher_number'=>\$display", $controller);
         $this->assertStringContainsString('id="display_voucher_number"', $form);
         $this->assertStringContainsString('name="voucher_number" id="voucher_number"', $form);
         $this->assertStringContainsString('const DISPLAY_PREFIX =', $form);
-        $this->assertStringContainsString("->where('dn.display_number','like',$term)", $directory);
+        $this->assertStringContainsString("->where('dn.display_number','like',\$term)", $directory);
     }
 }
