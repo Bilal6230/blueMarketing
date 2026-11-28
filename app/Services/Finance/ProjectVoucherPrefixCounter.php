@@ -138,7 +138,7 @@ final class ProjectVoucherPrefixCounter
     }
 
     /** Allocates only when the voucher source already exists inside its posting transaction. */
-    public function issue(int $projectId,string $series,string $sourceKind,int $sourceId,string $date): string
+    public function issue(int $projectId,string $series,string $sourceKind,int $sourceId,string $date,?string $canonicalDisplay=null): string
     {
         if (DB::transactionLevel()<1) throw new \DomainException('VOUCHER_PREFIX_TRANSACTION_REQUIRED');
         if (!Schema::hasTable('project_voucher_prefix_counters')) {
@@ -153,6 +153,13 @@ final class ProjectVoucherPrefixCounter
             ->where('series',$series)->where('prefix',$prefix);
         $row=$counter->lockForUpdate()->first();
         $next=max((int)($row->next_number??1),$state['next_number']);
+        // The canonical source number is already allocated before assign().
+        // On a fresh unconfigured prefix, MAX(type_id)+1 would skip one.
+        // This override applies ONLY to its first canonical assignment.
+        if (!$row && $prefix===$series && $canonicalDisplay!==null
+            && preg_match('/^'.preg_quote($prefix,'/').'-0*([1-9][0-9]*)$/D',$canonicalDisplay,$parts)) {
+            $next=max($this->historicalMax($projectId,$prefix)+1,(int)$parts[1]);
+        }
         $display=$prefix.'-'.$next;
         if (DB::table('project_voucher_display_numbers')->where('project_id',$projectId)
             ->where('display_number',$display)->exists()) {
