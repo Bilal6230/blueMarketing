@@ -31,7 +31,7 @@ final class ProjectVoucherPrefixLifecycleTest extends TestCase
         Schema::create('project_voucher_prefix_counters',function(Blueprint $t){
             $t->id();$t->unsignedBigInteger('project_id');$t->string('series',4);
             $t->string('prefix',12);$t->unsignedBigInteger('next_number');
-            $t->unsignedBigInteger('issued_count')->default(0);$t->timestamps();
+            $t->unsignedBigInteger('issued_count')->default(0);$t->boolean('has_history')->default(false);$t->timestamps();
             $t->unique(['project_id','series','prefix']);
         });
         Schema::create('project_voucher_display_numbers',function(Blueprint $t){
