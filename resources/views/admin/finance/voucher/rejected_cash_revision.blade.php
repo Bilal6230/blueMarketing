@@ -3,7 +3,10 @@
 @section('content')
 @php
     $editStatus = $approval?->status ?? 'posted';
-    $matchAddLayout = in_array((string)$revisionPolicyType, ['CR','DR','BOR','BOP'], true);
+    // The displayed DR voucher is historically stored as CP in customer_ledger.
+    // Keep the original type for persistence/approval; normalize only the Edit UI layout.
+    $editLayoutSeries = (string) $revisionPolicyType === 'CP' ? 'DR' : (string) $revisionPolicyType;
+    $matchAddLayout = in_array($editLayoutSeries, ['CR','DR','BOR','BOP'], true);
     $usesApproval = app(\App\Services\Finance\DailyVoucherApprovalWorkflow::class)
         ->policy((int)getSelectedTown(),$revisionPolicyType) !== null;
 @endphp
