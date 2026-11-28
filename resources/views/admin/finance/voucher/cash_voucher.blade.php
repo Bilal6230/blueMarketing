@@ -2320,6 +2320,9 @@
                 });
 
                 $('.edit-bank-field').hide();
+                @if(in_array($displaySeries ?? '', ['CR','DR','BOR','BOP'], true))
+                $('#edit-voucher-form .customer-detail > :has(#edit_t_number), #edit-voucher-form .customer-detail > :has(#edit_bank_id), #edit-voucher-form .customer-detail > :has(#edit_passing_date), #edit-voucher-form .customer-detail > :has(#edit_passing_status), #edit-cheque-purpose-group').hide();
+                @endif
                 $('#edit-voucher-form .counter-edit-field, #edit-voucher-form .bank-counter-edit-field').hide();
                 $('#edit_counter_account').prop('disabled',true).prop('required',false);
                 $('#edit_bank_counter_account').val('');
@@ -2332,6 +2335,10 @@
                 const hasStatusValue = passingStatus !== null && passingStatus !== undefined && String(passingStatus) !== '';
                 const showBankFields = type === 2 || type === 3;
                 $('.edit-bank-field').toggle(showBankFields);
+                @if(in_array($displaySeries ?? '', ['CR','DR','BOR','BOP'], true))
+                // Display whole grid cells, avoiding empty slots when Cash or blank is selected.
+                $('#edit-voucher-form .customer-detail > :has(#edit_t_number), #edit-voucher-form .customer-detail > :has(#edit_bank_id), #edit-voucher-form .customer-detail > :has(#edit_passing_date)').toggle(showBankFields);
+                @endif
                 $('#edit-cheque-purpose-group').toggle(type === 3);
                 $('#edit_cheque_purpose').prop('required', type === 3);
                 if (type === 2) {
@@ -2344,6 +2351,9 @@
 
                 const shouldShowStatus = showBankFields && hasStatusValue;
                 $('#edit_passing_status_group').toggle(shouldShowStatus);
+                @if(in_array($displaySeries ?? '', ['CR','DR','BOR','BOP'], true))
+                $('#edit-voucher-form .customer-detail > :has(#edit_passing_status)').toggle(shouldShowStatus);
+                @endif
             }
 
             function loadEditAccountsByType(acctType) {
@@ -4145,13 +4155,50 @@
       #edit-voucher-form .voucher-edit-reason{grid-column:1/-1;order:22}
       #edit-voucher-form .modal-footer{grid-column:1/-1;order:23;margin:0;padding:12px 0 0}
       @if(in_array($displaySeries ?? '', ['CR','DR','BOR','BOP'], true))
-      #edit-voucher-form .counter-edit-field,#edit-voucher-form .bank-counter-edit-field{order:3}
-      #edit-voucher-form [class*="col-sm-"]:has(#edit_amount){order:4}
-      #edit-voucher-form .voucher-edit-words-field{order:5}
-      #edit-voucher-form [class*="col-sm-"]:has(#edit_payment_type){order:6}
-      #edit-voucher-form [class*="col-sm-"]:has(#edit_acct_type){order:7}
-      #edit-voucher-form [class*="col-sm-"]:has(#edit_accounts_id){order:8}
-      #edit-voucher-form [class*="col-sm-"]:has(#edit_subaccounts_id){order:9}
+      /* Edit follows the Add form's three-field hierarchy. Keep the existing input
+         IDs and names so AJAX prefill and update validation continue to work. */
+      #edit-voucher-form > .row,
+      #edit-voucher-form > .row > .col-sm-12,
+      #edit-voucher-form > .row > .col-sm-12 > .row,
+      #edit-voucher-form > .customer-detail{display:contents!important}
+      #edit-voucher-form > .row > .col-sm-12 > .row > [class*="col-sm-"],
+      #edit-voucher-form > .customer-detail > [class*="col-sm-"]{
+          width:auto!important;max-width:none!important;min-width:0!important;
+          flex:none!important;padding:0!important;margin:0!important;
+          grid-column:span 1
+      }
+      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_voucher_number){order:1}
+      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_date){order:2}
+      #edit-voucher-form > .counter-edit-field,
+      #edit-voucher-form > .bank-counter-edit-field{order:3}
+      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_amount){order:4}
+      #edit-voucher-form > .row > .col-sm-12 > .row > .voucher-edit-words-field{order:5}
+      #edit-voucher-form > .customer-detail > :has(#edit_payment_type){order:6}
+      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_acct_type){order:7}
+      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_accounts_id){order:8}
+      #edit-voucher-form > .row > .col-sm-12 > .row > :has(#edit_subaccounts_id){order:9}
+      #edit-voucher-form > .customer-detail > :has(#edit_t_number){order:10}
+      #edit-voucher-form > .customer-detail > :has(#edit_bank_id){order:11}
+      #edit-voucher-form > .customer-detail > :has(#edit_passing_date){order:12}
+      #edit-voucher-form > .customer-detail > #edit-cheque-purpose-group{order:13}
+      #edit-voucher-form > .customer-detail > :has(#edit_passing_status){order:14}
+      /* Voucher Type is carried in the edit request, but is not another Add-style input. */
+      #edit-voucher-form > .customer-detail > :has(#edit_voucher_type){display:none!important}
+      /* Hide the actual grid cells, not just the child input group. */
+      #edit-voucher-form > .customer-detail > :has(#edit_t_number),
+      #edit-voucher-form > .customer-detail > :has(#edit_bank_id),
+      #edit-voucher-form > .customer-detail > :has(#edit_passing_date),
+      #edit-voucher-form > .customer-detail > :has(#edit_passing_status),
+      #edit-voucher-form > .customer-detail > #edit-cheque-purpose-group{display:none}
+      #edit-voucher-form > .row:has(#edit_detail) > .col-sm-12 > .input-group{
+          grid-column:1/-1;order:20
+      }
+      #edit-voucher-form .voucher-edit-reason{grid-column:1/-1;order:21}
+      #edit-voucher-form .modal-footer{grid-column:1/-1;order:22}
+      #edit-voucher-form .voucher-edit-words-field .voucher-words-output{
+          font-size:15px;font-weight:600;background:#f1f5f9;color:#20364d;
+          opacity:1
+      }
       @endif
 
       @media(max-width:760px){#edit-voucher-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
