@@ -55,6 +55,7 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
 @media(max-width:1150px){#bankTransferApp .bt-filter-row{grid-template-columns:repeat(2,minmax(120px,1fr))}#bankTransferApp .bt-filter-actions{grid-column:1/-1;justify-content:flex-end}}
 @media(max-width:991.98px){body:has(#bankTransferApp) .main-content.page-content,body.sidebar-collapse:has(#bankTransferApp) .main-content.page-content{margin-left:0!important;width:100%!important;max-width:100%;padding:66px 6px 0!important}}
 @media(max-width:520px){#bankTransferApp .bt-filter-row{grid-template-columns:1fr}#bankTransferApp .bt-footer{flex-wrap:wrap}}
+#bankTransferCreateForm #btAmountWords:disabled {background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1}
 </style>
 <div class="container-fluid bm-ui bm-voucher-directory bt-page {{ $kind === 'deposit' ? 'bt-credit' : 'bt-debit' }}" style="--voucher-accent:{{ $kind === 'deposit' ? '#128044' : '#bd3140' }};--voucher-tint:{{ $kind === 'deposit' ? '#e9f8ef' : '#fff0f1' }}" id="bankTransferApp" data-kind="{{ $kind }}"
     data-post-url="{{ route('finance.voucher.transfer.post',['kind'=>$kind]) }}"
@@ -147,8 +148,6 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                     <div class="row">
                         <div class="form-group col-md-6"><label for="voucherDate">Date <span class="text-danger">*</span></label>
                             <input id="voucherDate" type="date" class="form-control" value="{{ now()->toDateString() }}" required></div>
-                        <div class="form-group col-md-6"><label for="voucherAmount">Amount <span class="text-danger">*</span></label>
-                            <input id="voucherAmount" type="number" class="form-control" min="0.01" step="0.01" placeholder="0.00" required></div>
                         <div class="form-group col-md-6"><label id="btCounterLabel" for="cashAccount">Counter Account <span class="text-muted small">(Cash / Manual)</span></label>
                             <select id="cashAccount" class="form-control fvc-tom-select" required><option value="">Choose counter-account</option>
                             @foreach($counterAccounts as $account)
@@ -163,6 +162,12 @@ body:has(#bankTransferApp) .main-footer{display:none!important}
                             @if($bankAccounts->isEmpty())<small class="text-danger">Configure an active Project Bank Account mapping first.</small>@endif
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="form-group col-md-4"><label for="voucherAmount">Amount <span class="text-danger">*</span></label>
+                            <input id="voucherAmount" type="number" class="form-control" min="0.01" step="0.01" placeholder="0.00" required></div>
+                        <div class="form-group col-md-8"><label for="btAmountWords">Amount in Words</label>
+                            <input id="btAmountWords" type="text" class="form-control voucher-words-output"
+                                placeholder="Amount in words will appear automatically" disabled readonly></div>
                     <div class="form-group"><label for="voucherReference">Reference number</label><input id="voucherReference" class="form-control" maxlength="120" placeholder="Optional reference"></div>
                     <div class="form-group"><label for="voucherDescription">Description / Narration <span class="text-danger">*</span></label>
                         <textarea id="voucherDescription" class="form-control" rows="3" maxlength="2000" required></textarea></div>
@@ -302,6 +307,12 @@ $(function () {
             $('#btPassedError').removeClass('d-none').text((xhr.responseJSON||{}).message||'Unable to load verified bank sources.');
         });
     };
+    function updateBtAmountWords(){
+      var value=Number($('#voucherAmount').val()), words='';
+      if(Number.isFinite(value)&&value>0&&window.numberToWords&&typeof numberToWords.toWords==='function') words=numberToWords.toWords(value);
+      $('#btAmountWords').val(words);
+    }
+    $(document).on('input change','#bankTransferCreateForm #voucherAmount',updateBtAmountWords);
     $('#btPaymentType').on('change',function(){
         $.financeVerifiedSourceNarration.set($('#voucherDescription'),null);
         clearBtPassed();syncBtPayment();
