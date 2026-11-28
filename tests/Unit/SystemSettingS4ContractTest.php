@@ -111,7 +111,7 @@ final class SystemSettingS4ContractTest extends TestCase
         foreach (['DR','BD','BW','PP','BO','BR'] as $series) {
             $this->assertContains($series, \App\Services\Finance\ProjectVoucherDisplay::SERIES);
         }
-        $this->assertStringContainsString('BD,BW,PP', $setting);
+        $this->assertStringContainsString('ProjectVoucherDisplay::SERIES', $setting);
         $this->assertStringContainsString('ProjectVoucherDisplay::SERIES as $series', $view);
         $this->assertStringContainsString('data-s4-edit="{{ $series }}"', $view);
     }
@@ -146,19 +146,26 @@ final class SystemSettingS4ContractTest extends TestCase
         $this->assertStringNotContainsString('Confirmation dialog is unavailable', $script);
     }
 
-    public function test_modal_saves_prefix_without_pretending_start_number_is_ready(): void
+    public function test_modal_activates_prefix_preview_and_start_number_without_rewriting_sources(): void
     {
         $view=file_get_contents(resource_path('views/admin/finance/settings-voucher-display.blade.php'));
         $script=file_get_contents(public_path('js/settings-s4-voucher-display.js'));
         $controller=file_get_contents(app_path('Http/Controllers/SettingController.php'));
+        $routes=file_get_contents(base_path('routes/web.php'));
+        $identity=file_get_contents(app_path('Services/Finance/ProjectVoucherDisplayIdentity.php'));
 
         $this->assertStringContainsString('id="s4-display-modal"', $view);
         $this->assertStringContainsString('id="s4-display-form"', $view);
         $this->assertStringContainsString('data-ajax="off"', $view);
         $this->assertStringContainsString('id="s4-start-number"', $view);
-        $this->assertStringContainsString('disabled', $view);
-        $this->assertStringContainsString('method:\'POST\',data:$form.serialize()', $script);
-        $this->assertStringContainsString('Numbering of issued vouchers remains unchanged.', $controller);
-        $this->assertStringContainsString('return $series.\'-\'.$number;', file_get_contents(app_path('Services/Finance/ProjectVoucherDisplay.php')));
+        $this->assertStringContainsString('name="start_number"', $view);
+        $this->assertStringContainsString('data-s4-prefix-preview-url=', $view);
+        $this->assertStringContainsString("method:'POST',data:$form.serialize()", $script);
+        $this->assertStringContainsString('lookupPrefix()', $script);
+        $this->assertStringContainsString("prop('disabled',!!data.existing)", $script);
+        $this->assertStringContainsString('function previewVoucherPrefix(Request $request)', $controller);
+        $this->assertStringContainsString('ProjectVoucherPrefixCounter::class', $controller);
+        $this->assertStringContainsString('setting.voucher-prefix.preview', $routes);
+        $this->assertStringContainsString('->issue($projectId,$series,$sourceKind,$sourceId,$date,$display)', $identity);
     }
 }
