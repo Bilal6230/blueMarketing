@@ -16,7 +16,8 @@
      <div class="form-group col-md-4"><label>Reference / Slip No.</label><input type="text" name="reference" class="form-control" maxlength="128" required></div>
      <div class="form-group col-md-6"><label>Customer</label><select id="prOriginalCustomer" name="customer_id" class="form-control" required><option value="">Select customer</option></select></div>
      <div class="form-group col-md-6"><label>Plot / Booking</label><select id="prOriginalPlot" name="plot_id" class="form-control" required><option value="">Select plot</option></select></div>
-     <div class="form-group col-md-6"><label>Amount</label><input type="number" name="amount" class="form-control" min="0.01" step="0.01" required></div>
+     <div class="form-group col-md-4"><label for="prOriginalAmount">Amount</label><input id="prOriginalAmount" type="number" name="amount" class="form-control" min="0.01" step="0.01" required></div>
+     <div class="form-group col-md-8"><label for="prOriginalAmountWords">Amount in Words</label><input id="prOriginalAmountWords" type="text" class="form-control" placeholder="Amount in words will appear automatically" disabled readonly style="background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1"></div>
      <div class="form-group col-md-6"><label>Payment Type</label><select id="prOriginalPayment" name="payment_type" class="form-control" required><option value="1">Cash</option><option value="2">Online</option><option value="3">Cheque</option></select></div>
      <div class="form-group col-md-6"><label for="prOriginalCounterAccount">Credit Account (Cash / Bank) <span class="text-danger">*</span></label>
        <select id="prOriginalCounterAccount" name="counter_account_id" class="form-control" required>
@@ -70,3 +71,14 @@
    <button type="button" class="btn btn-primary" id="prApplyPassed" disabled>Apply selected source</button></div>
  </div></div>
 </div>
+<script>
+jQuery(function($){
+  function updatePprAmountWords(){
+    var n=Number($('#prOriginalAmount').val()), words='';
+    if(Number.isFinite(n)&&n>0&&window.numberToWords&&typeof numberToWords.toWords==='function') words=numberToWords.toWords(n);
+    $('#prOriginalAmountWords').val(words);
+  }
+  $(document).on('input change','#prOriginalAmount',updatePprAmountWords);
+  updatePprAmountWords();
+});
+</script>
