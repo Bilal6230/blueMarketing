@@ -312,8 +312,10 @@
                                                     <div class="col-6 col-md-3 col-lg-1">
                                                         <label class="fbox mb-1">Voucher No</label>
                                                         <input type="text" class="form-control form-control-sm"
-                                                            name="voucher_number" id="voucher_number"
-                                                            value="{{ $voucherType }}-{{ $latest_voucher_number ?? '' }}"
+                                                            name="voucher_number" id="voucher_number" type="hidden"
+                                                            value="{{ $voucherType }}-{{ $latest_voucher_number ?? '' }}">
+                                                        <input type="text" id="display_voucher_number" class="form-control form-control-sm"
+                                                            value="{{ $latestDisplayVoucherNumber ?? ($voucherType.'-'.($latest_voucher_number ?? 1)) }}"
                                                             autocomplete="off" readonly>
                                                         @error('reference')
                                                             <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -2955,6 +2957,8 @@
             const FORM_ID = '#voucherForm';
             const TS_SEL = '.js-tomselect';
             const VOUCHER_TYPE = @json($voucherType);
+            const DISPLAY_PREFIX = @json($displayVoucherPrefix ?? $voucherType);
+            const INITIAL_DISPLAY_VOUCHER_NUMBER = @json($latestDisplayVoucherNumber ?? null);
             const INITIAL_VOUCHER_NUMBER = @json((int) ($latest_voucher_number ?? 1));
             const VOUCHER_STORAGE_KEY = `bluemarketing_voucher_tabs_${VOUCHER_TYPE}_${window.location.pathname}_v3`;
 
@@ -2962,11 +2966,21 @@
                 return `${VOUCHER_TYPE}-${number}`;
             }
 
-            function setVoucherNumber(number) {
+            function setVoucherNumber(number, displayNumber = null) {
                 const safeNumber = Math.max(1, parseInt(number, 10) || 1);
-                const display = buildVoucherDisplay(safeNumber);
-                $('#voucher_number').val(display);
-                $('input[name="voucher"]').val(display);
+                const canonical = buildVoucherDisplay(safeNumber);
+                $('#voucher_number').val(canonical);
+                $('input[name="voucher"]').val(canonical);
+                $('#display_voucher_number').val(displayNumber || (DISPLAY_PREFIX+'-'+safeNumber));
+            }
+            function refreshDisplayPreview() {
+                $.post(@json(route('check_new_voucher_number')),{
+                    type:VOUCHER_TYPE,_token:@json(csrf_token())
+                }).done(function(data){
+                    if(data.latest_voucher_number){
+                        setVoucherNumber(data.latest_voucher_number,data.display_voucher_number);
+                    }
+                });
             }
 
             function parseVoucherNumber(value) {
@@ -3369,9 +3383,9 @@
             loadFormForTab(currentTab); // 3) restore snapshot into widgets (no extra reset)
             const restoredVoucherNumber = parseVoucherNumber($('#voucher_number').val());
             if (restoredVoucherNumber === null) {
-                setVoucherNumber(INITIAL_VOUCHER_NUMBER);
+                setVoucherNumber(INITIAL_VOUCHER_NUMBER,INITIAL_DISPLAY_VOUCHER_NUMBER);
             } else {
-                setVoucherNumber(restoredVoucherNumber);
+                setVoucherNumber(restoredVoucherNumber,INITIAL_DISPLAY_VOUCHER_NUMBER);
             }
             if (typeof window.syncPendingPanelFromPaymentType === 'function') {
                 setTimeout(window.syncPendingPanelFromPaymentType, 0);
@@ -3435,7 +3449,7 @@
                             ensureSaved: false
                         });
 
-                        setVoucherNumber(nextVoucherNumber);
+                        setVoucherNumber(nextVoucherNumber,data.display_voucher_number);
                         $("#voucher_number").trigger('input').trigger('change');
 
                         flatpickr('.date', {
@@ -3510,7 +3524,7 @@
                         },
                         function(data) {
                             const nextVoucherNumber = data.latest_voucher_number;
-                            setVoucherNumber(nextVoucherNumber);
+                            setVoucherNumber(nextVoucherNumber,data.display_voucher_number);
                             $("#voucher_number").trigger('change');
                             hideFormCardLoader();
                         },
@@ -3588,7 +3602,8 @@
                                 store.nextTabNumber = 2;
                             }
 
-                            setVoucherNumber(INITIAL_VOUCHER_NUMBER);
+                            setVoucherNumber(INITIAL_VOUCHER_NUMBER,INITIAL_DISPLAY_VOUCHER_NUMBER);
+                            refreshDisplayPreview();
 
                             // ✅ Success message
                             Swal.fire({
