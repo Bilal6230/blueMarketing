@@ -361,7 +361,7 @@ class VoucherController extends Controller
         $displaySeries = $this->cashVoucherDisplaySeries($request, true, $fixedPaymentType);
         $power = Auth::user()->roles[0]->name;
         $x['title'] = match ($displaySeries) {
-            'CCR' => 'Cash Credit (CCR)',
+            'CCR' => 'Cash Receive Voucher (CCR)',
             'CR' => 'Credit Voucher (CR)',
             'BOR' => 'Bank Receipt Voucher (BOR)',
             default => $fixedPaymentType === null ? 'Cash In Voucher' : $this->cashVoucherTitle(true, $fixedPaymentType),
@@ -494,8 +494,8 @@ class VoucherController extends Controller
             'CR' => 'Cash Receipt Voucher',
             'CP' => 'Debit Voucher',
             'DR' => 'Debit Voucher',
-            'CCR' => 'Cash Credit Voucher',
-            'CDR' => 'Cash Debit Voucher',
+            'CCR' => 'Cash Receive Voucher',
+            'CDR' => 'Cash Payment Voucher',
             'BOR' => 'Bank Receipt Voucher',
             'BOP' => 'Bank Payment Voucher',
             'EC' => 'Extra Charge',
@@ -652,7 +652,7 @@ class VoucherController extends Controller
         $displaySeries = $this->cashVoucherDisplaySeries($request, false, $fixedPaymentType);
         $power = Auth::user()->roles[0]->name;
         $x['title'] = match ($displaySeries) {
-            'CDR' => 'Cash Debit (CDR)',
+            'CDR' => 'Cash Payment Voucher (CDR)',
             'DR' => 'Debit Voucher (DR)',
             'BOP' => 'Bank Payment Voucher (BOP)',
             default => $fixedPaymentType === null ? 'Cash Out Voucher' : $this->cashVoucherTitle(false, $fixedPaymentType),
