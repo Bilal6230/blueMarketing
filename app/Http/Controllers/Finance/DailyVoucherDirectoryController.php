@@ -214,9 +214,19 @@ final class DailyVoucherDirectoryController extends Controller
             }
             if (!empty($filters['search'])) {
                 $term = '%'.addcslashes($filters['search'], '%_\\').'%';
-                $query->where(function ($q) use ($term) {
+                $hasDisplayNumbers=Schema::hasTable('project_voucher_display_numbers');
+                $query->where(function ($q) use ($term,$projectId,$hasDisplayNumbers) {
                     $q->where('source.reference', 'like', $term)->orWhere('source.description', 'like', $term)
                         ->orWhere('source.transaction_type', 'like', $term)->orWhere('source.type_id', 'like', $term);
+                    if ($hasDisplayNumbers) {
+                        $q->orWhereExists(function ($display) use ($term,$projectId) {
+                            $display->selectRaw('1')->from('project_voucher_display_numbers as dn')
+                                ->whereColumn('dn.source_id','source.id')
+                                ->where('dn.source_kind','customer_ledger')
+                                ->where('dn.project_id',$projectId)
+                                ->where('dn.display_number','like',$term);
+                        });
+                    }
                 });
             }
             $total += (clone $query)->count();
