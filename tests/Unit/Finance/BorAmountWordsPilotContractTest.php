@@ -16,8 +16,8 @@ final class BorAmountWordsPilotContractTest extends TestCase
         $this->assertStringContainsString('bank-posting-account', $view);
         $this->assertStringContainsString('standard-counter-account', $view);
         $this->assertSame(1,substr_count($view,'id="numberInput"'));
-        $this->assertLessThan(strpos($view, 'voucher-amount-field', strpos($view,'<form id="voucherForm"')),
-            strpos($view,'bank-posting-account',strpos($view,'<form id="voucherForm"')));
+        $this->assertLessThan(strpos($view, 'voucher-amount-field', strpos($view,'id="voucherForm"')),
+            strpos($view,'bank-posting-account',strpos($view,'id="voucherForm"')));
     }
 
     public function test_live_words_are_read_only_emphasized_in_add_and_edit(): void
