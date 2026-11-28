@@ -153,6 +153,7 @@ Route::prefix('admin')->middleware(['auth', 'check.user.status', 'finance.action
         Route::post('setting/account/{type}/{id}/status', 'changeProjectAccountStatus')->where(['type'=>'bank|cash','id'=>'[0-9]+'])->middleware(['permission:update setting'])->name('setting.account.status');
         Route::post('setting/payment-method-labels', 'savePaymentMethodLabels')->middleware(['permission:update setting'])->name('setting.payment-method-labels.save');
         Route::post('setting/voucher-display', 'saveVoucherDisplaySettings')->middleware(['permission:update setting'])->name('setting.voucher-display.save');
+        Route::get('setting/voucher-prefix-preview', 'previewVoucherPrefix')->middleware(['permission:update setting'])->name('setting.voucher-prefix.preview');
         Route::post('setting/voucher-availability', 'saveVoucherAvailability')->middleware(['permission:update setting'])->name('setting.voucher-availability.save');
         Route::post('setting/custom-payment-method', 'saveCustomPaymentMethod')->middleware(['permission:update setting'])->name('setting.custom-payment-method.save');
         Route::delete('setting', 'destroy')->middleware(['permission:delete setting'])->name('setting.destroy');
