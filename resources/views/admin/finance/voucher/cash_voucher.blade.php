@@ -684,7 +684,9 @@
                                                             <label for="cash-voucher-attachment" class="fbox mb-1">Attachment / File Uploader (optional)</label>
                                                             <input type="file" class="form-control form-control-sm" id="cash-voucher-attachment"
                                                                 name="attachment" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                                            @unless(in_array($displaySeries ?? '', ['CCR','CDR'], true))
                                                             <small class="text-muted">PDF or image, maximum 5 MB. Optional for every voucher.</small>
+                                                            @endunless
                                                         </div>
                                                     @if (in_array($voucherType, ['CP','DR'], true))
                                                         <div class="col-12 mt-3" id="pendingPaymentsSection"
