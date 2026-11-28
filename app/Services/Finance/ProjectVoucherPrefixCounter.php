@@ -78,7 +78,9 @@ final class ProjectVoucherPrefixCounter
                 && ($row!==null || $next>1));
         // Legacy CP and current DR are one voucher family.
         $aliases=in_array($series,['CP','DR'],true)?['CP','DR']:[$series];
-        $conflict=DB::table('project_voucher_prefix_counters')
+        $reserved=in_array($prefix,ProjectVoucherDisplay::SERIES,true)
+            && !in_array($prefix,$aliases,true);
+        $conflict=$reserved || DB::table('project_voucher_prefix_counters')
             ->where('project_id',$projectId)->where('prefix',$prefix)
             ->whereNotIn('series',$aliases)->exists();
         if (Schema::hasTable('project_voucher_display_numbers')) {
