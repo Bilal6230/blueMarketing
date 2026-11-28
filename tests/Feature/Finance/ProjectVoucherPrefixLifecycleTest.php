@@ -80,7 +80,9 @@ final class ProjectVoucherPrefixLifecycleTest extends TestCase
         self::assertSame('CRV-1',$this->makeSource(101,832));
         self::assertSame('CRV-2',$this->makeSource(102,833));
         self::assertSame(50,$this->setPrefix('CRVS',50)['next_number']);
+        self::assertFalse(app(ProjectVoucherPrefixCounter::class)->status(3,'CR','CRVS')['existing']);
         self::assertSame('CRVS-50',$this->makeSource(103,834));
+        self::assertTrue(app(ProjectVoucherPrefixCounter::class)->status(3,'CR','CRVS')['existing']);
         self::assertSame(3,$this->setPrefix('CRV')['next_number']);
         self::assertSame('CRV-3',$this->makeSource(104,835));
         self::assertSame(832,$this->setPrefix('CR')['next_number']);
