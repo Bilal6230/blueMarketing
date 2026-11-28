@@ -52,8 +52,28 @@ body{overflow:auto!important}
 .cr-revise.add-matched-edit #cr-revise-amount-words{background:#f1f5f9;color:#20364d;font-size:15px;font-weight:600;opacity:1}
 .cr-revise.add-matched-edit select.js-tomselect{display:block;width:100%;min-height:35px;border:1px solid #ced4da;border-radius:5px;background:#fff;padding:6px 10px;font-size:14px}
 .cr-revise.add-matched-edit select.js-tomselect.tomselected{display:none!important}
-.cr-revise.add-matched-edit .ts-wrapper{width:100%;min-width:0;max-width:100%;border:0!important;padding:0!important;background:transparent!important;box-shadow:none!important}
-.cr-revise.add-matched-edit .ts-wrapper .ts-control{width:100%;min-height:35px;border:1px solid #ced4da!important;border-radius:5px;padding:6px 10px;font-size:14px;box-shadow:none}
+/* Tom Select copies the original select's form-control class to its wrapper.
+   Reset Bootstrap's outer input box; only .ts-control draws the field border. */
+.cr-revise.add-matched-edit #cash-revision-form .ts-wrapper,
+.cr-revise.add-matched-edit #cash-revision-form .ts-wrapper.form-control{
+ display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;
+ height:auto!important;min-height:0!important;margin:0!important;padding:0!important;
+ border:0!important;border-radius:0!important;background:transparent!important;
+ background-image:none!important;box-shadow:none!important;line-height:normal!important;
+}
+.cr-revise.add-matched-edit #cash-revision-form .ts-wrapper .ts-control{
+ width:100%!important;min-height:35px!important;box-sizing:border-box!important;
+ border:1px solid #ced4da!important;border-radius:5px!important;
+ padding:6px 10px!important;font-size:14px;box-shadow:none!important;
+ background:#fff!important;
+}
+.cr-revise.add-matched-edit #cash-revision-form .ts-wrapper .ts-control input{
+ border:0!important;box-shadow:none!important;min-height:0!important;padding:0!important;
+ margin:0!important;width:auto!important;display:inline-block!important;
+}
+.cr-revise.add-matched-edit #cash-revision-form select.js-tomselect.tomselected{
+ display:none!important;position:absolute!important;visibility:hidden!important;
+}
 .cr-revise.add-matched-edit .ts-wrapper.focus .ts-control{border-color:#80bdff!important;box-shadow:0 0 0 .15rem rgba(0,123,255,.15)}
 .cr-revise.add-matched-edit .ts-dropdown{font-size:14px;z-index:1100}
 @media(max-width:767px){.cr-revise.add-matched-edit #cash-revision-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
