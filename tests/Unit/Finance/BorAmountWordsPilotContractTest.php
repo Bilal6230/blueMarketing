@@ -33,7 +33,8 @@ final class BorAmountWordsPilotContractTest extends TestCase
         $this->assertStringContainsString("function updateBorAmountWords()", $view);
         $this->assertStringContainsString("numberToWords.toWords(amount)", $view);
         $this->assertStringContainsString("on('input change', '#voucherForm #numberInput', updateBorAmountWords)", $view);
-        $this->assertStringContainsString("@else\n                                                    {{-- Amount (small) -- original layout for other vouchers --}}", $view);
+        $this->assertStringContainsString("@if(\$displaySeries!=='BOR')", $view);
+        $this->assertStringContainsString('Keep existing top-row Amount position for every other voucher.', $view);
         $this->assertStringContainsString('id="edit_amount"', $view);
     }
 }
