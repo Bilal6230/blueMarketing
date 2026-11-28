@@ -39,11 +39,7 @@ final class ProjectVoucherDisplayIdentity
             return (string) $existing->display_number;
         }
 
-        // Retain the source/series integrity gates below, but allocate the
-        // human-facing number from the project/prefix counter, not type_id.
-        // Existing mappings above are always returned unchanged.
-        if (Schema::hasTable('project_voucher_prefix_counters')) {
-            if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP','CCR','CDR','BOR','BOP'], true)) {
+        if ($sourceKind === 'customer_ledger' && in_array($series, ['CR','DR','CP','CCR','CDR','BOR','BOP'], true)) {
                 $source = DB::table('customer_ledger')->where('id',$sourceId)
                     ->where('project_id',$projectId)->lockForUpdate()->first(['transaction_type','type_id']);
                 if (!$source || (int)$source->type_id<1
@@ -108,6 +104,12 @@ final class ProjectVoucherDisplayIdentity
                 'CV' => CommissionVoucherNumber::display((int)$match[1]),
                 default => $series.'-'.(int)$match[1],
             };
+        }
+        // First verify the original source and canonical number using all of
+        // the legacy integrity branches above, then issue a separate display ID.
+        if (Schema::hasTable('project_voucher_prefix_counters')) {
+            return app(ProjectVoucherPrefixCounter::class)
+                ->issue($projectId,$series,$sourceKind,$sourceId,$date);
         }
         DB::table('project_voucher_display_numbers')->insert([
             'project_id' => $projectId, 'source_kind' => $sourceKind, 'source_id' => $sourceId,
