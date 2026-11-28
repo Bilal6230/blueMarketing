@@ -118,16 +118,17 @@
             #voucherForm .bor-add-layout > .bor-amount-words { grid-column:1; }
         }
 
-        /* Embedded shared grid has a more specific .col-12 rule; keep BOR words 2 cells wide. */
-        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bor-amount-words {
-            grid-column:span 2;
-        }
+        /* Override the embedded modal's generic .col-12 full-row selector. */
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bank-posting-account,
         body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bor-amount-field {
-            grid-column:span 1;
+            grid-column:span 1 !important;
+        }
+        body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bor-amount-words {
+            grid-column:span 2 !important;
         }
         @media (max-width:767px) {
             body.daily-voucher-embedded #voucherForm > .row > .col-10 > .bor-add-layout > .bor-amount-words {
-                grid-column:span 1;
+                grid-column:span 1 !important;
             }
         }
 
